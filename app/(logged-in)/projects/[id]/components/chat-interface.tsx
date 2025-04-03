@@ -12,7 +12,7 @@ import ChatMessage, { ChatMessageProps } from './ChatMessage';
 import ModelBanner from './ModelBanner';
 import LimitReachedModal from './LimitReachedModal';
 import { useUser } from '@/lib/auth';
-import { Action } from './AssistantActionsCard';
+import { Action } from './assistant-actions-card';
 
 // Extended version of Action that includes messageId
 interface ExtendedAction extends Action {
