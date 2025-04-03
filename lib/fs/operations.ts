@@ -1,6 +1,10 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { FILE_EXPLORER } from '@/lib/constants';
+import { exec as execCallback } from 'child_process';
+import { promisify } from 'util';
+
+const exec = promisify(execCallback);
 
 /**
  * File node interface
@@ -206,10 +210,124 @@ export async function copyDir(sourceDir: string, destinationDir: string): Promis
  */
 export async function deleteDir(dirPath: string): Promise<void> {
   try {
-    await fs.rm(dirPath, { recursive: true, force: true });
+    // First attempt: use fs.rm with recursive and force options
+    try {
+      await fs.rm(dirPath, { recursive: true, force: true });
+      return;
+    } catch (error) {
+      console.warn(
+        `Initial deletion attempt failed for ${dirPath}, trying fallback method:`,
+        error
+      );
+
+      // Add a short delay to ensure any file locks are released
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // If the first attempt fails, try more aggressive approaches
+
+      // For macOS/Linux, use multiple aggressive methods
+      if (process.platform === 'darwin' || process.platform === 'linux') {
+        // Handle problematic directories separately
+        const problemDirs = [path.join(dirPath, '.next'), path.join(dirPath, 'node_modules')];
+
+        // Process each problematic directory first with multiple attempts
+        for (const problemDir of problemDirs) {
+          try {
+            const exists = await fileExists(problemDir);
+            if (exists) {
+              console.log(`Found problematic directory, applying special handling: ${problemDir}`);
+
+              // Try to unlock files first
+              await exec(`find "${problemDir}" -type f -exec chmod 666 {} \\;`).catch(() => {});
+              await exec(`find "${problemDir}" -type d -exec chmod 777 {} \\;`).catch(() => {});
+
+              // Try normal deletion first
+              try {
+                await exec(`rm -rf "${problemDir}"`);
+                console.log(`${path.basename(problemDir)} directory removed`);
+                continue;
+              } catch {
+                console.log(`Regular deletion failed for ${problemDir}, trying with sudo...`);
+              }
+
+              // If that fails and we're on macOS/Linux, try with sudo (user will get a password prompt)
+              // This is a last resort since it requires user interaction
+              try {
+                console.log('Attempting privileged deletion - you may need to enter your password');
+                await exec(`sudo rm -rf "${problemDir}"`);
+                console.log(`Successfully removed ${path.basename(problemDir)} with sudo`);
+              } catch (sudoError) {
+                console.error(`Failed to delete with sudo: ${problemDir}`, sudoError);
+              }
+            }
+          } catch (dirError) {
+            console.error(
+              `Failed to handle ${path.basename(problemDir)} directory: ${problemDir}`,
+              dirError
+            );
+          }
+        }
+
+        // Wait a little before trying the main directory
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        // Now try with a more aggressive approach on the main directory
+        try {
+          // Try to unlock all files
+          await exec(`find "${dirPath}" -type f -exec chmod 666 {} \\;`).catch(() => {});
+          await exec(`find "${dirPath}" -type d -exec chmod 777 {} \\;`).catch(() => {});
+
+          // Try normal deletion
+          try {
+            await exec(`rm -rf "${dirPath}"`);
+            console.log(`Successfully deleted directory: ${dirPath}`);
+            return;
+          } catch {
+            console.log(`Regular deletion failed for main directory, trying with sudo...`);
+          }
+
+          // Try with sudo as last resort
+          try {
+            console.log('Attempting privileged deletion - you may need to enter your password');
+            await exec(`sudo rm -rf "${dirPath}"`);
+            console.log(`Successfully deleted directory with sudo: ${dirPath}`);
+            return;
+          } catch (sudoError) {
+            console.error(`Failed to delete with sudo: ${dirPath}`, sudoError);
+          }
+        } catch (rmError) {
+          console.error(`All deletion attempts failed for: ${dirPath}`, rmError);
+        }
+      }
+      // For Windows, use rmdir /s /q and additional techniques
+      else if (process.platform === 'win32') {
+        // For Windows, we have more limited options
+        try {
+          // Try to handle node_modules directory separately
+          const nodeModulesPath = path.join(dirPath, 'node_modules');
+          if (await fileExists(nodeModulesPath)) {
+            await exec(`attrib -R "${nodeModulesPath}\\*.*" /S /D`);
+            await exec(`rd /s /q "${nodeModulesPath}"`);
+          }
+
+          // Make everything in the main directory writable
+          await exec(`attrib -R "${dirPath}\\*.*" /S /D`);
+          // Then forcefully remove
+          await exec(`rd /s /q "${dirPath}"`);
+          return;
+        } catch (rdError) {
+          console.error(`Failed to delete using rd: ${dirPath}`, rdError);
+        }
+      }
+
+      // If all attempts fail, don't throw to allow the API endpoint to report partial success
+      console.error(
+        `All deletion attempts failed for ${dirPath}. Project will be deleted from database.`
+      );
+    }
   } catch (error) {
     console.error(`Failed to delete directory ${dirPath}:`, error);
-    throw error;
+    // Don't throw the error to allow the project deletion to continue
   }
 }
 
