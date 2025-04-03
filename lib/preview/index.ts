@@ -1,6 +1,6 @@
-import { BaseRunner } from './base-runner';
-import { DockerRunner } from './docker-runner';
-import { K8sRunner } from './k8s-runner';
+import { BaseRunner } from './baseRunner';
+import { DockerRunner } from './dockerRunner';
+import { K8sRunner } from './k8sRunner';
 import { getRunner } from './preview';
 
 // Export the getRunner function as the main entry point

@@ -1,7 +1,7 @@
 import Dockerode from 'dockerode';
 import { EventEmitter } from 'events';
 import { Readable } from 'stream';
-import { BaseRunner } from './base-runner';
+import { BaseRunner } from './baseRunner';
 import fetch from 'node-fetch';
 import { PREVIEW } from '@/lib/constants';
 

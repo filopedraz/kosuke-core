@@ -1,4 +1,4 @@
-import { generateAICompletion } from '../api/ai-sdk';
+import { generateAICompletion } from '../api/ai';
 import { getProjectContext } from '../utils/context';
 import { buildNaivePrompt } from '../prompts/naive';
 import { Pipeline } from './types';

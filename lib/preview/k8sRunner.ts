@@ -1,4 +1,4 @@
-import { BaseRunner } from './base-runner';
+import { BaseRunner } from './baseRunner';
 
 /**
  * Kubernetes-based preview runner

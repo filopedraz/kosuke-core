@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 
-import ProjectsClient from '@/components/projects/ProjectsClient';
+import ProjectsClient from '@/app/(logged-in)/projects/components/ProjectsClient';
 import { getProjectsByUserId } from '@/lib/db/projects';
 import { getUser } from '@/lib/db/queries';
 

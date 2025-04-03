@@ -1,6 +1,6 @@
 import { PipelineType, Pipeline } from './types';
 import { NaivePipeline } from './naive';
-import { RooCodePipeline } from './roo-code';
+import { RooCodePipeline } from './rooCode';
 
 /**
  * Get the appropriate pipeline implementation based on the type

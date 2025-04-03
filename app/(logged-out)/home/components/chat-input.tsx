@@ -8,7 +8,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
-import ProjectCreationModal from '@/components/projects/ProjectCreationModal';
+import ProjectCreationModal from '@/app/(logged-in)/projects/components/ProjectCreationModal';
 
 // Example prompt suggestions
 const PROMPT_SUGGESTIONS = [

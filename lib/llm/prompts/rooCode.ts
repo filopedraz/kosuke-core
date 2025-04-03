@@ -1,4 +1,4 @@
-import { ChatMessage } from '../api/ai-sdk';
+import { ChatMessage } from '../api/ai';
 
 /**
  * System prompt for the roo-code agent

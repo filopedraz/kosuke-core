@@ -6,7 +6,7 @@ import Image from 'next/image';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
-import AssistantActionsCard, { Action } from '@/components/projects/AssistantActionsCard';
+import AssistantActionsCard, { Action } from './AssistantActionsCard';
 
 export interface ChatMessageProps {
   id?: number;

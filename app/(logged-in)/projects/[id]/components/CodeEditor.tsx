@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { createHighlighter, BundledLanguage, BundledTheme } from 'shiki';
 import { Loader2, Copy, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 
 interface CodeEditorProps {
   code: string;

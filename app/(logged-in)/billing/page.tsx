@@ -3,9 +3,9 @@ import { Check } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { CheckoutButton } from '@/components/billing/CheckoutButton';
-import { CancelSubscriptionButton } from '@/components/billing/CancelSubscriptionButton';
-import { DowngradeButton } from '@/components/billing/DowngradeButton';
+import { CheckoutButton } from '@/app/(logged-in)/billing/components/checkout-button';
+import { CancelSubscriptionButton } from '@/app/(logged-in)/billing/components/cancel-subscription-button';
+import { DowngradeButton } from '@/app/(logged-in)/billing/components/downgrade-button';
 import { getSubscriptionProducts, getUserSubscription } from '@/lib/actions/subscription';
 import { SUBSCRIPTION_TIERS } from '@/lib/stripe';
 import { getUser } from '@/lib/db/queries';

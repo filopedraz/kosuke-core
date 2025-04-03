@@ -9,7 +9,7 @@ import { getTool } from '../tools';
 import { PipelineType, Pipeline } from '../pipelines/types';
 import { getPipeline } from '../pipelines';
 import { Action, normalizeAction } from './types';
-import { generateAICompletion } from '../api/ai-sdk';
+import { generateAICompletion } from '../api/ai';
 
 /**
  * Agent class responsible for orchestrating project modifications and handling UI updates

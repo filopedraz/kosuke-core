@@ -2,11 +2,12 @@
 
 import { Suspense, useState, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import ProjectCreationModal from '@/components/projects/ProjectCreationModal';
-import ProjectGrid from '@/components/projects/ProjectGrid';
-import ProjectsHeader from '@/components/projects/ProjectsHeader';
-import EmptyState from '@/components/projects/EmptyState';
-import { ProjectsLoadingSkeleton, ProjectModalSkeleton } from '@/components/projects/loading';
+import ProjectCreationModal from '@/app/(logged-in)/projects/components/ProjectCreationModal';
+import ProjectGrid from '@/app/(logged-in)/projects/components/ProjectGrid';
+import ProjectsHeader from '@/app/(logged-in)/projects/components/ProjectsHeader';
+import EmptyState from './EmptyState';
+import { ProjectsLoadingSkeleton } from './ProjectsLoadingSkeleton';
+import { ProjectModalSkeleton } from './ProjectModalSkeleton';
 import { Project } from '@/lib/stores/projectStore';
 
 interface ProjectsClientProps {

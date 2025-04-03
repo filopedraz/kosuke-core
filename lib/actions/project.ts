@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { db } from '@/lib/db';
-import { SortOption } from '@/components/projects/ProjectFilters';
+import { SortOption } from '@/app/(logged-in)/projects/components/ProjectFilters';
 import { getSession } from '@/lib/auth/session';
 import { createProject as dbCreateProject, getProjectsByUserId } from '@/lib/db/projects';
 import { chatMessages, Project } from '@/lib/db/schema';

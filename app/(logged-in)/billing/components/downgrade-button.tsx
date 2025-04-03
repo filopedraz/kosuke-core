@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { ConfirmationDialog } from './ConfirmationDialog';
+import { ConfirmationDialog } from './confirmation-dialog';
 
 interface DowngradeButtonProps {
   className?: string;

@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion';
 import React from 'react';
 
-import ChatInput from '@/components/home/ChatInput';
+import ChatInput from '@/app/(logged-out)/home/components/ChatInput';
 
 export default function Home() {
   return (

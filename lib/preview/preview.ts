@@ -1,5 +1,5 @@
-import { DockerRunner } from './docker-runner';
-import { BaseRunner } from './base-runner';
+import { DockerRunner } from './dockerRunner';
+import { BaseRunner } from './baseRunner';
 
 /**
  * Get the appropriate runner based on environment
