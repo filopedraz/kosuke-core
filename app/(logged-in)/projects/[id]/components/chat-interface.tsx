@@ -472,11 +472,11 @@ export default function ChatInterface({
               )}
             </div>
           )}
-          <div ref={messagesEndRef} />
+          <div ref={messagesEndRef} className="pb-6" />
         </div>
       </ScrollArea>
       
-      <div className="p-0 pb-0 pt-0">
+      <div className="px-4 pb-0 relative">
         <ChatInput
           onSendMessage={handleSendMessage}
           isLoading={isSending}

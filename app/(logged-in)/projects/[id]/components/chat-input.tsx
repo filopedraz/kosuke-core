@@ -177,11 +177,11 @@ export default function ChatInput({
     <form 
       ref={formRef}
       onSubmit={handleSubmit} 
-      className={cn('px-4 pb-0', className)}
+      className={cn('pb-0', className)}
     >
       <div 
         className={cn(
-          "relative flex flex-col rounded-lg border border-border transition-colors", 
+          "relative flex flex-col rounded-lg border border-border transition-colors shadow-lg bg-background", 
           isDraggingOver && "border-primary border-dashed bg-primary/5"
         )}
       >
