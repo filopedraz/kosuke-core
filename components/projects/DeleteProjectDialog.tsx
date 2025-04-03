@@ -26,24 +26,26 @@ export default function DeleteProjectDialog({
   open,
   onOpenChange,
 }: DeleteProjectDialogProps) {
-  const { mutate: deleteProject, isPending } = useDeleteProject();
+  const { mutate: deleteProject, isPending, isSuccess, isError } = useDeleteProject();
   const [deleteStage, setDeleteStage] = useState<string | null>(null);
   const [deleteProgress, setDeleteProgress] = useState(0);
+  const [isCompleting, setIsCompleting] = useState(false);
   const timersRef = useRef<NodeJS.Timeout[]>([]);
+  const operationStartedRef = useRef<boolean>(false);
   
-  // Simulate progress for better UX during deletion
+  // Clear timers on unmount
   useEffect(() => {
-    // Clear previous timers when component unmounts or deletion state changes
     return () => {
       timersRef.current.forEach(timer => clearTimeout(timer));
       timersRef.current = [];
     };
   }, []);
   
-  // Start the progress indication when isPending changes
+  // Handle the deletion progress visualization
   useEffect(() => {
-    if (isPending) {
-      // Reset state at the beginning
+    // When operation starts
+    if (isPending && !operationStartedRef.current) {
+      operationStartedRef.current = true;
       setDeleteStage('Preparing to delete project...');
       setDeleteProgress(10);
       
@@ -51,18 +53,18 @@ export default function DeleteProjectDialog({
       timersRef.current.forEach(timer => clearTimeout(timer));
       timersRef.current = [];
       
-      // Define the progress stages with timing
+      // Set up progressive indicators for better UX
       const stages = [
-        { time: 500, stage: 'Cleaning up project files...', progress: 30 },
-        { time: 1500, stage: 'Removing node_modules...', progress: 50 },
-        { time: 3000, stage: 'Deleting project files...', progress: 70 },
-        { time: 5000, stage: 'Finalizing deletion...', progress: 90 }
+        { time: 800, stage: 'Cleaning up project files...', progress: 25 },
+        { time: 2000, stage: 'Removing node_modules...', progress: 40 },
+        { time: 4000, stage: 'Deleting project directory...', progress: 60 },
+        // Don't go to 100% - we'll do that when operation actually completes
+        { time: 6000, stage: 'Finalizing deletion...', progress: 85 },
       ];
       
-      // Set up the timers for each stage
       stages.forEach(({ time, stage, progress }) => {
         const timer = setTimeout(() => {
-          if (isPending) { // Check if still pending
+          if (isPending) {
             setDeleteStage(stage);
             setDeleteProgress(progress);
           }
@@ -70,22 +72,46 @@ export default function DeleteProjectDialog({
         
         timersRef.current.push(timer);
       });
-    } else if (!isPending && deleteProgress > 0) {
-      // When deletion completes, reset after a short delay
-      const resetTimer = setTimeout(() => {
-        setDeleteStage(null);
-        setDeleteProgress(0);
-      }, 500);
-      
-      timersRef.current.push(resetTimer);
     }
-  }, [isPending]);
+    
+    // When operation succeeds
+    if (isSuccess && !isCompleting && operationStartedRef.current) {
+      setDeleteStage('Project deleted successfully!');
+      setDeleteProgress(100);
+      setIsCompleting(true);
+      
+      // Add a delay before closing to show the success state
+      const timer = setTimeout(() => {
+        onOpenChange(false);
+        
+        // Reset state after dialog closes
+        setTimeout(() => {
+          setDeleteStage(null);
+          setDeleteProgress(0);
+          setIsCompleting(false);
+          operationStartedRef.current = false;
+        }, 300);
+      }, 1000);
+      
+      timersRef.current.push(timer);
+    }
+    
+    // When operation errors
+    if (isError && operationStartedRef.current) {
+      setDeleteStage('Error deleting project. Please try again.');
+      setDeleteProgress(0);
+      operationStartedRef.current = false;
+    }
+  }, [isPending, isSuccess, isError, isCompleting, onOpenChange]);
 
   const handleDelete = async () => {
     try {
-      await deleteProject(project.id);
-      // Don't close immediately to allow seeing the completion
-      setTimeout(() => onOpenChange(false), 800);
+      // Reset state for new deletion attempt
+      operationStartedRef.current = false;
+      setIsCompleting(false);
+      
+      // Trigger the deletion
+      deleteProject(project.id);
     } catch (error) {
       console.error('Error deleting project:', error);
       setDeleteStage('Error deleting project. Please try again.');
@@ -94,7 +120,8 @@ export default function DeleteProjectDialog({
 
   return (
     <Dialog open={open} onOpenChange={(value) => {
-      if (isPending) return; // Prevent closing while deleting
+      // Prevent closing while operation is in progress
+      if (isPending || isCompleting) return;
       onOpenChange(value);
     }}>
       <DialogContent className="sm:max-w-[425px] border border-border bg-card">
@@ -104,7 +131,7 @@ export default function DeleteProjectDialog({
             <DialogTitle>Delete Project</DialogTitle>
           </div>
           <DialogDescription>
-            {!isPending ? (
+            {!isPending && !isSuccess ? (
               <>Are you sure you want to delete &quot;{project.name}&quot;? This action cannot be undone
               and all project files will be permanently removed.</>
             ) : (
@@ -113,15 +140,21 @@ export default function DeleteProjectDialog({
           </DialogDescription>
         </DialogHeader>
         
-        {isPending && (
+        {(isPending || isSuccess) && (
           <div className="py-4">
             <div className="flex items-center mb-2">
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              {isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <div className="h-4 w-4 rounded-full bg-green-500 mr-2" />
+              )}
               <span className="text-sm text-muted-foreground">{deleteStage}</span>
             </div>
             <div className="w-full bg-secondary h-2 rounded-full overflow-hidden">
               <div 
-                className="h-full bg-primary transition-all duration-500 ease-in-out"
+                className={`h-full transition-all duration-500 ease-in-out ${
+                  isSuccess ? 'bg-green-500' : 'bg-primary'
+                }`}
                 style={{ width: `${deleteProgress}%` }}
               />
             </div>
@@ -132,14 +165,14 @@ export default function DeleteProjectDialog({
           <Button 
             variant="outline" 
             onClick={() => onOpenChange(false)} 
-            disabled={isPending}
+            disabled={isPending || isCompleting}
           >
             Cancel
           </Button>
           <Button
             variant="destructive"
             onClick={handleDelete}
-            disabled={isPending}
+            disabled={isPending || isCompleting}
           >
             {isPending ? (
               <>

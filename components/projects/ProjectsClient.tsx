@@ -1,6 +1,7 @@
 'use client';
 
-import { Suspense, useState } from 'react';
+import { Suspense, useState, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import ProjectCreationModal from '@/components/projects/ProjectCreationModal';
 import ProjectGrid from '@/components/projects/ProjectGrid';
 import ProjectsHeader from '@/components/projects/ProjectsHeader';
@@ -15,6 +16,16 @@ interface ProjectsClientProps {
 
 export default function ProjectsClient({ projects, userId }: ProjectsClientProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const queryClient = useQueryClient();
+  
+  // Ensure project data is fresh when the page is visited
+  useEffect(() => {
+    // Refetch projects data when the component mounts
+    queryClient.invalidateQueries({ 
+      queryKey: ['projects', userId],
+      refetchType: 'active'
+    });
+  }, [queryClient, userId]);
 
   return (
     <>

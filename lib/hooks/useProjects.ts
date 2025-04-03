@@ -97,10 +97,13 @@ export function useDeleteProject() {
     mutationFn: async projectId => {
       // Allow more time for deletion to complete
       const timeoutDuration = 30000; // 30 seconds
-      let fileDeleteSucceeded = false;
+
+      // Track stages to ensure a proper UX
+      console.log('Starting project deletion process...');
 
       // First, try to delete the project folder with a timeout
       try {
+        console.log('Step 1: Deleting project folder...');
         const fileDeletePromise = new Promise<boolean>(async resolve => {
           try {
             const folderResponse = await fetch(`/api/projects/${projectId}/files`, {
@@ -129,31 +132,16 @@ export function useDeleteProject() {
         });
 
         // Use Promise.race to either get the result or timeout
-        fileDeleteSucceeded = await Promise.race([fileDeletePromise, timeoutPromise]);
+        await Promise.race([fileDeletePromise, timeoutPromise]);
       } catch (error) {
         console.error('Error during file deletion process:', error);
       }
 
-      // Now try a second time if the first attempt failed
-      if (!fileDeleteSucceeded) {
-        console.log('First file deletion attempt failed, trying again after delay');
+      // Ensure at least 2 seconds pass for UI feedback on faster operations
+      const startTime = Date.now();
+      const minOperationTime = 2000; // 2 seconds minimum operation time
 
-        // Wait 2 seconds before retrying
-        await new Promise(resolve => setTimeout(resolve, 2000));
-
-        try {
-          const folderResponse = await fetch(`/api/projects/${projectId}/files`, {
-            method: 'DELETE',
-          });
-
-          if (!folderResponse.ok) {
-            console.warn('Second file deletion attempt also failed:', await folderResponse.text());
-          }
-        } catch (retryError) {
-          console.error('Error during retry of file deletion:', retryError);
-        }
-      }
-
+      console.log('Step 2: Deleting project from database...');
       // Always proceed with project deletion even if file deletion failed
       const response = await fetch(`/api/projects/${projectId}`, {
         method: 'DELETE',
@@ -163,11 +151,20 @@ export function useDeleteProject() {
         throw new Error('Failed to delete project');
       }
 
+      // Ensure the operation takes at least minOperationTime for better UX
+      const operationTime = Date.now() - startTime;
+      if (operationTime < minOperationTime) {
+        await new Promise(resolve => setTimeout(resolve, minOperationTime - operationTime));
+      }
+
+      console.log('Project deletion completed successfully');
       return projectId;
     },
     onSuccess: projectId => {
       // First update the store
       removeProject(projectId);
+
+      console.log('Project removed from store, invalidating queries...');
 
       // Invalidate all relevant queries with proper scope
       queryClient.invalidateQueries({

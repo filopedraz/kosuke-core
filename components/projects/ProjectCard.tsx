@@ -22,10 +22,13 @@ interface ProjectCardProps {
 
 export default function ProjectCard({ project }: ProjectCardProps) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
   
   const handleOpenDeleteDialog = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    // Close dropdown first, then show delete dialog
+    setDropdownOpen(false);
     setShowDeleteDialog(true);
   };
   
@@ -44,7 +47,7 @@ export default function ProjectCard({ project }: ProjectCardProps) {
                 </CardDescription>
               </div>
               
-              <DropdownMenu>
+              <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
                 <DropdownMenuTrigger asChild onClick={(e) => e.preventDefault()}>
                   <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => e.preventDefault()}>
                     <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
