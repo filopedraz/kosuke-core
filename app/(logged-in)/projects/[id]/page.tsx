@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm';
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 
-import ProjectContent from '@/app/(logged-in)/projects/[id]/components/ProjectContent';
+import ProjectContent from '@/app/(logged-in)/projects/[id]/components/project-content';
 import { getSession } from '@/lib/auth/session';
 import { db } from '@/lib/db/drizzle';
 import { getProjectById } from '@/lib/db/projects';

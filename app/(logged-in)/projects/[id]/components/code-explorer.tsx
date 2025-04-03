@@ -5,8 +5,8 @@ import { useState, useEffect } from 'react';
 
 import { cn } from '@/lib/utils';
 
-import CodeEditor from './CodeEditor';
-import FileTree from './FileTree';
+import CodeEditor from './code-editor';
+import FileTree from './file-tree';
 
 interface FileNode {
   name: string;

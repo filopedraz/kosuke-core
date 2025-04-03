@@ -1,5 +1,5 @@
 import { Skeleton } from "@/components/ui/skeleton";
-import { ProjectCardSkeleton } from "./ProjectCardSkeleton";
+import { ProjectCardSkeleton } from "./project-card-skeleton";
 
 export function ProjectsLoadingSkeleton() {
   return (

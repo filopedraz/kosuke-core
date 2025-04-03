@@ -7,10 +7,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 
-import ChatInput from './ChatInput';
-import ChatMessage, { ChatMessageProps } from './ChatMessage';
-import ModelBanner from './ModelBanner';
-import LimitReachedModal from './LimitReachedModal';
+import ChatInput from './chat-input';
+import ChatMessage, { ChatMessageProps } from './chat-message';
+import ModelBanner from './model-banner';
+import LimitReachedModal from './limit-reached-modal';
 import { useUser } from '@/lib/auth';
 import { Action } from './assistant-actions-card';
 

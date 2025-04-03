@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import DownloadingModal from './DownloadingModal';
+import DownloadingModal from './downloading-modal';
 
 interface PreviewPanelProps {
   projectId: number;

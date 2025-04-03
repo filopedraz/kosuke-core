@@ -13,7 +13,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import DeleteProjectDialog from './DeleteProjectDialog';
+import DeleteProjectDialog from './delete-project-dialog';
 import { Project } from '@/lib/stores/projectStore';
 
 interface ProjectCardProps {
