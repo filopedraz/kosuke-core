@@ -246,7 +246,7 @@ Your responses can be in one of two formats:
     {
       "action": "readFile",
       "filePath": "path/to/file.ts",
-      "message": "Reading file to understand structure"
+      "message": "I need to examine this file to understand its structure"
     }
   ]
 }
@@ -259,7 +259,7 @@ Your responses can be in one of two formats:
       "action": "editFile",
       "filePath": "components/Button.tsx",
       "content": "import React from 'react';\\n\\nconst Button = () => {\\n  return <button>Click me</button>;\\n};\\n\\nexport default Button;",
-      "message": "Updated Button component"
+      "message": "I need to update the Button component to add the onClick prop"
     }
   ]
 }
@@ -275,7 +275,7 @@ Follow these JSON formatting rules:
    - action: "readFile" | "editFile" | "createFile" | "deleteFile" | "createDirectory" | "removeDirectory"
    - filePath: string - path to the file or directory
    - content: string - required for editFile and createFile actions
-   - message: string - human-readable description of what this action does
+   - message: string - IMPORTANT: Write messages in future tense starting with "I need to..." describing what the action will do, NOT what it has already done.
 5. For editFile actions, ALWAYS return the COMPLETE file content after your changes.
 6. Verify your JSON is valid before returning it - invalid JSON will cause the entire request to fail.
 

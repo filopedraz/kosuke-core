@@ -1,4 +1,4 @@
-import { eq, desc, and } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import path from 'path';
 import { LLM, CONTEXT } from '@/lib/constants';
@@ -44,8 +44,9 @@ export class Agent {
     const processingStart = Date.now();
 
     try {
-      // Initialize chat message for tracking progress
-      const lastAssistantMessage = await this.initializeAssistantMessage();
+      // Send an immediate "Thinking..." message
+      console.log('📝 Sending initial "Thinking..." message');
+      await this.sendOperationUpdate('read', '', 'Thinking...', 'pending');
 
       // Create timeout promise for safety
       const timeoutPromise = new Promise<never>((_, reject) => {
@@ -55,16 +56,6 @@ export class Agent {
       });
 
       try {
-        // Create a placeholder message for status updates
-        console.log('📝 Creating placeholder message for status updates...');
-        const initialResult = await this.sendOperationUpdate(
-          'edit',
-          '',
-          "I'm analyzing your request and preparing to make changes...",
-          'pending'
-        );
-        console.log(`📝 Placeholder message created: ${JSON.stringify(initialResult)}`);
-
         // Get context and run the agent to get actions
         let context = '';
         try {
@@ -90,7 +81,7 @@ export class Agent {
 
         // Execute actions if any were returned
         if (pipelineResult.actions && pipelineResult.actions.length > 0) {
-          await this.executeActions(pipelineResult.actions, initialResult);
+          await this.executeActions(pipelineResult.actions);
         } else {
           console.warn(
             `⚠️ No actions returned from pipeline. Pipeline result: ${JSON.stringify(pipelineResult)}`
@@ -105,7 +96,12 @@ export class Agent {
       } catch (error) {
         // Handle error during processing
         console.error('❌ Error or timeout processing modification:', error);
-        await this.updateMessageWithError(lastAssistantMessage.id);
+        await this.sendOperationUpdate(
+          'error',
+          '',
+          'I encountered an error while processing your request. Please try again later.',
+          'error'
+        );
         throw error;
       }
 
@@ -356,46 +352,19 @@ export class Agent {
         `📝 Sending operation update: ${operationType} ${filePath} (${status}): ${operationMessage.substring(0, 50)}...`
       );
 
-      // Find the most recent assistant message to update instead of creating a new one
-      const existingMessages = await db
-        .select()
-        .from(chatMessages)
-        .where(eq(chatMessages.projectId, this.projectId))
-        .orderBy(desc(chatMessages.timestamp))
-        .limit(5); // Get a few most recent messages
+      // Always create a new message for each operation update to provide real-time feedback
+      console.log(`📝 Creating new message for operation update...`);
+      const [newMessage] = await db
+        .insert(chatMessages)
+        .values({
+          projectId: this.projectId,
+          content: operationMessage,
+          role: 'assistant',
+        })
+        .returning();
 
-      let messageId: number;
-
-      // Find the last assistant message that's being used for operations
-      const lastAssistantMessage = existingMessages.find(
-        msg =>
-          msg.role === 'assistant' &&
-          (msg.content.includes('analysing your request') ||
-            msg.content.includes('analyzing your request') ||
-            msg.content.includes('I am analyzing') ||
-            msg.content.includes("I'm analyzing") ||
-            msg.content.includes('making changes'))
-      );
-
-      if (lastAssistantMessage) {
-        // Use the existing message
-        messageId = lastAssistantMessage.id;
-        console.log(`✅ Using existing assistant message: ${messageId} for operation`);
-      } else {
-        // Create a new message for the operation update
-        console.log(`📝 Creating new message for operation update...`);
-        const [newMessage] = await db
-          .insert(chatMessages)
-          .values({
-            projectId: this.projectId,
-            content: `I'm analyzing your request and preparing to make changes...`,
-            role: 'assistant',
-          })
-          .returning();
-
-        messageId = newMessage.id;
-        console.log(`✅ Created new assistant message: ${messageId} for operation`);
-      }
+      const messageId = newMessage.id;
+      console.log(`✅ Created new assistant message: ${messageId} for operation`);
 
       // Map operationType to proper type for database
       const dbOperationType = this.mapOperationTypeForDb(operationType);
@@ -495,11 +464,16 @@ export class Agent {
 
         if (!success) {
           console.error(`❌ Failed to ${normalizedAction.action} on: ${normalizedAction.filePath}`);
-          await this.sendOperationUpdate(
-            'error',
+          await this.updateActionStatus(
+            messageId,
             normalizedAction.filePath,
-            `Error: Failed to ${normalizedAction.action} on ${normalizedAction.filePath}`,
+            operationType,
             'error'
+          );
+          // Update the message content to indicate failure
+          await this.updateMessageContent(
+            messageId,
+            `Error: Failed to ${normalizedAction.action} on ${normalizedAction.filePath}`
           );
           return false;
         }
@@ -515,16 +489,16 @@ export class Agent {
           `✅ Updated operation status to completed: ${operationType} ${normalizedAction.filePath}`
         );
 
+        // Keep the original message from the LLM without appending completion status
         return true;
       } catch (error) {
         console.error(`❌ Error executing action:`, error);
         // Update the operation status to error
         await this.updateActionStatus(messageId, normalizedAction.filePath, operationType, 'error');
-        await this.sendOperationUpdate(
-          'error',
-          normalizedAction.filePath,
-          `Error: Failed to ${normalizedAction.action} on ${normalizedAction.filePath}: ${(error as Error).message}`,
-          'error'
+        // Update the message content to indicate error
+        await this.updateMessageContent(
+          messageId,
+          `Error: Failed to ${normalizedAction.action} on ${normalizedAction.filePath}: ${(error as Error).message}`
         );
         return false;
       }
@@ -541,60 +515,9 @@ export class Agent {
   }
 
   /**
-   * Initialize or find the last assistant message
-   */
-  private async initializeAssistantMessage() {
-    console.log('🔍 Fetching existing chat messages from database...');
-    const history = await db
-      .select()
-      .from(chatMessages)
-      .where(eq(chatMessages.projectId, this.projectId))
-      .orderBy(desc(chatMessages.timestamp))
-      .limit(LLM.MAX_MESSAGES);
-
-    console.log(`📊 Found ${history.length} existing messages`);
-
-    // Find the last assistant message or create a placeholder
-    const lastAssistantMessageIndex = history.findIndex(msg => msg.role === 'assistant');
-
-    if (lastAssistantMessageIndex === -1) {
-      console.log('ℹ️ No assistant message found, creating one...');
-      const [newAssistantMessage] = await db
-        .insert(chatMessages)
-        .values({
-          projectId: this.projectId,
-          content: "I'm analyzing your request and preparing to make changes...",
-          role: 'assistant',
-        })
-        .returning();
-
-      console.log(`✅ Created new assistant message with ID: ${newAssistantMessage.id}`);
-      return newAssistantMessage;
-    } else {
-      console.log(`ℹ️ Found existing assistant message at index ${lastAssistantMessageIndex}`);
-      return history[lastAssistantMessageIndex];
-    }
-  }
-
-  /**
-   * Update message content with error information
-   */
-  private async updateMessageWithError(messageId: number) {
-    await db
-      .update(chatMessages)
-      .set({
-        content: 'I encountered an error while processing your request. Please try again later.',
-        timestamp: new Date(),
-      })
-      .where(eq(chatMessages.id, messageId));
-
-    console.log(`⚠️ Updated message with error information`);
-  }
-
-  /**
    * Execute all actions in sequence and generate a summary
    */
-  private async executeActions(actions: Action[], initialResult: { message?: { id: number } }) {
+  private async executeActions(actions: Action[]) {
     console.log(`🔄 Found ${actions.length} actions to execute:`);
     actions.forEach((action: Action, index: number) => {
       console.log(
@@ -604,6 +527,8 @@ export class Agent {
 
     // Execute each action in sequence
     let allActionsSuccessful = true;
+    const executedActions: Action[] = [];
+
     for (const [index, action] of actions.entries()) {
       console.log(
         `⏳ Executing action ${index + 1}/${actions.length}: ${action.action} on ${action.filePath}`
@@ -617,7 +542,9 @@ export class Agent {
         `${actionSuccess ? '✅' : '❌'} Action ${index + 1} execution ${actionSuccess ? 'succeeded' : 'failed'} in ${actionEnd - actionStart}ms`
       );
 
-      if (!actionSuccess) {
+      if (actionSuccess) {
+        executedActions.push(action);
+      } else {
         console.error(
           `❌ Action ${index + 1} (${action.action} on ${action.filePath}) failed to execute. Stopping execution.`
         );
@@ -627,27 +554,15 @@ export class Agent {
     }
 
     // Generate a summary of changes
-    if (allActionsSuccessful) {
+    if (executedActions.length > 0) {
       console.log('🔄 Generating summary of changes...');
-      const summary = await this.generateChangesSummary(actions);
+      const summary = await this.generateChangesSummary(executedActions);
       console.log(`📝 Summary generated: ${summary}`);
 
-      // Update the message content with the summary
-      if (initialResult.message?.id) {
-        console.log(`📝 Updating message ${initialResult.message.id} with summary...`);
-        await db
-          .update(chatMessages)
-          .set({
-            content: summary,
-            timestamp: new Date(),
-          })
-          .where(eq(chatMessages.id, initialResult.message.id));
-
-        console.log(`✅ Updated message content with summary`);
-      } else {
-        console.error(`❌ No message ID found in initialResult to update with summary`);
-      }
-    } else {
+      // Send a final message with the summary
+      await this.sendOperationUpdate('read', '', summary, 'completed');
+      console.log(`✅ Sent final summary message`);
+    } else if (!allActionsSuccessful) {
       console.log(`⚠️ Some actions failed to execute, sending error update...`);
       await this.sendOperationUpdate(
         'error',
@@ -880,5 +795,23 @@ export class Agent {
     });
 
     return updatedContext;
+  }
+
+  /**
+   * Update message content in the database
+   */
+  private async updateMessageContent(messageId: number, content: string) {
+    try {
+      await db
+        .update(chatMessages)
+        .set({
+          content,
+          timestamp: new Date(),
+        })
+        .where(eq(chatMessages.id, messageId));
+      console.log(`✅ Updated message ${messageId} content: ${content.substring(0, 50)}...`);
+    } catch (error) {
+      console.error(`❌ Error updating message content:`, error);
+    }
   }
 }
