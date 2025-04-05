@@ -284,7 +284,11 @@ IMPORTANT: The system can ONLY execute actions from the JSON object. Any instruc
 /**
  * Build a prompt for the naive agent
  */
-export function buildNaivePrompt(userPrompt: string, context?: string): ChatMessage[] {
+export function buildNaivePrompt(
+  userPrompt: string,
+  context?: string,
+  chatHistory?: { role: 'system' | 'user' | 'assistant'; content: string }[]
+): ChatMessage[] {
   const systemContent = context
     ? `${NAIVE_SYSTEM_PROMPT}\n\nProject context:\n\n${context}`
     : NAIVE_SYSTEM_PROMPT;
@@ -294,11 +298,21 @@ export function buildNaivePrompt(userPrompt: string, context?: string): ChatMess
       role: 'system',
       content: systemContent,
     },
-    {
-      role: 'user',
-      content: userPrompt,
-    },
   ];
+
+  // Add chat history if provided
+  if (chatHistory && chatHistory.length > 0) {
+    // Filter out system messages and only add a limited number of messages to avoid context overflow
+    const filteredHistory = chatHistory.filter(msg => msg.role !== 'system').slice(-10); // Limit to last 10 messages
+
+    messages.push(...(filteredHistory as ChatMessage[]));
+  }
+
+  // Always add the current user prompt as the last message
+  messages.push({
+    role: 'user',
+    content: userPrompt,
+  });
 
   return messages;
 }

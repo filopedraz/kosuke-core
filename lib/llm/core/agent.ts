@@ -133,6 +133,10 @@ export class Agent {
     const gatheredContext: Record<string, string> = {};
     let iterationCount = 0;
 
+    // Fetch chat history for context
+    const chatHistory = await this.fetchChatHistory(projectId);
+    console.log(`📝 Fetched ${chatHistory.length} previous chat messages for context`);
+
     // Initial context
     let currentContext = context;
 
@@ -142,7 +146,7 @@ export class Agent {
       console.log(`🔄 Starting iteration ${iterationCount} of agentic workflow`);
 
       // Build prompt and get AI response
-      const messages = buildNaivePrompt(prompt, currentContext);
+      const messages = buildNaivePrompt(prompt, currentContext, chatHistory);
       console.log(`🤖 Generating agent response for iteration ${iterationCount}`);
       const aiResponse = await generateAICompletion(messages, {
         timeoutMs: this.DEFAULT_TIMEOUT_MS,
@@ -746,6 +750,22 @@ export class Agent {
             continue;
           }
 
+          // Send an update that we're reading this file
+          const pendingResult = await this.sendOperationUpdate(
+            'read',
+            action.filePath,
+            action.message,
+            'pending'
+          );
+
+          // Store the message ID to update later
+          const messageId = pendingResult.message?.id;
+
+          if (!messageId) {
+            console.error(`❌ Failed to create pending message for reading ${action.filePath}`);
+            continue;
+          }
+
           // Execute the read tool
           const fullPath = path.join(getProjectPath(projectId), action.filePath);
           const result = await readTool.execute(fullPath);
@@ -757,14 +777,32 @@ export class Agent {
               console.log(
                 `✅ Successfully read file: ${action.filePath} (${(result.content as string).length} chars)`
               );
+
+              // Update the existing message's status
+              await this.updateActionStatus(messageId, action.filePath, 'read', 'completed');
             } else {
               console.error(`❌ Failed to read file: ${action.filePath}`);
               gatheredContext[action.filePath] = `Error: Could not read file`;
+
+              // Update with error status
+              await this.updateActionStatus(messageId, action.filePath, 'read', 'error');
+              await this.updateMessageContent(
+                messageId,
+                `Error reading ${action.filePath}: Could not read file`
+              );
             }
           }
         } catch (error) {
           console.error(`❌ Error reading file ${action.filePath}:`, error);
           gatheredContext[action.filePath] = `Error: ${error}`;
+
+          // Since we couldn't track the message ID in this case, create a new error message
+          await this.sendOperationUpdate(
+            'error',
+            action.filePath,
+            `Error reading ${action.filePath}: ${error}`,
+            'error'
+          );
         }
       }
     }
@@ -812,6 +850,36 @@ export class Agent {
       console.log(`✅ Updated message ${messageId} content: ${content.substring(0, 50)}...`);
     } catch (error) {
       console.error(`❌ Error updating message content:`, error);
+    }
+  }
+
+  /**
+   * Fetch chat history for the project
+   */
+  private async fetchChatHistory(
+    projectId: number
+  ): Promise<{ role: 'system' | 'user' | 'assistant'; content: string }[]> {
+    try {
+      console.log(`🔍 Fetching chat history for project ID: ${projectId}`);
+
+      // Fetch the most recent messages (limited to prevent context size issues)
+      const history = await db
+        .select()
+        .from(chatMessages)
+        .where(eq(chatMessages.projectId, projectId))
+        .orderBy(chatMessages.timestamp)
+        .limit(LLM.MAX_MESSAGES);
+
+      console.log(`✅ Retrieved ${history.length} chat messages`);
+
+      // Format messages for the prompt
+      return history.map(msg => ({
+        role: msg.role as 'system' | 'user' | 'assistant',
+        content: msg.content,
+      }));
+    } catch (error) {
+      console.error(`❌ Error fetching chat history:`, error);
+      return []; // Return empty array if there's an error
     }
   }
 }
