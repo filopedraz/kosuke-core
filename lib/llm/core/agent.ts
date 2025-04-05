@@ -10,6 +10,7 @@ import { PipelineType, Pipeline } from '../pipelines/types';
 import { getPipeline } from '../pipelines';
 import { Action, normalizeAction } from './types';
 import { generateAICompletion } from '../api/ai';
+import { isWebRequestEnvironment } from '@/lib/environment';
 
 /**
  * Agent class responsible for orchestrating project modifications and handling UI updates
@@ -216,8 +217,17 @@ export class Agent {
         throw error;
       }
 
-      // Revalidate the path to update the UI
-      revalidatePath(`/projects/${this.projectId}`);
+      // Only try to revalidate the path if we're in a web request context
+      if (isWebRequestEnvironment()) {
+        try {
+          revalidatePath(`/projects/${this.projectId}`);
+        } catch (revalidateError) {
+          console.warn(`⚠️ Could not revalidate path in Agent.run: ${revalidateError}`);
+          // Don't fail the operation just because revalidation failed
+        }
+      } else {
+        console.log(`🔍 Skipping revalidatePath in script context (Agent.run)`);
+      }
 
       const processingEnd = Date.now();
       console.log(`⏱️ Total processing time: ${processingEnd - processingStart}ms`);
@@ -362,8 +372,17 @@ export class Agent {
         console.error(`❌ Error inserting action into database:`, dbError);
       }
 
-      // Revalidate the path to update the UI
-      revalidatePath(`/projects/${this.projectId}`);
+      // Only try to revalidate the path if we're in a web request context
+      if (isWebRequestEnvironment()) {
+        try {
+          revalidatePath(`/projects/${this.projectId}`);
+        } catch (revalidateError) {
+          console.warn(`⚠️ Could not revalidate path: ${revalidateError}`);
+          // Don't fail the operation just because revalidation failed
+        }
+      } else {
+        console.log(`🔍 Skipping revalidatePath in script context`);
+      }
 
       return {
         success: true,

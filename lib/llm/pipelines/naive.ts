@@ -1,5 +1,5 @@
 import { generateAICompletion } from '../api/ai';
-import { getProjectContext } from '../utils/context';
+import { getProjectContextOnlyDirectoryStructure } from '../utils/context';
 import { buildNaivePrompt } from '../prompts/naive';
 import { Pipeline } from './types';
 import { CONTEXT } from '@/lib/constants';
@@ -17,11 +17,9 @@ export class NaivePipeline implements Pipeline {
       let context = '';
       try {
         console.log(`🔍 Getting project context for projectId: ${projectId}`);
-        context = await getProjectContext(projectId, {
+        context = await getProjectContextOnlyDirectoryStructure(projectId, {
           maxSize: CONTEXT.MAX_CONTEXT_SIZE,
           excludeDirs: CONTEXT.EXCLUDE_DIRS,
-          includeExtensions: CONTEXT.INCLUDE_EXTENSIONS,
-          excludeFiles: CONTEXT.EXCLUDE_FILES,
         });
         console.log(`✅ Successfully retrieved project context`);
       } catch (contextError) {
@@ -75,122 +73,62 @@ function parseActionsFromResponse(
       typeof response === 'object' && response.text ? response.text : (response as string);
 
     // Clean up the response - remove markdown code blocks if present
-    let cleanedResponse = responseText;
+    let cleanedResponse = responseText.trim();
 
-    // First, try to remove markdown code block syntax with a more comprehensive pattern
+    // Remove markdown code blocks
     cleanedResponse = cleanedResponse
       .replace(/```(?:json)?[\r\n]?([\s\S]*?)[\r\n]?```/g, '$1')
       .trim();
 
-    // If the response still starts with backticks, try another approach
-    if (cleanedResponse.startsWith('```')) {
-      cleanedResponse = cleanedResponse.replace(/```json\s*/, '').replace(/```\s*$/, '');
-    }
+    // Log a preview of the response for debugging
+    console.log(
+      '📝 Cleaned response (preview):',
+      cleanedResponse.substring(0, 200) + (cleanedResponse.length > 200 ? '...' : '')
+    );
 
-    console.log('📝 Raw response:', responseText.substring(0, 200) + '...');
-    console.log('📝 Cleaned response:', cleanedResponse.substring(0, 200) + '...');
-
-    // First, try to parse the entire response as JSON
+    // Parse the response as JSON
     try {
-      const parsedActions = JSON.parse(cleanedResponse) as Action[];
-      console.log(`✅ Successfully parsed JSON: ${parsedActions.length} actions found`);
+      const parsedActions = JSON.parse(cleanedResponse) as unknown[];
 
-      // Verify action structure
-      if (Array.isArray(parsedActions)) {
-        console.log(`✅ Parsed result is an array with ${parsedActions.length} items`);
+      if (Array.isArray(parsedActions) && parsedActions.length > 0) {
+        console.log(`✅ Successfully parsed JSON: ${parsedActions.length} potential actions found`);
 
-        // Validate and normalize each action
         const validActions: Action[] = [];
 
-        parsedActions.forEach((action, index) => {
-          console.log(
-            `Action ${index + 1}:`,
-            JSON.stringify({
-              action: action.action,
-              filePath: action.filePath,
-              hasContent: !!action.content,
-              contentLength: action.content ? action.content.length : 0,
-              hasMessage: !!action.message,
-              messageLength: action.message ? action.message.length : 0,
-            })
-          );
-
+        // Validate each action
+        parsedActions.forEach((action, idx) => {
           if (isValidAction(action)) {
-            const normalizedAction = normalizeAction(action);
-            console.log(
-              `✅ Action ${index + 1} is valid and normalized:`,
-              JSON.stringify({
-                action: normalizedAction.action,
-                filePath: normalizedAction.filePath,
-              })
-            );
-            validActions.push(normalizedAction);
+            validActions.push(normalizeAction(action as Action));
           } else {
-            console.error(`❌ Action ${index + 1} is invalid:`, JSON.stringify(action));
+            console.warn(`⚠️ Invalid action at index ${idx}`);
           }
         });
 
-        console.log(`✅ Validated ${validActions.length} out of ${parsedActions.length} actions`);
+        console.log(`✅ Found ${validActions.length} valid actions`);
         return validActions;
       } else {
-        console.error('❌ Parsed result is not an array:', typeof parsedActions);
-        return [];
+        console.warn(`⚠️ Response parsed as JSON but is not an array or is empty`);
       }
-    } catch (error) {
-      console.error('❌ Error parsing actions from cleaned response:', error);
-      console.error('❌ First 500 chars of cleaned response:', cleanedResponse.substring(0, 500));
+    } catch (jsonError) {
+      console.error(`❌ Error parsing JSON:`, jsonError);
 
-      // If that fails, try to extract JSON from the response
-      const jsonRegex = /\[\s*\{.*\}\s*\]/s;
-      const match = cleanedResponse.match(jsonRegex);
+      // Show context around the error if possible
+      if (jsonError instanceof SyntaxError && jsonError.message.includes('position')) {
+        const posMatch = jsonError.message.match(/position (\d+)/);
+        if (posMatch && posMatch[1]) {
+          const errorPos = parseInt(posMatch[1], 10);
+          const start = Math.max(0, errorPos - 30);
+          const end = Math.min(cleanedResponse.length, errorPos + 30);
 
-      if (match && match[0]) {
-        console.log(`✅ Found JSON array with regex: ${match[0].substring(0, 100)}...`);
-        try {
-          const parsedActions = JSON.parse(match[0]) as Action[];
+          console.log(`⚠️ JSON error at position ${errorPos}. Context around error:`);
           console.log(
-            `✅ Successfully parsed regex-extracted JSON: ${parsedActions.length} actions found`
+            `Error context: ...${cleanedResponse.substring(start, errorPos)}[ERROR]${cleanedResponse.substring(errorPos, end)}...`
           );
-          return parsedActions;
-        } catch (regexParseError) {
-          console.error('❌ Error parsing regex-extracted JSON:', regexParseError);
         }
-      } else {
-        console.error('❌ No JSON array found with regex');
       }
-
-      // If still no valid JSON, look for action blocks
-      const actionBlocks = cleanedResponse.match(/\{\s*"action":[^}]+\}/g);
-      if (actionBlocks && actionBlocks.length > 0) {
-        console.log(`✅ Found ${actionBlocks.length} individual action blocks`);
-        // Try to parse each block and combine them
-        const actions: Action[] = [];
-        for (const block of actionBlocks) {
-          try {
-            console.log(`Parsing action block: ${block.substring(0, 100)}...`);
-            const action = JSON.parse(block) as Action;
-            console.log(
-              `✅ Successfully parsed action block: ${action.action} on ${action.filePath}`
-            );
-            actions.push(action);
-          } catch (e) {
-            console.error('❌ Error parsing action block:', e);
-            console.error('❌ Action block content:', block);
-          }
-        }
-
-        if (actions.length > 0) {
-          console.log(`✅ Successfully parsed ${actions.length} individual action blocks`);
-          return actions;
-        }
-      } else {
-        console.error('❌ No individual action blocks found');
-      }
-
-      // If all parsing attempts fail, return an empty array
-      console.error('❌ Failed to parse actions from response');
-      return [];
     }
+
+    return [];
   } catch (error) {
     console.error('❌ Error parsing actions:', error);
     return [];

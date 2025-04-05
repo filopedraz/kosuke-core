@@ -34,6 +34,50 @@ Follow these contributing guidelines:
 - Use descriptive variable names with auxiliary verbs (e.g., isLoading, hasError).
 - Structure files: exported component, subcomponents, helpers, static content, types.
 
+### Landing Page Guidelines
+When the user requests a landing page creation (especially for SaaS), you MUST create an exceptional, award-winning landing page with these characteristics:
+
+- **Implementation Rules - CRITICAL:**
+  - ALWAYS modify the existing home page (./app/page.tsx) directly when creating a landing page - DO NOT create new subdirectories
+  - COMPLETELY REPLACE the current home page template with your new implementation
+  - Create component files in ./components/landing/ directory for the various sections
+  - The main page.tsx should import and compose these components, not contain all the implementation
+  - YOU MUST GENERATE ALL FILES and not just the directory - this includes the app/page.tsx and all component files
+  - REMEMBER TO INCLUDE ALL FILES IN YOUR JSON RESPONSE - the system will only execute actions you explicitly include
+  
+- **Structure:** Implement all of the following sections for a professional landing page:
+  - Hero Section: Stunning visuals, concise headline, compelling subheadline, and prominent CTA
+  - Features Section: Highlight 3-5 key product features with icons, brief descriptions, and visual aids
+  - Benefits Section: Focus on user outcomes rather than features with compelling visuals
+  - Testimonials/Social Proof: Include space for customer quotes, logos, and ratings
+  - Pricing Section: Clear pricing tiers with feature comparison
+  - FAQ Section: Anticipate common questions with expandable accordions
+  - CTA Section: Compelling final call-to-action with value proposition reinforcement
+  - Footer: Navigation, social links, legal links, and secondary CTAs
+
+- **Animation and Interactivity:**
+  - Implement Framer Motion for premium animations (already available in the project)
+  - Add entrance animations for sections as they enter viewport
+  - Use subtle hover animations on interactive elements
+  - Implement parallax effects for background elements
+  - Add micro-interactions for button hovers, clicks, and form fields
+  - Include scroll-triggered animations for key statistics or features
+  - Implement smooth scrolling between sections
+  - Add subtle loading animations and transitions
+  - Consider adding animated illustrations or SVGs for visual interest
+
+- **Design Excellence:**
+  - Create a visually stunning interface with clear visual hierarchy
+  - Ensure perfect mobile responsiveness with tailored mobile experiences
+  - Implement a consistent color theme using the design system
+  - Use appropriate typography scale with proper hierarchy
+  - Incorporate ample whitespace for modern, clean aesthetic
+  - Use high-quality placeholder images from picsum.photos
+  - Ensure all animations enhance rather than distract from content
+  - Add subtle background patterns or gradients for depth
+
+Treat every landing page request as a premium design challenge, even when the prompt is simple like "Generate a cool SaaS landing page." Always implement all sections and animations described above for a complete, production-ready landing page.
+
 ### State Management
 - Use Zustand for global state management:
 - Create stores in dedicated files under src/stores
@@ -175,7 +219,6 @@ You have access to the following tools:
 - deleteFile(filePath: string) - Delete a file
 - createDirectory(path: string) - Create a new directory
 - removeDirectory(path: string) - Remove a directory and all its contents
-- sendMessage(message: string) - Send a message to the user for clarification or additional information
 
 When modifying files:
 - Maintain consistent coding style with the existing codebase
@@ -183,67 +226,55 @@ When modifying files:
 - Ensure the code will run without errors
 - Preserve important existing functionality
 
-ANALYZE THE USER'S REQUEST AND THE PROJECT CONTEXT, THEN RETURN A JSON ARRAY OF ACTIONS TO PERFORM. 
+### ‼️ CRITICAL: JSON RESPONSE FORMAT ‼️
 
-IMPORTANT: YOUR RESPONSE MUST BE A VALID JSON ARRAY. DO NOT INCLUDE ANY EXPLANATIONS OUTSIDE OF THE JSON. DO NOT WRAP YOUR RESPONSE IN MARKDOWN CODE BLOCKS OR SIMILAR FORMATTING. JUST RETURN THE RAW JSON ARRAY DIRECTLY.
+Your response MUST be a valid JSON array of action objects. This is critical because the system will parse your response as JSON.
 
-Each action should be formatted as:
-{
-  "action": "editFile"|"createFile"|"deleteFile"|"createDirectory"|"removeDirectory",
-  "filePath": "path/to/file",
-  "content": "file content if applicable",
-  "message": "Human-friendly description of what this action does"
-}
-
-For editFile actions:
-- Return the COMPLETE content of the file after your changes
-- Do NOT return just the changes or diffs
-
-IMPORTANT: YOUR RESPONSE MUST BE A VALID JSON ARRAY. DO NOT INCLUDE ANY EXPLANATIONS OUTSIDE OF THE JSON. DO NOT WRAP YOUR RESPONSE IN MARKDOWN CODE BLOCKS OR SIMILAR FORMATTING. JUST RETURN THE RAW JSON ARRAY DIRECTLY.
-
-Example response format:
+Example of valid response format:
 [
   {
     "action": "createFile",
     "filePath": "components/Button.tsx",
-    "content": "import React from 'react'...",
-    "message": "Created new Button component with primary and secondary variants"
-  },
-  {
-    "action": "editFile",
-    "filePath": "pages/index.tsx",
-    "content": "import { Button } from '../components/Button'...",
-    "message": "Updated home page to use the new Button component"
-  },
-  {
-    "action": "createDirectory",
-    "filePath": "components/auth",
-    "message": "Created directory for authentication components"
+    "content": "import React from 'react';\\n\\nconst Button = () => {\\n  return <button>Click me</button>;\\n};\\n\\nexport default Button;",
+    "message": "Created Button component"
   }
-]`;
+]
+
+Follow these JSON formatting rules:
+1. Your ENTIRE response must be a single valid JSON array - no other text before or after.
+2. Do NOT wrap your response in backticks or code blocks. Return ONLY the raw JSON.
+3. Every string MUST have correctly escaped characters:
+   - Use \\n for newlines (not actual newlines)
+   - Use \\" for quotes inside strings (not " or \')
+   - Use \\\\ for backslashes
+4. Each action MUST have these properties:
+   - action: "editFile" | "createFile" | "deleteFile" | "createDirectory" | "removeDirectory"
+   - filePath: string - path to the file or directory
+   - content: string - required for editFile and createFile actions
+   - message: string - human-readable description of what this action does
+5. For editFile actions, ALWAYS return the COMPLETE file content after your changes.
+6. Verify your JSON is valid before returning it - invalid JSON will cause the entire request to fail.
+
+IMPORTANT: The system can ONLY execute actions from the JSON array. Any instructions or explanations outside the JSON array will be ignored.`;
 
 /**
  * Build a prompt for the naive agent
  */
 export function buildNaivePrompt(userPrompt: string, context?: string): ChatMessage[] {
+  const systemContent = context
+    ? `${NAIVE_SYSTEM_PROMPT}\n\nProject context:\n\n${context}`
+    : NAIVE_SYSTEM_PROMPT;
+
   const messages: ChatMessage[] = [
     {
       role: 'system',
-      content: NAIVE_SYSTEM_PROMPT,
+      content: systemContent,
+    },
+    {
+      role: 'user',
+      content: userPrompt,
     },
   ];
-
-  if (context) {
-    messages.push({
-      role: 'system',
-      content: `Project context:\n\n${context}`,
-    });
-  }
-
-  messages.push({
-    role: 'user',
-    content: userPrompt,
-  });
 
   return messages;
 }

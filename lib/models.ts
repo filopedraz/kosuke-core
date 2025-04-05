@@ -1,5 +1,6 @@
 import { getUserSubscription } from '@/lib/actions/subscription';
 import { SUBSCRIPTION_TIERS, LLM } from '@/lib/constants';
+import { isScriptEnvironment } from '@/lib/environment';
 
 // Add proper type definitions for the AI models
 export type ModelName = string;
@@ -8,6 +9,17 @@ export type ModelName = string;
  * Get the appropriate model based on user subscription tier
  */
 export async function getModelForUser() {
+  // If called from a script context (CLI), bypass the user check
+  if (isScriptEnvironment()) {
+    console.log(`Called from script context, using premium model configuration`);
+    return {
+      provider: 'google',
+      model: LLM.PREMIUM_MODEL,
+      tier: SUBSCRIPTION_TIERS.PREMIUM,
+    };
+  }
+
+  // Normal web request flow
   const subscription = await getUserSubscription();
   const tier = subscription?.product?.tier || SUBSCRIPTION_TIERS.FREE;
 
