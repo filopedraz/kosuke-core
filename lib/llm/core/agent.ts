@@ -7,7 +7,7 @@ import { chatMessages, actions } from '@/lib/db/schema';
 import { getProjectPath } from '@/lib/fs/operations';
 import { getTool } from '../tools';
 import { Action, normalizeAction, isValidAction } from './types';
-import { generateAICompletion } from '../api/ai';
+import { generateAICompletion, generateSummaryWithFlash } from '../api/ai';
 import { isWebRequestEnvironment } from '@/lib/environment';
 import { buildNaivePrompt } from './prompts';
 import { getProjectContextOnlyDirectoryStructure } from '../utils/context';
@@ -208,7 +208,7 @@ export class Agent {
     actions: Action[];
   } {
     try {
-      // Handle if response is an object (from Anthropic API)
+      // Handle if response is an object with text property
       const responseText =
         typeof response === 'object' && response.text ? response.text : (response as string);
 
@@ -295,7 +295,7 @@ export class Agent {
   private async generateChangesSummary(actions: Action[]): Promise<string> {
     try {
       // Filter out readFile actions as they don't represent actual changes
-      const changeActions = actions.filter(a => a.action !== 'Read' && a.action !== 'readFile');
+      const changeActions = actions.filter(a => a.action !== 'readFile');
 
       // Group actions by type
       const createdFiles = changeActions
@@ -319,20 +319,11 @@ export class Agent {
 
       console.log('Generating AI summary for changes with prompt:', summaryPrompt);
 
-      // Use the AI to generate a summary
-      const summaryResponse = await generateAICompletion(
-        [{ role: 'user', content: summaryPrompt }],
-        {
-          timeoutMs: 30000,
-          maxTokens: 500,
-        }
-      );
-
-      // Extract the summary text
-      const summary =
-        typeof summaryResponse === 'object' && 'text' in summaryResponse
-          ? summaryResponse.text
-          : String(summaryResponse);
+      // Use Gemini Flash to generate a summary
+      const summary = await generateSummaryWithFlash([{ role: 'user', content: summaryPrompt }], {
+        temperature: 0.3,
+        maxTokens: 500,
+      });
 
       console.log('AI generated summary:', summary);
       return summary;
@@ -636,7 +627,6 @@ export class Agent {
         return 'removeDir';
       case 'search':
         return 'read';
-      case 'Read':
       case 'readFile':
         return 'read';
       default:
@@ -712,7 +702,6 @@ export class Agent {
         return true;
       }
 
-      case 'Read':
       case 'readFile': {
         const fullPath = path.join(getProjectPath(this.projectId), normalizedAction.filePath);
         console.log(`📝 Executing read on full path: ${fullPath}`);

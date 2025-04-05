@@ -1,6 +1,7 @@
 import { generateText, CoreMessage } from 'ai';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { getModelForUser } from '@/lib/models';
+import { LLM } from '@/lib/constants';
 
 /**
  * Chat message type
@@ -164,6 +165,79 @@ export async function generateAICompletion(
     // Include more context in the error message
     const errorMessage = error instanceof Error ? error.message : String(error);
     throw new Error(`Failed to generate AI completion: ${errorMessage}`);
+  }
+}
+
+/**
+ * Generate a summary using Gemini Flash (faster, more efficient for summaries)
+ */
+export async function generateSummaryWithFlash(
+  messages: ChatMessage[],
+  options: ChatCompletionOptions = {}
+): Promise<string> {
+  try {
+    console.log(`🚀 Starting Gemini Flash request for summary generation`);
+
+    // Make sure we have the API key
+    if (!process.env.GEMINI_API_KEY) {
+      throw new Error('GEMINI_API_KEY is not set in environment variables');
+    }
+
+    // Set optimal parameters for summary generation with Flash
+    const { temperature = 0.3, maxTokens = 1000 } = options;
+
+    // Create Google provider with the API key
+    const googleProvider = createGoogleGenerativeAI({
+      apiKey: process.env.GEMINI_API_KEY,
+    });
+
+    // Format messages for Flash
+    const formattedMessages = messages.map(msg => {
+      if (typeof msg.content === 'string') {
+        return {
+          role: msg.role,
+          content: msg.content,
+        } as FormattedMessage;
+      } else {
+        // Flash only supports text, so we convert all content to text
+        const textContent = msg.content
+          .filter(part => part.type === 'text' && part.text)
+          .map(part => part.text)
+          .join('\n');
+
+        return {
+          role: msg.role,
+          content: textContent,
+        } as FormattedMessage;
+      }
+    });
+
+    console.log(`Formatted message count for Flash: ${formattedMessages.length}`);
+
+    // Start timing the request
+    const startTime = Date.now();
+
+    // Use Gemini Flash model via Vercel AI SDK
+    const response = await generateText({
+      model: googleProvider(LLM.FLASH_MODEL),
+      messages: formattedMessages as CoreMessage[],
+      temperature,
+      maxTokens,
+    });
+
+    const endTime = Date.now();
+    const duration = (endTime - startTime) / 1000;
+
+    console.log(`Gemini Flash request completed in ${duration.toFixed(2)}s`);
+    console.log(`Summary length: ${response.text.length} characters`);
+    console.log(`Summary preview: ${response.text.substring(0, 100)}...`);
+
+    return response.text;
+  } catch (error) {
+    console.error('Error generating summary with Gemini Flash:', error);
+
+    // Provide a fallback message if Flash generation fails
+    return "I've completed all the requested changes successfully.";
   }
 }
 

@@ -242,11 +242,11 @@ export class DockerRunner extends BaseRunner {
 
       // Define the project path on the host
       const projectPath = `${process.cwd()}/projects/${projectId}`;
-      console.log(`Mounting project files from ${projectPath} to /app in container`);
+      console.log(`Mounting project files from ${projectPath} to /app/project in container`);
 
       // Set working directory and command for the container
-      const workDir = '/app';
-      const cmd = ['sh', '-c', 'cd /app && ls -la && npm run dev -- -H 0.0.0.0'];
+      const workDir = '/app/project';
+      const cmd = ['sh', '-c', 'cd /app/project && ls -la && npm run dev -- -H 0.0.0.0'];
 
       // Create the container
       const container = await this.docker.createContainer({
@@ -262,7 +262,7 @@ export class DockerRunner extends BaseRunner {
           PortBindings: {
             '3000/tcp': [{ HostPort: hostPort.toString(), HostIp: '0.0.0.0' }],
           },
-          Binds: [`${projectPath}:/app:rw`],
+          Binds: [`${projectPath}:/app/project:rw`],
           AutoRemove: false,
           NetworkMode: 'bridge',
         },

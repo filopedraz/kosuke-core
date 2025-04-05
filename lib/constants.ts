@@ -16,6 +16,7 @@ export const LLM = {
   // Model configurations
   DEFAULT_MODEL: 'gemini-2.5-pro-exp-03-25',
   PREMIUM_MODEL: 'gemini-2.5-pro-exp-03-25',
+  FLASH_MODEL: 'gemini-2.0-flash',
 
   // System settings
   MAX_MESSAGES: 50, // Maximum number of chat messages to fetch from history

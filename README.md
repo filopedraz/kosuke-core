@@ -38,7 +38,7 @@ npm run dev
 For project previews, we use Docker containers to isolate and run Next.js applications. You need to make sure to have docker installed and pull the right image:
 
 ```bash
-docker pull ghcr.io/filopedraz/kosuke-template:v0.0.2
+docker pull ghcr.io/filopedraz/kosuke-template:v0.0.5
 ```
 
 This image will be used for all project previews, providing consistent development environments for your generated applications.
