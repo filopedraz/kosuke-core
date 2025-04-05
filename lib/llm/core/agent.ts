@@ -738,7 +738,7 @@ export class Agent {
     console.log(`🧠 Agent is still in thinking mode, executing read actions...`);
 
     for (const action of actions) {
-      if (action.action === 'Read' || action.action === 'readFile') {
+      if (action.action === 'readFile') {
         console.log(`📖 Reading file: ${action.filePath}`);
         executionLog.push(`Read ${action.filePath}`);
 

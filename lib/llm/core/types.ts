@@ -11,7 +11,6 @@ export interface Action {
     | 'createFile'
     | 'deleteFile'
     | 'search'
-    | 'Read'
     | 'readFile'
     | 'createDirectory'
     | 'removeDirectory';
