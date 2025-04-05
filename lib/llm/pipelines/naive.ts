@@ -49,7 +49,7 @@ export class NaivePipeline implements Pipeline {
     const executionLog: string[] = [];
     const gatheredContext: Record<string, string> = {};
     let iterationCount = 0;
-    const MAX_ITERATIONS = 10; // Prevent infinite loops
+    const MAX_ITERATIONS = 25; // Prevent infinite loops
 
     // Initial context
     let currentContext = context;
