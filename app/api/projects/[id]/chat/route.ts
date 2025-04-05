@@ -8,7 +8,6 @@ import { getProjectById } from '@/lib/db/projects';
 import { chatMessages, actions, Action } from '@/lib/db/schema';
 import { LLM } from '@/lib/constants';
 import { uploadFile } from '@/lib/storage';
-import { PipelineType } from '@/lib/llm/pipelines/types';
 import { hasReachedMessageLimit } from '@/lib/models';
 import { Agent } from '@/lib/llm/core/agent';
 
@@ -16,13 +15,11 @@ import { Agent } from '@/lib/llm/core/agent';
 const sendMessageSchema = z.union([
   z.object({
     message: z.object({
-      content: z.string(),
-      pipelineType: z.enum(['naive', 'roo_code']).optional(),
+      content: z.string()
     }),
   }),
   z.object({
-    content: z.string(),
-    pipelineType: z.enum(['naive', 'roo_code']).optional(),
+    content: z.string()
   })
 ]);
 
@@ -68,13 +65,11 @@ async function processFormDataRequest(req: NextRequest, projectId: number): Prom
   includeContext: boolean; 
   contextFiles: Array<{ name: string; content: string; }>;
   imageUrl?: string; 
-  pipelineType?: string;
 }> {
   const formData = await req.formData();
   const content = formData.get('content') as string || '';
   const includeContext = formData.get('includeContext') === 'true';
   const contextFilesStr = formData.get('contextFiles') as string || '[]';
-  const pipelineType = formData.get('pipelineType') as string;
   const contextFiles = JSON.parse(contextFilesStr);
   
   // Process image if present
@@ -89,8 +84,7 @@ async function processFormDataRequest(req: NextRequest, projectId: number): Prom
     content,
     includeContext,
     contextFiles,
-    imageUrl,
-    pipelineType
+    imageUrl
   };
 }
 
@@ -328,7 +322,6 @@ export async function POST(
     // Check if request is FormData or JSON
     const contentType = req.headers.get('content-type') || '';
     let messageContent: string;
-    let rawPipelineType: string | undefined;
     let imageUrl: string | undefined;
     
     if (contentType.includes('multipart/form-data')) {
@@ -336,7 +329,6 @@ export async function POST(
       console.log('Processing multipart/form-data request');
       const formData = await processFormDataRequest(req, projectId);
       messageContent = formData.content;
-      rawPipelineType = formData.pipelineType;
       imageUrl = formData.imageUrl;
       
       if (imageUrl) {
@@ -360,31 +352,17 @@ export async function POST(
         );
       }
       
-      // Extract content and pipelineType based on the format received
+      // Extract content based on the format received
       if ('message' in parseResult.data) {
-        // Format: { message: { content, pipelineType } }
+        // Format: { message: { content } }
         messageContent = parseResult.data.message.content;
-        rawPipelineType = parseResult.data.message.pipelineType;
       } else {
-        // Format: { content, pipelineType }
+        // Format: { content }
         messageContent = parseResult.data.content;
-        rawPipelineType = parseResult.data.pipelineType;
       }
-    }
-    
-    // Map string pipeline type to enum
-    let pipelineType: PipelineType;
-    switch (rawPipelineType) {
-      case 'roo_code':
-        pipelineType = PipelineType.ROO_CODE;
-        break;
-      case 'naive':
-      default:
-        pipelineType = PipelineType.NAIVE;
     }
 
     console.log(`Received message content: "${messageContent.substring(0, 50)}${messageContent.length > 50 ? '...' : ''}"`);
-    console.log(`Using pipeline type: ${pipelineType}`);
 
     // Check if the message contains image references
     const hasImages = messageContent.includes('[Attached Image]');
@@ -404,7 +382,7 @@ export async function POST(
     console.log(`Processing request with Agent class for project ${projectId}`);
     
     // Create an Agent instance and run it with the message content
-    const agent = new Agent(projectId, pipelineType);
+    const agent = new Agent(projectId);
     const agentResult = await agent.run(messageContent);
 
     if (!agentResult.success) {

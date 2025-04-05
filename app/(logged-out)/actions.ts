@@ -189,15 +189,14 @@ export const deleteAccount = validatedActionWithUser(deleteAccountSchema, async 
 const updateAccountSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100),
   email: z.string().email('Invalid email address'),
-  pipelinePreference: z.string().optional(),
 });
 
 export const updateAccount = validatedActionWithUser(
   updateAccountSchema,
   async (data, formData, user) => {
     try {
-      const { name, email, pipelinePreference } = data;
-      console.log('updateAccount', name, email, pipelinePreference);
+      const { name, email } = data;
+      console.log('updateAccount', name, email);
 
       // Check if email is being changed and verify it's not already in use
       if (email !== user.email) {
@@ -214,7 +213,6 @@ export const updateAccount = validatedActionWithUser(
         .set({
           name,
           email,
-          pipelinePreference: pipelinePreference || 'naive',
           updatedAt: new Date(),
         })
         .where(eq(users.id, user.id));

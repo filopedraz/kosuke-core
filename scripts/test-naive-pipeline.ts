@@ -8,7 +8,6 @@ import { users } from '../lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { createProject as dbCreateProject } from '../lib/db/projects';
 import { Agent } from '../lib/llm/core/agent';
-import { PipelineType } from '../lib/llm/pipelines/types';
 import { getProjectPath, listFilesRecursively } from '../lib/fs/operations';
 import { scaffoldProject } from '../lib/fs/scaffold';
 
@@ -113,12 +112,12 @@ async function main() {
 
     // 3. Create a test prompt
     const testPrompt =
-      "Create a landing page for a SaaS. The SaaS is a messaging app similar to Slack called 'Open-Slack'.";
+      "Change the home page to display a big 'Hello World' in the middle of the page.";
     debug.log(`💬 Using test prompt: "${testPrompt}"`);
 
     // 4. Trigger the naive pipeline directly without saving messages to the database
     debug.pipeline('Initializing naive pipeline agent...');
-    const agent = new Agent(project.id, PipelineType.NAIVE);
+    const agent = new Agent(project.id);
 
     debug.pipeline('Running agent with prompt...');
 
@@ -129,10 +128,6 @@ async function main() {
     debug.success(
       `Agent run completed in ${(endTime - startTime) / 1000}s with result: ${JSON.stringify(result)}`
     );
-
-    // Wait for file operations to complete - reduced from 30s to 10s
-    debug.info('Waiting for file operations to complete (10 seconds)...');
-    await new Promise(resolve => setTimeout(resolve, 10000));
 
     // 5. Directly check the file system to validate file creation
     debug.log('\n📁 Checking files created in the project directory...');
@@ -188,10 +183,10 @@ async function main() {
       const contentPreview = pageContent.split('\n').slice(0, 20).join('\n');
       debug.info(`Page content preview:\n${contentPreview}\n...`);
 
-      if (pageContent.toLowerCase().includes('Open-Slack')) {
-        debug.success('✅ SUCCESS: app/page.tsx contains "Open-Slack"');
+      if (pageContent.toLowerCase().includes('Hello World')) {
+        debug.success('✅ SUCCESS: app/page.tsx contains "Hello World"');
       } else {
-        debug.error('❌ FAILED: app/page.tsx does not contain "Open-Slack"');
+        debug.error('❌ FAILED: app/page.tsx does not contain "Hello World"');
         debug.info('Full page content:');
         debug.info(pageContent);
         process.exit(1);

@@ -19,7 +19,6 @@ export const users = pgTable('users', {
   marketingEmails: boolean('marketing_emails').default(false),
   role: varchar('role', { length: 20 }).notNull().default('member'),
   stripeCustomerId: varchar('stripe_customer_id', { length: 255 }),
-  pipelinePreference: varchar('pipeline_preference', { length: 20 }).default('naive'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
   deletedAt: timestamp('deleted_at'),

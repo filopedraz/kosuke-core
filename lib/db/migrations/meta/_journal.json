@@ -36,6 +36,13 @@
       "when": 1743024598442,
       "tag": "0004_rename_fileoperations_to_actions",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1743858882902,
+      "tag": "0005_zippy_amazoness",
+      "breakpoints": true
     }
   ]
 }

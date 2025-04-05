@@ -11,13 +11,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useUser } from '@/lib/auth';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 
 type FormState = {
   error?: string;
@@ -165,27 +158,6 @@ export default function SettingsPage() {
                   placeholder="your.email@example.com"
                   required
                 />
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="pipelinePreference">AI Pipeline</Label>
-                <Select
-                  name="pipelinePreference"
-                  defaultValue={user?.pipelinePreference || 'naive'}
-                >
-                  <SelectTrigger className="bg-card">
-                    <SelectValue placeholder="Select pipeline" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="naive">Standard Pipeline</SelectItem>
-                    <SelectItem value="roo_code" disabled>
-                      RooCode Pipeline (WiP)
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Choose which AI pipeline to use for processing chat messages
-                </p>
               </div>
             </div>
 
