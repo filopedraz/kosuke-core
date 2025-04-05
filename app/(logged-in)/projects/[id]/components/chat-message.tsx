@@ -22,7 +22,6 @@ export interface ChatMessageProps {
   };
   actions?: Action[];
   showAvatar?: boolean;
-  isLastAssistantMessage?: boolean;
 }
 
 export default function ChatMessage({
@@ -34,11 +33,10 @@ export default function ChatMessage({
   user,
   actions,
   showAvatar = true,
-  isLastAssistantMessage = false,
 }: ChatMessageProps) {
   const isUser = role === 'user';
-  // Only animate if it's "Thinking..." AND the last assistant message
-  const isActiveThinking = role === 'assistant' && content === 'Thinking...' && isLastAssistantMessage;
+  // Animate all "Thinking..." messages from assistant (whether loading or not)
+  const isThinking = role === 'assistant' && content === 'Thinking...';
 
   // Function to get file name from URL
   const getFileName = (url: string): string => {
@@ -155,12 +153,8 @@ export default function ChatMessage({
           "prose prose-xs dark:prose-invert max-w-none text-sm",
           !showAvatar && "mt-0" // Remove top margin for consecutive messages
         )}>
-          {isLoading ? (
-            <p className="text-muted-foreground">AI is typing...</p>
-          ) : isActiveThinking ? (
+          {isThinking ? (
             <p className="text-muted-foreground animate-pulse">Thinking...</p>
-          ) : content === 'Thinking...' ? (
-            <p className="text-muted-foreground">Thinking...</p>
           ) : (
             contentParts.map((part, i) => (
               part.type === 'text' ? (

@@ -44,10 +44,6 @@ export class Agent {
     const processingStart = Date.now();
 
     try {
-      // Send an immediate "Thinking..." message
-      console.log('📝 Sending initial "Thinking..." message');
-      await this.sendOperationUpdate('read', '', 'Thinking...', 'pending');
-
       // Create timeout promise for safety
       const timeoutPromise = new Promise<never>((_, reject) => {
         setTimeout(() => {
@@ -144,6 +140,9 @@ export class Agent {
     while (isThinking && iterationCount < this.MAX_ITERATIONS) {
       iterationCount++;
       console.log(`🔄 Starting iteration ${iterationCount} of agentic workflow`);
+
+      // Send a "Thinking..." message before each AI completion call
+      await this.sendOperationUpdate('read', '', 'Thinking...', 'pending');
 
       // Build prompt and get AI response
       const messages = buildNaivePrompt(prompt, currentContext, chatHistory);
