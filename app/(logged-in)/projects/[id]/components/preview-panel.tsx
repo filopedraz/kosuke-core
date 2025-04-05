@@ -137,6 +137,25 @@ export default function PreviewPanel({
     fetchPreviewUrl();
   };
 
+  // Add event listener for refresh-preview events
+  useEffect(() => {
+    const handleRefreshPreview = (event: CustomEvent<{projectId: number}>) => {
+      // Only refresh if the event is for this project
+      if (event.detail.projectId === projectId) {
+        console.log('[Preview Panel] Refresh preview event received, refreshing preview');
+        handleRefresh();
+      }
+    };
+
+    // Add event listener
+    window.addEventListener('refresh-preview', handleRefreshPreview as EventListener);
+
+    // Clean up event listener on component unmount
+    return () => {
+      window.removeEventListener('refresh-preview', handleRefreshPreview as EventListener);
+    };
+  }, [projectId, handleRefresh]);
+
   // Function to open the preview in a new tab
   const openInNewTab = () => {
     if (previewUrl) {

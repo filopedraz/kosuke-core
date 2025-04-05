@@ -389,6 +389,15 @@ export default function ChatInterface({
               console.log('📨 New message received');
               // Invalidate and refetch messages when a new message arrives
               queryClient.invalidateQueries({ queryKey: ['messages', projectId] });
+              
+              // Dispatch custom event to refresh preview when assistant message is received
+              if (data.role === 'assistant') {
+                console.log('🔄 Assistant message received, triggering preview refresh');
+                const refreshPreviewEvent = new CustomEvent('refresh-preview', {
+                  detail: { projectId }
+                });
+                window.dispatchEvent(refreshPreviewEvent);
+              }
             } else if (data.type === 'file_updated') {
               console.log('📄 File updated event received');
               // Trigger file update event for UI
