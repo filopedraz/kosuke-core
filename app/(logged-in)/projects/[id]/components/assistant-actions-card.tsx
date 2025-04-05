@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { Loader2, FileIcon, Check, Search, FolderIcon, FolderPlusIcon, FolderMinusIcon } from 'lucide-react';
+import { Loader2, FileIcon, Check, Search, FolderIcon, FolderPlusIcon, FolderMinusIcon, EyeIcon, PencilIcon } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 
@@ -105,6 +105,10 @@ export default function AssistantActionsCard({
                   <FolderMinusIcon className="h-3.5 w-3.5 text-foreground flex-shrink-0" />
                 ) : op.type === 'create' && op.path.indexOf('.') === -1 ? (
                   <FolderIcon className="h-3.5 w-3.5 text-foreground flex-shrink-0" />
+                ) : op.type === 'read' ? (
+                  <EyeIcon className="h-3.5 w-3.5 text-foreground flex-shrink-0" />
+                ) : op.type === 'edit' ? (
+                  <PencilIcon className="h-3.5 w-3.5 text-foreground flex-shrink-0" />
                 ) : (
                   <Check className="h-3.5 w-3.5 text-foreground flex-shrink-0" />
                 )}
