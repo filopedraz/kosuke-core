@@ -180,24 +180,6 @@ export default function PreviewPanel({
       clearInterval(messageCheckId);
     };
   }, [projectId, lastRefresh, handleRefresh]);
-  
-  // Keep event listener for manual refresh from other parts of the UI
-  useEffect(() => {
-    const handleRefreshPreview = (event: CustomEvent<{projectId: number}>) => {
-      if (event.detail.projectId === projectId) {
-        console.log('[Preview Panel] Refresh preview event received, refreshing preview');
-        handleRefresh();
-      }
-    };
-
-    console.log(`[Preview Panel] Adding refresh-preview event listener for project ${projectId}`);
-    window.addEventListener('refresh-preview', handleRefreshPreview as EventListener);
-
-    return () => {
-      console.log(`[Preview Panel] Removing refresh-preview event listener for project ${projectId}`);
-      window.removeEventListener('refresh-preview', handleRefreshPreview as EventListener);
-    };
-  }, [projectId, handleRefresh]);
 
   // Function to open the preview in a new tab
   const openInNewTab = () => {
