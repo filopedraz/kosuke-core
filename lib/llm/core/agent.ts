@@ -390,8 +390,7 @@ export class Agent {
       // Only try to revalidate the path if we're in a web request context
       this.tryRevalidatePath();
 
-      // Dispatch event to refresh preview if in web environment
-      this.tryDispatchRefreshEvent();
+      // Preview refresh will happen automatically through polling mechanism
 
       return {
         success: true,
@@ -559,6 +558,8 @@ export class Agent {
       // Send a final message with the summary
       await this.sendOperationUpdate('read', '', summary, 'completed');
       console.log(`✅ Sent final summary message`);
+
+      // Preview refresh will happen automatically through polling
     } else if (!allActionsSuccessful) {
       console.log(`⚠️ Some actions failed to execute, sending error update...`);
       await this.sendOperationUpdate(
@@ -871,29 +872,6 @@ export class Agent {
     } catch (error) {
       console.error(`❌ Error fetching chat history:`, error);
       return []; // Return empty array if there's an error
-    }
-  }
-
-  /**
-   * Try to dispatch refresh preview event if in a web environment
-   */
-  private tryDispatchRefreshEvent() {
-    if (isWebRequestEnvironment()) {
-      try {
-        // Try to dispatch an event to refresh the preview
-        if (typeof window !== 'undefined') {
-          console.log(`🔄 Dispatching refresh-preview event for project ${this.projectId}`);
-          const refreshPreviewEvent = new CustomEvent('refresh-preview', {
-            detail: { projectId: this.projectId },
-          });
-          window.dispatchEvent(refreshPreviewEvent);
-        }
-      } catch (dispatchError) {
-        console.warn(`⚠️ Could not dispatch refresh event: ${dispatchError}`);
-        // Don't fail the operation just because event dispatch failed
-      }
-    } else {
-      console.log(`🔍 Skipping refresh event dispatch in script context`);
     }
   }
 }

@@ -37,6 +37,7 @@ export default function PreviewPanel({
   const [error, setError] = useState<string | null>(null);
   const [iframeKey, setIframeKey] = useState(0);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [lastRefresh, setLastRefresh] = useState(Date.now());
 
   // Check if the preview server is ready
   const checkServerHealth = useCallback(async (url: string): Promise<boolean> => {
@@ -133,25 +134,67 @@ export default function PreviewPanel({
 
   // Function to refresh the preview
   const handleRefresh = async () => {
+    console.log('[Preview Panel] Manually refreshing preview');
     setIframeKey(prev => prev + 1);
+    setLastRefresh(Date.now());
     fetchPreviewUrl();
   };
 
-  // Add event listener for refresh-preview events
+  // Add polling to check for new messages and refresh when needed
+  useEffect(() => {
+    console.log('[Preview Panel] Setting up message polling mechanism');
+    
+    const checkForChanges = async () => {
+      try {
+        console.log('[Preview Panel] Checking for new messages...');
+        const response = await fetch(`/api/projects/${projectId}/messages/latest`);
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.timestamp) {
+            const messageTime = new Date(data.timestamp).getTime();
+            const refreshTime = lastRefresh;
+            
+            console.log(`[Preview Panel] Latest message: ${new Date(messageTime).toISOString()}, Last refresh: ${new Date(refreshTime).toISOString()}`);
+            
+            // If there's a new assistant message after our last refresh, update the preview
+            if (messageTime > refreshTime && data.role === 'assistant') {
+              console.log('[Preview Panel] New assistant message detected, refreshing preview');
+              handleRefresh();
+            }
+          }
+        }
+      } catch (error) {
+        console.error('[Preview Panel] Error checking for new messages:', error);
+      }
+    };
+    
+    // Check for new messages every 3 seconds
+    const messageCheckId = setInterval(checkForChanges, 3000);
+    
+    // Also check immediately on mount
+    checkForChanges();
+    
+    return () => {
+      console.log('[Preview Panel] Cleaning up message polling');
+      clearInterval(messageCheckId);
+    };
+  }, [projectId, lastRefresh, handleRefresh]);
+  
+  // Keep event listener for manual refresh from other parts of the UI
   useEffect(() => {
     const handleRefreshPreview = (event: CustomEvent<{projectId: number}>) => {
-      // Only refresh if the event is for this project
       if (event.detail.projectId === projectId) {
         console.log('[Preview Panel] Refresh preview event received, refreshing preview');
         handleRefresh();
       }
     };
 
-    // Add event listener
+    console.log(`[Preview Panel] Adding refresh-preview event listener for project ${projectId}`);
     window.addEventListener('refresh-preview', handleRefreshPreview as EventListener);
 
-    // Clean up event listener on component unmount
     return () => {
+      console.log(`[Preview Panel] Removing refresh-preview event listener for project ${projectId}`);
       window.removeEventListener('refresh-preview', handleRefreshPreview as EventListener);
     };
   }, [projectId, handleRefresh]);
