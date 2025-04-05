@@ -1,11 +1,11 @@
-import { eq, and, desc } from 'drizzle-orm';
 import fs from 'fs/promises';
 import path from 'path';
 import { execSync } from 'child_process';
 
 // Import project components
 import { db } from '../lib/db/drizzle';
-import { users, chatMessages, actions } from '../lib/db/schema';
+import { users } from '../lib/db/schema';
+import { eq } from 'drizzle-orm';
 import { createProject as dbCreateProject } from '../lib/db/projects';
 import { Agent } from '../lib/llm/core/agent';
 import { PipelineType } from '../lib/llm/pipelines/types';
@@ -47,7 +47,7 @@ const debug = {
  * 1. Finding the admin@example.com user
  * 2. Creating a test project for the user (including scaffolding)
  * 3. Triggering the naive pipeline with a test prompt
- * 4. Directly validating file creation
+ * 4. Directly validating the app/page.tsx contains "Hello World"
  */
 async function main() {
   try {
@@ -92,10 +92,10 @@ async function main() {
     }
 
     // List files in the project directory to verify scaffolding
-    const initialProjectDirPath = getProjectPath(project.id);
+    const projectDirPath = getProjectPath(project.id);
     try {
       debug.info('Verifying initial scaffolded files...');
-      const initialFiles = await listFilesRecursively(initialProjectDirPath);
+      const initialFiles = await listFilesRecursively(projectDirPath);
       debug.success(`Initial project has ${initialFiles.length} files from template`);
 
       // Log a few key initial files for verification
@@ -116,30 +116,7 @@ async function main() {
       "Change the home page to display a big 'Hello World' in the middle of the page.";
     debug.log(`💬 Using test prompt: "${testPrompt}"`);
 
-    // First create a system message to establish context
-    debug.info('Creating initial system message for context...');
-    await db.insert(chatMessages).values({
-      projectId: project.id,
-      role: 'system',
-      content: 'Project created successfully. Help me build this project.',
-    });
-
-    // Then save the user message to the database
-    debug.info('Saving user message to database...');
-    const [userMessage] = await db
-      .insert(chatMessages)
-      .values({
-        projectId: project.id,
-        userId: adminUser.id,
-        content: testPrompt,
-        role: 'user',
-        modelType: 'premium',
-      })
-      .returning();
-
-    debug.success(`Saved user message with ID: ${userMessage.id}`);
-
-    // 4. Trigger the naive pipeline
+    // 4. Trigger the naive pipeline directly without saving messages to the database
     debug.pipeline('Initializing naive pipeline agent...');
     const agent = new Agent(project.id, PipelineType.NAIVE);
 
@@ -162,66 +139,12 @@ async function main() {
       `Agent run completed in ${(endTime - startTime) / 1000}s with result: ${JSON.stringify(result)}`
     );
 
-    // Long wait time to ensure all file operations are complete
-    debug.info('Waiting for file operations to complete (30 seconds)...');
-    await new Promise(resolve => setTimeout(resolve, 30000));
+    // Wait for file operations to complete - reduced from 30s to 10s
+    debug.info('Waiting for file operations to complete (10 seconds)...');
+    await new Promise(resolve => setTimeout(resolve, 10000));
 
-    // 5. Check for actions in the database
-    debug.log('📝 Checking for actions in the database...');
-
-    // Get assistant message ID
-    const assistantMessages = await db
-      .select()
-      .from(chatMessages)
-      .where(and(eq(chatMessages.projectId, project.id), eq(chatMessages.role, 'assistant')))
-      .orderBy(desc(chatMessages.timestamp))
-      .limit(1);
-
-    if (assistantMessages.length === 0) {
-      debug.error('No assistant message found in database!');
-    } else {
-      const assistantMessage = assistantMessages[0];
-      debug.success(`Found assistant message with ID: ${assistantMessage.id}`);
-      // Show more of the assistant's response for better debugging
-      debug.info(`Assistant response: ${assistantMessage.content.substring(0, 300)}...`);
-      debug.info(`Full response character length: ${assistantMessage.content.length}`);
-
-      // Get actions associated with this message
-      const dbActions = await db
-        .select()
-        .from(actions)
-        .where(eq(actions.messageId, assistantMessage.id));
-
-      debug.info(
-        `Found ${dbActions.length} actions in the database for message ID ${assistantMessage.id}:`
-      );
-      dbActions.forEach((action, index) => {
-        debug.info(`  - ${index + 1}. ${action.type}: ${action.path} (${action.status})`);
-      });
-
-      // Count actions by status
-      const completedCount = dbActions.filter(a => a.status === 'completed').length;
-      const pendingCount = dbActions.filter(a => a.status === 'pending').length;
-      const errorCount = dbActions.filter(a => a.status === 'error').length;
-
-      debug.info(
-        `Action status summary: ${completedCount} completed, ${pendingCount} pending, ${errorCount} error`
-      );
-
-      // List any error actions
-      if (errorCount > 0) {
-        debug.warn('Error actions:');
-        dbActions
-          .filter(a => a.status === 'error')
-          .forEach(action => {
-            debug.warn(`  - ${action.type}: ${action.path}`);
-          });
-      }
-    }
-
-    // 6. Directly check the file system to validate file creation
+    // 5. Directly check the file system to validate file creation
     debug.log('\n📁 Checking files created in the project directory...');
-    const projectDirPath = getProjectPath(project.id);
 
     // List directories first to understand structure
     debug.info('Project directory structure:');
@@ -232,30 +155,13 @@ async function main() {
       debug.error('Error listing directories:', execError);
     }
 
+    // Get recursive list of files
     let files: string[] = [];
     try {
-      // Get recursive list of files
       files = await listFilesRecursively(projectDirPath);
-      debug.info(`Found ${files.length} files in project directory`);
-
-      // Find files created/modified after scaffolding
-      const newOrModifiedFiles = files.filter(file => {
-        // Skip common template files that were part of initial scaffolding
-        return (
-          !file.includes('node_modules') &&
-          !file.endsWith('.gitignore') &&
-          !file.endsWith('tsconfig.json') &&
-          !file.endsWith('package.json')
-        );
-      });
-
-      debug.info(`Files potentially created by pipeline (${newOrModifiedFiles.length}):`);
-      newOrModifiedFiles.forEach(file => {
-        debug.info(`  - ${file}`);
-      });
+      debug.info(`Found ${files.length} total files in project directory`);
     } catch (error) {
       debug.error('Error listing files:', error);
-
       // Try a direct system command as backup
       try {
         debug.warn('Trying alternate listing method...');
@@ -266,82 +172,46 @@ async function main() {
       }
     }
 
-    // 7. Validate specific expected files for a landing page
-    debug.log('\n🔍 Checking for expected files:');
-    const expectedFiles = [
-      'next.config.js', // may be created as .js or .ts
-      'app/page.tsx',
-      'components/landing',
-    ];
+    // 6. Check if app/page.tsx contains 'Hello World'
+    debug.log('\n🔎 Checking if app/page.tsx contains "Hello World"...');
 
-    let allFilesFound = true;
-    // Check for existing directory for components/landing (directories are considered found even if empty)
-    const landingDirExists = await fs.access(path.join(projectDirPath, 'components/landing')).then(
-      () => true,
-      () => false
+    const pagePath = files.find(
+      file => file.endsWith('app/page.tsx') || file.endsWith('app\\page.tsx')
     );
 
-    for (const expectedFile of expectedFiles) {
-      // Special case for directories
-      if (expectedFile === 'components/landing' && landingDirExists) {
-        debug.success(`Found expected directory: ${expectedFile}`);
-        continue;
-      }
+    if (!pagePath) {
+      debug.error('❌ app/page.tsx file not found!');
+      process.exit(1);
+    }
 
-      const found = files.some(file => file.includes(expectedFile));
-      if (found) {
-        debug.success(`Found expected file/directory: ${expectedFile}`);
+    debug.success(`Found app/page.tsx at: ${pagePath}`);
+
+    try {
+      const fullPagePath = path.join(projectDirPath, pagePath);
+      debug.info(`Reading file content from: ${fullPagePath}`);
+
+      const pageContent = await fs.readFile(fullPagePath, 'utf8');
+      debug.info(`File content length: ${pageContent.length} characters`);
+
+      // Log the first 20 lines of the content for verification
+      const contentPreview = pageContent.split('\n').slice(0, 20).join('\n');
+      debug.info(`Page content preview:\n${contentPreview}\n...`);
+
+      if (pageContent.toLowerCase().includes('hello world')) {
+        debug.success('✅ SUCCESS: app/page.tsx contains "Hello World"');
       } else {
-        debug.error(`Missing expected file/directory: ${expectedFile}`);
-        allFilesFound = false;
+        debug.error('❌ FAILED: app/page.tsx does not contain "Hello World"');
+        debug.info('Full page content:');
+        debug.info(pageContent);
+        process.exit(1);
       }
+    } catch (error) {
+      debug.error('Error reading app/page.tsx:', error);
+      process.exit(1);
     }
 
-    // 8. Check for minimum number of new files (beyond scaffolded template)
-    const newFilesCount = files.filter(
-      file =>
-        !file.includes('node_modules') &&
-        !file.endsWith('.gitignore') &&
-        !file.endsWith('tsconfig.json') &&
-        (file.endsWith('.tsx') || file.endsWith('.jsx') || file.endsWith('.js'))
-    ).length;
-
-    if (newFilesCount < 3) {
-      debug.warn(`Only ${newFilesCount} new files created, expected at least 3`);
-      allFilesFound = false;
-    } else {
-      debug.success(`Generated ${newFilesCount} new files total`);
-    }
-
-    // 9. Check for page.tsx content if it exists
-    const pagePath = files.find(file => file.endsWith('page.tsx'));
-    if (pagePath) {
-      try {
-        const pageContent = await fs.readFile(path.join(projectDirPath, pagePath), 'utf8');
-        debug.log('\n📋 Checking page content:');
-        if (pageContent.includes('Slack') || pageContent.includes('messaging')) {
-          debug.success('Page content contains relevant keywords from the prompt');
-        } else {
-          debug.warn('Page content may not be relevant to the prompt');
-        }
-
-        // Log the first few lines of the content for verification
-        const contentPreview = pageContent.split('\n').slice(0, 10).join('\n');
-        debug.info(`Page content preview:\n${contentPreview}\n...`);
-      } catch (error) {
-        debug.error('Could not read page content:', error);
-      }
-    } else {
-      debug.error('No page.tsx file found to check content');
-    }
-
-    if (allFilesFound) {
-      debug.success('\nAll expected files were created successfully!');
-    } else {
-      debug.warn('\nSome expected files were not created');
-    }
-
-    debug.log('✅ End-to-end test completed successfully!');
+    debug.log('✅ Naive pipeline test completed successfully!');
+    process.exit(0);
   } catch (error) {
     debug.error('Error during test:', error);
     process.exit(1);
@@ -349,12 +219,7 @@ async function main() {
 }
 
 // Run the test
-main()
-  .catch(error => {
-    console.error('❌ Fatal error:', error);
-    process.exit(1);
-  })
-  .finally(() => {
-    console.log('Test script execution finished.');
-    process.exit(1);
-  });
+main().catch(error => {
+  console.error('❌ Fatal error:', error);
+  process.exit(1);
+});

@@ -6,47 +6,34 @@ import { isScriptEnvironment } from '@/lib/environment';
 export type ModelName = string;
 
 /**
- * Get the appropriate model based on user subscription tier
+ * Get the model configuration based on user subscription tier
+ * Note: We use the same Gemini Pro 2.5 model for all tiers, only the usage limits differ
  */
 export async function getModelForUser() {
   // If called from a script context (CLI), bypass the user check
   if (isScriptEnvironment()) {
-    console.log(`Called from script context, using premium model configuration`);
+    console.log(`Called from script context, using premium tier`);
     return {
       provider: 'google',
-      model: LLM.PREMIUM_MODEL,
+      model: LLM.DEFAULT_MODEL, // Using the same model for all tiers
       tier: SUBSCRIPTION_TIERS.PREMIUM,
     };
   }
 
-  // Normal web request flow
+  // Normal web request flow - get user subscription
   const subscription = await getUserSubscription();
   const tier = subscription?.product?.tier || SUBSCRIPTION_TIERS.FREE;
 
-  console.log(`Determining model for tier: ${tier}`);
+  console.log(`User has subscription tier: ${tier}`);
 
-  // Use same model for all tiers, but premium tier gets higher limits
-  if (
-    tier === SUBSCRIPTION_TIERS.PREMIUM ||
-    tier === SUBSCRIPTION_TIERS.BUSINESS ||
-    tier === SUBSCRIPTION_TIERS.ENTERPRISE
-  ) {
-    const modelConfig = {
-      provider: 'google',
-      model: LLM.PREMIUM_MODEL,
-      tier,
-    };
-    console.log(`Using premium model configuration:`, modelConfig);
-    return modelConfig;
-  }
-
-  // Default to Google Gemini for free tier
+  // Return the model with the user's tier (same model, different tier for limits)
   const modelConfig = {
     provider: 'google',
-    model: LLM.DEFAULT_MODEL,
+    model: LLM.DEFAULT_MODEL, // Using the same model for all tiers
     tier,
   };
-  console.log(`Using free model configuration:`, modelConfig);
+
+  console.log(`Using model configuration:`, modelConfig);
   return modelConfig;
 }
 
