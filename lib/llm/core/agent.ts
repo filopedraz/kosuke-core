@@ -244,10 +244,17 @@ export class Agent {
    */
   private async generateChangesSummary(actions: Action[]): Promise<string> {
     try {
+      // Filter out readFile actions as they don't represent actual changes
+      const changeActions = actions.filter(a => a.action !== 'Read' && a.action !== 'readFile');
+
       // Group actions by type
-      const createdFiles = actions.filter(a => a.action === 'createFile').map(a => a.filePath);
-      const editedFiles = actions.filter(a => a.action === 'editFile').map(a => a.filePath);
-      const deletedFiles = actions.filter(a => a.action === 'deleteFile').map(a => a.filePath);
+      const createdFiles = changeActions
+        .filter(a => a.action === 'createFile')
+        .map(a => a.filePath);
+      const editedFiles = changeActions.filter(a => a.action === 'editFile').map(a => a.filePath);
+      const deletedFiles = changeActions
+        .filter(a => a.action === 'deleteFile')
+        .map(a => a.filePath);
 
       // Create prompt for AI to summarize changes
       const summaryPrompt = `
@@ -436,9 +443,11 @@ export class Agent {
                 ? 'delete'
                 : normalizedAction.action === 'removeDirectory'
                   ? 'removeDir'
-                  : normalizedAction.action === 'search' || normalizedAction.action === 'Read'
+                  : normalizedAction.action === 'search'
                     ? 'read'
-                    : 'error';
+                    : normalizedAction.action === 'Read' || normalizedAction.action === 'readFile'
+                      ? 'read'
+                      : 'error';
 
       // Send an update about the operation we're about to perform with pending status
       console.log(
@@ -647,7 +656,8 @@ export class Agent {
             );
             break;
           }
-          case 'Read': {
+          case 'Read':
+          case 'readFile': {
             // Construct full path for file operations
             const fullPath = path.join(getProjectPath(this.projectId), normalizedAction.filePath);
             console.log(`📝 Executing read on full path: ${fullPath}`);

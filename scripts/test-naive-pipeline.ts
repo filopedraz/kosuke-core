@@ -113,7 +113,7 @@ async function main() {
 
     // 3. Create a test prompt
     const testPrompt =
-      "Change the home page to display a big 'Hello World' in the middle of the page.";
+      "Create a landing page for a SaaS. The SaaS is a messaging app similar to Slack called 'Open-Slack'.";
     debug.log(`💬 Using test prompt: "${testPrompt}"`);
 
     // 4. Trigger the naive pipeline directly without saving messages to the database
@@ -121,15 +121,6 @@ async function main() {
     const agent = new Agent(project.id, PipelineType.NAIVE);
 
     debug.pipeline('Running agent with prompt...');
-
-    // Print environment info for API keys
-    debug.info('Environment info for debugging:');
-    const apiKeys = {
-      OPENAI_API_KEY: process.env.OPENAI_API_KEY ? 'Set' : 'Not set',
-      ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY ? 'Set' : 'Not set',
-      GEMINI_API_KEY: process.env.GEMINI_API_KEY ? 'Set' : 'Not set',
-    };
-    debug.info('API keys status:', apiKeys);
 
     // Start pipeline execution with timeout monitoring
     const startTime = Date.now();
@@ -197,10 +188,10 @@ async function main() {
       const contentPreview = pageContent.split('\n').slice(0, 20).join('\n');
       debug.info(`Page content preview:\n${contentPreview}\n...`);
 
-      if (pageContent.toLowerCase().includes('hello world')) {
-        debug.success('✅ SUCCESS: app/page.tsx contains "Hello World"');
+      if (pageContent.toLowerCase().includes('Open-Slack')) {
+        debug.success('✅ SUCCESS: app/page.tsx contains "Open-Slack"');
       } else {
-        debug.error('❌ FAILED: app/page.tsx does not contain "Hello World"');
+        debug.error('❌ FAILED: app/page.tsx does not contain "Open-Slack"');
         debug.info('Full page content:');
         debug.info(pageContent);
         process.exit(1);

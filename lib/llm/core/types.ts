@@ -12,6 +12,7 @@ export interface Action {
     | 'deleteFile'
     | 'search'
     | 'Read'
+    | 'readFile'
     | 'createDirectory'
     | 'removeDirectory';
   filePath: string;
@@ -25,16 +26,20 @@ export interface Action {
  * @returns Boolean indicating if the action is valid
  */
 export function isValidAction(action: unknown): action is Action {
+  if (action === null || typeof action !== 'object') {
+    return false;
+  }
+
+  const actionObj = action as Record<string, unknown>;
+
   return (
-    action !== null &&
-    typeof action === 'object' &&
-    'action' in action &&
-    typeof (action as unknown).action === 'string' &&
-    'filePath' in action &&
-    typeof (action as unknown).filePath === 'string' &&
-    ('content' in action ? typeof (action as unknown).content === 'string' : true) &&
-    'message' in action &&
-    typeof (action as unknown).message === 'string'
+    'action' in actionObj &&
+    typeof actionObj.action === 'string' &&
+    'filePath' in actionObj &&
+    typeof actionObj.filePath === 'string' &&
+    ('content' in actionObj ? typeof actionObj.content === 'string' : true) &&
+    'message' in actionObj &&
+    typeof actionObj.message === 'string'
   );
 }
 
@@ -57,6 +62,7 @@ export function normalizeAction(action: Action): Action {
   else if (actionLower === 'createdirectory') normalizedAction.action = 'createDirectory';
   else if (actionLower === 'removedirectory') normalizedAction.action = 'removeDirectory';
   else if (actionLower === 'read') normalizedAction.action = 'Read';
+  else if (actionLower === 'readfile') normalizedAction.action = 'readFile';
 
   // Ensure message exists
   if (!normalizedAction.message) {
