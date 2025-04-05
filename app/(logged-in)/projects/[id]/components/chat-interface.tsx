@@ -340,9 +340,19 @@ export default function ChatInterface({
       }
     }
     
+    // Determine if this is the last assistant message
+    // Find the last index of any assistant message
+    const lastAssistantIndex = filteredMessages
+      .map((msg, i) => msg.role === 'assistant' ? i : -1)
+      .filter(i => i !== -1)
+      .pop();
+    
+    const isLastAssistantMessage = message.role === 'assistant' && index === lastAssistantIndex;
+    
     return {
       ...message,
-      showAvatar
+      showAvatar,
+      isLastAssistantMessage
     };
   });
 
@@ -451,6 +461,7 @@ export default function ChatInterface({
                   } : undefined}
                   actions={message.actions}
                   showAvatar={message.showAvatar}
+                  isLastAssistantMessage={message.isLastAssistantMessage}
                 />
               ))}
             </>

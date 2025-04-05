@@ -22,6 +22,7 @@ export interface ChatMessageProps {
   };
   actions?: Action[];
   showAvatar?: boolean;
+  isLastAssistantMessage?: boolean;
 }
 
 export default function ChatMessage({
@@ -33,8 +34,11 @@ export default function ChatMessage({
   user,
   actions,
   showAvatar = true,
+  isLastAssistantMessage = false,
 }: ChatMessageProps) {
   const isUser = role === 'user';
+  // Only animate if it's "Thinking..." AND the last assistant message
+  const isActiveThinking = role === 'assistant' && content === 'Thinking...' && isLastAssistantMessage;
 
   // Function to get file name from URL
   const getFileName = (url: string): string => {
@@ -153,6 +157,10 @@ export default function ChatMessage({
         )}>
           {isLoading ? (
             <p className="text-muted-foreground">AI is typing...</p>
+          ) : isActiveThinking ? (
+            <p className="text-muted-foreground animate-pulse">Thinking...</p>
+          ) : content === 'Thinking...' ? (
+            <p className="text-muted-foreground">Thinking...</p>
           ) : (
             contentParts.map((part, i) => (
               part.type === 'text' ? (
@@ -196,7 +204,7 @@ export default function ChatMessage({
           
           {/* Display file operations card inside assistant messages if operations exist */}
           {!isUser && actions && actions.length > 0 && (
-            <div className="mt-4 w-full">
+            <div className="w-full">
               <AssistantActionsCard operations={actions} />
             </div>
           )}
