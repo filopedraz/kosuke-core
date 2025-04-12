@@ -16,7 +16,7 @@ export default function Footer() {
         <p className="text-sm text-muted-foreground font-light">© {new Date().getFullYear()}</p>
         <div className="h-4 w-px bg-border/50"></div>
         <Link
-          href="https://github.com/filopedraz/kosuke"
+          href="https://github.com/filopedraz/kosuke-core"
           target="_blank"
           rel="noopener noreferrer"
           aria-label="GitHub"
