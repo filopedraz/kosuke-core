@@ -112,9 +112,9 @@ export default function AssistantActionsCard({
                 ) : (
                   <Check className="h-3.5 w-3.5 text-foreground flex-shrink-0" />
                 )}
-                <span className="truncate text-foreground">{op.path}</span>
+                <span className="truncate text-foreground [overflow-wrap:anywhere] break-words">{op.path}</span>
               </div>
-              <div className="text-muted-foreground text-xs flex-shrink-0">
+              <div className="text-muted-foreground text-xs flex-shrink-0 ml-2">
                 {op.type === 'createDir' ? 'Created Directory' :
                   op.type === 'removeDir' ? 'Removed Directory' :
                   op.type === 'create' && op.path.indexOf('.') === -1 ? 'Created Directory' : 

@@ -150,9 +150,8 @@ export default function ChatMessage({
         )}
         
         <div className={cn(
-          "prose prose-xs dark:prose-invert max-w-none text-sm",
-          !showAvatar && "mt-0", // Remove top margin for consecutive messages
-          "break-words overflow-hidden" // Add break-words to handle long words
+          "prose prose-xs dark:prose-invert max-w-none text-sm [overflow-wrap:anywhere]",
+          !showAvatar && "mt-0" // Remove top margin for consecutive messages
         )}>
           {isThinking ? (
             <p className="text-muted-foreground animate-pulse">Thinking...</p>
@@ -161,10 +160,7 @@ export default function ChatMessage({
               part.type === 'text' ? (
                 // Render text content with line breaks
                 part.content.split('\n').map((line, j) => (
-                  <p key={`${i}-${j}`} className={cn(
-                    line.trim() === '' ? 'h-4' : '',
-                    "break-all overflow-hidden"
-                  )}>
+                  <p key={`${i}-${j}`} className={line.trim() === '' ? 'h-4' : '[word-break:normal] [overflow-wrap:anywhere]'}>
                     {line}
                   </p>
                 ))
@@ -187,7 +183,7 @@ export default function ChatMessage({
                       </div>
                     </div>
                     <div className="flex flex-col justify-center">
-                      <p className="text-card-foreground text-sm font-medium">
+                      <p className="text-card-foreground text-sm font-medium truncate max-w-[200px]">
                         {getFileName(part.content)}
                       </p>
                       <p className="text-xs text-muted-foreground">
