@@ -217,7 +217,6 @@ export async function GET(
     const messageIds = chatHistory
       .filter(msg => msg.role === 'assistant')
       .map(msg => msg.id);
-    console.log('Message IDs:', messageIds);
 
     // Fetch file operations for these messages if there are any
     let operations: Action[] = [];
