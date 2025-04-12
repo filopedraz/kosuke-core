@@ -6,7 +6,6 @@ import { getSession } from '@/lib/auth/session';
 import { db } from '@/lib/db/drizzle';
 import { getProjectById } from '@/lib/db/projects';
 import { chatMessages, actions, Action } from '@/lib/db/schema';
-import { LLM } from '@/lib/constants';
 import { uploadFile } from '@/lib/storage';
 import { hasReachedMessageLimit } from '@/lib/models';
 import { Agent } from '@/lib/llm/core/agent';
@@ -27,14 +26,12 @@ const sendMessageSchema = z.union([
  * Get chat history for a project
  */
 async function getChatHistoryByProjectId(projectId: number, options: { limit?: number; oldest?: boolean } = {}) {
-  const { limit = LLM.MAX_MESSAGES, oldest = false } = options;
-  
+  const { oldest = false } = options;  
   const history = await db
     .select()
     .from(chatMessages)
     .where(eq(chatMessages.projectId, projectId))
-    .orderBy(oldest ? chatMessages.timestamp : desc(chatMessages.timestamp))
-    .limit(limit);
+    .orderBy(oldest ? chatMessages.timestamp : desc(chatMessages.timestamp));
   
   return oldest ? history : history.reverse();
 }
@@ -203,7 +200,7 @@ export async function GET(
       );
     }
 
-    // Check if the user has access to the project
+    // Get the user has access to the project
     if (project.createdBy !== session.user.id) {
       return NextResponse.json(
         { error: 'Forbidden' },
@@ -211,13 +208,8 @@ export async function GET(
       );
     }
 
-    // Get query parameters for pagination
-    const { searchParams } = new URL(request.url);
-    const limit = Number(searchParams.get('limit') || '50');
-
     // Get chat history
     const chatHistory = await getChatHistoryByProjectId(projectId, {
-      limit,
       oldest: true,
     });
 
@@ -225,6 +217,7 @@ export async function GET(
     const messageIds = chatHistory
       .filter(msg => msg.role === 'assistant')
       .map(msg => msg.id);
+    console.log('Message IDs:', messageIds);
 
     // Fetch file operations for these messages if there are any
     let operations: Action[] = [];

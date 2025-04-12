@@ -127,6 +127,7 @@ export class Agent {
     let isThinking = true;
     const executionLog: string[] = [];
     const gatheredContext: Record<string, string> = {};
+    const readFiles = new Set<string>(); // Track unique files that have been read
     let iterationCount = 0;
 
     // Fetch chat history for context
@@ -143,6 +144,23 @@ export class Agent {
 
       // Send a "Thinking..." message before each AI completion call
       await this.sendOperationUpdate('read', '', 'Thinking...', 'pending');
+
+      // Add read files tracking to the context
+      if (readFiles.size > 0) {
+        const filesReadSection = `\n\n### Already Read Files - DO NOT READ THESE AGAIN:\n${Array.from(
+          readFiles
+        )
+          .map((file, i) => `${i + 1}. ${file}`)
+          .join('\n')}\n`;
+        // Add this near the top of the context for visibility
+        currentContext = this.addAlreadyReadFilesSection(currentContext, filesReadSection);
+      }
+
+      // Add iteration limit warning if approaching max
+      if (iterationCount >= Math.floor(this.MAX_ITERATIONS * 0.6)) {
+        const warningMsg = `\n\n### WARNING - APPROACHING ITERATION LIMIT:\nYou have used ${iterationCount} of ${this.MAX_ITERATIONS} available iterations. Move to implementation phase soon to avoid termination.\n`;
+        currentContext = this.addWarningSection(currentContext, warningMsg);
+      }
 
       // Build prompt and get AI response
       const messages = buildNaivePrompt(prompt, currentContext, chatHistory);
@@ -164,12 +182,61 @@ export class Agent {
       isThinking = parsedResponse.thinking;
 
       if (isThinking) {
+        // Check for duplicate read requests
+        const duplicateReads = parsedResponse.actions
+          .filter(a => a.action === 'readFile' && readFiles.has(a.filePath))
+          .map(a => a.filePath);
+
+        if (duplicateReads.length > 0) {
+          console.warn(`⚠️ Agent is trying to reread files: ${duplicateReads.join(', ')}`);
+
+          // Force execution mode if too many duplicates or too many iterations
+          if (
+            duplicateReads.length >= 3 ||
+            iterationCount >= Math.floor(this.MAX_ITERATIONS * 0.8)
+          ) {
+            console.warn(
+              `⚠️ Forcing agent to execution mode due to duplicate reads or high iteration count`
+            );
+            // Add a final warning to context that we're forcing execution
+            const forcedExecutionMsg = `\n\n### SYSTEM NOTICE - FORCING EXECUTION MODE:\nYou've attempted to reread files multiple times or have used too many iterations. Based on the files you've already read, proceed to implementation immediately.\n`;
+            currentContext = this.addWarningSection(currentContext, forcedExecutionMsg);
+
+            // One more attempt with the forced execution message
+            const finalMessages = buildNaivePrompt(prompt, currentContext, chatHistory);
+            console.log(`🤖 Generating final agent response before forcing execution`);
+            const finalResponse = await generateAICompletion(finalMessages, {
+              timeoutMs: this.DEFAULT_TIMEOUT_MS,
+              maxTokens: this.DEFAULT_MAX_TOKENS,
+            });
+
+            // Parse the response but override thinking to false
+            const finalParsedResponse = this.parseAgentResponse(finalResponse);
+            finalParsedResponse.thinking = false;
+
+            if (finalParsedResponse.actions.length > 0) {
+              // Use the actions from the final response
+              return {
+                success: true,
+                actions: finalParsedResponse.actions,
+              };
+            } else {
+              // No actions returned, return error
+              return {
+                success: false,
+                error: 'Agent unable to produce actions after multiple iterations.',
+              };
+            }
+          }
+        }
+
         // Execute read actions to gather more context
         await this.executeReadActionsForContext(
           parsedResponse.actions,
           projectId,
           executionLog,
-          gatheredContext
+          gatheredContext,
+          readFiles // Pass read files set to track what's been read
         );
 
         // Update context with gathered information
@@ -725,7 +792,8 @@ export class Agent {
     actions: Action[],
     projectId: number,
     executionLog: string[],
-    gatheredContext: Record<string, string>
+    gatheredContext: Record<string, string>,
+    readFiles: Set<string> // Track files that have been read
   ) {
     console.log(`🧠 Agent is still in thinking mode, executing read actions...`);
 
@@ -733,6 +801,9 @@ export class Agent {
       if (action.action === 'readFile') {
         console.log(`📖 Reading file: ${action.filePath}`);
         executionLog.push(`Read ${action.filePath}`);
+
+        // Track this file as being read
+        readFiles.add(action.filePath);
 
         try {
           // Get the readFile tool
@@ -808,7 +879,12 @@ export class Agent {
     gatheredContext: Record<string, string>,
     executionLog: string[]
   ): string {
-    let updatedContext = currentContext;
+    // Remove any previous "File Contents" and "Execution Log" sections
+    let cleanContext = currentContext.replace(/\n\n### File Contents:[\s\S]*?(?=\n\n### |$)/, '');
+    cleanContext = cleanContext.replace(/\n\n### Execution Log:[\s\S]*?(?=\n\n### |$)/, '');
+    cleanContext = cleanContext.trim();
+
+    let updatedContext = cleanContext;
 
     // Add gathered file contents to context
     if (Object.keys(gatheredContext).length > 0) {
@@ -873,5 +949,50 @@ export class Agent {
       console.error(`❌ Error fetching chat history:`, error);
       return []; // Return empty array if there's an error
     }
+  }
+
+  /**
+   * Add already read files section to the context
+   */
+  private addAlreadyReadFilesSection(context: string, filesReadSection: string): string {
+    // Remove any existing "Already Read Files" section
+    const cleanContext = context.replace(
+      /\n\n### Already Read Files - DO NOT READ THESE AGAIN:[\s\S]*?(?=\n\n### |$)/,
+      ''
+    );
+
+    // Add the new section near the beginning, after any initial instructions
+    const parts = cleanContext.split('\n\n', 1);
+    if (parts.length > 0) {
+      const firstPart = parts[0];
+      const restOfContext = cleanContext.substring(firstPart.length);
+      return firstPart + filesReadSection + restOfContext;
+    }
+
+    // If splitting didn't work, just prepend
+    return filesReadSection + cleanContext;
+  }
+
+  /**
+   * Add warning section to the context
+   */
+  private addWarningSection(context: string, warningMsg: string): string {
+    // Remove any existing warning with the same beginning
+    const warningStart = warningMsg.split('\n')[0];
+    const cleanContext = context.replace(
+      new RegExp(`${warningStart}[\\s\\S]*?(?=\\n\\n### |$)`),
+      ''
+    );
+
+    // Add the warning near the beginning for visibility
+    const parts = cleanContext.split('\n\n', 1);
+    if (parts.length > 0) {
+      const firstPart = parts[0];
+      const restOfContext = cleanContext.substring(firstPart.length);
+      return firstPart + warningMsg + restOfContext;
+    }
+
+    // If splitting didn't work, just prepend
+    return warningMsg + cleanContext;
   }
 }

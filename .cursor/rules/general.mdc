@@ -99,6 +99,12 @@ You are thoughtful, precise, and focus on delivering high-quality, maintainable 
 - Implement proper virtualization for long lists
 - Use proper image optimization
 - Implement proper lazy loading
+- Avoid React infinite loops:
+  - Never update state directly inside the render/component body
+  - Be careful with useEffect dependencies - don't create loops with state updates
+  - Use functional updates (prevState => newState) when updating based on previous state
+  - Always pass functions to event handlers, not function executions (use `onClick={() => handleClick()}` instead of `onClick={handleClick()}`)
+  - When debugging infinite loops, trace the sequence of state updates to identify circular dependencies
 
 ### Testing
 - Write unit tests for utility functions

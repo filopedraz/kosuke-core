@@ -14,8 +14,8 @@ export const STORAGE_BASE_URL = process.env.MINIO_BASE_URL || 'http://localhost:
 // LLM
 export const LLM = {
   // Model configurations
-  DEFAULT_MODEL: 'gemini-2.5-pro-exp-03-25',
-  PREMIUM_MODEL: 'gemini-2.5-pro-exp-03-25',
+  DEFAULT_MODEL: 'gemini-2.5-pro-preview-03-25',
+  PREMIUM_MODEL: 'gemini-2.5-pro-preview-03-25',
   FLASH_MODEL: 'gemini-2.0-flash',
 
   // System settings

@@ -151,7 +151,8 @@ export default function ChatMessage({
         
         <div className={cn(
           "prose prose-xs dark:prose-invert max-w-none text-sm",
-          !showAvatar && "mt-0" // Remove top margin for consecutive messages
+          !showAvatar && "mt-0", // Remove top margin for consecutive messages
+          "break-words overflow-hidden" // Add break-words to handle long words
         )}>
           {isThinking ? (
             <p className="text-muted-foreground animate-pulse">Thinking...</p>
@@ -160,7 +161,10 @@ export default function ChatMessage({
               part.type === 'text' ? (
                 // Render text content with line breaks
                 part.content.split('\n').map((line, j) => (
-                  <p key={`${i}-${j}`} className={line.trim() === '' ? 'h-4' : ''}>
+                  <p key={`${i}-${j}`} className={cn(
+                    line.trim() === '' ? 'h-4' : '',
+                    "break-all overflow-hidden"
+                  )}>
                     {line}
                   </p>
                 ))
