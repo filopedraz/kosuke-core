@@ -102,7 +102,7 @@ export default function ChatMessage({
   return (
     <div
       className={cn(
-        'flex w-full gap-3 p-4',
+        'flex w-full max-w-[95%] mx-auto gap-3 p-4',
         isUser ? 'bg-background' : 'bg-background',
         !showAvatar && 'pt-1', // Reduce top padding for consecutive messages
         isLoading && 'opacity-50',
