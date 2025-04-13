@@ -1,6 +1,6 @@
 'use client';
 
-import { Loader2 } from 'lucide-react';
+import { Loader2, AlertTriangle, RefreshCcw } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
@@ -8,7 +8,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 
 import ChatInput from './chat-input';
-import ChatMessage, { ChatMessageProps } from './chat-message';
+import ChatMessage, { ChatMessageProps, ErrorType } from './chat-message';
 import ModelBanner from './model-banner';
 import TokenUsage from './token-usage';
 import LimitReachedModal from './limit-reached-modal';
@@ -59,6 +59,14 @@ interface ApiChatMessage {
   tokensInput?: number;
   tokensOutput?: number;
   contextTokens?: number;
+  metadata?: string; // JSON string possibly containing error information
+}
+
+// Define proper types for message options
+interface MessageOptions {
+  includeContext?: boolean;
+  contextFiles?: string[];
+  imageFile?: File;
 }
 
 // API functions
@@ -79,35 +87,57 @@ const fetchMessages = async (projectId: number): Promise<ChatMessageProps[]> => 
     operationsCount: m.actions?.length || 0,
     tokensInput: m.tokensInput,
     tokensOutput: m.tokensOutput,
-    contextTokens: m.contextTokens
+    contextTokens: m.contextTokens,
+    metadata: m.metadata
   })));
 
   return apiMessages
     .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
-    .map(msg => ({
-      id: msg.id,
-      content: msg.content,
-      role: msg.role as 'user' | 'assistant' | 'system',
-      timestamp: new Date(msg.timestamp),
-      isLoading: false,
-      // Process actions - ensure dates are converted to Date objects
-      actions: msg.actions && msg.actions.length > 0
-        ? msg.actions.map(op => ({
-            ...op,
-            timestamp: new Date(op.timestamp)
-          }))
-        : undefined,
-      // Include token information
-      tokensInput: msg.tokensInput,
-      tokensOutput: msg.tokensOutput,
-      contextTokens: msg.contextTokens
-    }));
+    .map(msg => {
+      // Parse metadata for error information
+      let hasError = false;
+      let errorType: ErrorType = 'unknown';
+      
+      if (msg.metadata) {
+        try {
+          const metadata = JSON.parse(msg.metadata);
+          if (metadata.errorType) {
+            hasError = true;
+            errorType = metadata.errorType as ErrorType;
+          }
+        } catch (e) {
+          console.error('Error parsing message metadata:', e);
+        }
+      }
+      
+      return {
+        id: msg.id,
+        content: msg.content,
+        role: msg.role as 'user' | 'assistant' | 'system',
+        timestamp: new Date(msg.timestamp),
+        isLoading: false,
+        // Process actions - ensure dates are converted to Date objects
+        actions: msg.actions && msg.actions.length > 0
+          ? msg.actions.map(op => ({
+              ...op,
+              timestamp: new Date(op.timestamp)
+            }))
+          : undefined,
+        // Include token information
+        tokensInput: msg.tokensInput,
+        tokensOutput: msg.tokensOutput,
+        contextTokens: msg.contextTokens,
+        // Include error information
+        hasError,
+        errorType
+      };
+    });
 };
 
 const sendMessage = async (
   projectId: number,
-    content: string,
-    options?: { includeContext?: boolean; contextFiles?: string[]; imageFile?: File }
+  content: string,
+  options?: { includeContext?: boolean; contextFiles?: string[]; imageFile?: File }
 ): Promise<{ 
   message: ApiChatMessage; 
   success: boolean; 
@@ -115,44 +145,60 @@ const sendMessage = async (
   totalTokensInput?: number;
   totalTokensOutput?: number;
   contextTokens?: number;
+  error?: string;
+  errorType?: ErrorType;
 }> => {
-      let requestOptions: RequestInit;
-      
-      if (options?.imageFile) {
-        const formData = new FormData();
-        formData.append('content', content);
-        formData.append('includeContext', options.includeContext ? 'true' : 'false');
-        
-        if (options.contextFiles && options.contextFiles.length) {
-          formData.append('contextFiles', JSON.stringify(options.contextFiles));
-        }
-        
-        formData.append('image', options.imageFile);
-        
-        requestOptions = {
-          method: 'POST',
-          body: formData,
-        };
-      } else {
-        requestOptions = {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            content,
-            includeContext: options?.includeContext || false,
-            contextFiles: options?.contextFiles || [],
-          }),
-        };
-      }
-      
-      const response = await fetch(`/api/projects/${projectId}/chat`, requestOptions);
-      
+  let requestOptions: RequestInit;
+  
+  if (options?.imageFile) {
+    const formData = new FormData();
+    formData.append('content', content);
+    formData.append('includeContext', options.includeContext ? 'true' : 'false');
+    
+    if (options.contextFiles && options.contextFiles.length) {
+      formData.append('contextFiles', JSON.stringify(options.contextFiles));
+    }
+    
+    formData.append('image', options.imageFile);
+    
+    requestOptions = {
+      method: 'POST',
+      body: formData,
+    };
+  } else {
+    requestOptions = {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        content,
+        includeContext: options?.includeContext || false,
+        contextFiles: options?.contextFiles || [],
+      }),
+    };
+  }
+  
+  const response = await fetch(`/api/projects/${projectId}/chat`, requestOptions);
+  
   if (!response.ok) {
     if (response.status === 403) {
       throw new Error('LIMIT_REACHED');
     }
+    
+    // Try to parse error response for more details
+    try {
+      const errorData = await response.json();
+      if (errorData && typeof errorData === 'object' && 'errorType' in errorData) {
+        const error = new Error(errorData.error || 'Failed to send message');
+        Object.assign(error, { errorType: errorData.errorType });
+        throw error;
+      }
+    } catch (_parseError) {
+      // Ignore parse errors and continue with default error
+      console.error('Error parsing error response:', _parseError);
+    }
+    
     throw new Error(`Failed to send message: ${response.statusText}`);
   }
   
@@ -170,8 +216,14 @@ export default function ChatInterface({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [isError, setIsError] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [errorType, setErrorType] = useState<ErrorType>('unknown');
   const { userPromise } = useUser();
   const [user, setUser] = useState<User | null>(null);
+  
+  // Track the last message sent for regeneration
+  const [lastUserMessage, setLastUserMessage] = useState<string>('');
+  const [lastMessageOptions, setLastMessageOptions] = useState<MessageOptions | null>(null);
+  const [isRegenerating, setIsRegenerating] = useState(false);
   
   // Token usage state
   const [tokenUsage, setTokenUsage] = useState<TokenUsageMetrics>({
@@ -256,6 +308,10 @@ export default function ChatInterface({
       // Cancel any outgoing refetches
       await queryClient.cancelQueries({ queryKey: ['messages', projectId] });
       
+      // Save the last message for potential regeneration
+      setLastUserMessage(newMessage.content);
+      setLastMessageOptions(newMessage.options || null);
+      
       // Snapshot the previous value
       const previousMessages = queryClient.getQueryData(['messages', projectId]);
       
@@ -270,6 +326,11 @@ export default function ChatInterface({
           ? `${optimisticContent}\n\n[Uploading image: ${fileInfo}...]`
           : `[Uploading image: ${fileInfo}...]`;
       }
+      
+      // Reset any previous errors when sending a new message
+      setIsError(false);
+      setErrorMessage('');
+      setErrorType('unknown');
       
       // Optimistically update to the new value
       queryClient.setQueryData(['messages', projectId], (old: ChatMessageProps[] = []) => [
@@ -299,13 +360,18 @@ export default function ChatInterface({
         queryClient.setQueryData(['messages', projectId], context.previousMessages);
       }
       
-      // Set error state
+      // Set error state with type information if available
       setIsError(true);
       
       if (error instanceof Error && error.message === 'LIMIT_REACHED') {
         setErrorMessage('LIMIT_REACHED');
       } else {
-        setErrorMessage('Failed to send message');
+        // Try to extract error type
+        const errorType = error instanceof Error && 'errorType' in error 
+          ? (error as Error & { errorType: ErrorType }).errorType 
+          : 'unknown';
+        setErrorType(errorType as ErrorType);
+        setErrorMessage(error instanceof Error ? error.message : 'Failed to send message');
       }
     },
     onSuccess: (data) => {
@@ -359,6 +425,7 @@ export default function ChatInterface({
     // Reset error state
     setIsError(false);
     setErrorMessage('');
+    setErrorType('unknown');
     
     // Check if the message contains keywords for preview refresh or if it has an image
     if (content.toLowerCase().includes('update') || 
@@ -379,12 +446,45 @@ export default function ChatInterface({
     // Send the message
     await mutate({ content, options });
   };
-  
-  // Handle manual reset
-  const handleReset = () => {
-    setIsError(false);
-    setErrorMessage('');
-    refetch();
+
+  // Implement regeneration functionality
+  const handleRegenerate = async () => {
+    // Only regenerate if we have a last user message
+    if (!lastUserMessage && !lastMessageOptions?.imageFile) {
+      console.warn('Cannot regenerate: No previous message to resend');
+      return;
+    }
+    
+    setIsRegenerating(true);
+    
+    try {
+      // Find and remove all messages after the last user message
+      const lastUserMessageIndex = [...messages].reverse().findIndex(msg => msg.role === 'user');
+      
+      if (lastUserMessageIndex >= 0) {
+        const userMessageIndex = messages.length - 1 - lastUserMessageIndex;
+        const updatedMessages = messages.slice(0, userMessageIndex + 1);
+        
+        // Optimistically update messages to remove any failed assistant responses
+        queryClient.setQueryData(['messages', projectId], updatedMessages);
+        
+        // Clear error state
+        setIsError(false);
+        setErrorMessage('');
+        
+        // Re-send the last user message with proper type handling
+        await mutate({ 
+          content: lastUserMessage, 
+          options: lastMessageOptions || undefined 
+        });
+      }
+    } catch (error) {
+      console.error('Error during regeneration:', error);
+      // Keep error state but update the message
+      setErrorMessage('Failed to regenerate response');
+    } finally {
+      setIsRegenerating(false);
+    }
   };
   
   // Filter messages to only remove welcome message when there are user messages
@@ -435,6 +535,7 @@ export default function ChatInterface({
     return {
       ...message,
       showAvatar,
+      onRegenerate: message.role === 'assistant' && message.hasError ? handleRegenerate : undefined,
     };
   });
 
@@ -497,6 +598,15 @@ export default function ChatInterface({
                 tokensReceived: data.tokens.tokensReceived,
                 contextSize: data.tokens.contextSize
               });
+            } else if (data.type === 'error') {
+              console.log('🛑 Error event received', data);
+              // Set error state from SSE
+              setIsError(true);
+              setErrorType(data.errorType || 'unknown');
+              setErrorMessage(data.message || 'An error occurred');
+              
+              // Invalidate messages to show the error
+              queryClient.invalidateQueries({ queryKey: ['messages', projectId] });
             }
           }
         } catch (error) {
@@ -565,26 +675,45 @@ export default function ChatInterface({
                   } : undefined}
                   actions={message.actions}
                   showAvatar={message.showAvatar}
+                  hasError={message.hasError}
+                  errorType={message.errorType}
+                  onRegenerate={message.onRegenerate}
                 />
               ))}
             </>
           )}
-          {isError && (
-            <div>
-              {errorMessage === 'LIMIT_REACHED' ? (
-                <LimitReachedModal onReset={handleReset} />
-              ) : (
-                <div className="p-4 m-4 text-sm text-center bg-card border border-border rounded-md">
-                  <p className="text-destructive">There was an issue with the chat service. You can still send messages.</p>
-                  <button 
-                    onClick={handleReset} 
-                    className="mt-2 px-3 py-1.5 text-xs bg-secondary hover:bg-secondary/80 text-secondary-foreground rounded-md transition-colors"
-                  >
-                    Reset Chat
-                  </button>
-                </div>
-              )}
+          {isError && errorMessage !== 'LIMIT_REACHED' && (
+            <div className="p-4 m-4 text-sm text-center bg-card border border-destructive/30 rounded-md">
+              <div className="flex items-center justify-center gap-2 text-destructive mb-2">
+                <AlertTriangle className="h-5 w-5" />
+                <p className="font-medium">
+                  {errorType === 'timeout' && 'The request timed out'}
+                  {errorType === 'parsing' && 'Error processing AI response'}
+                  {errorType === 'processing' && 'Error processing your request'}
+                  {errorType === 'unknown' && 'There was an issue with the chat service'}
+                </p>
+              </div>
+              <button 
+                onClick={handleRegenerate} 
+                disabled={isRegenerating}
+                className="mt-1 px-3 py-1.5 text-xs bg-primary hover:bg-primary/80 text-primary-foreground rounded-md transition-colors flex items-center gap-1 mx-auto"
+              >
+                {isRegenerating ? (
+                  <>
+                    <Loader2 className="h-3 w-3 animate-spin" /> 
+                    Regenerating...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCcw className="h-3 w-3" /> 
+                    Regenerate Response
+                  </>
+                )}
+              </button>
             </div>
+          )}
+          {isError && errorMessage === 'LIMIT_REACHED' && (
+            <LimitReachedModal onReset={refetch} />
           )}
           <div ref={messagesEndRef} className="pb-6" />
         </div>
@@ -593,7 +722,7 @@ export default function ChatInterface({
       <div className="px-4 pb-0 relative">
         <ChatInput
           onSendMessage={handleSendMessage}
-          isLoading={isSending}
+          isLoading={isSending || isRegenerating}
           placeholder="Type your message..."
           data-testid="chat-input"
           className="chat-input"

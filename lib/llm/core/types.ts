@@ -2,21 +2,90 @@
  * Type definitions for the LLM core module
  */
 
+import { z } from 'zod';
+
 /**
- * Action interface for structured AI responses
+ * Action types
+ */
+export type ActionType =
+  | 'readFile'
+  | 'editFile'
+  | 'createFile'
+  | 'deleteFile'
+  | 'createDirectory'
+  | 'removeDirectory'
+  | 'search';
+
+/**
+ * Agent error types for better error handling
+ */
+export type AgentErrorType = 'timeout' | 'parsing' | 'processing' | 'unknown';
+
+export interface AgentError {
+  type: AgentErrorType;
+  message: string;
+  details?: string;
+}
+
+/**
+ * Action interface
  */
 export interface Action {
-  action:
-    | 'editFile'
-    | 'createFile'
-    | 'deleteFile'
-    | 'search'
-    | 'readFile'
-    | 'createDirectory'
-    | 'removeDirectory';
+  action: ActionType;
   filePath: string;
   content?: string;
+  match?: string;
   message: string;
+}
+
+/**
+ * Schemas for validation
+ */
+export const actionSchema = z.object({
+  action: z.enum([
+    'readFile',
+    'editFile',
+    'createFile',
+    'deleteFile',
+    'createDirectory',
+    'removeDirectory',
+    'search',
+  ]),
+  filePath: z.string(),
+  content: z.string().optional(),
+  match: z.string().optional(),
+  message: z.string(),
+});
+
+/**
+ * Helper functions
+ */
+export function normalizeAction(action: Action): Action {
+  // Return a normalized copy of the action
+  return {
+    action: action.action,
+    filePath: normalizePath(action.filePath),
+    content: action.content,
+    match: action.match,
+    message: action.message || '',
+  };
+}
+
+export function normalizePath(path: string): string {
+  // Remove leading and trailing whitespace
+  path = path.trim();
+
+  // Remove leading slashes
+  if (path.startsWith('/')) {
+    path = path.substring(1);
+  }
+
+  // Remove any instances of './' at the beginning
+  if (path.startsWith('./')) {
+    path = path.substring(2);
+  }
+
+  return path;
 }
 
 /**
@@ -25,48 +94,50 @@ export interface Action {
  * @returns Boolean indicating if the action is valid
  */
 export function isValidAction(action: unknown): action is Action {
-  if (action === null || typeof action !== 'object') {
+  if (typeof action !== 'object' || action === null) {
     return false;
   }
 
-  const actionObj = action as Record<string, unknown>;
+  const typedAction = action as Partial<Action>;
 
-  return (
-    'action' in actionObj &&
-    typeof actionObj.action === 'string' &&
-    'filePath' in actionObj &&
-    typeof actionObj.filePath === 'string' &&
-    ('content' in actionObj ? typeof actionObj.content === 'string' : true) &&
-    'message' in actionObj &&
-    typeof actionObj.message === 'string'
-  );
+  // Check required fields
+  if (typeof typedAction.action !== 'string' || typeof typedAction.filePath !== 'string') {
+    return false;
+  }
+
+  // Check action types
+  const validActions: string[] = [
+    'readFile',
+    'editFile',
+    'createFile',
+    'deleteFile',
+    'createDirectory',
+    'removeDirectory',
+    'search',
+  ];
+
+  if (!validActions.includes(typedAction.action)) {
+    return false;
+  }
+
+  // Check content requirement for edit and create actions
+  if (
+    (typedAction.action === 'editFile' || typedAction.action === 'createFile') &&
+    typeof typedAction.content !== 'string'
+  ) {
+    return false;
+  }
+
+  return true;
 }
 
 /**
- * Normalize action type to ensure compatibility with tools
- * @param action The action to normalize
- * @returns The normalized action
+ * Action execution result type - updated to include error information
  */
-export function normalizeAction(action: Action): Action {
-  // Make a copy of the action to avoid modifying the original
-  const normalizedAction = { ...action };
-
-  // Get the lowercase action for comparison
-  const actionLower = normalizedAction.action.toLowerCase().trim();
-
-  // Normalize action type based on lowercase comparison
-  if (actionLower === 'createfile') normalizedAction.action = 'createFile';
-  else if (actionLower === 'editfile') normalizedAction.action = 'editFile';
-  else if (actionLower === 'deletefile') normalizedAction.action = 'deleteFile';
-  else if (actionLower === 'createdirectory') normalizedAction.action = 'createDirectory';
-  else if (actionLower === 'removedirectory') normalizedAction.action = 'removeDirectory';
-  else if (actionLower === 'read') normalizedAction.action = 'Read';
-  else if (actionLower === 'readfile') normalizedAction.action = 'readFile';
-
-  // Ensure message exists
-  if (!normalizedAction.message) {
-    normalizedAction.message = `Performing ${normalizedAction.action} on ${normalizedAction.filePath}`;
-  }
-
-  return normalizedAction;
+export interface ActionExecutionResult {
+  success: boolean;
+  error?: string;
+  errorType?: AgentErrorType;
+  errorDetails?: string;
+  actions?: Action[];
 }

@@ -1,12 +1,15 @@
 'use client';
 
 import { formatDistanceToNow } from 'date-fns';
-import { User, CircleIcon } from 'lucide-react';
+import { User, CircleIcon, AlertCircle, RefreshCcw } from 'lucide-react';
 import Image from 'next/image';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import AssistantActionsCard, { Action } from './assistant-actions-card';
+
+// Error types from the agent
+export type ErrorType = 'timeout' | 'parsing' | 'processing' | 'unknown';
 
 export interface ChatMessageProps {
   id?: number;
@@ -22,6 +25,11 @@ export interface ChatMessageProps {
   };
   actions?: Action[];
   showAvatar?: boolean;
+  // Error handling properties
+  hasError?: boolean;
+  errorType?: ErrorType;
+  onRegenerate?: () => void;
+  // Token metrics
   tokensInput?: number;
   tokensOutput?: number;
   contextTokens?: number;
@@ -36,10 +44,28 @@ export default function ChatMessage({
   user,
   actions,
   showAvatar = true,
+  hasError = false,
+  errorType = 'unknown',
+  onRegenerate,
 }: ChatMessageProps) {
   const isUser = role === 'user';
   // Animate all "Thinking..." messages from assistant (whether loading or not)
   const isThinking = role === 'assistant' && content === 'Thinking...';
+
+  // Get appropriate error message based on error type
+  const getErrorMessage = (type: ErrorType): string => {
+    switch (type) {
+      case 'timeout':
+        return 'The response timed out';
+      case 'parsing':
+        return 'Error processing AI response';
+      case 'processing':
+        return 'Error processing your request';
+      case 'unknown':
+      default:
+        return 'An error occurred';
+    }
+  };
 
   // Function to get file name from URL
   const getFileName = (url: string): string => {
@@ -109,6 +135,7 @@ export default function ChatMessage({
         isUser ? 'bg-background' : 'bg-background',
         !showAvatar && 'pt-1', // Reduce top padding for consecutive messages
         isLoading && 'opacity-50',
+        hasError && !isUser && 'border-l-2 border-l-destructive/40', // Red left border for error messages
         className
       )}
       role="listitem"
@@ -154,7 +181,8 @@ export default function ChatMessage({
         
         <div className={cn(
           "prose prose-xs dark:prose-invert max-w-none text-sm [overflow-wrap:anywhere]",
-          !showAvatar && "mt-0" // Remove top margin for consecutive messages
+          !showAvatar && "mt-0", // Remove top margin for consecutive messages
+          hasError && !isUser && "text-muted-foreground" // Muted text for error messages
         )}>
           {isThinking ? (
             <p className="text-muted-foreground animate-pulse">Thinking...</p>
@@ -203,6 +231,24 @@ export default function ChatMessage({
           {!isUser && actions && actions.length > 0 && (
             <div className="w-full">
               <AssistantActionsCard operations={actions} />
+            </div>
+          )}
+
+          {/* Display error message if there's an error */}
+          {!isUser && hasError && (
+            <div className="mt-3 p-2 rounded-md bg-destructive/10 border border-destructive/20 text-sm">
+              <div className="flex items-center gap-2 text-destructive">
+                <AlertCircle className="h-4 w-4" />
+                <span>{getErrorMessage(errorType)}</span>
+              </div>
+              {onRegenerate && (
+                <button
+                  onClick={onRegenerate}
+                  className="mt-2 px-2 py-1 text-xs bg-primary hover:bg-primary/80 text-primary-foreground rounded-md transition-colors flex items-center gap-1 w-fit"
+                >
+                  <RefreshCcw className="h-3 w-3" /> Regenerate response
+                </button>
+              )}
             </div>
           )}
         </div>
