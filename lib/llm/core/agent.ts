@@ -116,6 +116,17 @@ export class Agent {
 
   /**
    * Run the agentic workflow where the model can iteratively read files and gather context
+   *
+   * This method orchestrates the agent's thinking process:
+   * 1. Iteratively gathers context by reading files
+   * 2. Tracks files that have been read to avoid duplicates
+   * 3. Monitors iteration count to prevent infinite loops
+   * 4. Handles the transition from thinking to execution mode
+   *
+   * @param projectId - The ID of the current project
+   * @param prompt - The user's original request prompt
+   * @param context - Initial context for the agent
+   * @returns A result object with actions to execute or an error
    */
   private async runAgentic(
     projectId: number,
@@ -124,150 +135,237 @@ export class Agent {
   ): Promise<ActionExecutionResult> {
     console.log(`🔄 Running agentic workflow for project ID: ${projectId}`);
 
-    let isThinking = true;
+    const isThinking = true; // This is only used for the initial loop condition
     const executionLog: string[] = [];
     const gatheredContext: Record<string, string> = {};
     const readFiles = new Set<string>(); // Track unique files that have been read
     let iterationCount = 0;
 
-    // Fetch chat history for context
-    const chatHistory = await this.fetchChatHistory(projectId);
-    console.log(`📝 Fetched ${chatHistory.length} previous chat messages for context`);
+    try {
+      // Fetch chat history for context
+      const chatHistory = await this.fetchChatHistory(projectId);
+      console.log(`📝 Fetched ${chatHistory.length} previous chat messages for context`);
 
-    // Initial context
-    let currentContext = context;
+      // Initial context
+      let currentContext = context;
 
-    // Iterative loop for agentic behavior
-    while (isThinking && iterationCount < this.MAX_ITERATIONS) {
-      iterationCount++;
-      console.log(`🔄 Starting iteration ${iterationCount} of agentic workflow`);
+      // Iterative loop for agentic behavior
+      while (isThinking && iterationCount < this.MAX_ITERATIONS) {
+        iterationCount++;
+        console.log(`🔄 Starting iteration ${iterationCount} of agentic workflow`);
 
-      // Send a "Thinking..." message before each AI completion call
-      await this.sendOperationUpdate('read', '', 'Thinking...', 'pending');
+        try {
+          // Send a "Thinking..." message before each AI completion call
+          await this.sendOperationUpdate('read', '', 'Thinking...', 'pending');
 
-      // Add read files tracking to the context
-      if (readFiles.size > 0) {
-        const filesReadSection = `\n\n### Already Read Files - DO NOT READ THESE AGAIN:\n${Array.from(
-          readFiles
-        )
-          .map((file, i) => `${i + 1}. ${file}`)
-          .join('\n')}\n`;
-        // Add this near the top of the context for visibility
-        currentContext = this.addAlreadyReadFilesSection(currentContext, filesReadSection);
-      }
+          // Update context with read files tracking and iteration warnings
+          currentContext = this.updateContextWithTracking(
+            currentContext,
+            readFiles,
+            iterationCount
+          );
 
-      // Add iteration limit warning if approaching max
-      if (iterationCount >= Math.floor(this.MAX_ITERATIONS * 0.6)) {
-        const warningMsg = `\n\n### WARNING - APPROACHING ITERATION LIMIT:\nYou have used ${iterationCount} of ${this.MAX_ITERATIONS} available iterations. Move to implementation phase soon to avoid termination.\n`;
-        currentContext = this.addWarningSection(currentContext, warningMsg);
-      }
+          // Generate and parse AI response
+          const actions = await this.generateAndParseAgentResponse(
+            prompt,
+            currentContext,
+            chatHistory
+          );
 
-      // Build prompt and get AI response
-      const messages = buildNaivePrompt(prompt, currentContext, chatHistory);
-      console.log(`🤖 Generating agent response for iteration ${iterationCount}`);
-      const aiResponse = await generateAICompletion(messages, {
-        timeoutMs: this.DEFAULT_TIMEOUT_MS,
-        maxTokens: this.DEFAULT_MAX_TOKENS,
-      });
-
-      // Parse the AI response
-      console.log(`🔍 Parsing AI response for iteration ${iterationCount}`);
-      const parsedResponse = this.parseAgentResponse(aiResponse);
-      console.log(
-        `📋 Parsed response for iteration ${iterationCount}:`,
-        JSON.stringify(parsedResponse, null, 2)
-      );
-
-      // Check if the agent is still thinking or ready to execute
-      isThinking = parsedResponse.thinking;
-
-      if (isThinking) {
-        // Check for duplicate read requests
-        const duplicateReads = parsedResponse.actions
-          .filter(a => a.action === 'readFile' && readFiles.has(a.filePath))
-          .map(a => a.filePath);
-
-        if (duplicateReads.length > 0) {
-          console.warn(`⚠️ Agent is trying to reread files: ${duplicateReads.join(', ')}`);
-
-          // Force execution mode if too many duplicates or too many iterations
-          if (
-            duplicateReads.length >= 3 ||
-            iterationCount >= Math.floor(this.MAX_ITERATIONS * 0.8)
-          ) {
-            console.warn(
-              `⚠️ Forcing agent to execution mode due to duplicate reads or high iteration count`
+          // Process the parsed response
+          if (!actions.thinking) {
+            // Agent is ready to execute changes
+            console.log(
+              `✅ Agent is ready to execute changes, found ${actions.actions.length} actions`
             );
-            // Add a final warning to context that we're forcing execution
-            const forcedExecutionMsg = `\n\n### SYSTEM NOTICE - FORCING EXECUTION MODE:\nYou've attempted to reread files multiple times or have used too many iterations. Based on the files you've already read, proceed to implementation immediately.\n`;
-            currentContext = this.addWarningSection(currentContext, forcedExecutionMsg);
 
-            // One more attempt with the forced execution message
-            const finalMessages = buildNaivePrompt(prompt, currentContext, chatHistory);
-            console.log(`🤖 Generating final agent response before forcing execution`);
-            const finalResponse = await generateAICompletion(finalMessages, {
-              timeoutMs: this.DEFAULT_TIMEOUT_MS,
-              maxTokens: this.DEFAULT_MAX_TOKENS,
-            });
+            return {
+              success: true,
+              actions: actions.actions,
+            };
+          }
 
-            // Parse the response but override thinking to false
-            const finalParsedResponse = this.parseAgentResponse(finalResponse);
-            finalParsedResponse.thinking = false;
+          // Check for duplicate read requests and potentially force execution mode
+          if (await this.shouldForceExecution(actions.actions, readFiles, iterationCount)) {
+            // Force execution mode with one final attempt
+            const finalActions = await this.forceExecutionMode(prompt, currentContext, chatHistory);
+            return {
+              success: true,
+              actions: finalActions,
+            };
+          }
 
-            if (finalParsedResponse.actions.length > 0) {
-              // Use the actions from the final response
-              return {
-                success: true,
-                actions: finalParsedResponse.actions,
-              };
-            } else {
-              // No actions returned, return error
-              return {
-                success: false,
-                error: 'Agent unable to produce actions after multiple iterations.',
-              };
-            }
+          // Execute read actions to gather more context
+          await this.executeReadActionsForContext(
+            actions.actions,
+            projectId,
+            executionLog,
+            gatheredContext,
+            readFiles
+          );
+
+          // Update context with gathered information
+          currentContext = this.updateContext(currentContext, gatheredContext, executionLog);
+        } catch (iterationError) {
+          console.error(`❌ Error in iteration ${iterationCount}:`, iterationError);
+
+          // Add error information to the context
+          const errorMsg = `\n\n### ERROR IN PREVIOUS ITERATION:\n${iterationError}\n\nPlease try a different approach.\n`;
+          currentContext = this.addSectionToContext(
+            currentContext,
+            errorMsg,
+            '### ERROR IN PREVIOUS ITERATION:'
+          );
+
+          // Continue to next iteration unless we're at the limit
+          if (iterationCount >= this.MAX_ITERATIONS - 1) {
+            throw iterationError;
           }
         }
+      }
 
-        // Execute read actions to gather more context
-        await this.executeReadActionsForContext(
-          parsedResponse.actions,
-          projectId,
-          executionLog,
-          gatheredContext,
-          readFiles // Pass read files set to track what's been read
-        );
-
-        // Update context with gathered information
-        currentContext = this.updateContext(currentContext, gatheredContext, executionLog);
-      } else {
-        console.log(
-          `✅ Agent is ready to execute changes, found ${parsedResponse.actions.length} actions`
-        );
-
-        // Return the final actions for execution
+      if (iterationCount >= this.MAX_ITERATIONS) {
+        console.warn(`⚠️ Reached maximum iterations (${this.MAX_ITERATIONS}) in agentic workflow`);
         return {
-          success: true,
-          actions: parsedResponse.actions,
+          success: false,
+          error: `Reached maximum iterations (${this.MAX_ITERATIONS}) in agentic workflow`,
         };
       }
-    }
 
-    if (iterationCount >= this.MAX_ITERATIONS) {
-      console.warn(`⚠️ Reached maximum iterations (${this.MAX_ITERATIONS}) in agentic workflow`);
+      // We shouldn't reach here if the workflow is properly structured
+      return { success: false, error: 'Agentic workflow completed without actions' };
+    } catch (error) {
+      console.error(`❌ Error in runAgentic:`, error);
       return {
         success: false,
-        error: `Reached maximum iterations (${this.MAX_ITERATIONS}) in agentic workflow`,
+        error: `Error in agentic workflow: ${error instanceof Error ? error.message : String(error)}`,
       };
     }
+  }
 
-    // We shouldn't reach here if the workflow is properly structured
-    return { success: false, error: 'Agentic workflow completed without actions' };
+  /**
+   * Update context with tracking information for already read files and iteration warnings
+   */
+  private updateContextWithTracking(
+    currentContext: string,
+    readFiles: Set<string>,
+    iterationCount: number
+  ): string {
+    let updatedContext = currentContext;
+
+    // Add read files tracking to the context
+    if (readFiles.size > 0) {
+      const filesReadSection = `\n\n### Already Read Files - DO NOT READ THESE AGAIN:\n${Array.from(
+        readFiles
+      )
+        .map((file, i) => `${i + 1}. ${file}`)
+        .join('\n')}\n`;
+
+      updatedContext = this.addAlreadyReadFilesSection(updatedContext, filesReadSection);
+    }
+
+    // Add iteration limit warning if approaching max
+    if (iterationCount >= Math.floor(this.MAX_ITERATIONS * 0.6)) {
+      const warningMsg = `\n\n### WARNING - APPROACHING ITERATION LIMIT:\nYou have used ${iterationCount} of ${this.MAX_ITERATIONS} available iterations. Move to implementation phase soon to avoid termination.\n`;
+      updatedContext = this.addWarningSection(updatedContext, warningMsg);
+    }
+
+    return updatedContext;
+  }
+
+  /**
+   * Generate a response from the AI and parse it into the agent's thinking state and actions
+   */
+  private async generateAndParseAgentResponse(
+    prompt: string,
+    currentContext: string,
+    chatHistory: { role: 'system' | 'user' | 'assistant'; content: string }[]
+  ): Promise<{ thinking: boolean; actions: Action[] }> {
+    // Build prompt and get AI response
+    const messages = buildNaivePrompt(prompt, currentContext, chatHistory);
+    console.log(`🤖 Generating agent response`);
+
+    const aiResponse = await generateAICompletion(messages, {
+      timeoutMs: this.DEFAULT_TIMEOUT_MS,
+      maxTokens: this.DEFAULT_MAX_TOKENS,
+    });
+
+    // Parse the AI response
+    console.log(`🔍 Parsing AI response`);
+    const parsedResponse = this.parseAgentResponse(aiResponse);
+    console.log(`📋 Parsed response:`, JSON.stringify(parsedResponse, null, 2));
+
+    return parsedResponse;
+  }
+
+  /**
+   * Determine if we should force the agent into execution mode based on read actions
+   */
+  private async shouldForceExecution(
+    actions: Action[],
+    readFiles: Set<string>,
+    iterationCount: number
+  ): Promise<boolean> {
+    // Check for duplicate read requests
+    const duplicateReads = actions
+      .filter(a => a.action === 'readFile' && readFiles.has(a.filePath))
+      .map(a => a.filePath);
+
+    if (duplicateReads.length > 0) {
+      console.warn(`⚠️ Agent is trying to reread files: ${duplicateReads.join(', ')}`);
+
+      // Force execution mode if too many duplicates or too many iterations
+      return duplicateReads.length >= 3 || iterationCount >= Math.floor(this.MAX_ITERATIONS * 0.8);
+    }
+
+    return false;
+  }
+
+  /**
+   * Force the agent into execution mode with a final attempt
+   */
+  private async forceExecutionMode(
+    prompt: string,
+    currentContext: string,
+    chatHistory: { role: 'system' | 'user' | 'assistant'; content: string }[]
+  ): Promise<Action[]> {
+    console.warn(
+      `⚠️ Forcing agent to execution mode due to duplicate reads or high iteration count`
+    );
+
+    // Add a final warning to context that we're forcing execution
+    const forcedExecutionMsg = `\n\n### SYSTEM NOTICE - FORCING EXECUTION MODE:\nYou've attempted to reread files multiple times or have used too many iterations. Based on the files you've already read, proceed to implementation immediately.\n`;
+    const finalContext = this.addWarningSection(currentContext, forcedExecutionMsg);
+
+    // One more attempt with the forced execution message
+    const finalMessages = buildNaivePrompt(prompt, finalContext, chatHistory);
+    console.log(`🤖 Generating final agent response before forcing execution`);
+
+    const finalResponse = await generateAICompletion(finalMessages, {
+      timeoutMs: this.DEFAULT_TIMEOUT_MS,
+      maxTokens: this.DEFAULT_MAX_TOKENS,
+    });
+
+    // Parse the response but override thinking to false
+    const finalParsedResponse = this.parseAgentResponse(finalResponse);
+    finalParsedResponse.thinking = false;
+
+    if (finalParsedResponse.actions.length > 0) {
+      // Use the actions from the final response
+      return finalParsedResponse.actions;
+    } else {
+      // No actions returned, throw error
+      throw new Error('Agent unable to produce actions after multiple iterations.');
+    }
   }
 
   /**
    * Parse the AI response to extract structured agent response
+   *
+   * Processes the LLM response into a structured format with thinking state and actions
+   *
+   * @param response - The raw response from the LLM
+   * @returns Structured object with thinking state and valid actions
    */
   private parseAgentResponse(response: string | { text: string; modelType: string }): {
     thinking: boolean;
@@ -289,17 +387,17 @@ export class Agent {
         cleanedResponse.substring(0, 200) + (cleanedResponse.length > 200 ? '...' : '')
       );
 
-      // Parse the response as JSON
+      // Default values for the result
+      const result = {
+        thinking: true, // Default to thinking mode
+        actions: [] as Action[],
+      };
+
       try {
+        // Parse the response as JSON
         const parsedResponse = JSON.parse(cleanedResponse) as {
           thinking?: boolean;
           actions?: unknown[];
-        };
-
-        // Default values
-        const result = {
-          thinking: true, // Default to thinking mode
-          actions: [] as Action[],
         };
 
         // Set thinking state if provided
@@ -313,15 +411,19 @@ export class Agent {
             `✅ Successfully parsed JSON: ${parsedResponse.actions.length} potential actions found`
           );
 
-          // Validate each action
-          parsedResponse.actions.forEach((action, idx) => {
-            if (isValidAction(action)) {
-              result.actions.push(normalizeAction(action as Action));
-            } else {
-              console.warn(`⚠️ Invalid action at index ${idx}`);
-            }
-          });
+          // Validate each action and add to result
+          const validActions = parsedResponse.actions
+            .map((action, idx) => {
+              if (isValidAction(action)) {
+                return normalizeAction(action as Action);
+              } else {
+                console.warn(`⚠️ Invalid action at index ${idx}: ${JSON.stringify(action)}`);
+                return null;
+              }
+            })
+            .filter((action): action is Action => action !== null);
 
+          result.actions = validActions;
           console.log(`✅ Found ${result.actions.length} valid actions`);
         } else {
           console.warn(`⚠️ Response parsed as JSON but actions is not an array or is missing`);
@@ -329,29 +431,34 @@ export class Agent {
 
         return result;
       } catch (jsonError) {
-        console.error(`❌ Error parsing JSON:`, jsonError);
-
-        // Show context around the error if possible
-        if (jsonError instanceof SyntaxError && jsonError.message.includes('position')) {
-          const posMatch = jsonError.message.match(/position (\d+)/);
-          if (posMatch && posMatch[1]) {
-            const errorPos = parseInt(posMatch[1], 10);
-            const start = Math.max(0, errorPos - 30);
-            const end = Math.min(cleanedResponse.length, errorPos + 30);
-
-            console.log(`⚠️ JSON error at position ${errorPos}. Context around error:`);
-            console.log(
-              `Error context: ...${cleanedResponse.substring(start, errorPos)}[ERROR]${cleanedResponse.substring(errorPos, end)}...`
-            );
-          }
-        }
+        this.logJsonParseError(jsonError, cleanedResponse);
+        return result; // Return default structure on JSON parse error
       }
-
-      // Return default structure on error
-      return { thinking: true, actions: [] };
     } catch (error) {
       console.error('❌ Error parsing agent response:', error);
-      return { thinking: true, actions: [] };
+      return { thinking: true, actions: [] }; // Return default structure on general error
+    }
+  }
+
+  /**
+   * Log JSON parsing errors with helpful context
+   */
+  private logJsonParseError(jsonError: unknown, cleanedResponse: string): void {
+    console.error(`❌ Error parsing JSON:`, jsonError);
+
+    // Show context around the error if possible
+    if (jsonError instanceof SyntaxError && jsonError.message.includes('position')) {
+      const posMatch = jsonError.message.match(/position (\d+)/);
+      if (posMatch && posMatch[1]) {
+        const errorPos = parseInt(posMatch[1], 10);
+        const start = Math.max(0, errorPos - 30);
+        const end = Math.min(cleanedResponse.length, errorPos + 30);
+
+        console.log(`⚠️ JSON error at position ${errorPos}. Context around error:`);
+        console.log(
+          `Error context: ...${cleanedResponse.substring(start, errorPos)}[ERROR]${cleanedResponse.substring(errorPos, end)}...`
+        );
+      }
     }
   }
 
@@ -838,6 +945,13 @@ export class Agent {
     console.log(`🧠 Agent is still in thinking mode, executing read actions...`);
     const { countTokens } = await import('../utils/context');
 
+    // Filter actions to only include read actions
+    const readActions = actions.filter(action => action.action === 'readFile');
+    if (readActions.length === 0) {
+      console.log('No read actions to execute');
+      return;
+    }
+
     // Get current context size from the latest message
     const latestMessages = await db
       .select()
@@ -862,101 +976,105 @@ export class Agent {
 
     let totalTokensInput = Number(tokenTotals[0]?.totalInput || 0);
 
-    for (const action of actions) {
-      if (action.action === 'readFile') {
-        console.log(`📖 Reading file: ${action.filePath}`);
-        executionLog.push(`Read ${action.filePath}`);
+    // Get the readFile tool once for all read actions
+    const readTool = getTool('readFile');
+    if (!readTool) {
+      console.error(`❌ readFile tool not found`);
+      return;
+    }
 
-        // Track this file as being read
-        readFiles.add(action.filePath);
+    for (const action of readActions) {
+      console.log(`📖 Reading file: ${action.filePath}`);
+      executionLog.push(`Read ${action.filePath}`);
 
-        try {
-          // Get the readFile tool
-          const readTool = getTool('readFile');
-          if (!readTool) {
-            console.error(`❌ readFile tool not found`);
-            continue;
-          }
+      // Skip already read files
+      if (readFiles.has(action.filePath)) {
+        console.warn(`⚠️ Skip reading already read file: ${action.filePath}`);
+        continue;
+      }
 
-          // Send an update that we're reading this file
-          const pendingResult = await this.sendOperationUpdate(
-            'read',
-            action.filePath,
-            action.message,
-            'pending'
-          );
+      // Track this file as being read
+      readFiles.add(action.filePath);
 
-          // Store the message ID to update later
-          const messageId = pendingResult.message?.id;
+      try {
+        // Send an update that we're reading this file
+        const pendingResult = await this.sendOperationUpdate(
+          'read',
+          action.filePath,
+          action.message,
+          'pending'
+        );
 
-          if (!messageId) {
-            console.error(`❌ Failed to create pending message for reading ${action.filePath}`);
-            continue;
-          }
+        // Store the message ID to update later
+        const messageId = pendingResult.message?.id;
 
-          // Execute the read tool
-          const fullPath = path.join(getProjectPath(projectId), action.filePath);
-          const result = await readTool.execute(fullPath);
-
-          if (typeof result === 'object' && result !== null && 'success' in result) {
-            if (result.success && 'content' in result) {
-              const fileContent = result.content as string;
-
-              // Count tokens in the file content
-              const fileTokens = countTokens(fileContent);
-
-              // Update context size - this adds to the current context window
-              currentContextSize += fileTokens;
-
-              // Update total tokens input - file content is sent to the LLM
-              totalTokensInput += fileTokens;
-
-              // Log the current context size
-              console.log(
-                `📊 Current context size: ${currentContextSize} tokens (added ${fileTokens} tokens from ${action.filePath})`
-              );
-              console.log(`📊 Total tokens input: ${totalTokensInput} tokens`);
-
-              // Update the database to reflect the new context size for the current request
-              // and add the file tokens to tokensInput since they're sent to the LLM
-              await db
-                .update(chatMessages)
-                .set({
-                  contextTokens: currentContextSize,
-                  tokensInput: fileTokens, // Count file tokens as input tokens
-                })
-                .where(eq(chatMessages.id, messageId));
-
-              // Store the file content in gathered context
-              gatheredContext[action.filePath] = fileContent;
-              console.log(`✅ Successfully read file: ${action.filePath} (${fileTokens} tokens)`);
-
-              // Update the existing message's status
-              await this.updateActionStatus(messageId, action.filePath, 'read', 'completed');
-            } else {
-              console.error(`❌ Failed to read file: ${action.filePath}`);
-              gatheredContext[action.filePath] = `Error: Could not read file`;
-
-              // Update with error status
-              await this.updateActionStatus(messageId, action.filePath, 'read', 'error');
-              await this.updateMessageContent(
-                messageId,
-                `Error reading ${action.filePath}: Could not read file`
-              );
-            }
-          }
-        } catch (error) {
-          console.error(`❌ Error reading file ${action.filePath}:`, error);
-          gatheredContext[action.filePath] = `Error: ${error}`;
-
-          // Since we couldn't track the message ID in this case, create a new error message
-          await this.sendOperationUpdate(
-            'error',
-            action.filePath,
-            `Error reading ${action.filePath}: ${error}`,
-            'error'
-          );
+        if (!messageId) {
+          console.error(`❌ Failed to create pending message for reading ${action.filePath}`);
+          continue;
         }
+
+        // Execute the read tool
+        const fullPath = path.join(getProjectPath(projectId), action.filePath);
+        const result = await readTool.execute(fullPath);
+
+        if (typeof result === 'object' && result !== null && 'success' in result) {
+          if (result.success && 'content' in result) {
+            const fileContent = result.content as string;
+
+            // Count tokens in the file content
+            const fileTokens = countTokens(fileContent);
+
+            // Update context size - this adds to the current context window
+            currentContextSize += fileTokens;
+
+            // Update total tokens input - file content is sent to the LLM
+            totalTokensInput += fileTokens;
+
+            // Log the current context size
+            console.log(
+              `📊 Current context size: ${currentContextSize} tokens (added ${fileTokens} tokens from ${action.filePath})`
+            );
+            console.log(`📊 Total tokens input: ${totalTokensInput} tokens`);
+
+            // Update the database to reflect the new context size for the current request
+            // and add the file tokens to tokensInput since they're sent to the LLM
+            await db
+              .update(chatMessages)
+              .set({
+                contextTokens: currentContextSize,
+                tokensInput: fileTokens, // Count file tokens as input tokens
+              })
+              .where(eq(chatMessages.id, messageId));
+
+            // Store the file content in gathered context
+            gatheredContext[action.filePath] = fileContent;
+            console.log(`✅ Successfully read file: ${action.filePath} (${fileTokens} tokens)`);
+
+            // Update the existing message's status
+            await this.updateActionStatus(messageId, action.filePath, 'read', 'completed');
+          } else {
+            console.error(`❌ Failed to read file: ${action.filePath}`);
+            gatheredContext[action.filePath] = `Error: Could not read file`;
+
+            // Update with error status
+            await this.updateActionStatus(messageId, action.filePath, 'read', 'error');
+            await this.updateMessageContent(
+              messageId,
+              `Error reading ${action.filePath}: Could not read file`
+            );
+          }
+        }
+      } catch (error) {
+        console.error(`❌ Error reading file ${action.filePath}:`, error);
+        gatheredContext[action.filePath] = `Error: ${error}`;
+
+        // Since we couldn't track the message ID in this case, create a new error message
+        await this.sendOperationUpdate(
+          'error',
+          action.filePath,
+          `Error reading ${action.filePath}: ${error}`,
+          'error'
+        );
       }
     }
   }
@@ -1042,47 +1160,56 @@ export class Agent {
   }
 
   /**
+   * Add a section to the context at a specified position
+   * @param context The current context string
+   * @param sectionContent The content to add
+   * @param sectionIdentifier The identifier of the section for removal/replacement
+   * @returns Updated context with the new section added
+   */
+  private addSectionToContext(
+    context: string,
+    sectionContent: string,
+    sectionIdentifier: string
+  ): string {
+    try {
+      // Remove any existing section with the same identifier
+      const sectionRegex = new RegExp(`\n\n${sectionIdentifier}[\\s\\S]*?(?=\n\n### |$)`, 'g');
+      const cleanContext = context.replace(sectionRegex, '').trim();
+
+      // Add the section near the beginning, after any initial instructions
+      const parts = cleanContext.split('\n\n', 1);
+      if (parts.length > 0) {
+        const firstPart = parts[0];
+        const restOfContext = cleanContext.substring(firstPart.length);
+        return firstPart + '\n\n' + sectionContent + restOfContext;
+      }
+
+      // If splitting didn't work, just prepend
+      return sectionContent + '\n\n' + cleanContext;
+    } catch (error) {
+      console.error(`Error adding section to context: ${error}`);
+      // Fall back to simple concatenation in case of error
+      return sectionContent + '\n\n' + context;
+    }
+  }
+
+  /**
    * Add already read files section to the context
    */
   private addAlreadyReadFilesSection(context: string, filesReadSection: string): string {
-    // Remove any existing "Already Read Files" section
-    const cleanContext = context.replace(
-      /\n\n### Already Read Files - DO NOT READ THESE AGAIN:[\s\S]*?(?=\n\n### |$)/,
-      ''
+    return this.addSectionToContext(
+      context,
+      filesReadSection,
+      '### Already Read Files - DO NOT READ THESE AGAIN:'
     );
-
-    // Add the new section near the beginning, after any initial instructions
-    const parts = cleanContext.split('\n\n', 1);
-    if (parts.length > 0) {
-      const firstPart = parts[0];
-      const restOfContext = cleanContext.substring(firstPart.length);
-      return firstPart + filesReadSection + restOfContext;
-    }
-
-    // If splitting didn't work, just prepend
-    return filesReadSection + cleanContext;
   }
 
   /**
    * Add warning section to the context
    */
   private addWarningSection(context: string, warningMsg: string): string {
-    // Remove any existing warning with the same beginning
-    const warningStart = warningMsg.split('\n')[0];
-    const cleanContext = context.replace(
-      new RegExp(`${warningStart}[\\s\\S]*?(?=\\n\\n### |$)`),
-      ''
-    );
-
-    // Add the warning near the beginning for visibility
-    const parts = cleanContext.split('\n\n', 1);
-    if (parts.length > 0) {
-      const firstPart = parts[0];
-      const restOfContext = cleanContext.substring(firstPart.length);
-      return firstPart + warningMsg + restOfContext;
-    }
-
-    // If splitting didn't work, just prepend
-    return warningMsg + cleanContext;
+    // Extract the section identifier from the warning message
+    const warningIdentifier = warningMsg.split('\n')[0];
+    return this.addSectionToContext(context, warningMsg, warningIdentifier);
   }
 }

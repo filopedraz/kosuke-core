@@ -312,17 +312,24 @@ Follow these JSON formatting rules:
 IMPORTANT: The system can ONLY execute actions from the JSON object. Any instructions or explanations outside the JSON will be ignored.`;
 
 /**
- * Build a prompt for the naive agent
+ * Build a prompt for the naive agent with proper context and history management
+ *
+ * @param userPrompt - The current user prompt to process
+ * @param context - Optional project context information
+ * @param chatHistory - Optional previous chat messages for context
+ * @returns An array of formatted chat messages ready for the AI completion
  */
 export function buildNaivePrompt(
   userPrompt: string,
   context?: string,
   chatHistory?: { role: 'system' | 'user' | 'assistant'; content: string }[]
 ): ChatMessage[] {
+  // Add context to system prompt if provided
   const systemContent = context
     ? `${NAIVE_SYSTEM_PROMPT}\n\nProject context:\n\n${context}`
     : NAIVE_SYSTEM_PROMPT;
 
+  // Initialize with system message
   const messages: ChatMessage[] = [
     {
       role: 'system',
@@ -330,18 +337,24 @@ export function buildNaivePrompt(
     },
   ];
 
-  // Add chat history if provided
+  // Add filtered and limited chat history if provided
   if (chatHistory && chatHistory.length > 0) {
-    // Filter out system messages and only add a limited number of messages to avoid context overflow
-    const filteredHistory = chatHistory.filter(msg => msg.role !== 'system').slice(-10); // Limit to last 10 messages
+    const MAX_HISTORY_MESSAGES = 10;
 
-    messages.push(...(filteredHistory as ChatMessage[]));
+    // Filter out system messages and limit to most recent messages
+    const filteredHistory = chatHistory
+      .filter(msg => msg.role !== 'system')
+      .slice(-MAX_HISTORY_MESSAGES);
+
+    if (filteredHistory.length > 0) {
+      messages.push(...(filteredHistory as ChatMessage[]));
+    }
   }
 
   // Always add the current user prompt as the last message
   messages.push({
     role: 'user',
-    content: userPrompt,
+    content: userPrompt.trim(), // Ensure the prompt is trimmed
   });
 
   return messages;
