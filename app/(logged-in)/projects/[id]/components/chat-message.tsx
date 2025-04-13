@@ -22,6 +22,9 @@ export interface ChatMessageProps {
   };
   actions?: Action[];
   showAvatar?: boolean;
+  tokensInput?: number;
+  tokensOutput?: number;
+  contextTokens?: number;
 }
 
 export default function ChatMessage({

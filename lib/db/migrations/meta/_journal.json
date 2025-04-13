@@ -43,6 +43,13 @@
       "when": 1743858882902,
       "tag": "0005_zippy_amazoness",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1744541306807,
+      "tag": "0006_absurd_goblin_queen",
+      "breakpoints": true
     }
   ]
 }

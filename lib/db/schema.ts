@@ -57,6 +57,9 @@ export const chatMessages = pgTable('chat_messages', {
   content: text('content').notNull(),
   modelType: varchar('model_type', { length: 20 }), // 'default' or 'premium'
   timestamp: timestamp('timestamp').notNull().defaultNow(),
+  tokensInput: integer('tokens_input'), // Number of tokens sent to the model
+  tokensOutput: integer('tokens_output'), // Number of tokens received from the model
+  contextTokens: integer('context_tokens'), // Current context window size in tokens
 });
 
 export const diffs = pgTable('diffs', {

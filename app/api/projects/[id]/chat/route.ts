@@ -1,4 +1,4 @@
-import { eq, desc, inArray } from 'drizzle-orm';
+import { eq, desc, inArray, sql } from 'drizzle-orm';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -362,13 +362,42 @@ export async function POST(
       console.log('Detected images in the message');
     }
 
-    // Save the user message to the database
+    // Count tokens for input message using tiktoken
+    const { countTokens } = await import('@/lib/llm/utils/context');
+    const messageTokens = countTokens(messageContent);
+    
+    // Calculate cumulative token totals
+    // Get the sum of all tokens sent and received for this project
+    const tokenTotals = await db
+      .select({
+        totalInput: sql`SUM(tokens_input)`,
+        totalOutput: sql`SUM(tokens_output)`
+      })
+      .from(chatMessages)
+      .where(eq(chatMessages.projectId, projectId));
+    
+    // Use the totals or default to 0 if null
+    const totalTokensInput = Number(tokenTotals[0]?.totalInput || 0) + messageTokens;
+    const totalTokensOutput = Number(tokenTotals[0]?.totalOutput || 0);
+    
+    console.log(`📊 Message tokens: ${messageTokens}`);
+    console.log(`📊 Total tokens input (including this message): ${totalTokensInput}`);
+    console.log(`📊 Total tokens output: ${totalTokensOutput}`);
+    
+    // Reset context size to just this message when starting a new interaction
+    const contextTokens = messageTokens;
+    
+    // Save the user message to the database with the current message tokens
+    // Current message tokens added to tokensInput for this message
     await db.insert(chatMessages).values({
       projectId,
       userId: session.user.id,
       content: messageContent,
       role: 'user',
       modelType: 'premium',
+      tokensInput: messageTokens,      // Tokens in this message
+      tokensOutput: 0,                 // No output tokens for user messages
+      contextTokens,                   // Reset context tokens to just this message
     });
 
     console.log(`Processing request with Agent class for project ${projectId}`);
@@ -385,7 +414,12 @@ export async function POST(
       );
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ 
+      success: true, 
+      totalTokensInput,
+      totalTokensOutput,
+      contextTokens: messageTokens  // Initial context is just the message
+    });
   } catch (error) {
     console.error('Error processing chat:', error);
     return NextResponse.json(

@@ -7,7 +7,7 @@ import { readFile, listFilesRecursively, getProjectPath } from '../../fs/operati
 /**
  * Count tokens using tiktoken library
  */
-function countTokens(text: string): number {
+export function countTokens(text: string): number {
   try {
     // cl100k_base is the encoding used by GPT-4 and GPT-3.5 Turbo
     const enc = encoding_for_model('gpt-4o');

@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { eq, gt, desc, and } from 'drizzle-orm';
+import { eq, gt, desc, and, sql } from 'drizzle-orm';
 
 import { getSession } from '@/lib/auth/session';
 import { db } from '@/lib/db/drizzle';
@@ -8,16 +8,24 @@ import { chatMessages } from '@/lib/db/schema';
 
 // Type for SSE message
 interface SSEMessage {
-  type: 'new_message' | 'file_updated' | 'heartbeat';
+  type: 'new_message' | 'file_updated' | 'heartbeat' | 'token_update';
   message?: {
     id: number;
     content: string;
     role: string;
+    tokensInput?: number;
+    tokensOutput?: number;
+    contextTokens?: number;
   };
   timestamp: number;
   operation?: {
     type: 'create' | 'edit' | 'delete';
     path: string;
+  };
+  tokens?: {
+    tokensSent: number;
+    tokensReceived: number;
+    contextSize: number;
   };
 }
 
@@ -125,6 +133,54 @@ export async function GET(
           // Update the last polled message ID
           lastPolledMessageId = Math.max(...newMessages.map(msg => msg.id));
           
+          // Calculate total token metrics
+          let totalTokensInput = 0;
+          let totalTokensOutput = 0;
+          let currentContextSize = 0;
+          
+          // Get all messages to calculate totals
+          const allMessages = await db
+            .select()
+            .from(chatMessages)
+            .where(eq(chatMessages.projectId, projectId));
+            
+          // Get aggregated token totals - this will include everything
+          const tokenTotals = await db
+            .select({
+              totalInput: sql`SUM(tokens_input)`,
+              totalOutput: sql`SUM(tokens_output)`
+            })
+            .from(chatMessages)
+            .where(eq(chatMessages.projectId, projectId));
+          
+          // Calculate totals from token totals - this now includes ALL tokens
+          // including those from file reads since we're counting them in tokensInput
+          totalTokensInput = Number(tokenTotals[0]?.totalInput || 0);
+          totalTokensOutput = Number(tokenTotals[0]?.totalOutput || 0);
+          
+          // Get the current context size from the most recent message
+          const latestMessages = allMessages.sort((a, b) => 
+            new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+          );
+          
+          if (latestMessages.length > 0 && latestMessages[0].contextTokens) {
+            currentContextSize = latestMessages[0].contextTokens;
+          }
+          
+          console.log(`📊 SSE token update - Input: ${totalTokensInput}, Output: ${totalTokensOutput}, Context: ${currentContextSize}`);
+          
+          // Send a token update event with the latest metrics
+          const tokenEvent: SSEMessage = {
+            type: 'token_update',
+            timestamp: Date.now(),
+            tokens: {
+              tokensSent: totalTokensInput,
+              tokensReceived: totalTokensOutput,
+              contextSize: currentContextSize
+            }
+          };
+          await writer.write(encoder.encode(`data: ${JSON.stringify(tokenEvent)}\n\n`));
+          
           // Send each new message as a separate event
           for (const msg of newMessages.reverse()) {
             const messageEvent: SSEMessage = {
@@ -133,6 +189,9 @@ export async function GET(
                 id: msg.id,
                 content: msg.content,
                 role: msg.role,
+                tokensInput: msg.tokensInput || undefined,
+                tokensOutput: msg.tokensOutput || undefined,
+                contextTokens: msg.contextTokens || undefined
               },
               timestamp: Date.now(),
             };

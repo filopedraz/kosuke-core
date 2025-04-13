@@ -1,4 +1,4 @@
-import { eq, and } from 'drizzle-orm';
+import { eq, and, desc, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import path from 'path';
 import { LLM, CONTEXT } from '@/lib/constants';
@@ -413,6 +413,35 @@ export class Agent {
         `📝 Sending operation update: ${operationType} ${filePath} (${status}): ${operationMessage.substring(0, 50)}...`
       );
 
+      // Count tokens for this message
+      const { countTokens } = await import('../utils/context');
+      const messageTokensOutput = countTokens(operationMessage);
+
+      // Calculate cumulative token totals
+      const tokenTotals = await db
+        .select({
+          totalInput: sql`SUM(tokens_input)`,
+          totalOutput: sql`SUM(tokens_output)`,
+        })
+        .from(chatMessages)
+        .where(eq(chatMessages.projectId, this.projectId));
+
+      // Use totals or default to 0 if null
+      const totalTokensOutput = Number(tokenTotals[0]?.totalOutput || 0) + messageTokensOutput;
+
+      // Get current context from most recent message for this request
+      const latestMessages = await db
+        .select()
+        .from(chatMessages)
+        .where(eq(chatMessages.projectId, this.projectId))
+        .orderBy(desc(chatMessages.timestamp))
+        .limit(1);
+
+      const currentContextSize =
+        latestMessages.length > 0 && latestMessages[0].contextTokens
+          ? latestMessages[0].contextTokens
+          : 0;
+
       // Always create a new message for each operation update to provide real-time feedback
       console.log(`📝 Creating new message for operation update...`);
       const [newMessage] = await db
@@ -421,11 +450,15 @@ export class Agent {
           projectId: this.projectId,
           content: operationMessage,
           role: 'assistant',
+          tokensInput: 0, // No additional input tokens for assistant messages
+          tokensOutput: messageTokensOutput, // Tokens in this message
+          contextTokens: currentContextSize, // Maintain the current context size
         })
         .returning();
 
       const messageId = newMessage.id;
       console.log(`✅ Created new assistant message: ${messageId} for operation`);
+      console.log(`📊 Total tokens output (including this message): ${totalTokensOutput}`);
 
       // Map operationType to proper type for database
       const dbOperationType = this.mapOperationTypeForDb(operationType);
@@ -461,7 +494,14 @@ export class Agent {
 
       return {
         success: true,
-        message: { id: messageId, content: operationMessage, role: 'assistant' },
+        message: {
+          id: messageId,
+          content: operationMessage,
+          role: 'assistant',
+          tokensOutput: messageTokensOutput,
+          contextTokens: currentContextSize,
+          totalTokensOutput,
+        },
       };
     } catch (error) {
       console.error(`❌ Error sending operation update:`, error);
@@ -796,6 +836,31 @@ export class Agent {
     readFiles: Set<string> // Track files that have been read
   ) {
     console.log(`🧠 Agent is still in thinking mode, executing read actions...`);
+    const { countTokens } = await import('../utils/context');
+
+    // Get current context size from the latest message
+    const latestMessages = await db
+      .select()
+      .from(chatMessages)
+      .where(eq(chatMessages.projectId, projectId))
+      .orderBy(desc(chatMessages.timestamp))
+      .limit(1);
+
+    let currentContextSize =
+      latestMessages.length > 0 && latestMessages[0].contextTokens
+        ? latestMessages[0].contextTokens
+        : 0;
+
+    // Get current token totals
+    const tokenTotals = await db
+      .select({
+        totalInput: sql`SUM(tokens_input)`,
+        totalOutput: sql`SUM(tokens_output)`,
+      })
+      .from(chatMessages)
+      .where(eq(chatMessages.projectId, projectId));
+
+    let totalTokensInput = Number(tokenTotals[0]?.totalInput || 0);
 
     for (const action of actions) {
       if (action.action === 'readFile') {
@@ -835,11 +900,36 @@ export class Agent {
 
           if (typeof result === 'object' && result !== null && 'success' in result) {
             if (result.success && 'content' in result) {
-              // Store the file content in gathered context
-              gatheredContext[action.filePath] = result.content as string;
+              const fileContent = result.content as string;
+
+              // Count tokens in the file content
+              const fileTokens = countTokens(fileContent);
+
+              // Update context size - this adds to the current context window
+              currentContextSize += fileTokens;
+
+              // Update total tokens input - file content is sent to the LLM
+              totalTokensInput += fileTokens;
+
+              // Log the current context size
               console.log(
-                `✅ Successfully read file: ${action.filePath} (${(result.content as string).length} chars)`
+                `📊 Current context size: ${currentContextSize} tokens (added ${fileTokens} tokens from ${action.filePath})`
               );
+              console.log(`📊 Total tokens input: ${totalTokensInput} tokens`);
+
+              // Update the database to reflect the new context size for the current request
+              // and add the file tokens to tokensInput since they're sent to the LLM
+              await db
+                .update(chatMessages)
+                .set({
+                  contextTokens: currentContextSize,
+                  tokensInput: fileTokens, // Count file tokens as input tokens
+                })
+                .where(eq(chatMessages.id, messageId));
+
+              // Store the file content in gathered context
+              gatheredContext[action.filePath] = fileContent;
+              console.log(`✅ Successfully read file: ${action.filePath} (${fileTokens} tokens)`);
 
               // Update the existing message's status
               await this.updateActionStatus(messageId, action.filePath, 'read', 'completed');

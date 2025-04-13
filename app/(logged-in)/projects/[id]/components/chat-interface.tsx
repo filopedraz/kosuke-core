@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 import ChatInput from './chat-input';
 import ChatMessage, { ChatMessageProps } from './chat-message';
 import ModelBanner from './model-banner';
+import TokenUsage from './token-usage';
 import LimitReachedModal from './limit-reached-modal';
 import { useUser } from '@/lib/auth';
 import { Action } from './assistant-actions-card';
@@ -39,6 +40,13 @@ interface ChatInterfaceProps {
   isLoading?: boolean;
 }
 
+// Token usage interface
+interface TokenUsageMetrics {
+  tokensSent: number;
+  tokensReceived: number;
+  contextSize: number;
+}
+
 // API response type for chat messages
 interface ApiChatMessage {
   id: number;
@@ -48,6 +56,9 @@ interface ApiChatMessage {
   role: string;
   timestamp: string | Date;
   actions?: ExtendedAction[];
+  tokensInput?: number;
+  tokensOutput?: number;
+  contextTokens?: number;
 }
 
 // API functions
@@ -65,7 +76,10 @@ const fetchMessages = async (projectId: number): Promise<ChatMessageProps[]> => 
     id: m.id,
     role: m.role,
     hasOperations: m.actions && m.actions.length > 0,
-    operationsCount: m.actions?.length || 0
+    operationsCount: m.actions?.length || 0,
+    tokensInput: m.tokensInput,
+    tokensOutput: m.tokensOutput,
+    contextTokens: m.contextTokens
   })));
 
   return apiMessages
@@ -82,7 +96,11 @@ const fetchMessages = async (projectId: number): Promise<ChatMessageProps[]> => 
             ...op,
             timestamp: new Date(op.timestamp)
           }))
-        : undefined
+        : undefined,
+      // Include token information
+      tokensInput: msg.tokensInput,
+      tokensOutput: msg.tokensOutput,
+      contextTokens: msg.contextTokens
     }));
 };
 
@@ -90,7 +108,14 @@ const sendMessage = async (
   projectId: number,
     content: string,
     options?: { includeContext?: boolean; contextFiles?: string[]; imageFile?: File }
-): Promise<{ message: ApiChatMessage; success: boolean; fileUpdated?: boolean }> => {
+): Promise<{ 
+  message: ApiChatMessage; 
+  success: boolean; 
+  fileUpdated?: boolean;
+  totalTokensInput?: number;
+  totalTokensOutput?: number;
+  contextTokens?: number;
+}> => {
       let requestOptions: RequestInit;
       
       if (options?.imageFile) {
@@ -148,6 +173,13 @@ export default function ChatInterface({
   const { userPromise } = useUser();
   const [user, setUser] = useState<User | null>(null);
   
+  // Token usage state
+  const [tokenUsage, setTokenUsage] = useState<TokenUsageMetrics>({
+    tokensSent: 0,
+    tokensReceived: 0,
+    contextSize: 0
+  });
+  
   // Fetch user data
   useEffect(() => {
     userPromise.then(userData => {
@@ -165,8 +197,41 @@ export default function ChatInterface({
     queryFn: async () => {
       const messages = await fetchMessages(projectId);
       
-      // We don't need to fetch file operations separately anymore
-      // as they are now included in the chat API response
+      // Calculate total token usage
+      // Now we're getting token totals from aggregated query in the API
+      // and the current context size from the most recent message
+      
+      // The API should have already calculated this for us, but let's ensure
+      // we use the most recent context size and total token sums
+      let totalTokensInput = 0;
+      let totalTokensOutput = 0;
+      let currentContextSize = 0;
+      
+      // If we have messages, get the values from the most recent ones
+      if (messages.length > 0) {
+        // Sort messages to get the newest one
+        const sortedMessages = [...messages].sort((a, b) => 
+          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+        );
+        
+        // Get the current context size from most recent message
+        if (sortedMessages[0].contextTokens) {
+          currentContextSize = sortedMessages[0].contextTokens;
+        }
+        
+        // Calculate total tokens by summing all messages
+        messages.forEach(msg => {
+          if (msg.tokensInput) totalTokensInput += msg.tokensInput;
+          if (msg.tokensOutput) totalTokensOutput += msg.tokensOutput;
+        });
+      }
+      
+      // Update token usage state
+      setTokenUsage({
+        tokensSent: totalTokensInput,
+        tokensReceived: totalTokensOutput,
+        contextSize: currentContextSize
+      });
       
       return messages;
     },
@@ -250,6 +315,15 @@ export default function ChatInterface({
           detail: { projectId }
         });
         window.dispatchEvent(fileUpdatedEvent);
+      }
+      
+      // Update token usage if available in response
+      if (data.totalTokensInput !== undefined || data.contextTokens !== undefined) {
+        setTokenUsage({
+          tokensSent: data.totalTokensInput || 0,
+          tokensReceived: data.totalTokensOutput || 0,
+          contextSize: data.contextTokens || 0
+        });
       }
       
       // Invalidate and refetch
@@ -415,6 +489,14 @@ export default function ChatInterface({
               window.dispatchEvent(fileUpdatedEvent);
               // Invalidate queries to refresh messages with updated file operations
               queryClient.invalidateQueries({ queryKey: ['messages', projectId] });
+            } else if (data.type === 'token_update' && data.tokens) {
+              console.log('🔢 Token update received', data.tokens);
+              // Update token usage metrics directly from the event
+              setTokenUsage({
+                tokensSent: data.tokens.tokensSent,
+                tokensReceived: data.tokens.tokensReceived,
+                contextSize: data.tokens.contextSize
+              });
             }
           }
         } catch (error) {
@@ -450,6 +532,11 @@ export default function ChatInterface({
   return (
     <div className={cn('flex flex-col h-full', className)} data-testid="chat-interface">
       <ModelBanner />
+      <TokenUsage 
+        tokensSent={tokenUsage.tokensSent}
+        tokensReceived={tokenUsage.tokensReceived}
+        contextSize={tokenUsage.contextSize}
+      />
       
       <ScrollArea className="flex-1 overflow-y-auto">
         <div className="flex flex-col">
