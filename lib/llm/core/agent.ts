@@ -6,7 +6,7 @@ import { db } from '@/lib/db/drizzle';
 import { chatMessages, actions } from '@/lib/db/schema';
 import { getProjectPath } from '@/lib/fs/operations';
 import { getTool } from '../tools';
-import { Action, normalizeAction, isValidAction } from './types';
+import { Action, normalizeAction, isValidAction, AgentErrorType } from './types';
 import { generateAICompletion, generateSummaryWithFlash } from '../api/ai';
 import { isWebRequestEnvironment } from '@/lib/environment';
 import { buildNaivePrompt } from './prompts';
@@ -19,6 +19,8 @@ type OperationType = 'create' | 'edit' | 'delete' | 'error' | 'read' | 'createDi
 type ActionExecutionResult = {
   success: boolean;
   error?: string;
+  errorType?: AgentErrorType;
+  errorDetails?: string;
   actions?: Action[];
 };
 
@@ -39,7 +41,12 @@ export class Agent {
   /**
    * Main public method to run the agent to process a project modification request
    */
-  async run(prompt: string): Promise<{ success: boolean; error?: string }> {
+  async run(prompt: string): Promise<{
+    success: boolean;
+    error?: string;
+    errorType?: AgentErrorType;
+    errorDetails?: string;
+  }> {
     console.log(`🤖 Processing modification request for project ID: ${this.projectId}`);
     const processingStart = Date.now();
 
@@ -47,7 +54,12 @@ export class Agent {
       // Create timeout promise for safety
       const timeoutPromise = new Promise<never>((_, reject) => {
         setTimeout(() => {
-          reject(new Error('Processing timeout exceeded'));
+          reject(
+            new AgentError({
+              type: 'timeout',
+              message: 'Processing timeout exceeded',
+            })
+          );
         }, LLM.PROCESSING_TIMEOUT);
       });
 
@@ -82,23 +94,40 @@ export class Agent {
           console.warn(
             `⚠️ No actions returned from pipeline. Pipeline result: ${JSON.stringify(pipelineResult)}`
           );
+
+          // Send error with specific error type
           await this.sendOperationUpdate(
             'error',
             '',
             `I was unable to understand how to make the requested changes. Please try rephrasing your request.`,
-            'error'
+            'error',
+            pipelineResult.errorType || 'unknown'
           );
+
+          // Return error with type information
+          return {
+            success: false,
+            error: pipelineResult.error || 'No actions returned from pipeline',
+            errorType: pipelineResult.errorType || 'processing',
+            errorDetails: pipelineResult.errorDetails,
+          };
         }
       } catch (error) {
         // Handle error during processing
         console.error('❌ Error or timeout processing modification:', error);
-        await this.sendOperationUpdate(
-          'error',
-          '',
-          'I encountered an error while processing your request. Please try again later.',
-          'error'
-        );
-        throw error;
+
+        // Determine error type
+        const errorType = this.classifyError(error);
+        const errorMessage = this.getErrorMessage(error, errorType);
+
+        await this.sendOperationUpdate('error', '', errorMessage, 'error', errorType);
+
+        return {
+          success: false,
+          error: errorMessage,
+          errorType,
+          errorDetails: error instanceof Error ? error.stack : undefined,
+        };
       }
 
       // Revalidate path if in web environment
@@ -110,7 +139,17 @@ export class Agent {
       return { success: true };
     } catch (error) {
       console.error(`❌ Error in Agent.run:`, error);
-      return { success: false, error: 'Failed to process modification request' };
+
+      // Classify the error
+      const errorType = this.classifyError(error);
+      const errorMessage = this.getErrorMessage(error, errorType);
+
+      return {
+        success: false,
+        error: errorMessage,
+        errorType,
+        errorDetails: error instanceof Error ? error.stack : undefined,
+      };
     }
   }
 
@@ -341,21 +380,39 @@ export class Agent {
     const finalMessages = buildNaivePrompt(prompt, finalContext, chatHistory);
     console.log(`🤖 Generating final agent response before forcing execution`);
 
-    const finalResponse = await generateAICompletion(finalMessages, {
-      timeoutMs: this.DEFAULT_TIMEOUT_MS,
-      maxTokens: this.DEFAULT_MAX_TOKENS,
-    });
+    try {
+      const finalResponse = await generateAICompletion(finalMessages, {
+        timeoutMs: this.DEFAULT_TIMEOUT_MS,
+        maxTokens: this.DEFAULT_MAX_TOKENS,
+      });
 
-    // Parse the response but override thinking to false
-    const finalParsedResponse = this.parseAgentResponse(finalResponse);
-    finalParsedResponse.thinking = false;
+      // Parse the response but override thinking to false
+      const finalParsedResponse = this.parseAgentResponse(finalResponse);
+      finalParsedResponse.thinking = false;
 
-    if (finalParsedResponse.actions.length > 0) {
-      // Use the actions from the final response
-      return finalParsedResponse.actions;
-    } else {
-      // No actions returned, throw error
-      throw new Error('Agent unable to produce actions after multiple iterations.');
+      if (finalParsedResponse.actions.length > 0) {
+        // Use the actions from the final response
+        return finalParsedResponse.actions;
+      } else {
+        // No actions returned, throw error
+        throw new AgentError({
+          type: 'processing',
+          message: 'Agent unable to produce actions after multiple iterations',
+          details: 'The LLM produced a valid response but did not specify any actions to take',
+        });
+      }
+    } catch (error) {
+      // Rethrow AgentError to preserve type information
+      if (error instanceof AgentError) {
+        throw error;
+      }
+
+      // Wrap other errors
+      throw new AgentError({
+        type: 'processing',
+        message: 'Failed to force execution mode',
+        details: error instanceof Error ? error.message : String(error),
+      });
     }
   }
 
@@ -432,11 +489,26 @@ export class Agent {
         return result;
       } catch (jsonError) {
         this.logJsonParseError(jsonError, cleanedResponse);
-        return result; // Return default structure on JSON parse error
+        throw new AgentError({
+          type: 'parsing',
+          message: 'Failed to parse JSON response from LLM',
+          details: jsonError instanceof Error ? jsonError.message : String(jsonError),
+        });
       }
     } catch (error) {
       console.error('❌ Error parsing agent response:', error);
-      return { thinking: true, actions: [] }; // Return default structure on general error
+
+      // Determine if this is an AgentError or a different type of error
+      if (error instanceof AgentError) {
+        throw error; // Rethrow AgentError to maintain type information
+      }
+
+      // Create a new AgentError for other error types
+      throw new AgentError({
+        type: 'processing',
+        message: 'Error processing agent response',
+        details: error instanceof Error ? error.message : String(error),
+      });
     }
   }
 
@@ -513,7 +585,8 @@ export class Agent {
     operationType: OperationType,
     filePath: string,
     operationMessage: string,
-    status: 'pending' | 'completed' | 'error' = 'completed'
+    status: 'pending' | 'completed' | 'error' = 'completed',
+    errorType?: AgentErrorType
   ) {
     try {
       console.log(
@@ -551,17 +624,32 @@ export class Agent {
 
       // Always create a new message for each operation update to provide real-time feedback
       console.log(`📝 Creating new message for operation update...`);
-      const [newMessage] = await db
-        .insert(chatMessages)
-        .values({
-          projectId: this.projectId,
-          content: operationMessage,
-          role: 'assistant',
-          tokensInput: 0, // No additional input tokens for assistant messages
-          tokensOutput: messageTokensOutput, // Tokens in this message
-          contextTokens: currentContextSize, // Maintain the current context size
-        })
-        .returning();
+
+      // Create the insert values - use a specific type based on schema
+      const insertValues: {
+        projectId: number;
+        content: string;
+        role: string;
+        tokensInput: number;
+        tokensOutput: number;
+        contextTokens: number;
+        metadata?: string;
+      } = {
+        projectId: this.projectId,
+        content: operationMessage,
+        role: 'assistant',
+        tokensInput: 0, // No additional input tokens for assistant messages
+        tokensOutput: messageTokensOutput, // Tokens in this message
+        contextTokens: currentContextSize, // Maintain the current context size
+      };
+
+      // Add metadata if we have an error type and the schema supports it
+      if (errorType) {
+        // Add metadata field - we'll handle any errors from the database
+        insertValues.metadata = JSON.stringify({ errorType });
+      }
+
+      const [newMessage] = await db.insert(chatMessages).values(insertValues).returning();
 
       const messageId = newMessage.id;
       console.log(`✅ Created new assistant message: ${messageId} for operation`);
@@ -608,6 +696,7 @@ export class Agent {
           tokensOutput: messageTokensOutput,
           contextTokens: currentContextSize,
           totalTokensOutput,
+          errorType, // Include error type in the return value
         },
       };
     } catch (error) {
@@ -1211,5 +1300,72 @@ export class Agent {
     // Extract the section identifier from the warning message
     const warningIdentifier = warningMsg.split('\n')[0];
     return this.addSectionToContext(context, warningMsg, warningIdentifier);
+  }
+
+  /**
+   * Classify an error by type
+   */
+  private classifyError(error: unknown): AgentErrorType {
+    if (error instanceof AgentError) {
+      return error.type;
+    }
+
+    if (error instanceof Error) {
+      if (error.message.includes('timeout') || error.message.includes('timed out')) {
+        return 'timeout';
+      }
+      if (error.message.includes('parse') || error.message.includes('JSON')) {
+        return 'parsing';
+      }
+    }
+
+    return 'unknown';
+  }
+
+  /**
+   * Get an appropriate error message based on error type
+   */
+  private getErrorMessage(error: unknown, errorType: AgentErrorType): string {
+    switch (errorType) {
+      case 'timeout':
+        return 'The request took too long to process. Please try a simpler request or try again later.';
+      case 'parsing':
+        return 'There was an error processing the AI response. Please try again or simplify your request.';
+      case 'processing':
+        return 'There was an error processing your request. Please try rephrasing it.';
+      case 'unknown':
+      default:
+        return error instanceof Error
+          ? `Error: ${error.message}`
+          : 'An unexpected error occurred. Please try again later.';
+    }
+  }
+}
+
+/**
+ * Custom AgentError class
+ */
+class AgentError extends Error {
+  type: AgentErrorType;
+  details?: string;
+
+  constructor({
+    type,
+    message,
+    details,
+  }: {
+    type: AgentErrorType;
+    message: string;
+    details?: string;
+  }) {
+    super(message);
+    this.type = type;
+    this.details = details;
+    this.name = 'AgentError';
+
+    // Capture stack trace
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, AgentError);
+    }
   }
 }
