@@ -3,6 +3,12 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 import { CONTEXT } from '@/lib/constants';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface TokenUsageProps {
   tokensSent: number;
@@ -37,23 +43,53 @@ export default function TokenUsage({
   };
 
   return (
-    <div className={`px-4 py-2 border-b border-border bg-muted/10 text-xs ${className}`}>
-      <div className="flex justify-between items-center mb-1.5">
-        <div className="text-muted-foreground">
-          Tokens: <span className="text-foreground font-medium">↑ {formatNumber(tokensSent)}</span>{' '}
-          <span className="text-foreground font-medium">↓ {formatNumber(tokensReceived)}</span>
+    <TooltipProvider delayDuration={300}>
+      <div className={`px-4 py-2 border-b border-border bg-muted/10 text-xs ${className}`}>
+        <div className="flex justify-between items-center mb-1.5">
+          <div className="text-muted-foreground flex items-center gap-1">
+            Tokens: 
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="text-foreground font-medium cursor-help">
+                  ↑ {formatNumber(tokensSent)}
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                <p>Tokens sent to model (includes messages and file content)</p>
+              </TooltipContent>
+            </Tooltip>{' '}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="text-foreground font-medium cursor-help">
+                  ↓ {formatNumber(tokensReceived)}
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                <p>Tokens generated in responses</p>
+              </TooltipContent>
+            </Tooltip>
+          </div>
+          <div className="text-muted-foreground">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="flex items-center cursor-help">
+                  Context Window: <span className="text-foreground font-medium ml-1">{formatNumber(contextSize)}</span>
+                  <span className="text-muted-foreground/70 ml-0.5"> / {formatNumber(maxContextSize)}</span>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                <p>Current context size (max: {formatNumber(maxContextSize)})</p>
+              </TooltipContent>
+            </Tooltip>
+          </div>
         </div>
-        <div className="text-muted-foreground">
-          Context Window: <span className="text-foreground font-medium">{formatNumber(contextSize)}</span>
-          <span className="text-muted-foreground/70"> / {formatNumber(maxContextSize)}</span>
+        <div className="h-1 w-full bg-muted/50 rounded-full overflow-hidden">
+          <div 
+            className={cn("h-full", getProgressColor())}
+            style={{ width: `${contextPercentage}%` }}
+          />
         </div>
       </div>
-      <div className="h-1 w-full bg-muted/50 rounded-full overflow-hidden">
-        <div 
-          className={cn("h-full", getProgressColor())}
-          style={{ width: `${contextPercentage}%` }}
-        />
-      </div>
-    </div>
+    </TooltipProvider>
   );
 } 
