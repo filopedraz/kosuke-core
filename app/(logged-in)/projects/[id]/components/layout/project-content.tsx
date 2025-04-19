@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 import ChatInterface from '../chat/chat-interface';
 import CodeExplorer from '../preview/code-explorer';
@@ -34,6 +34,9 @@ export default function ProjectContent({
   const isChatCollapsed = useProjectStore(state => state.isChatCollapsed);
   const setCurrentProject = useProjectStore(state => state.setCurrentProject);
   
+  // Reference to the ChatInterface component to maintain its state
+  const chatInterfaceRef = useRef<HTMLDivElement>(null);
+  
   // Set the current project in the store when the component mounts or project changes
   useEffect(() => {
     setCurrentProject(project);
@@ -44,22 +47,30 @@ export default function ProjectContent({
   return (
     <div className={cn('flex h-[calc(100vh-3.5rem)] w-full overflow-hidden')}>
       <div 
+        ref={chatInterfaceRef}
         className={cn(
-          "h-full overflow-hidden flex flex-col transition-all duration-300 ease-in-out",
+          "h-full overflow-hidden flex flex-col",
+          // Remove transition effects that cause messages to appear gradually
           isChatCollapsed ? "w-0 opacity-0" : "w-full md:w-1/3 lg:w-1/4"
         )}
+        style={{ 
+          // Use visibility instead of conditional rendering
+          visibility: isChatCollapsed ? 'hidden' : 'visible',
+          // Use display to properly hide when collapsed
+          display: isChatCollapsed ? 'none' : 'flex'
+        }}
       >
-        {!isChatCollapsed && (
-          <ChatInterface 
-            projectId={projectId}
-            initialMessages={initialMessages}
-          />
-        )}
+        {/* Always render the ChatInterface but hide it with CSS */}
+        <ChatInterface 
+          projectId={projectId}
+          initialMessages={initialMessages}
+        />
       </div>
       
       <div 
         className={cn(
-          "h-full flex-col overflow-hidden border rounded-md border-border transition-all duration-300 ease-in-out",
+          "h-full flex-col overflow-hidden border rounded-md border-border",
+          // Remove transitions from this element as well
           isChatCollapsed ? "w-full" : "hidden md:flex md:w-2/3 lg:w-3/4"
         )}
       >

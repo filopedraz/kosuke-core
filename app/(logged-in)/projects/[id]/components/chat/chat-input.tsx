@@ -40,8 +40,14 @@ export default function ChatInput({
     const textarea = textareaRef.current;
     if (!textarea) return;
     
+    // Only reset height if we're actually changing content
     textarea.style.height = 'auto';
-    textarea.style.height = `${Math.min(textarea.scrollHeight, 200)}px`;
+    
+    // Calculate new height based on content
+    const newHeight = `${Math.min(textarea.scrollHeight, 200)}px`;
+    
+    // Apply the new height
+    textarea.style.height = newHeight;
   }, [message]);
 
   // Handle clipboard paste events
@@ -231,6 +237,7 @@ export default function ChatInput({
           disabled={isLoading}
           className="min-h-[100px] max-h-[200px] resize-none border-0 !bg-transparent px-3 py-3 shadow-none focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 text-sm chat-input-textarea"
           rows={3}
+          style={{ height: '100px' }}  // Set initial fixed height
           data-gramm="false"
           data-gramm_editor="false"
           data-enable-grammarly="false"
