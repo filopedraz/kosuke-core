@@ -4,7 +4,7 @@ import { db } from '@/lib/db/drizzle';
 import { chatMessages, actions, Action } from '@/lib/db/schema';
 import { eq, inArray } from 'drizzle-orm';
 
-import ProjectContent from '@/app/(logged-in)/projects/[id]/components/project-content';
+import ProjectContent from '@/app/(logged-in)/projects/[id]/components/layout/project-content';
 import { getSession } from '@/lib/auth/session';
 import { getProjectById } from '@/lib/db/projects';
 import { Skeleton } from '@/components/ui/skeleton';

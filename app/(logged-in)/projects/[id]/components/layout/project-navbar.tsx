@@ -15,7 +15,7 @@ interface ProjectNavbarClientProps {
   user: UserForNavbar;
 }
 
-export default function ProjectNavbarClient({ user }: ProjectNavbarClientProps) {
+export default function ProjectNavbar({ user }: ProjectNavbarClientProps) {
   // Select individual state pieces for stability
   const currentProject = useProjectStore(state => state.currentProject);
   const currentView = useProjectStore(state => state.currentView);

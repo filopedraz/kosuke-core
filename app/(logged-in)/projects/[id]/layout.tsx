@@ -5,7 +5,7 @@ import { eq } from 'drizzle-orm';
 import { getSession } from '@/lib/auth/session';
 import { db } from '@/lib/db/drizzle';
 import { users } from '@/lib/db/schema';
-import ProjectNavbarClient from './components/project-navbar-client'; // Component to be created
+import ProjectNavbar from './components/layout/project-navbar';
 
 // Define User type for Navbar (can be extracted to a shared types file later)
 type UserForNavbar = {
@@ -49,7 +49,7 @@ export default async function ProjectDetailLayout({ children }: { children: Reac
 
   return (
     <div className="flex flex-col h-screen w-full">
-      <ProjectNavbarClient user={userForNavbar} />
+      <ProjectNavbar user={userForNavbar} />
       <main className="flex-1 overflow-hidden">
         {children} 
       </main>

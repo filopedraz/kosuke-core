@@ -172,7 +172,12 @@ export default function Navbar({
   // Project variant
   if (variant === 'project' && projectProps) {
     return (
-      <header className={cn('w-full h-14 flex items-center bg-background', className)}>
+      <header
+        className={cn(
+          'w-full h-14 flex items-center bg-background border-b border-border',
+          className
+        )}
+      >
         <div className="flex w-full h-full">
           {/* Left section - matches chat width */}
           <div className="flex items-center h-full w-full md:w-1/3 lg:w-1/4 border-r border-transparent relative">

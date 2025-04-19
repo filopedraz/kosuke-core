@@ -2,11 +2,11 @@
 
 import { useEffect } from 'react';
 
-import ChatInterface from './chat-interface';
-import CodeExplorer from './code-explorer';
-import PreviewPanel from './preview-panel';
-import ProjectLayout from './project-layout';
+import ChatInterface from '../chat-interface';
+import CodeExplorer from '../code-explorer';
+import PreviewPanel from '../preview-panel';
 import { useProjectStore, type Project } from '@/lib/stores/projectStore';
+import { cn } from '@/lib/utils';
 
 // Keep ChatMessage type for component's internal use/props
 interface ChatMessage {
@@ -42,29 +42,39 @@ export default function ProjectContent({
   }, [project, setCurrentProject]);
   
   return (
-    <div className="flex-1 overflow-hidden">
-      <ProjectLayout
-        leftPanel={
+    <div className={cn('flex h-[calc(100vh-3.5rem)] w-full overflow-hidden')}>
+      <div 
+        className={cn(
+          "h-full overflow-hidden flex flex-col transition-all duration-300 ease-in-out",
+          isChatCollapsed ? "w-0 p-0 opacity-0" : "w-full md:w-1/3 lg:w-1/4 p-4"
+        )}
+      >
+        {!isChatCollapsed && (
           <ChatInterface 
             projectId={projectId}
             initialMessages={initialMessages}
           />
-        }
-        rightPanel={
-          currentView === 'preview' ? (
-            <PreviewPanel
-              projectId={projectId}
-              projectName={project.name}
-              initialLoading={isNewProject}
-            />
-          ) : (
-            <CodeExplorer
-              projectId={projectId}
-            />
-          )
-        }
-        isChatCollapsed={isChatCollapsed}
-      />
+        )}
+      </div>
+      
+      <div 
+        className={cn(
+          "h-full flex-col overflow-hidden border-l border-border transition-all duration-300 ease-in-out",
+          isChatCollapsed ? "w-full" : "hidden md:flex md:w-2/3 lg:w-3/4"
+        )}
+      >
+        {currentView === 'preview' ? (
+          <PreviewPanel
+            projectId={projectId}
+            projectName={project.name}
+            initialLoading={isNewProject}
+          />
+        ) : (
+          <CodeExplorer
+            projectId={projectId}
+          />
+        )}
+      </div>
     </div>
   );
 } 
