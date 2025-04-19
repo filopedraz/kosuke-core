@@ -2,9 +2,9 @@
 
 import { useEffect } from 'react';
 
-import ChatInterface from '../chat-interface';
-import CodeExplorer from '../code-explorer';
-import PreviewPanel from '../preview-panel';
+import ChatInterface from '../chat/chat-interface';
+import CodeExplorer from '../preview/code-explorer';
+import PreviewPanel from '../preview/preview-panel';
 import { useProjectStore, type Project } from '@/lib/stores/projectStore';
 import { cn } from '@/lib/utils';
 
@@ -46,7 +46,7 @@ export default function ProjectContent({
       <div 
         className={cn(
           "h-full overflow-hidden flex flex-col transition-all duration-300 ease-in-out",
-          isChatCollapsed ? "w-0 p-0 opacity-0" : "w-full md:w-1/3 lg:w-1/4 p-4"
+          isChatCollapsed ? "w-0 opacity-0" : "w-full md:w-1/3 lg:w-1/4"
         )}
       >
         {!isChatCollapsed && (
@@ -59,7 +59,7 @@ export default function ProjectContent({
       
       <div 
         className={cn(
-          "h-full flex-col overflow-hidden border-l border-border transition-all duration-300 ease-in-out",
+          "h-full flex-col overflow-hidden border rounded-md border-border transition-all duration-300 ease-in-out",
           isChatCollapsed ? "w-full" : "hidden md:flex md:w-2/3 lg:w-3/4"
         )}
       >
