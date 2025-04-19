@@ -83,11 +83,9 @@ git commit -m "Your message" --no-verify
 
 ## 🎯 Roadmap (Thinking...)
 
-- [ ] **Database and backend support**: build full-stack web applications, not only static pages.
 - [ ] **Brand Guidelines Generator**: include in the pipeline a step related to Font and color palette generation based on the project description.
-- [ ] **Templates and blocks**: plug Auth, Billing, Sidebars and other components in matter of words. Battle tested components at your fingerprints.
 - [ ] **Ollama Support**: support Ollama as backend for code generation.
-- [ ] **Cloud service**: leverage Kosuke [cloud version](https://kosuke.ai) without the need to run this repo locally.
+- [ ] **Database and backend support**: build full-stack web applications, not only static pages.
 
 ## 🤖 Code-Gen Agentic Pipeline
 
