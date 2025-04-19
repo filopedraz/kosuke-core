@@ -74,7 +74,6 @@ export async function GET(
         let lastMessageId = 0;
 
         // Event loop
-        // eslint-disable-next-line no-constant-condition
         while (true) {
           try {
             // Get the latest message

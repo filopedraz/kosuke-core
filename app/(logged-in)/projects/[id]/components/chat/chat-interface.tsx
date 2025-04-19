@@ -69,6 +69,16 @@ interface MessageOptions {
   imageFile?: File;
 }
 
+// Helper function to read file as data URL
+const readFileAsDataURL = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+};
+
 // API functions
 const fetchMessages = async (projectId: number): Promise<ChatMessageProps[]> => {
   const response = await fetch(`/api/projects/${projectId}/chat`);
@@ -316,16 +326,7 @@ export default function ChatInterface({
       const previousMessages = queryClient.getQueryData(['messages', projectId]);
       
       // Create optimistic content that includes image information if present
-      let optimisticContent = newMessage.content;
-      const hasImage = !!newMessage.options?.imageFile;
-      
-      if (hasImage) {
-        const file = newMessage.options?.imageFile;
-        const fileInfo = file ? `${file.name} (${(file.size / 1024).toFixed(1)}KB)` : '';
-        optimisticContent = optimisticContent.trim() 
-          ? `${optimisticContent}\n\n[Uploading image: ${fileInfo}...]`
-          : `[Uploading image: ${fileInfo}...]`;
-      }
+      const optimisticContent = newMessage.content;
       
       // Reset any previous errors when sending a new message
       setIsError(false);
@@ -350,6 +351,39 @@ export default function ChatInterface({
           isLoading: true,
         }
       ]);
+      
+      // If there's an image, generate its data URL and update the optimistic message
+      if (newMessage.options?.imageFile) {
+        const file = newMessage.options.imageFile;
+        try {
+          const dataUrl = await readFileAsDataURL(file);
+          const imageMarkdown = `[Attached Image](${dataUrl})`;
+          
+          // Update the optimistic content with the image markdown
+          const updatedOptimisticContent = newMessage.content.trim()
+            ? `${newMessage.content}\n\n${imageMarkdown}`
+            : imageMarkdown;
+            
+          // Update the query data again with the image included
+          queryClient.setQueryData(['messages', projectId], (old: ChatMessageProps[] = []) => {
+            // Find the optimistic user message we just added (it will be the second to last)
+            const userMessageIndex = old.length - 2;
+            if (userMessageIndex >= 0 && old[userMessageIndex].role === 'user') {
+              const updatedMessages = [...old];
+              updatedMessages[userMessageIndex] = {
+                ...updatedMessages[userMessageIndex],
+                content: updatedOptimisticContent,
+              };
+              return updatedMessages;
+            } 
+            return old; // Should not happen, but return old data as fallback
+          });
+
+        } catch (error) {
+          console.error("Error creating data URL for optimistic image:", error);
+          // Optionally handle error, e.g., revert or show placeholder
+        }
+      }
       
       // Return a context object with the snapshot
       return { previousMessages };
