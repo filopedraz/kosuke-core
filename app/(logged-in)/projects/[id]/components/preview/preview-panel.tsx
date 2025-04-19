@@ -133,12 +133,12 @@ export default function PreviewPanel({
   }, [projectId, fetchPreviewUrl]);
 
   // Function to refresh the preview
-  const handleRefresh = async () => {
+  const handleRefresh = useCallback(async () => {
     console.log('[Preview Panel] Manually refreshing preview');
     setIframeKey(prev => prev + 1);
     setLastRefresh(Date.now());
     fetchPreviewUrl();
-  };
+  }, [fetchPreviewUrl]);
 
   // Add polling to check for new messages and refresh when needed
   useEffect(() => {
