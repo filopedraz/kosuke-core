@@ -1,12 +1,12 @@
-import { eq } from 'drizzle-orm';
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
+import { db } from '@/lib/db/drizzle';
+import { chatMessages, actions, Action } from '@/lib/db/schema';
+import { eq, inArray } from 'drizzle-orm';
 
 import ProjectContent from '@/app/(logged-in)/projects/[id]/components/project-content';
 import { getSession } from '@/lib/auth/session';
-import { db } from '@/lib/db/drizzle';
 import { getProjectById } from '@/lib/db/projects';
-import { users } from '@/lib/db/schema';
 import { Skeleton } from '@/components/ui/skeleton';
 
 function ProjectLoadingSkeleton() {
@@ -51,6 +51,16 @@ function ProjectLoadingSkeleton() {
   );
 }
 
+// Update FetchedChatMessage type to include actions
+interface FetchedChatMessage {
+  id: number; // Assuming ID is always present after fetch
+  content?: string;
+  role?: 'user' | 'assistant' | 'system';
+  timestamp?: string | Date;
+  // Add actions property (optional)
+  actions?: Action[]; // Use the Action type from schema
+}
+
 interface ProjectPageProps {
   params: Promise<{
     id: string;
@@ -58,11 +68,72 @@ interface ProjectPageProps {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
+// Rewritten function to fetch messages and actions
+async function fetchChatHistoryForProject(projectId: number): Promise<FetchedChatMessage[]> {
+  console.log(`Fetching chat history with actions for project ${projectId}`);
+  
+  // 1. Fetch chat history, oldest first
+  const history = await db
+    .select()
+    .from(chatMessages)
+    .where(eq(chatMessages.projectId, projectId))
+    .orderBy(chatMessages.timestamp); // Ascending order
+
+  // 2. Extract assistant message IDs
+  const assistantMessageIds = history
+    .filter(msg => msg.role === 'assistant')
+    .map(msg => msg.id);
+
+  // 3. Fetch actions for these messages if any exist
+  let fetchedActions: Action[] = [];
+  if (assistantMessageIds.length > 0) {
+    fetchedActions = await db
+      .select()
+      .from(actions)
+      .where(inArray(actions.messageId, assistantMessageIds));
+    console.log(`Fetched ${fetchedActions.length} actions for ${assistantMessageIds.length} assistant messages.`);
+  }
+
+  // 4. Group actions by message ID
+  const actionsByMessageId = fetchedActions.reduce<Record<number, Action[]>>((acc, action) => {
+    if (!acc[action.messageId]) {
+      acc[action.messageId] = [];
+    }
+    acc[action.messageId].push(action);
+    return acc;
+  }, {});
+
+  // 5. Combine messages with their actions
+  const messagesWithActions = history.map(msg => ({
+    ...msg,
+    // Ensure timestamp is a Date object if needed downstream, though initial fetch might be string
+    timestamp: msg.timestamp, 
+    // Attach actions, default to empty array if none
+    actions: actionsByMessageId[msg.id] || [],
+  }));
+
+  // Return the combined data, matching the FetchedChatMessage structure
+  // Note: Ensure the selected fields from `history` match FetchedChatMessage
+  return messagesWithActions.map(msg => ({
+    id: msg.id,
+    content: msg.content,
+    role: msg.role as 'user' | 'assistant' | 'system', // Type assertion might be needed
+    timestamp: msg.timestamp,
+    actions: msg.actions,
+    // Add other fields from FetchedChatMessage if they exist in chatMessages table
+    // tokensInput: msg.tokensInput, 
+    // tokensOutput: msg.tokensOutput,
+    // contextTokens: msg.contextTokens,
+    // metadata: msg.metadata,
+  }));
+}
+
 export default async function ProjectPage({ params, searchParams }: ProjectPageProps) {
   const session = await getSession();
   
   if (!session) {
-    notFound();
+    // Session check might be redundant if layout handles it, but keep for safety
+    notFound(); 
   }
   
   const { id } = await params;
@@ -71,30 +142,29 @@ export default async function ProjectPage({ params, searchParams }: ProjectPageP
     notFound();
   }
   
-  const project = await getProjectById(projectId);
+  // Fetch project details and initial chat messages (now with actions)
+  const [project, initialMessagesResult] = await Promise.all([
+    getProjectById(projectId),
+    fetchChatHistoryForProject(projectId) // This now fetches actions too
+  ]);
   
   if (!project || project.createdBy !== session.user.id) {
     notFound();
   }
   
-  // Get user details for the navbar
-  const [userDetails] = await db
-    .select()
-    .from(users)
-    .where(eq(users.id, session.user.id))
-    .limit(1);
-  
-  if (!userDetails) {
-    notFound();
-  }
-  
-  // Map user details to match the expected type
-  const userForNavbar = {
-    id: userDetails.id,
-    name: userDetails.name || undefined,
-    email: userDetails.email,
-    imageUrl: userDetails.imageUrl || undefined
-  };
+  // Process fetched messages (adjust id/timestamp types if needed)
+  const initialMessages = initialMessagesResult.map(msg => ({
+    id: typeof msg.id === 'string' ? parseInt(msg.id, 10) : msg.id, // Ensure ID is number
+    content: msg.content || '',
+    role: msg.role || 'user',
+    timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date(), // Ensure timestamp is Date
+    actions: msg.actions?.map(action => ({ // Ensure action timestamps are Dates
+      ...action,
+      timestamp: action.timestamp ? new Date(action.timestamp) : new Date(),
+    })) || [],
+  }));
+
+  // Removed user details fetching and mapping
   
   // Check if this is a new project (via query param)
   const searchParamsData = await searchParams;
@@ -109,14 +179,14 @@ export default async function ProjectPage({ params, searchParams }: ProjectPageP
   
   return (
     <Suspense fallback={<ProjectLoadingSkeleton />}>
-      <div className="w-full h-screen p-0 m-0">
-        <ProjectContent 
-          projectId={projectId}
-          project={formattedProject}
-          user={userForNavbar}
-          isNewProject={isNewProject}
-        />
-      </div>
+      {/* Removed wrapper div, layout handles the main structure */}
+      <ProjectContent 
+        projectId={projectId}
+        project={formattedProject}
+        // Removed user prop
+        isNewProject={isNewProject}
+        initialMessages={initialMessages} // Pass messages with actions
+      />
     </Suspense>
   );
 } 

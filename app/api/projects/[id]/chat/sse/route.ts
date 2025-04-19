@@ -28,7 +28,7 @@ interface ChatMessage {
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ): Promise<Response> {
   try {
     const session = await getSession();
@@ -36,7 +36,8 @@ export async function GET(
       return new Response('Unauthorized', { status: 401 });
     }
 
-    const projectId = parseInt(params.id);
+    const { id } = await context.params;
+    const projectId = parseInt(id);
     if (isNaN(projectId)) {
       return new Response('Invalid project ID', { status: 400 });
     }
