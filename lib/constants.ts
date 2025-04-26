@@ -46,7 +46,7 @@ export const CONTEXT = {
   MAX_CONTEXT_SIZE: 500000, // tokens
   INCLUDE_EXTENSIONS: ['.ts', '.tsx', '.js', '.jsx', '.json', '.css', '.scss', '.html', '.md'],
   EXCLUDE_FILES: ['package-lock.json'],
-  EXCLUDE_DIRS: ['node_modules', '.next', 'out', 'build', 'dist', '.git', '.github'],
+  EXCLUDE_DIRS: ['node_modules', '.next', 'out', 'build', 'dist', '.git', '.github', '.husky'],
 };
 
 // File Explorer

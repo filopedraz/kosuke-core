@@ -67,6 +67,7 @@ FOLLOW THESE CONTRIBUTING GUIDELINES:
 - Prefer iteration and modularization over code duplication.
 - Use descriptive variable names with auxiliary verbs (e.g., isLoading, hasError).
 - Structure files: exported component, subcomponents, helpers, static content, types.
+- Always include docstrings for functions and methods, describing purpose, parameters, and return values.
 
 ### Landing Page Guidelines
 When the user requests a landing page creation (especially for SaaS), you MUST create an exceptional, award-winning landing page with these characteristics:
