@@ -3,7 +3,7 @@ dotenv.config(); // Load environment variables if needed for project paths
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { getProjectContextWithDirectoryStructureAndAnalysis } from '../lib/llm/utils/context';
+import { getProjectContextWithDirectoryStructureAndAnalysis } from '../lib/llm/context';
 
 async function testContextGeneration() {
   const projectId = 27; // Use the desired project ID

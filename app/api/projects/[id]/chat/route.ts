@@ -288,7 +288,7 @@ export async function POST(
     }
 
     // Count tokens for input message using tiktoken
-    const { countTokens } = await import('@/lib/llm/utils/context');
+    const { countTokens } = await import('@/lib/llm/context');
     const messageTokens = countTokens(messageContent);
     
     // Calculate cumulative token totals

@@ -3,7 +3,7 @@ import { encoding_for_model } from 'tiktoken';
 
 import { CONTEXT } from '@/lib/constants';
 import { readFile, listFilesRecursively, getProjectPath } from '../../fs/operations';
-import { analyzeTsWithMorph, Relationship } from './analysis/analyzeTsWithMorph';
+import { analyzeTsWithMorph, Relationship } from './tsAnalysis';
 
 /**
  * Count tokens using tiktoken library
@@ -457,7 +457,7 @@ export async function getProjectContextWithDirectoryStructureAndAnalysis(
           filteredRelationships[name] = {
             ...originalRel,
             // Filter 'usedBy' to only include reachable components
-            usedBy: (originalRel.usedBy || []).filter(user => reachable.has(user)),
+            usedBy: (originalRel.usedBy || []).filter((user: string) => reachable.has(user)),
           };
         }
       }
