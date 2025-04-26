@@ -7,10 +7,6 @@ import { countTokens } from '../utils/context';
 import { generateDirectoryStructure } from './generateDirectoryStructure';
 import { extractMethodSignatures } from './extractMethodSignatures';
 import { analyzeTsWithMorph, Relationship } from './analysis/analyzeTsWithMorph';
-import {
-  extractComponentDocs,
-  ComponentDocumentation,
-} from './analysis/extractComponentDocs';
 
 /**
  * Count tokens using tiktoken library
@@ -779,8 +775,8 @@ export async function getDirectoryContext(
 }
 
 /**
- * Get project context with directory structure and comprehensive analysis of components and their relationships
- * This provides an enhanced view of React components, their props, and relationships
+ * Get project context with directory structure and analysis of components and their relationships
+ * This provides an enhanced view of the codebase structure and relationships.
  */
 export async function getProjectContextWithDirectoryStructureAndAnalysis(
   projectId: number | string,
@@ -790,7 +786,6 @@ export async function getProjectContextWithDirectoryStructureAndAnalysis(
     excludeDirs?: string[];
     excludeFiles?: string[];
     includeUtilityMethods?: boolean;
-    analyzeComponents?: boolean;
     analyzeRelationships?: boolean;
   } = {}
 ): Promise<string> {
@@ -800,11 +795,10 @@ export async function getProjectContextWithDirectoryStructureAndAnalysis(
     excludeDirs = CONTEXT.EXCLUDE_DIRS,
     excludeFiles = CONTEXT.EXCLUDE_FILES,
     includeUtilityMethods = true,
-    analyzeComponents = true,
     analyzeRelationships = true,
   } = options;
 
-  console.log(`📂 Starting enhanced context collection for project ${projectId}`);
+  console.log(`📂 Starting analysis context collection for project ${projectId}`);
   console.log(`📊 Max context size: ${maxSize} tokens`);
 
   const projectPath = getProjectPath(projectId);
@@ -813,7 +807,6 @@ export async function getProjectContextWithDirectoryStructureAndAnalysis(
   let context = '';
   let totalTokens = 0;
 
-  // Track analysis information
   const includedFiles: Array<{ path: string; tokens: number; type: string }> = [];
   const excludedFiles: Array<{ path: string; tokens: number; reason: string }> = [];
 
@@ -853,10 +846,6 @@ export async function getProjectContextWithDirectoryStructureAndAnalysis(
 
     console.log(`📊 ${filteredFiles.length} files match the extension and exclusion filters`);
 
-    const relativeFilePaths = filteredFiles.map(file =>
-      path.relative(projectPath, path.join(projectPath, file))
-    );
-
     // Step 3: Perform detailed analysis of TypeScript code (if enabled)
     let componentRelationships: Record<string, Relationship> = {};
     let contextProviders: Record<string, string[]> = {};
@@ -867,39 +856,39 @@ export async function getProjectContextWithDirectoryStructureAndAnalysis(
         const tsAnalysis = await analyzeTsWithMorph(projectPath);
         componentRelationships = tsAnalysis.relationships;
         contextProviders = tsAnalysis.contextProviders;
-        console.log(`✅ Analyzed ${Object.keys(componentRelationships).length} components and functions`);
+        console.log(
+          `✅ Analyzed ${Object.keys(componentRelationships).length} components and functions`
+        );
       } catch (error) {
         console.error(`❌ Error analyzing TypeScript relationships:`, error);
       }
     }
 
-    // Step 4: Extract component documentation for React components (if enabled)
-    let componentDocs: Record<string, ComponentDocumentation> = {};
-
-    if (analyzeComponents) {
-      console.log(`🔍 Extracting component documentation...`);
-      try {
-        const componentFiles = relativeFilePaths.filter(
-          file => file.endsWith('.tsx') || file.endsWith('.jsx')
-        );
-        componentDocs = await extractComponentDocs(projectPath, componentFiles);
-        console.log(`✅ Extracted documentation for ${Object.keys(componentDocs).length} components`);
-      } catch (error) {
-        console.error(`❌ Error extracting component documentation:`, error);
-      }
-    }
-
-    // Step 5: Extract utility functions (if enabled)
+    // Step 4: Extract utility functions (if enabled)
     const utilityMethods: Array<{ filePath: string; signatures: string[] }> = [];
 
     if (includeUtilityMethods) {
       console.log(`🔍 Extracting utility method signatures...`);
       try {
         const utilityFiles = filteredFiles.filter(file => {
-          const fileName = path.basename(file);
-          const isComponent = /^[A-Z]/.test(fileName.split('.')[0]);
-          return !isComponent && !file.includes('/components/');
+          const relativePath = path.relative(projectPath, path.join(projectPath, file));
+          const fileName = path.basename(relativePath);
+          const firstChar = fileName.split('.')[0][0];
+          const isComponentOrHook =
+            (firstChar === firstChar.toUpperCase() && firstChar !== firstChar.toLowerCase()) ||
+            fileName.startsWith('use');
+          const isInComponentDir =
+            relativePath.includes('components/') ||
+            relativePath.includes('app/') ||
+            relativePath.includes('pages/'); // Also exclude app/pages dirs
+
+          // Keep the file ONLY if it's NOT a component/hook AND NOT in a component/app/pages directory
+          return !isComponentOrHook && !isInComponentDir;
         });
+
+        console.log(
+          `🔬 Found ${utilityFiles.length} potential utility files for signature extraction.`
+        );
 
         for (const file of utilityFiles) {
           const fullPath = path.join(projectPath, file);
@@ -915,87 +904,29 @@ export async function getProjectContextWithDirectoryStructureAndAnalysis(
             });
           }
         }
-        console.log(`✅ Extracted ${utilityMethods.length} utility files with method signatures`);
+        console.log(`✅ Extracted signatures from ${utilityMethods.length} utility files.`);
       } catch (error) {
         console.error(`❌ Error extracting utility methods:`, error);
       }
     }
 
-    // Step 6: Combine analysis into context
-    console.log(`📝 Formatting component analysis...`);
-    let componentAnalysis = '';
-
-    if (Object.keys(componentDocs).length > 0 || Object.keys(componentRelationships).length > 0) {
-      componentAnalysis = `
-================================================================
-Component Analysis
-================================================================
-`;
-
-      // Combine info from docs and relationships
-      const combinedComponentInfo: Record<string, Partial<ComponentDocumentation & Relationship>> = {};
-
-      // Add docs from componentDocs
-      Object.entries(componentDocs).forEach(([name, docs]) => {
-        combinedComponentInfo[name] = { ...docs }; // Simplified typing
-      });
-
-      // Add relationship info from ts-morph
-      Object.entries(componentRelationships).forEach(([name, rel]) => {
-        if (combinedComponentInfo[name]) {
-          combinedComponentInfo[name] = {
-            ...combinedComponentInfo[name],
-            type: rel.type,
-            usedBy: rel.usedBy,
-            uses: rel.uses,
-            hooks: rel.hooks,
-            contexts: rel.contexts,
-          };
-        } else if (rel.type === 'component' || rel.type === 'hook') {
-           // Add components/hooks found only by ts-morph
-           combinedComponentInfo[name] = { ...rel };
-        }
-      });
-
-      // Format each component
-      for (const [name, info] of Object.entries(combinedComponentInfo)) {
-        const componentSection = formatComponentInfo(name, info);
-        const sectionTokens = countTokens(componentSection);
-
-        if (totalTokens + sectionTokens > maxSize * 0.8) {
-          console.log(`⚠️ Token limit reached, skipping component ${name}`);
-          break;
-        }
-
-        componentAnalysis += componentSection;
-        totalTokens += sectionTokens;
-        includedFiles.push({
-          path: info.filePath?.toString() || 'unknown',
-          tokens: sectionTokens,
-          type: 'component',
-        });
-      }
-    }
-
-    if (componentAnalysis.trim() !== '') {
-      context += componentAnalysis;
-    }
-
-    // Format the relationship graph
+    // Step 5: Combine analysis into context
     console.log(`📝 Formatting relationship graph...`);
     let relationshipGraph = '';
 
     if (Object.keys(componentRelationships).length > 0) {
       relationshipGraph = `
 ================================================================
-Relationship Graph
+Component & Function Relationship Graph
 ================================================================
 `;
 
+      // Keep the simplified graph logic
       const simplifiedGraph: Record<string, Partial<Relationship>> = {};
       Object.entries(componentRelationships).forEach(([name, rel]) => {
         simplifiedGraph[name] = {
           type: rel.type,
+          filePath: rel.filePath,
           usedBy: rel.usedBy || [],
           uses: rel.uses || [],
         };
@@ -1006,7 +937,7 @@ Relationship Graph
       const graphJson = JSON.stringify(simplifiedGraph, null, 2);
       const graphTokens = countTokens(graphJson);
 
-      if (totalTokens + graphTokens + 80 < maxSize * 0.9) {
+      if (totalTokens + graphTokens + 80 < maxSize * 0.8) {
         relationshipGraph += graphJson + '\n';
         totalTokens += graphTokens + 80;
         includedFiles.push({ path: 'relationship-graph', tokens: graphTokens, type: 'analysis' });
@@ -1028,13 +959,13 @@ Relationship Graph
     if (Object.keys(contextProviders).length > 0) {
       contextProviderSection = `
 ================================================================
-Context Providers and Consumers
+Context Providers
 ================================================================
 `;
       for (const [contextName, providers] of Object.entries(contextProviders)) {
         const providerInfo = `${contextName}:\n  Providers: ${providers.join(', ')}\n`;
         const providerTokens = countTokens(providerInfo);
-        if (totalTokens + providerTokens < maxSize * 0.95) {
+        if (totalTokens + providerTokens < maxSize * 0.9) {
           contextProviderSection += providerInfo;
           totalTokens += providerTokens;
         } else {
@@ -1066,7 +997,11 @@ ${utilityFile.signatures.join('\n\n')}
         if (totalTokens + sectionTokens < maxSize) {
           utilityMethodsSection += fileSection;
           totalTokens += sectionTokens;
-          includedFiles.push({ path: utilityFile.filePath, tokens: sectionTokens, type: 'utility' });
+          includedFiles.push({
+            path: utilityFile.filePath,
+            tokens: sectionTokens,
+            type: 'utility',
+          });
         } else {
           break;
         }
@@ -1079,53 +1014,21 @@ ${utilityFile.signatures.join('\n\n')}
 
     // Log summary information
     console.log(`
-=== Enhanced Context Collection Summary ===
+=== Analysis Context Collection Summary ===
 Total token count: ${totalTokens}
-Included ${includedFiles.length} files in analysis
+Included ${includedFiles.length} analysis sections
 `);
     const fileTypes = [...new Set(includedFiles.map(file => file.type))];
     fileTypes.forEach(type => {
       const typeFiles = includedFiles.filter(file => file.type === type);
-      console.log(`- ${type}: ${typeFiles.length} files (${typeFiles.reduce((sum, file) => sum + file.tokens, 0)} tokens)`);
+      console.log(
+        `- ${type}: ${typeFiles.length} sections (${typeFiles.reduce((sum, file) => sum + file.tokens, 0)} tokens)`
+      );
     });
 
     return context;
   } catch (error) {
-    console.error('Error generating enhanced project context:', error);
-    return 'Error generating enhanced project context';
+    console.error('Error generating analysis project context:', error);
+    return 'Error generating analysis project context';
   }
-}
-
-/**
- * Format component information for context output
- */
-function formatComponentInfo(name: string, info: Partial<ComponentDocumentation & Relationship>): string {
-  let output = `
-Component: ${name}
-`;
-
-  if (info.filePath) output += `File: ${info.filePath}\n`;
-  if (info.description) output += `Description: ${info.description}\n`;
-
-  if (info.props && Array.isArray(info.props) && info.props.length > 0) {
-    output += 'Props:\n';
-    const sortedProps = [...info.props].sort((a, b) => {
-      if (a.required && !b.required) return -1;
-      if (!a.required && b.required) return 1;
-      return a.name.localeCompare(b.name);
-    });
-    for (const prop of sortedProps) {
-      const required = prop.required ? ' (Required)' : '';
-      const defaultValue = prop.defaultValue ? ` (Default: ${prop.defaultValue})` : '';
-      output += `  - ${prop.name}: ${prop.type}${required}${defaultValue}\n`;
-      if (prop.description) output += `    ${prop.description}\n`;
-    }
-  }
-
-  if (info.usedBy && info.usedBy.length > 0) output += `Used by: ${info.usedBy.join(', ')}\n`;
-  if (info.uses && info.uses.length > 0) output += `Dependencies: ${info.uses.join(', ')}\n`;
-  if (info.hooks && info.hooks.length > 0) output += `Hooks: ${info.hooks.join(', ')}\n`;
-  if (info.contexts && info.contexts.length > 0) output += `Contexts: ${info.contexts.join(', ')}\n`;
-
-  return output + '\n';
 }

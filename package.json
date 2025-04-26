@@ -22,6 +22,7 @@
     "test:coverage": "jest --coverage",
     "test:agent": "npx tsx -r dotenv/config lib/llm/test-agent.ts",
     "test:naive": "npx tsx -r dotenv/config scripts/test-naive-pipeline.ts",
+    "test:context": "npx tsx -r dotenv/config scripts/test-context.ts",
     "docker:cleanup": "node scripts/cleanup-docker.js"
   },
   "dependencies": {
@@ -76,9 +77,7 @@
     "postcss": "^8.4.31",
     "postgres": "^3.4.5",
     "react": "19.0.0",
-    "react-docgen-typescript": "^2.2.2",
     "react-dom": "19.0.0",
-    "react-scanner": "^1.2.0",
     "server-only": "^0.0.1",
     "shiki": "^3.2.1",
     "stripe": "^18.0.0",

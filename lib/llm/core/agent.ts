@@ -68,13 +68,10 @@ export class Agent {
         let context = '';
         try {
           console.log(`🔍 Getting project context for projectId: ${this.projectId}`);
-          context = await getProjectContextWithDirectoryStructureAndAnalysis(
-            this.projectId,
-            {
+          context = await getProjectContextWithDirectoryStructureAndAnalysis(this.projectId, {
             maxSize: CONTEXT.MAX_CONTEXT_SIZE,
             excludeDirs: CONTEXT.EXCLUDE_DIRS,
-            }
-          );
+          });
           console.log(`✅ Successfully retrieved project context`);
         } catch (contextError) {
           console.warn('⚠️ Error getting project context:', contextError);

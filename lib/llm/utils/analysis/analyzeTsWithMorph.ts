@@ -1,5 +1,5 @@
 import path from 'path';
-import { Project, Node, SyntaxKind, SourceFile, FunctionDeclaration, ArrowFunction, MethodDeclaration } from 'ts-morph';
+import { Project, Node, SyntaxKind, SourceFile } from 'ts-morph';
 
 /**
  * Relationship between components, functions, and methods
@@ -23,12 +23,12 @@ export async function analyzeTsWithMorph(projectPath: string): Promise<{
 }> {
   try {
     console.log(`🔬 Analyzing TypeScript code with ts-morph in ${projectPath}`);
-    
+
     // Initialize project
     const project = new Project({
       tsConfigFilePath: path.join(projectPath, 'tsconfig.json'),
     });
-    
+
     // Add source files if tsconfig isn't available
     try {
       project.getSourceFiles();
@@ -47,18 +47,18 @@ export async function analyzeTsWithMorph(projectPath: string): Promise<{
         path.join(projectPath, 'pages/**/*.tsx'),
       ]);
     }
-    
+
     const sourceFiles = project.getSourceFiles();
     console.log(`📊 Found ${sourceFiles.length} TypeScript source files`);
-    
+
     const relationships: Record<string, Relationship> = {};
     const contextProviders: Record<string, string[]> = {};
-    
+
     // Process each source file
     for (const sourceFile of sourceFiles) {
       processSourceFile(sourceFile, relationships, contextProviders);
     }
-    
+
     // Post-process relationships to connect usedBy relationships
     for (const [name, relationship] of Object.entries(relationships)) {
       for (const usedItem of relationship.uses) {
@@ -69,10 +69,12 @@ export async function analyzeTsWithMorph(projectPath: string): Promise<{
         }
       }
     }
-    
-    console.log(`✅ Analyzed ${Object.keys(relationships).length} components, functions, and methods`);
+
+    console.log(
+      `✅ Analyzed ${Object.keys(relationships).length} components, functions, and methods`
+    );
     console.log(`✅ Found ${Object.keys(contextProviders).length} Context providers`);
-    
+
     return { relationships, contextProviders };
   } catch (error) {
     console.error('❌ Error analyzing TypeScript code:', error);
@@ -88,135 +90,166 @@ function processSourceFile(
   relationships: Record<string, Relationship>,
   contextProviders: Record<string, string[]>
 ) {
-  const filePath = sourceFile.getFilePath().split('/').slice(-3).join('/');
-  
-  // Find React components (function components)
+  const filePath = sourceFile.getFilePath().split('/').slice(-3).join('/'); // Keep short path for context
+
+  // --- Process Function Declarations ---
   sourceFile.getFunctions().forEach(func => {
     const name = func.getName();
     if (!name) return;
-    
-    // Check if it's likely a React component (starts with uppercase or is a hook)
+
     const isComponent = /^[A-Z]/.test(name);
     const isHook = name.startsWith('use');
-    
-    if (isComponent || isHook) {
-      const type = isComponent ? 'component' : 'hook';
-      
-      // Initialize relationship
-      relationships[name] = {
-        name,
-        type,
-        filePath,
-        usedBy: [],
-        uses: [],
-        hooks: isComponent ? findHooksUsed(func) : undefined,
-        contexts: isComponent ? findContextsUsed(func) : undefined,
-      };
-      
-      // Find function calls to track dependencies
-      func.getDescendantsOfKind(SyntaxKind.CallExpression).forEach(call => {
-        const calleeName = call.getExpression().getText();
-        if (!calleeName.includes('.') && !calleeName.includes('(')) {
-          if (!relationships[name].uses.includes(calleeName)) {
-            relationships[name].uses.push(calleeName);
-          }
-        }
-      });
+    const isUtil = !isComponent && !isHook;
+
+    if (!relationships[name] && (isComponent || isHook || isUtil)) {
+      // Add check to avoid overwriting
+      const type = isComponent ? 'component' : isHook ? 'hook' : 'function';
+      addRelationship(name, type, filePath, func, relationships);
     }
   });
-  
-  // Process arrow function components
-  processArrowFunctions(sourceFile, relationships, filePath);
-  
+
+  // --- Process Variable Declarations (Arrow Functions, forwardRef, memo, etc.) ---
+  sourceFile.getVariableDeclarations().forEach(declaration => {
+    const name = declaration.getName();
+    if (!name) return;
+
+    const isComponent = /^[A-Z]/.test(name);
+    const isHook = name.startsWith('use');
+    const initializer = declaration.getInitializer();
+
+    // Check if it's a component/hook or potentially a utility function assignment
+    if (!relationships[name] && (isComponent || isHook)) {
+      const type = isComponent ? 'component' : 'hook';
+      // Use the initializer (if arrow function) or the declaration itself for analysis
+      const nodeToAnalyze =
+        initializer && Node.isFunctionLikeDeclaration(initializer) ? initializer : declaration;
+      addRelationship(name, type, filePath, nodeToAnalyze, relationships);
+    }
+    // Future: Could add logic here for utility functions assigned to variables if needed
+  });
+
   // Find Context providers
   findContextProviders(sourceFile, contextProviders);
 }
 
 /**
- * Process arrow functions that might be React components or hooks
+ * Adds or updates a relationship entry.
  */
-function processArrowFunctions(
-  sourceFile: SourceFile,
-  relationships: Record<string, Relationship>,
-  filePath: string
+function addRelationship(
+  name: string,
+  type: Relationship['type'],
+  filePath: string,
+  node: Node, // Node to analyze for uses, hooks, contexts
+  relationships: Record<string, Relationship>
 ) {
-  // Find variable declarations with arrow functions
-  sourceFile.getVariableDeclarations().forEach(declaration => {
-    const name = declaration.getName();
-    const initializer = declaration.getInitializer();
-    
-    if (initializer && Node.isArrowFunction(initializer)) {
-      // Check if it's likely a React component or hook
-      const isComponent = /^[A-Z]/.test(name);
-      const isHook = name.startsWith('use');
-      
-      if (isComponent || isHook) {
-        const type = isComponent ? 'component' : 'hook';
-        
-        // Initialize relationship
-        relationships[name] = {
-          name,
-          type,
-          filePath,
-          usedBy: [],
-          uses: [],
-          hooks: isComponent ? findHooksUsed(initializer) : undefined,
-          contexts: isComponent ? findContextsUsed(initializer) : undefined,
-        };
-        
-        // Find function calls to track dependencies
-        initializer.getDescendantsOfKind(SyntaxKind.CallExpression).forEach(call => {
-          const calleeName = call.getExpression().getText();
-          // Only include simple function calls, not method calls or nested calls
-          if (!calleeName.includes('.') && !calleeName.includes('(')) {
-            if (!relationships[name].uses.includes(calleeName)) {
-              relationships[name].uses.push(calleeName);
-            }
-          }
-        });
+  // Initialize if not exists
+  if (!relationships[name]) {
+    relationships[name] = {
+      name,
+      type,
+      filePath,
+      usedBy: [],
+      uses: [],
+      hooks: type === 'component' ? findHooksUsed(node) : undefined,
+      contexts: type === 'component' ? findContextsUsed(node) : undefined,
+    };
+  }
+
+  // Find function calls/identifiers to track dependencies (uses)
+  // Check if the node has a body or initializer to search within
+  const searchNode =
+    Node.isBodyable(node) || Node.isBodied(node)
+      ? node
+      : Node.isVariableDeclaration(node)
+        ? node.getInitializer()
+        : undefined;
+
+  if (searchNode) {
+    searchNode.getDescendantsOfKind(SyntaxKind.Identifier).forEach(id => {
+      // Simple check: Add if it's likely a function/hook/component name
+      const idText = id.getText();
+      // Avoid adding self-references or very common JS keywords/types
+      if (
+        idText !== name &&
+        idText.match(/^(use|[A-Z])\w*$/) &&
+        !['React', 'useState', 'useEffect', 'useContext'].includes(idText)
+      ) {
+        const usesSet = new Set(relationships[name].uses);
+        if (!usesSet.has(idText)) {
+          relationships[name].uses.push(idText);
+        }
       }
-    }
-  });
+    });
+    // Also check explicit calls
+    searchNode.getDescendantsOfKind(SyntaxKind.CallExpression).forEach(call => {
+      const calleeName = call.getExpression().getText();
+      // Basic check for simple function calls
+      if (!calleeName.includes('.') && !calleeName.includes('(') && calleeName !== name) {
+        const usesSet = new Set(relationships[name].uses);
+        if (!usesSet.has(calleeName)) {
+          relationships[name].uses.push(calleeName);
+        }
+      }
+    });
+  }
 }
 
 /**
- * Find React hooks used within a component
+ * Find React hooks used within a component or hook
  */
-function findHooksUsed(node: FunctionDeclaration | ArrowFunction | MethodDeclaration): string[] {
+function findHooksUsed(node: Node): string[] {
   const hooks: string[] = [];
-  
-  node.getDescendantsOfKind(SyntaxKind.CallExpression).forEach(call => {
-    const calleeName = call.getExpression().getText();
-    if (calleeName.startsWith('use') && !calleeName.includes('.')) {
-      if (!hooks.includes(calleeName)) {
+  // Search within the relevant node (function body, variable initializer)
+  const searchNode =
+    Node.isBodyable(node) || Node.isBodied(node)
+      ? node
+      : Node.isVariableDeclaration(node)
+        ? node.getInitializer()
+        : undefined;
+
+  if (searchNode) {
+    searchNode.getDescendantsOfKind(SyntaxKind.CallExpression).forEach(call => {
+      const calleeName = call.getExpression().getText();
+      // Improved check for hooks (potentially check import source too)
+      if (
+        calleeName.startsWith('use') &&
+        !calleeName.includes('.') &&
+        !hooks.includes(calleeName)
+      ) {
         hooks.push(calleeName);
       }
-    }
-  });
-  
+    });
+  }
   return hooks;
 }
 
 /**
- * Find Context usage within a component
+ * Find Context usage within a component or hook
  */
-function findContextsUsed(node: FunctionDeclaration | ArrowFunction | MethodDeclaration): string[] {
+function findContextsUsed(node: Node): string[] {
   const contexts: string[] = [];
-  
-  // Look for useContext calls
-  node.getDescendantsOfKind(SyntaxKind.CallExpression).forEach(call => {
-    const callee = call.getExpression().getText();
-    if (callee === 'useContext') {
-      const args = call.getArguments();
-      if (args.length > 0) {
-        const contextName = args[0].getText();
-        if (!contexts.includes(contextName)) {
-          contexts.push(contextName);
+  const searchNode =
+    Node.isBodyable(node) || Node.isBodied(node)
+      ? node
+      : Node.isVariableDeclaration(node)
+        ? node.getInitializer()
+        : undefined;
+
+  if (searchNode) {
+    // Look for useContext calls
+    searchNode.getDescendantsOfKind(SyntaxKind.CallExpression).forEach(call => {
+      const callee = call.getExpression().getText();
+      if (callee === 'useContext') {
+        const args = call.getArguments();
+        if (args.length > 0) {
+          const contextName = args[0].getText();
+          if (!contexts.includes(contextName)) {
+            contexts.push(contextName);
+          }
         }
       }
-    }
-  });
-  
+    });
+  }
   return contexts;
 }
 
@@ -233,24 +266,26 @@ function findContextProviders(sourceFile: SourceFile, contextProviders: Record<s
       if (parent && Node.isVariableDeclaration(parent)) {
         const contextName = parent.getName();
         contextProviders[contextName] = [];
-        
+
         // Find components that use this context's Provider
         sourceFile.getDescendantsOfKind(SyntaxKind.JsxElement).forEach(jsx => {
           const openingElement = jsx.getOpeningElement();
           const tagName = openingElement.getTagNameNode().getText();
-          
+
           if (tagName === `${contextName}.Provider`) {
             // Try to find the component this Provider is in
             // Cast to Node to avoid type issues
             let currentNode: Node | undefined = jsx;
-            
+
             // Make sure we have a node before proceeding
-            while (currentNode && 
-                  !Node.isFunctionDeclaration(currentNode) && 
-                  !Node.isArrowFunction(currentNode)) {
+            while (
+              currentNode &&
+              !Node.isFunctionDeclaration(currentNode) &&
+              !Node.isArrowFunction(currentNode)
+            ) {
               currentNode = currentNode.getParent();
             }
-            
+
             if (currentNode) {
               let componentName = '';
               if (Node.isFunctionDeclaration(currentNode)) {
@@ -261,7 +296,7 @@ function findContextProviders(sourceFile: SourceFile, contextProviders: Record<s
                   componentName = parent.getName();
                 }
               }
-              
+
               if (componentName && !contextProviders[contextName].includes(componentName)) {
                 contextProviders[contextName].push(componentName);
               }
@@ -271,4 +306,4 @@ function findContextProviders(sourceFile: SourceFile, contextProviders: Record<s
       }
     }
   });
-} 
+}
