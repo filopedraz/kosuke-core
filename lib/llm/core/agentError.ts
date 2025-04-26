@@ -1,4 +1,16 @@
-import { AgentErrorType } from './types';
+/**
+ * Agent error types for better error handling
+ */
+export type AgentErrorType = 'timeout' | 'parsing' | 'processing' | 'unknown';
+
+/**
+ * Agent error interface
+ */
+export interface AgentErrorInterface {
+  type: AgentErrorType;
+  message: string;
+  details?: string;
+}
 
 /**
  * Custom AgentError class for handling agent-specific errors

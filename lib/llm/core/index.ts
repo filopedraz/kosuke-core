@@ -2,15 +2,14 @@
  * LLM Core module exports
  */
 
-// Export types
-export * from './types';
+// Export types from their respective files
+export * from './agentActions';
+export * from './agentError';
 
-// Export Agent class
-export { Agent } from './agent';
+// Export other components
+export * from './agent';
 
 // Export modular components
-export { AgentError, classifyError, getErrorMessage } from './agentError';
-
 export {
   generateChangesSummary,
   fetchChatHistory,

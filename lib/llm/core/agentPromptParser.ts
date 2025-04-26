@@ -1,4 +1,4 @@
-import { Action, normalizeAction, isValidAction } from './types';
+import { Action, normalizeAction, isValidAction } from './agentActions';
 import { buildNaivePrompt } from './prompts';
 import { generateAICompletion } from '../api/ai';
 import { AgentError } from './agentError';

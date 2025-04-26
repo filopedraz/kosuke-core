@@ -3,8 +3,8 @@ import { revalidatePath } from 'next/cache';
 import { db } from '@/lib/db/drizzle';
 import { chatMessages, actions } from '@/lib/db/schema';
 import { isWebRequestEnvironment } from '@/lib/environment';
-import { AgentErrorType } from './types';
-import { Action } from './types';
+import { AgentErrorType } from './agentError';
+import { Action } from './agentActions';
 import { generateSummaryWithFlash } from '../api/ai';
 
 // Action operation type mapping for database operations

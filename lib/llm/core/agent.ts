@@ -1,5 +1,6 @@
 import { LLM, CONTEXT } from '@/lib/constants';
-import { Action, AgentErrorType } from './types';
+import { Action } from './agentActions';
+import { AgentErrorType } from './agentError';
 import { getProjectContextWithDirectoryStructureAndAnalysis } from '../context';
 import {
   generateChangesSummary,
