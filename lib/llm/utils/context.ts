@@ -135,6 +135,7 @@ ${generateOutput(tree)}
 
 /**
  * Get the context for a project
+ * @deprecated Use getProjectContextWithDirectoryStructureAndMethodSignaturesWithDocstrings() instead for better performance and focused context
  */
 export async function getProjectContext(
   projectId: number | string,
@@ -268,6 +269,7 @@ ${content}
 
     // Process each file until we hit the token limit
     for (const file of sortedFiles) {
+      console.log(`Processing file: ${file}`);
       // Skip node_modules and other unwanted paths
       if (
         file.includes('node_modules/') ||
@@ -376,6 +378,375 @@ export async function getProjectContextOnlyDirectoryStructure(
   console.log(`📂 Excluded directories: ${excludeDirs.join(', ')}`);
 
   return context;
+}
+
+/**
+ * Get project context with directory structure and method signatures with docstrings
+ * This provides a more focused view of the codebase than full file contents
+ */
+export async function getProjectContextWithDirectoryStructureAndMethodSignaturesWithDocstrings(
+  projectId: number | string,
+  options: {
+    maxSize?: number;
+    includeExtensions?: string[];
+    excludeDirs?: string[];
+    excludeFiles?: string[];
+  } = {}
+): Promise<string> {
+  const {
+    maxSize = CONTEXT.MAX_CONTEXT_SIZE,
+    includeExtensions = CONTEXT.INCLUDE_EXTENSIONS,
+    excludeDirs = CONTEXT.EXCLUDE_DIRS,
+    excludeFiles = CONTEXT.EXCLUDE_FILES,
+  } = options;
+
+  console.log(`📂 Starting method signature collection for project ${projectId}`);
+  console.log(`📊 Max context size: ${maxSize} tokens`);
+
+  const projectPath = getProjectPath(projectId);
+  console.log(`📂 Project path: ${projectPath}`);
+
+  let context = '';
+  let totalTokens = 0;
+
+  // Track files processed
+  const includedFiles: Array<{ path: string; tokens: number; methods: number }> = [];
+  const excludedFiles: Array<{ path: string; tokens: number; reason: string }> = [];
+
+  // Get directory structure first
+  const directoryStructure = await generateDirectoryStructure(projectPath, excludeDirs);
+  const dirStructureTokens = countTokens(directoryStructure);
+
+  // Add directory structure if it doesn't exceed 20% of the token limit
+  if (dirStructureTokens < maxSize * 0.2) {
+    context += directoryStructure;
+    totalTokens += dirStructureTokens;
+    console.log(`📂 Added directory structure (${dirStructureTokens} tokens)`);
+  } else {
+    console.log(`⚠️ Directory structure too large (${dirStructureTokens} tokens), skipping`);
+  }
+
+  try {
+    console.log(`🔍 Scanning project for method signatures: ${projectPath}`);
+    const files = await listFilesRecursively(projectPath);
+    console.log(`📊 Found ${files.length} total files in project`);
+
+    // Filter files by extension and exclude directories
+    const filteredFiles = files.filter(file => {
+      const ext = path.extname(file);
+      const fileName = path.basename(file);
+
+      // Check if file should be excluded
+      if (excludeFiles.includes(fileName)) {
+        excludedFiles.push({ path: file, tokens: 0, reason: 'excluded file' });
+        return false;
+      }
+
+      // Check if file is in an excluded directory
+      if (excludeDirs.some(dir => file.includes(`/${dir}/`) || file.startsWith(dir))) {
+        excludedFiles.push({ path: file, tokens: 0, reason: 'excluded directory' });
+        return false;
+      }
+
+      // Check if file has an included extension
+      return includeExtensions.includes(ext);
+    });
+
+    console.log(`📊 ${filteredFiles.length} files match the extension and exclusion filters`);
+    console.log(filteredFiles);
+
+    // Sort filtered files to prioritize important ones
+    const sortedFiles = sortFilesByImportance(filteredFiles);
+
+    console.log(sortedFiles);
+
+    // Process each file
+    for (const file of sortedFiles) {
+      // Skip node_modules and other unwanted paths
+      if (
+        file.includes('node_modules/') ||
+        file.includes('.git/') ||
+        file.includes('.next/') ||
+        file.includes('.vscode/')
+      ) {
+        excludedFiles.push({ path: file, tokens: 0, reason: 'excluded path' });
+        continue;
+      }
+
+      try {
+        // Read the file content
+        const fullPath = path.join(projectPath, file);
+        const content = await readFile(fullPath);
+        const relativePath = path.relative(projectPath, file);
+
+        // Skip empty files
+        if (!content.trim()) {
+          excludedFiles.push({ path: relativePath, tokens: 0, reason: 'empty file' });
+          continue;
+        }
+
+        console.log(`Processing file: ${file}`);
+        if (file === 'hooks/use-mobile.tsx') {
+          console.log(content);
+        }
+
+        // Extract method signatures and docstrings
+        const methodSignatures = extractMethodSignatures(content, path.extname(file));
+
+        console.log(methodSignatures);
+
+        // Skip if no methods found
+        if (methodSignatures.length === 0) {
+          excludedFiles.push({ path: relativePath, tokens: 0, reason: 'no methods found' });
+          continue;
+        }
+
+        // Format method signatures with file path
+        const fileMethodsContext = `
+================
+File: ${relativePath}
+================
+${methodSignatures.join('\n\n')}
+`;
+
+        const fileTokens = countTokens(fileMethodsContext);
+
+        // Check if adding this file would exceed the max size
+        if (totalTokens + fileTokens > maxSize) {
+          console.log(
+            `⚠️ Excluding file due to token limit: ${relativePath} (${fileTokens} tokens)`
+          );
+          excludedFiles.push({
+            path: relativePath,
+            tokens: fileTokens,
+            reason: 'token limit exceeded',
+          });
+          continue;
+        }
+
+        // Add file method signatures to context
+        console.log(
+          `✅ Including ${methodSignatures.length} methods from: ${relativePath} (${fileTokens} tokens)`
+        );
+        includedFiles.push({
+          path: relativePath,
+          tokens: fileTokens,
+          methods: methodSignatures.length,
+        });
+        context += fileMethodsContext;
+        totalTokens += fileTokens;
+      } catch (error) {
+        console.error(`❌ Failed to process file ${file}:`, error);
+        const relativePath = path.relative(projectPath, file);
+        excludedFiles.push({ path: relativePath, tokens: 0, reason: 'processing error' });
+      }
+    }
+
+    // Log summary information
+    console.log(`
+=== Method Signature Context Collection Summary ===
+Total token count: ${totalTokens}
+Included ${includedFiles.length} files with ${includedFiles.reduce((sum, file) => sum + file.methods, 0)} methods
+Excluded ${excludedFiles.length} files
+`);
+
+    // Log included files
+    console.log('Included files:');
+    includedFiles.forEach(file => {
+      console.log(`- ${file.path} (${file.tokens} tokens, ${file.methods} methods)`);
+    });
+
+    // Log excluded files by reason
+    console.log('\nExcluded files by reason:');
+    const reasons = [...new Set(excludedFiles.map(file => file.reason))];
+    reasons.forEach(reason => {
+      const count = excludedFiles.filter(file => file.reason === reason).length;
+      console.log(`- ${reason}: ${count} files`);
+    });
+
+    return context;
+  } catch (error) {
+    console.error('Error getting method signatures context:', error);
+    return 'Error generating method signatures context';
+  }
+}
+
+/**
+ * Extract method signatures and their docstrings from file content
+ */
+export function extractMethodSignatures(content: string, extension: string): string[] {
+  const signatures: string[] = [];
+
+  // Different patterns for different file types
+  if (['.ts', '.tsx', '.js', '.jsx'].includes(extension)) {
+    // JavaScript/TypeScript patterns
+
+    // Match function declarations with docstrings
+    const functionWithDocPattern =
+      /\/\*\*[\s\S]*?\*\/\s*(?:export\s+)?(?:async\s+)?function\s+(\w+)\s*\(([^)]*)\)\s*(?::\s*[^{]+)?\s*{/g;
+    let match;
+
+    while ((match = functionWithDocPattern.exec(content)) !== null) {
+      const matchText = match[0];
+      const funcName = match[1];
+      const params = match[2]?.trim() || '';
+
+      // Extract the docstring
+      const docstringMatch = matchText.match(/\/\*\*([\s\S]*?)\*\//);
+      const docstring = docstringMatch ? formatDocstring(docstringMatch[1]) : '';
+
+      signatures.push(
+        docstring ? `${docstring}\n${funcName}(${params})` : `${funcName}(${params})`
+      );
+    }
+
+    // Match function declarations WITHOUT docstrings
+    const functionPattern =
+      /(?:export\s+)?(?:async\s+)?function\s+(\w+)\s*\(([^)]*)\)\s*(?::\s*[^{]+)?\s*{/g;
+    while ((match = functionPattern.exec(content)) !== null) {
+      const funcName = match[1];
+      const params = match[2]?.trim() || '';
+
+      // Avoid duplicates
+      if (!signatures.some(sig => sig.includes(`${funcName}(`))) {
+        signatures.push(`${funcName}(${params})`);
+      }
+    }
+
+    // Match arrow functions with docstrings
+    const arrowWithDocPattern =
+      /\/\*\*[\s\S]*?\*\/\s*(?:export\s+)?(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s*)?\(([^)]*)\)\s*(?::\s*[^=]+)?\s*=>/g;
+
+    while ((match = arrowWithDocPattern.exec(content)) !== null) {
+      const funcName = match[1];
+      const params = match[2]?.trim() || '';
+      const matchText = match[0];
+
+      const docstringMatch = matchText.match(/\/\*\*([\s\S]*?)\*\//);
+      const docstring = docstringMatch ? formatDocstring(docstringMatch[1]) : '';
+
+      signatures.push(
+        docstring ? `${docstring}\n${funcName}(${params})` : `${funcName}(${params})`
+      );
+    }
+
+    // Match arrow functions WITHOUT docstrings
+    const arrowPattern =
+      /(?:export\s+)?(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s*)?\(([^)]*)\)\s*(?::\s*[^=]+)?\s*=>/g;
+    while ((match = arrowPattern.exec(content)) !== null) {
+      const funcName = match[1];
+      const params = match[2]?.trim() || '';
+
+      // Avoid duplicates
+      if (!signatures.some(sig => sig.includes(`${funcName}(`))) {
+        signatures.push(`${funcName}(${params})`);
+      }
+    }
+
+    // React component patterns - look for common React component naming pattern and component variable declarations
+    // This simple approach is more reliable than trying to match all specific component patterns
+    const componentNamePattern = /(?:export\s+)?(?:const|let|var)\s+([A-Z]\w+)(?:\s*=\s*|\s*:)/g;
+    while ((match = componentNamePattern.exec(content)) !== null) {
+      const componentName = match[1];
+
+      // Skip primitive React components that are just aliases
+      if (componentName === 'React' || componentName === 'Fragment') continue;
+
+      // Avoid duplicates - add as simple component
+      if (!signatures.some(sig => sig.includes(`${componentName}(`))) {
+        signatures.push(`${componentName}(props)`);
+      }
+    }
+
+    // Extract forwardRef components more generically
+    const forwardRefGenericPattern = /\bconst\s+([A-Z]\w+)\s*=\s*React\.forwardRef/g;
+    while ((match = forwardRefGenericPattern.exec(content)) !== null) {
+      const componentName = match[1];
+
+      // Avoid duplicates
+      if (!signatures.some(sig => sig.includes(`${componentName}(`))) {
+        signatures.push(`${componentName}(props, ref)`);
+      }
+    }
+
+    // Match method declarations within classes (with and without docstrings)
+    const methodWithDocPattern =
+      /\/\*\*[\s\S]*?\*\/\s*(?:public|private|protected|static|async|get|set)?\s*(\w+)\s*\(([^)]*)\)\s*(?::\s*[^{]+)?\s*{/g;
+    while ((match = methodWithDocPattern.exec(content)) !== null) {
+      const methodName = match[1];
+      const params = match[2]?.trim() || '';
+      const matchText = match[0];
+
+      const docstringMatch = matchText.match(/\/\*\*([\s\S]*?)\*\//);
+      const docstring = docstringMatch ? formatDocstring(docstringMatch[1]) : '';
+
+      signatures.push(
+        docstring ? `${docstring}\n${methodName}(${params})` : `${methodName}(${params})`
+      );
+    }
+
+    // Match method declarations WITHOUT docstrings
+    const methodPattern =
+      /(?:public|private|protected|static|async|get|set)?\s*(\w+)\s*\(([^)]*)\)\s*(?::\s*[^{]+)?\s*{/g;
+    while ((match = methodPattern.exec(content)) !== null) {
+      const methodName = match[1];
+      const params = match[2]?.trim() || '';
+
+      // Avoid duplicates
+      if (!signatures.some(sig => sig.includes(`${methodName}(`))) {
+        signatures.push(`${methodName}(${params})`);
+      }
+    }
+  } else if (['.py'].includes(extension)) {
+    // Python patterns
+    // With docstrings
+    const functionWithDocPattern =
+      /(?:'''[\s\S]*?'''|"""[\s\S]*?""")\s*def\s+(\w+)\s*\(([^)]*)\)(?:\s*->\s*[^:]+)?:/g;
+    let match;
+
+    while ((match = functionWithDocPattern.exec(content)) !== null) {
+      const funcName = match[1];
+      const params = match[2]?.trim() || '';
+      const matchText = match[0];
+
+      const docstringMatch = matchText.match(/(?:'''([\s\S]*?)'''|"""([\s\S]*?)""")/);
+      const docstring = docstringMatch
+        ? formatDocstring(docstringMatch[1] || docstringMatch[2])
+        : '';
+
+      signatures.push(
+        docstring ? `${docstring}\n${funcName}(${params})` : `${funcName}(${params})`
+      );
+    }
+
+    // Without docstrings
+    const functionPattern = /def\s+(\w+)\s*\(([^)]*)\)(?:\s*->\s*[^:]+)?:/g;
+    while ((match = functionPattern.exec(content)) !== null) {
+      const funcName = match[1];
+      const params = match[2]?.trim() || '';
+
+      // Avoid duplicates
+      if (!signatures.some(sig => sig.includes(`${funcName}(`))) {
+        signatures.push(`${funcName}(${params})`);
+      }
+    }
+  }
+
+  return signatures;
+}
+
+/**
+ * Format docstring by removing extra whitespace and asterisks
+ */
+function formatDocstring(docstring: string): string {
+  if (!docstring) return '';
+
+  // Remove leading asterisks and whitespace from each line
+  return docstring
+    .split('\n')
+    .map(line => line.trim().replace(/^\*\s*/, ''))
+    .join('\n')
+    .trim();
 }
 
 /**
