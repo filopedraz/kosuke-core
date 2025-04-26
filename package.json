@@ -22,6 +22,7 @@
     "test:coverage": "jest --coverage",
     "test:agent": "npx tsx -r dotenv/config lib/llm/test-agent.ts",
     "test:naive": "npx tsx -r dotenv/config scripts/test-naive-pipeline.ts",
+    "test:context": "npx tsx -r dotenv/config scripts/test-context.ts",
     "docker:cleanup": "node scripts/cleanup-docker.js"
   },
   "dependencies": {
@@ -86,6 +87,7 @@
     "tailwindcss-react-aria-components": "^1.0.0",
     "tiktoken": "^1.0.20",
     "tree-kill": "^1.2.2",
+    "ts-morph": "^25.0.1",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.2",
     "uuid": "^11.1.0",
