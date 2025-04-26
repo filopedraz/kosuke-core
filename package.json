@@ -20,8 +20,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "test:agent": "npx tsx -r dotenv/config lib/llm/test-agent.ts",
-    "test:naive": "npx tsx -r dotenv/config scripts/test-naive-pipeline.ts",
+    "test:agent": "npx tsx -r dotenv/config scripts/test-agent.ts",
     "test:context": "npx tsx -r dotenv/config scripts/test-context.ts",
     "docker:cleanup": "node scripts/cleanup-docker.js"
   },
