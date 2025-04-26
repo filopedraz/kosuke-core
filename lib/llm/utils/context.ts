@@ -474,7 +474,10 @@ export async function getProjectContextWithDirectoryStructureAndMethodSignatures
         // Read the file content
         const fullPath = path.join(projectPath, file);
         const content = await readFile(fullPath);
-        const relativePath = path.relative(projectPath, file);
+
+        // Get the path relative to the project root
+        // This ensures paths are consistently displayed as ./path/to/file from project root
+        const relativePath = path.relative(projectPath, fullPath);
 
         // Skip empty files
         if (!content.trim()) {
@@ -494,7 +497,7 @@ export async function getProjectContextWithDirectoryStructureAndMethodSignatures
         // Format method signatures with file path
         const fileMethodsContext = `
 ================
-File: ${relativePath}
+File: ${file}
 ================
 ${methodSignatures.join('\n\n')}
 `;
