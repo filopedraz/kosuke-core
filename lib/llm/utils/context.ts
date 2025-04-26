@@ -3,9 +3,6 @@ import { encoding_for_model } from 'tiktoken';
 
 import { CONTEXT } from '@/lib/constants';
 import { readFile, listFilesRecursively, getProjectPath } from '../../fs/operations';
-import { countTokens } from '../utils/context';
-import { generateDirectoryStructure } from './generateDirectoryStructure';
-import { extractMethodSignatures } from './extractMethodSignatures';
 import { analyzeTsWithMorph, Relationship } from './analysis/analyzeTsWithMorph';
 
 /**
@@ -25,6 +22,17 @@ export function countTokens(text: string): number {
     // Fallback to approximately 4 characters per token
     return Math.ceil(text.length / 4);
   }
+}
+
+/**
+ * Format a docstring by removing leading asterisks and whitespace
+ */
+function formatDocstring(docstring: string): string {
+  return docstring
+    .split('\n')
+    .map(line => line.trim().replace(/^\*\s*/, ''))
+    .join('\n')
+    .trim();
 }
 
 /**
@@ -138,437 +146,6 @@ ${generateOutput(tree)}
 }
 
 /**
- * Get the context for a project
- * @deprecated Use getProjectContextWithDirectoryStructureAndMethodSignaturesWithDocstrings() instead for better performance and focused context
- */
-export async function getProjectContext(
-  projectId: number | string,
-  options: {
-    maxSize?: number;
-    includeExtensions?: string[];
-    excludeDirs?: string[];
-    excludeFiles?: string[];
-    specificFiles?: string[];
-    includeFull?: boolean;
-    includeDirectoryStructure?: boolean;
-  } = {}
-): Promise<string> {
-  const {
-    maxSize = CONTEXT.MAX_CONTEXT_SIZE,
-    includeExtensions = CONTEXT.INCLUDE_EXTENSIONS,
-    excludeDirs = CONTEXT.EXCLUDE_DIRS,
-    excludeFiles = CONTEXT.EXCLUDE_FILES,
-    specificFiles = [],
-    includeDirectoryStructure = true,
-  } = options;
-
-  console.log(`📂 Starting context collection for project ${projectId}`);
-  console.log(`📊 Max context size: ${maxSize} tokens`);
-
-  const projectPath = getProjectPath(projectId);
-  console.log(`📂 Project path: ${projectPath}`);
-
-  let context = '';
-  let totalTokens = 0;
-
-  // Track files sent to the LLM
-  const includedFiles: Array<{ path: string; tokens: number }> = [];
-  const excludedFiles: Array<{ path: string; tokens: number; reason: string }> = [];
-
-  // Generate directory structure if requested
-  let directoryStructure = '';
-  if (includeDirectoryStructure) {
-    directoryStructure = await generateDirectoryStructure(projectPath, excludeDirs);
-    const dirStructureTokens = countTokens(directoryStructure);
-
-    // Only add if there's enough room for it
-    if (dirStructureTokens * 2 < maxSize * 0.2) {
-      // Use at most 20% for both structures
-      context += directoryStructure;
-      totalTokens += dirStructureTokens * 2; // Account for both instances
-      console.log(`📂 Added directory structure (${dirStructureTokens} tokens x2)`);
-    } else {
-      console.log(`⚠️ Directory structure too large (${dirStructureTokens} tokens x2), skipping`);
-    }
-  }
-
-  // If specific files are provided, only include those
-  if (specificFiles.length > 0) {
-    console.log(`🔍 Specific files mode: Including only ${specificFiles.length} requested files`);
-
-    for (const filePath of specificFiles) {
-      const fullPath = path.join(projectPath, filePath);
-      try {
-        const content = await readFile(fullPath);
-        const fileContext = `
-================
-File: ${filePath}
-================
-${content}
-`;
-        const fileTokens = countTokens(fileContext);
-
-        // Check if adding this file would exceed the max size
-        if (totalTokens + fileTokens > maxSize) {
-          console.log(`⚠️ Excluding file due to token limit: ${filePath} (${fileTokens} tokens)`);
-          excludedFiles.push({
-            path: filePath,
-            tokens: fileTokens,
-            reason: 'token limit exceeded',
-          });
-          context += `\n[Context truncated due to token limitations]\n`;
-          break;
-        }
-
-        console.log(`✅ Including file: ${filePath} (${fileTokens} tokens)`);
-        includedFiles.push({ path: filePath, tokens: fileTokens });
-        context += fileContext;
-        totalTokens += fileTokens;
-      } catch (error) {
-        console.error(`❌ Failed to read file ${filePath}:`, error);
-        excludedFiles.push({ path: filePath, tokens: 0, reason: 'read error' });
-      }
-    }
-
-    // Add directory structure at the end if it was included at the beginning
-    if (directoryStructure) {
-      context += directoryStructure;
-    }
-
-    logContextSummary(includedFiles, excludedFiles, totalTokens);
-    return context;
-  }
-
-  // Otherwise, scan the project directory
-  try {
-    console.log(`🔍 Scanning project directory: ${projectPath}`);
-    const files = await listFilesRecursively(projectPath);
-    console.log(`📊 Found ${files.length} total files in project`);
-
-    // Filter files by extension and exclude directories
-    const filteredFiles = files.filter(file => {
-      const ext = path.extname(file);
-      const fileName = path.basename(file);
-
-      // Check if file should be excluded
-      if (excludeFiles.includes(fileName)) {
-        excludedFiles.push({ path: file, tokens: 0, reason: 'excluded file' });
-        return false;
-      }
-
-      // Check if file is in an excluded directory
-      if (excludeDirs.some(dir => file.includes(`/${dir}/`) || file.startsWith(dir))) {
-        excludedFiles.push({ path: file, tokens: 0, reason: 'excluded directory' });
-        return false;
-      }
-
-      // Check if file has an included extension
-      return includeExtensions.includes(ext);
-    });
-
-    console.log(`📊 ${filteredFiles.length} files match the extension and exclusion filters`);
-
-    // Sort filtered files to prioritize important ones
-    const sortedFiles = sortFilesByImportance(filteredFiles);
-
-    // Process each file until we hit the token limit
-    for (const file of sortedFiles) {
-      console.log(`Processing file: ${file}`);
-      // Skip node_modules and other unwanted paths
-      if (
-        file.includes('node_modules/') ||
-        file.includes('.git/') ||
-        file.includes('.next/') ||
-        file.includes('.vscode/')
-      ) {
-        excludedFiles.push({ path: file, tokens: 0, reason: 'excluded path' });
-        continue;
-      }
-
-      try {
-        // Read the file content
-        const fullPath = path.join(projectPath, file);
-        const content = await readFile(fullPath);
-        const relativePath = path.relative(projectPath, file);
-
-        // Skip empty files
-        if (!content.trim()) {
-          excludedFiles.push({ path: relativePath, tokens: 0, reason: 'empty file' });
-          continue;
-        }
-
-        // Create file context with header
-        const fileContext = `
-================
-File: ${relativePath}
-================
-${content}
-`;
-        const fileTokens = countTokens(fileContext);
-
-        // Check if adding this file would exceed the max size
-        if (totalTokens + fileTokens > maxSize) {
-          console.log(
-            `⚠️ Excluding file due to token limit: ${relativePath} (${fileTokens} tokens)`
-          );
-          excludedFiles.push({
-            path: relativePath,
-            tokens: fileTokens,
-            reason: 'token limit exceeded',
-          });
-          continue;
-        }
-
-        // Add file to context
-        console.log(`✅ Including file: ${relativePath} (${fileTokens} tokens)`);
-        includedFiles.push({ path: relativePath, tokens: fileTokens });
-        context += fileContext;
-        totalTokens += fileTokens;
-      } catch (error) {
-        console.error(`❌ Failed to read file ${file}:`, error);
-        const relativePath = path.relative(projectPath, file);
-        excludedFiles.push({ path: relativePath, tokens: 0, reason: 'read error' });
-      }
-    }
-
-    // Add directory structure at the end if it was included at the beginning
-    if (directoryStructure) {
-      context += directoryStructure;
-    }
-
-    logContextSummary(includedFiles, excludedFiles, totalTokens);
-    return context;
-  } catch (error) {
-    console.error('Error getting project context:', error);
-    return 'Error generating project context';
-  }
-}
-
-/**
- * Get a lean version of project context that only includes directory structure
- */
-export async function getProjectContextOnlyDirectoryStructure(
-  projectId: number | string,
-  options: {
-    maxSize?: number;
-    excludeDirs?: string[];
-  } = {}
-): Promise<string> {
-  const { maxSize = CONTEXT.MAX_CONTEXT_SIZE, excludeDirs = CONTEXT.EXCLUDE_DIRS } = options;
-
-  console.log(`📂 Starting lean context collection for project ${projectId}`);
-  console.log(`📊 Max context size: ${maxSize} tokens`);
-
-  const projectPath = getProjectPath(projectId);
-  let context = '';
-  let totalTokens = 0;
-
-  // Generate directory structure
-  // Pass the excludeDirs parameter to use in filtering
-  const directoryStructure = await generateDirectoryStructure(projectPath, excludeDirs);
-  const dirStructureTokens = countTokens(directoryStructure);
-
-  if (dirStructureTokens > maxSize) {
-    console.log(`⚠️ Directory structure too large (${dirStructureTokens} tokens), truncating`);
-    context = `[Directory structure truncated due to token limitations]\n`;
-  } else {
-    context = directoryStructure;
-    totalTokens = dirStructureTokens;
-    console.log(`📂 Added directory structure (${dirStructureTokens} tokens)`);
-  }
-
-  console.log(`\n📊 LEAN CONTEXT COLLECTION SUMMARY:`);
-  console.log(`✅ Total tokens: ${totalTokens}`);
-  console.log(`📂 Excluded directories: ${excludeDirs.join(', ')}`);
-
-  return context;
-}
-
-/**
- * Get project context with directory structure and method signatures with docstrings
- * This provides a more focused view of the codebase than full file contents
- */
-export async function getProjectContextWithDirectoryStructureAndMethodSignaturesWithDocstrings(
-  projectId: number | string,
-  options: {
-    maxSize?: number;
-    includeExtensions?: string[];
-    excludeDirs?: string[];
-    excludeFiles?: string[];
-  } = {}
-): Promise<string> {
-  const {
-    maxSize = CONTEXT.MAX_CONTEXT_SIZE,
-    includeExtensions = CONTEXT.INCLUDE_EXTENSIONS,
-    excludeDirs = CONTEXT.EXCLUDE_DIRS,
-    excludeFiles = CONTEXT.EXCLUDE_FILES,
-  } = options;
-
-  console.log(`📂 Starting method signature collection for project ${projectId}`);
-  console.log(`📊 Max context size: ${maxSize} tokens`);
-
-  const projectPath = getProjectPath(projectId);
-  console.log(`📂 Project path: ${projectPath}`);
-
-  let context = '';
-  let totalTokens = 0;
-
-  // Track files processed
-  const includedFiles: Array<{ path: string; tokens: number; methods: number }> = [];
-  const excludedFiles: Array<{ path: string; tokens: number; reason: string }> = [];
-
-  // Get directory structure first
-  const directoryStructure = await generateDirectoryStructure(projectPath, excludeDirs);
-  const dirStructureTokens = countTokens(directoryStructure);
-
-  // Add directory structure if it doesn't exceed 20% of the token limit
-  if (dirStructureTokens < maxSize * 0.2) {
-    context += directoryStructure;
-    totalTokens += dirStructureTokens;
-    console.log(`📂 Added directory structure (${dirStructureTokens} tokens)`);
-  } else {
-    console.log(`⚠️ Directory structure too large (${dirStructureTokens} tokens), skipping`);
-  }
-
-  try {
-    console.log(`🔍 Scanning project for method signatures: ${projectPath}`);
-    const files = await listFilesRecursively(projectPath);
-    console.log(`📊 Found ${files.length} total files in project`);
-
-    // Filter files by extension and exclude directories
-    const filteredFiles = files.filter(file => {
-      const ext = path.extname(file);
-      const fileName = path.basename(file);
-
-      // Check if file should be excluded
-      if (excludeFiles.includes(fileName)) {
-        excludedFiles.push({ path: file, tokens: 0, reason: 'excluded file' });
-        return false;
-      }
-
-      // Check if file is in an excluded directory
-      if (excludeDirs.some(dir => file.includes(`/${dir}/`) || file.startsWith(dir))) {
-        excludedFiles.push({ path: file, tokens: 0, reason: 'excluded directory' });
-        return false;
-      }
-
-      // Check if file has an included extension
-      return includeExtensions.includes(ext);
-    });
-
-    console.log(`📊 ${filteredFiles.length} files match the extension and exclusion filters`);
-
-    // Sort filtered files to prioritize important ones
-    const sortedFiles = sortFilesByImportance(filteredFiles);
-
-    // Process each file
-    for (const file of sortedFiles) {
-      // Skip node_modules and other unwanted paths
-      if (
-        file.includes('node_modules/') ||
-        file.includes('.git/') ||
-        file.includes('.next/') ||
-        file.includes('.vscode/')
-      ) {
-        excludedFiles.push({ path: file, tokens: 0, reason: 'excluded path' });
-        continue;
-      }
-
-      try {
-        // Read the file content
-        const fullPath = path.join(projectPath, file);
-        const content = await readFile(fullPath);
-
-        // Get the path relative to the project root
-        // This ensures paths are consistently displayed as ./path/to/file from project root
-        const relativePath = path.relative(projectPath, fullPath);
-
-        // Skip empty files
-        if (!content.trim()) {
-          excludedFiles.push({ path: relativePath, tokens: 0, reason: 'empty file' });
-          continue;
-        }
-
-        // Extract method signatures and docstrings
-        const methodSignatures = extractMethodSignatures(content, path.extname(file));
-
-        // Skip if no methods found
-        if (methodSignatures.length === 0) {
-          excludedFiles.push({ path: relativePath, tokens: 0, reason: 'no methods found' });
-          continue;
-        }
-
-        // Format method signatures with file path
-        const fileMethodsContext = `
-================
-File: ${file}
-================
-${methodSignatures.join('\n\n')}
-`;
-
-        const fileTokens = countTokens(fileMethodsContext);
-
-        // Check if adding this file would exceed the max size
-        if (totalTokens + fileTokens > maxSize) {
-          console.log(
-            `⚠️ Excluding file due to token limit: ${relativePath} (${fileTokens} tokens)`
-          );
-          excludedFiles.push({
-            path: relativePath,
-            tokens: fileTokens,
-            reason: 'token limit exceeded',
-          });
-          continue;
-        }
-
-        // Add file method signatures to context
-        console.log(
-          `✅ Including ${methodSignatures.length} methods from: ${relativePath} (${fileTokens} tokens)`
-        );
-        includedFiles.push({
-          path: relativePath,
-          tokens: fileTokens,
-          methods: methodSignatures.length,
-        });
-        context += fileMethodsContext;
-        totalTokens += fileTokens;
-      } catch (error) {
-        console.error(`❌ Failed to process file ${file}:`, error);
-        const relativePath = path.relative(projectPath, file);
-        excludedFiles.push({ path: relativePath, tokens: 0, reason: 'processing error' });
-      }
-    }
-
-    // Log summary information
-    console.log(`
-=== Method Signature Context Collection Summary ===
-Total token count: ${totalTokens}
-Included ${includedFiles.length} files with ${includedFiles.reduce((sum, file) => sum + file.methods, 0)} methods
-Excluded ${excludedFiles.length} files
-`);
-
-    // Log included files
-    console.log('Included files:');
-    includedFiles.forEach(file => {
-      console.log(`- ${file.path} (${file.tokens} tokens, ${file.methods} methods)`);
-    });
-
-    // Log excluded files by reason
-    console.log('\nExcluded files by reason:');
-    const reasons = [...new Set(excludedFiles.map(file => file.reason))];
-    reasons.forEach(reason => {
-      const count = excludedFiles.filter(file => file.reason === reason).length;
-      console.log(`- ${reason}: ${count} files`);
-    });
-
-    return context;
-  } catch (error) {
-    console.error('Error getting method signatures context:', error);
-    return 'Error generating method signatures context';
-  }
-}
-
-/**
  * Extract method signatures and their docstrings from file content
  */
 export function extractMethodSignatures(content: string, extension: string): string[] {
@@ -649,128 +226,6 @@ export function extractMethodSignatures(content: string, extension: string): str
   } catch (error) {
     console.error('Error extracting method signatures:', error);
     return [];
-  }
-}
-
-/**
- * Format docstring by removing extra whitespace and asterisks
- */
-function formatDocstring(docstring: string): string {
-  if (!docstring) return '';
-
-  // Remove leading asterisks and whitespace from each line
-  return docstring
-    .split('\n')
-    .map(line => line.trim().replace(/^\*\s*/, ''))
-    .join('\n')
-    .trim();
-}
-
-/**
- * Log a summary of the context collection
- */
-function logContextSummary(
-  includedFiles: Array<{ path: string; tokens: number }>,
-  excludedFiles: Array<{ path: string; tokens: number; reason: string }>,
-  totalTokens: number
-): void {
-  console.log(`
-=== Context Collection Summary ===
-Total token count: ${totalTokens}
-Included ${includedFiles.length} files
-Excluded ${excludedFiles.length} files
-`);
-
-  // Log included files
-  console.log('Included files:');
-  includedFiles.forEach(file => {
-    console.log(`- ${file.path} (${file.tokens} tokens)`);
-  });
-
-  // Log excluded files by reason
-  console.log('\nExcluded files by reason:');
-  const reasons = [...new Set(excludedFiles.map(file => file.reason))];
-  reasons.forEach(reason => {
-    const count = excludedFiles.filter(file => file.reason === reason).length;
-    console.log(`- ${reason}: ${count} files`);
-  });
-}
-
-/**
- * Sort files by importance based on file path and extension
- */
-function sortFilesByImportance(files: string[]): string[] {
-  // List of important file patterns (most important first)
-  const importantPatterns = [
-    /package\.json$/,
-    /tsconfig\.json$/,
-    /next\.config\.(js|ts)$/,
-    /app\/page\.tsx$/,
-    /app\/layout\.tsx$/,
-    /app\/routes\.tsx$/,
-    /app\/api\/.+\.ts$/,
-    /\.env$/,
-    /\.env\.local$/,
-    /README\.md$/,
-    /app\/.+\.tsx$/,
-    /components\/.+\.tsx$/,
-    /lib\/.+\.ts$/,
-    /utils\/.+\.ts$/,
-    /hooks\/.+\.ts$/,
-  ];
-
-  // Custom sorting function
-  return [...files].sort((a, b) => {
-    // Find the first pattern that matches each file
-    const aImportance = importantPatterns.findIndex(pattern => pattern.test(a));
-    const bImportance = importantPatterns.findIndex(pattern => pattern.test(b));
-
-    // If both match patterns, sort by pattern importance
-    if (aImportance !== -1 && bImportance !== -1) {
-      return aImportance - bImportance;
-    }
-
-    // If only one matches a pattern, prioritize it
-    if (aImportance !== -1) return -1;
-    if (bImportance !== -1) return 1;
-
-    // Otherwise sort alphabetically
-    return a.localeCompare(b);
-  });
-}
-
-/**
- * Get context for specific files
- */
-export async function getFilesContext(
-  projectId: number | string,
-  filePaths: string[]
-): Promise<string> {
-  return getProjectContext(projectId, {
-    specificFiles: filePaths,
-    includeDirectoryStructure: true,
-  });
-}
-
-/**
- * Get context for a directory
- */
-export async function getDirectoryContext(
-  projectId: number | string,
-  dirPath: string
-): Promise<string> {
-  const projectPath = getProjectPath(projectId);
-  const fullDirPath = path.join(projectPath, dirPath);
-
-  try {
-    const files = await listFilesRecursively(fullDirPath);
-    const relativePaths = files.map(file => path.relative(projectPath, file));
-    return getProjectContext(projectId, {
-      specificFiles: relativePaths,
-    });
-  } catch (error) {
-    console.error(`Error getting directory context for ${dirPath}:`, error);
-    return `Error getting directory context for ${dirPath}`;
   }
 }
 
@@ -856,9 +311,38 @@ export async function getProjectContextWithDirectoryStructureAndAnalysis(
         const tsAnalysis = await analyzeTsWithMorph(projectPath);
         componentRelationships = tsAnalysis.relationships;
         contextProviders = tsAnalysis.contextProviders;
+
+        // Log more detailed info for troubleshooting
         console.log(
           `✅ Analyzed ${Object.keys(componentRelationships).length} components and functions`
         );
+
+        // Log component types
+        const componentCount = Object.values(componentRelationships).filter(
+          r => r.type === 'component'
+        ).length;
+        const hookCount = Object.values(componentRelationships).filter(
+          r => r.type === 'hook'
+        ).length;
+        const functionCount = Object.values(componentRelationships).filter(
+          r => r.type === 'function'
+        ).length;
+
+        console.log(
+          `📊 Found ${componentCount} components, ${hookCount} hooks, and ${functionCount} functions`
+        );
+
+        if (componentCount === 0) {
+          console.warn(
+            '⚠️ No components found! Check project structure and analyzeTsWithMorph implementation.'
+          );
+
+          // Log some paths for debugging
+          const allFilePaths = Object.values(componentRelationships).map(r => r.filePath);
+          console.log(
+            `📂 File paths analyzed: ${allFilePaths.slice(0, 10).join(', ')}${allFilePaths.length > 10 ? '...' : ''}`
+          );
+        }
       } catch (error) {
         console.error(`❌ Error analyzing TypeScript relationships:`, error);
       }
@@ -913,44 +397,184 @@ export async function getProjectContextWithDirectoryStructureAndAnalysis(
     // Step 5: Combine analysis into context
     console.log(`📝 Formatting relationship graph...`);
     let relationshipGraph = '';
+    const filteredRelationships: Record<string, Relationship> = {};
 
+    // --- Define pageEntryPoints earlier to be accessible by Page Analysis section ---
+    const pageEntryPoints = new Set<string>();
     if (Object.keys(componentRelationships).length > 0) {
+      // --- START: Original filtering logic ---
+      const allRelationshipNames = new Set(Object.keys(componentRelationships));
+
+      // Identify page components as entry points (populate the outer pageEntryPoints set)
+      for (const [name, rel] of Object.entries(componentRelationships)) {
+        const filePath = rel.filePath || '';
+        // Add patterns for identifying pages/layouts/routes
+        if (
+          filePath.match(/^(app|pages)(\/.*)?\/(page|layout|route)\.(tsx|ts|js|jsx)$/) ||
+          filePath.match(/^(app|pages)\/[^\/]+\.(tsx|ts|js|jsx)$/) || // e.g., app/not-found.tsx
+          filePath.match(/^app\/.*$/) || // Any file in app directory could be a route component
+          filePath.match(/^pages\/.*$/) || // Any file in pages directory could be a page
+          filePath.includes('/page.') || // Files named page.tsx in any directory
+          filePath.includes('/layout.') || // Files named layout.tsx in any directory
+          /\/(404|500|index)\.(tsx|ts|js|jsx)$/.test(filePath) // Common page names
+        ) {
+          pageEntryPoints.add(name);
+        }
+      }
+      console.log(
+        `🔍 Found ${pageEntryPoints.size} potential page entry points for relationship graph.`
+      );
+
+      // Perform BFS/DFS traversal to find reachable components
+      const reachable = new Set<string>();
+      const queue = Array.from(pageEntryPoints);
+      pageEntryPoints.forEach(p => reachable.add(p)); // Add initial entry points
+
+      while (queue.length > 0) {
+        const currentName = queue.shift();
+        if (!currentName) continue;
+
+        const rel = componentRelationships[currentName];
+        if (!rel) continue;
+
+        const dependencies = [...(rel.uses || []), ...(rel.hooks || [])];
+        for (const depName of dependencies) {
+          // Only consider dependencies that are part of the analyzed relationships
+          if (allRelationshipNames.has(depName) && !reachable.has(depName)) {
+            reachable.add(depName);
+            queue.push(depName);
+          }
+        }
+      }
+      console.log(
+        `📊 Found ${reachable.size} components/functions reachable from page entry points.`
+      );
+
+      // Build the filtered relationship object
+      for (const name of reachable) {
+        const originalRel = componentRelationships[name];
+        if (originalRel) {
+          filteredRelationships[name] = {
+            ...originalRel,
+            // Filter 'usedBy' to only include reachable components
+            usedBy: (originalRel.usedBy || []).filter(user => reachable.has(user)),
+          };
+        }
+      }
+      // --- END: Original filtering logic ---
+
       relationshipGraph = `
 ================================================================
-Component & Function Relationship Graph
+Component & Function Relationships (Reachable from Pages)
 ================================================================
 `;
 
-      // Keep the simplified graph logic
-      const simplifiedGraph: Record<string, Partial<Relationship>> = {};
-      Object.entries(componentRelationships).forEach(([name, rel]) => {
-        simplifiedGraph[name] = {
-          type: rel.type,
-          filePath: rel.filePath,
-          usedBy: rel.usedBy || [],
-          uses: rel.uses || [],
-        };
-        if (rel.hooks && rel.hooks.length > 0) simplifiedGraph[name].hooks = rel.hooks;
-        if (rel.contexts && rel.contexts.length > 0) simplifiedGraph[name].contexts = rel.contexts;
-      });
+      // Format relationships as a text list (using filteredRelationships)
+      let graphText = '';
+      // Iterate over the filtered map instead of the original
+      for (const [name, rel] of Object.entries(filteredRelationships)) {
+        // Skip if the filtered component has no connections left after filtering
+        if (
+          (rel.uses?.length ?? 0) === 0 &&
+          (rel.usedBy?.length ?? 0) === 0 &&
+          (rel.hooks?.length ?? 0) === 0 &&
+          (rel.contexts?.length ?? 0) === 0 &&
+          !pageEntryPoints.has(name) // Keep entry points even if isolated
+        ) {
+          continue;
+        }
 
-      const graphJson = JSON.stringify(simplifiedGraph, null, 2);
-      const graphTokens = countTokens(graphJson);
+        let entry = `\n${name} (${rel.type}, ${rel.filePath})\n`;
+        if (rel.uses && rel.uses.length > 0) {
+          entry += `  uses: ${rel.uses.join(', ')}\n`;
+        }
+        // Use the already filtered usedBy list
+        if (rel.usedBy && rel.usedBy.length > 0) {
+          entry += `  usedBy: ${rel.usedBy.join(', ')}\n`;
+        }
+        if (rel.hooks && rel.hooks.length > 0) {
+          entry += `  hooks: ${rel.hooks.join(', ')}\n`;
+        }
+        if (rel.contexts && rel.contexts.length > 0) {
+          entry += `  contexts: ${rel.contexts.join(', ')}\n`;
+        }
+        graphText += entry;
+      }
+
+      const graphTokens = countTokens(graphText);
 
       if (totalTokens + graphTokens + 80 < maxSize * 0.8) {
-        relationshipGraph += graphJson + '\n';
-        totalTokens += graphTokens + 80;
-        includedFiles.push({ path: 'relationship-graph', tokens: graphTokens, type: 'analysis' });
+        // Recalculate based on text format
+        relationshipGraph += graphText + '\n'; // Add the generated text
+        totalTokens += graphTokens + 80; // Add overhead for section header
+        // Update logging to reflect filtered graph
+        includedFiles.push({
+          path: 'filtered-relationship-graph',
+          tokens: graphTokens,
+          type: 'analysis',
+        });
+        console.log(`✅ Added filtered relationship graph (${graphTokens} tokens)`);
       } else {
-        console.log(`⚠️ Relationship graph too large (${graphTokens} tokens), skipping`);
-        relationshipGraph += '[Graph excluded due to token limit constraints]\n';
-        totalTokens += 60;
+        console.log(`⚠️ Filtered relationship graph too large (${graphTokens} tokens), skipping`);
+        relationshipGraph += '[Filtered relationships excluded due to token limit constraints]\n';
+        totalTokens += 60; // Approximate overhead for the exclusion message
       }
     }
+    // --- pageEntryPoints is now defined and populated, ready for Page Analysis ---
 
     if (relationshipGraph.trim() !== '') {
       context += relationshipGraph;
     }
+
+    // --- START: Add Page Analysis Section ---
+    console.log(`📝 Formatting page analysis...`);
+    let pageAnalysisSection = '';
+
+    if (pageEntryPoints.size > 0 && Object.keys(componentRelationships).length > 0) {
+      pageAnalysisSection = `
+================================================================
+Page Analysis (Direct Dependencies)
+================================================================
+`;
+      let pageAnalysisText = '';
+
+      for (const pageName of pageEntryPoints) {
+        const rel = componentRelationships[pageName];
+        if (!rel) continue;
+
+        const directDeps = [...(rel.uses || []), ...(rel.hooks || [])];
+
+        // Only include pages that actually use other components/hooks
+        if (directDeps.length > 0) {
+          let entry = `\nPage: ${pageName} (${rel.filePath})\n`;
+          entry += `  Uses Components/Hooks: ${directDeps.join(', ')}\n`;
+          pageAnalysisText += entry;
+        }
+      }
+
+      const pageAnalysisTokens = countTokens(pageAnalysisText);
+
+      // Check token limit (leaving some room for utility methods)
+      if (totalTokens + pageAnalysisTokens + 80 < maxSize * 0.95) {
+        pageAnalysisSection += pageAnalysisText + '\n';
+        totalTokens += pageAnalysisTokens + 80; // Add overhead for section header
+        includedFiles.push({
+          path: 'page-analysis',
+          tokens: pageAnalysisTokens,
+          type: 'analysis',
+        });
+        console.log(`✅ Added page analysis section (${pageAnalysisTokens} tokens)`);
+      } else {
+        console.log(`⚠️ Page analysis section too large (${pageAnalysisTokens} tokens), skipping`);
+        pageAnalysisSection += '[Page analysis excluded due to token limit constraints]\n';
+        totalTokens += 60; // Approximate overhead for the exclusion message
+      }
+    }
+
+    if (pageAnalysisSection.trim() !== '') {
+      context += pageAnalysisSection;
+    }
+    // --- END: Add Page Analysis Section ---
 
     // Format Context Providers section
     console.log(`📝 Formatting context providers...`);

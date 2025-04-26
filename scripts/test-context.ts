@@ -6,7 +6,7 @@ import * as path from 'path';
 import { getProjectContextWithDirectoryStructureAndAnalysis } from '../lib/llm/utils/context';
 
 async function testContextGeneration() {
-  const projectId = 25; // Use the desired project ID
+  const projectId = 27; // Use the desired project ID
   const outputDir = './tmp'; // Directory to save the context file
   const outputFileName = `project-${projectId}-context.txt`;
   const outputFilePath = path.join(outputDir, outputFileName);
@@ -24,7 +24,6 @@ async function testContextGeneration() {
     const context = await getProjectContextWithDirectoryStructureAndAnalysis(projectId, {
       maxSize: 150000, // Adjust max size as needed
       includeUtilityMethods: true,
-      analyzeComponents: true,
       analyzeRelationships: true,
     });
 

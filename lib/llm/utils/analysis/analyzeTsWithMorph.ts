@@ -45,6 +45,18 @@ export async function analyzeTsWithMorph(projectPath: string): Promise<{
         path.join(projectPath, 'lib/**/*.tsx'),
         path.join(projectPath, 'pages/**/*.ts'),
         path.join(projectPath, 'pages/**/*.tsx'),
+        // Add more specific paths to ensure all components and pages are found
+        path.join(projectPath, '**/*.page.ts'),
+        path.join(projectPath, '**/*.page.tsx'),
+        path.join(projectPath, '**/page.ts'),
+        path.join(projectPath, '**/page.tsx'),
+        path.join(projectPath, '**/layout.ts'),
+        path.join(projectPath, '**/layout.tsx'),
+        path.join(projectPath, '**/*.component.ts'),
+        path.join(projectPath, '**/*.component.tsx'),
+        // Add direct path for root pages and components
+        path.join(projectPath, '*.tsx'),
+        path.join(projectPath, '*.ts'),
       ]);
     }
 
@@ -91,19 +103,44 @@ function processSourceFile(
   contextProviders: Record<string, string[]>
 ) {
   const filePath = sourceFile.getFilePath().split('/').slice(-3).join('/'); // Keep short path for context
+  const fileName = path.basename(filePath);
+
+  // Check if this is a page file based on filename or path
+  const isPageFile =
+    filePath.includes('/app/') ||
+    filePath.includes('/pages/') ||
+    fileName === 'page.tsx' ||
+    fileName === 'page.ts' ||
+    fileName === 'layout.tsx' ||
+    fileName === 'layout.ts' ||
+    fileName.includes('.page.') ||
+    /^(index|404|500)\.tsx?$/.test(fileName);
 
   // --- Process Function Declarations ---
   sourceFile.getFunctions().forEach(func => {
     const name = func.getName();
     if (!name) return;
 
-    const isComponent = /^[A-Z]/.test(name);
+    // Components can start with uppercase or have special suffixes in some frameworks
+    const isComponent =
+      /^[A-Z]/.test(name) ||
+      name.endsWith('Component') ||
+      name.endsWith('Page') ||
+      name.endsWith('Layout');
     const isHook = name.startsWith('use');
-    const isUtil = !isComponent && !isHook;
+    const isPage = isPageFile && (name === 'default' || name === 'Page' || name.endsWith('Page'));
 
-    if (!relationships[name] && (isComponent || isHook || isUtil)) {
+    // Determine the most appropriate type
+    const type: Relationship['type'] = isHook
+      ? 'hook'
+      : isPage
+        ? 'component'
+        : isComponent
+          ? 'component'
+          : 'function';
+
+    if (!relationships[name]) {
       // Add check to avoid overwriting
-      const type = isComponent ? 'component' : isHook ? 'hook' : 'function';
       addRelationship(name, type, filePath, func, relationships);
     }
   });
@@ -113,13 +150,43 @@ function processSourceFile(
     const name = declaration.getName();
     if (!name) return;
 
-    const isComponent = /^[A-Z]/.test(name);
+    // Enhanced component detection
+    const isComponent =
+      /^[A-Z]/.test(name) ||
+      name.endsWith('Component') ||
+      name.includes('Page') ||
+      name.includes('Layout');
     const isHook = name.startsWith('use');
+    const isPage = isPageFile && (name === 'default' || name === 'Page' || name.endsWith('Page'));
+
     const initializer = declaration.getInitializer();
 
+    // Determine if this is a React component
+    let isReactComponent = false;
+
+    if (initializer) {
+      // Check if it returns JSX
+      isReactComponent =
+        initializer.getFullText().includes('return') &&
+        (initializer.getFullText().includes('<') || initializer.getFullText().includes('jsx'));
+
+      // Check if it's wrapped in React.memo, React.forwardRef etc.
+      if (!isReactComponent && initializer.getKind() === SyntaxKind.CallExpression) {
+        const callText = initializer.getText();
+        isReactComponent =
+          callText.includes('React.') ||
+          callText.includes('memo(') ||
+          callText.includes('forwardRef(');
+      }
+    }
+
     // Check if it's a component/hook or potentially a utility function assignment
-    if (!relationships[name] && (isComponent || isHook)) {
-      const type = isComponent ? 'component' : 'hook';
+    if (!relationships[name] && (isComponent || isHook || isPage || isReactComponent)) {
+      const type = isHook
+        ? 'hook'
+        : isComponent || isPage || isReactComponent
+          ? 'component'
+          : 'function';
       // Use the initializer (if arrow function) or the declaration itself for analysis
       const nodeToAnalyze =
         initializer && Node.isFunctionLikeDeclaration(initializer) ? initializer : declaration;
