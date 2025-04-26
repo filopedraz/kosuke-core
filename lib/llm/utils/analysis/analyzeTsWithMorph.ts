@@ -102,7 +102,14 @@ function processSourceFile(
   relationships: Record<string, Relationship>,
   contextProviders: Record<string, string[]>
 ) {
-  const filePath = sourceFile.getFilePath().split('/').slice(-3).join('/'); // Keep short path for context
+  // Keep short path for context, and remove any numeric project ID prefixes
+  const filePath = sourceFile
+    .getFilePath()
+    .split('/')
+    .slice(-3)
+    .join('/')
+    .replace(/^\d+\//, ''); // Remove numeric prefix like "27/"
+
   const fileName = path.basename(filePath);
 
   // Check if this is a page file based on filename or path

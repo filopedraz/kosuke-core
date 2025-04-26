@@ -484,7 +484,10 @@ Component & Function Relationships (Reachable from Pages)
           continue;
         }
 
-        let entry = `\n${name} (${rel.type}, ${rel.filePath})\n`;
+        // Clean the file path to remove project ID
+        const cleanFilePath = rel.filePath.replace(/^\d+\//, '');
+
+        let entry = `\n${name} (${rel.type}, ${cleanFilePath})\n`;
         if (rel.uses && rel.uses.length > 0) {
           entry += `  uses: ${rel.uses.join(', ')}\n`;
         }
@@ -544,9 +547,12 @@ Page Analysis (Direct Dependencies)
 
         const directDeps = [...(rel.uses || []), ...(rel.hooks || [])];
 
+        // Clean the file path to remove project ID
+        const cleanFilePath = rel.filePath.replace(/^\d+\//, '');
+
         // Only include pages that actually use other components/hooks
         if (directDeps.length > 0) {
-          let entry = `\nPage: ${pageName} (${rel.filePath})\n`;
+          let entry = `\nPage: ${pageName} (${cleanFilePath})\n`;
           entry += `  Uses Components/Hooks: ${directDeps.join(', ')}\n`;
           pageAnalysisText += entry;
         }
