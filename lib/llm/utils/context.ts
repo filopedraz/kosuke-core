@@ -453,12 +453,9 @@ export async function getProjectContextWithDirectoryStructureAndMethodSignatures
     });
 
     console.log(`📊 ${filteredFiles.length} files match the extension and exclusion filters`);
-    console.log(filteredFiles);
 
     // Sort filtered files to prioritize important ones
     const sortedFiles = sortFilesByImportance(filteredFiles);
-
-    console.log(sortedFiles);
 
     // Process each file
     for (const file of sortedFiles) {
@@ -485,15 +482,8 @@ export async function getProjectContextWithDirectoryStructureAndMethodSignatures
           continue;
         }
 
-        console.log(`Processing file: ${file}`);
-        if (file === 'hooks/use-mobile.tsx') {
-          console.log(content);
-        }
-
         // Extract method signatures and docstrings
         const methodSignatures = extractMethodSignatures(content, path.extname(file));
-
-        console.log(methodSignatures);
 
         // Skip if no methods found
         if (methodSignatures.length === 0) {
