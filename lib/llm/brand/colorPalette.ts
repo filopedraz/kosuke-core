@@ -1,4 +1,8 @@
-import { generateAICompletion, ChatMessage } from '@/lib/llm/api/ai';
+import { ChatMessage } from '@/lib/llm/api/ai';
+import { generateText, CoreMessage } from 'ai';
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import { getModelForUser } from '@/lib/models';
+import { countTokens, formatTokenCount } from '@/lib/llm/utils';
 import fs from 'fs/promises';
 import path from 'path';
 
@@ -21,6 +25,21 @@ export interface GeneratePaletteResponse {
   colors?: CssVariable[];
 }
 
+// Core message content type for Vercel AI SDK
+type CoreMessageContent = {
+  type: 'text' | 'image_url';
+  text?: string;
+  image_url?: {
+    url: string;
+    detail?: 'auto' | 'low' | 'high';
+  };
+};
+
+type FormattedMessage = {
+  role: 'system' | 'user' | 'assistant';
+  content: string | CoreMessageContent[];
+};
+
 /**
  * Generate a color palette using Gemini 2.5 Pro
  */
@@ -30,6 +49,12 @@ export async function generateColorPalette(
   projectHomePage: string
 ): Promise<GeneratePaletteResponse> {
   try {
+    // Get the user's model info
+    const userModel = await getModelForUser();
+    console.log(
+      `🎨 Using ${userModel.model} for color palette generation (tier: ${userModel.tier})`
+    );
+
     // Create an organized prompt for the AI
     const messages: ChatMessage[] = [
       {
@@ -37,7 +62,6 @@ export async function generateColorPalette(
         content: `You are an expert UI/UX designer and color specialist. Your task is to analyze the provided website content and existing colors, then generate a cohesive, modern, and accessible color palette for both light and dark modes. 
         
 Follow these requirements:
-1. Keep the palette cohesive with the existing design
 2. Ensure proper contrast ratios for accessibility (WCAG AA compliance)
 3. Create a balanced palette with primary, secondary, and accent colors
 4. Maintain semantic meaning of color variables (e.g., destructive should be red-based)
@@ -53,38 +77,120 @@ Example output format:
     "darkValue": "240 10% 3.9%",
     "scope": "root"
   },
-  // more colors...
+  {
+    "name": "--foreground",
+    "lightValue": "240 10% 3.9%",
+    "darkValue": "0 0% 98%",
+    "scope": "root"
+  }
 ]`,
       },
       {
         role: 'user',
-        content: `I need you to generate a color palette for my project. Here's the data:
+        content: `Generate a color palette for my website. Here are my existing color variables:
+${JSON.stringify(existingColors.slice(0, 10), null, 2)}
+${existingColors.length > 10 ? `... (and ${existingColors.length - 10} more)\n` : ''}
 
 Project ID: ${projectId}
+${projectHomePage ? `\nProject content summary (for context):\n${projectHomePage.substring(0, 500)}${projectHomePage.length > 500 ? '...' : ''}` : ''}
 
-Existing color variables:
-${JSON.stringify(existingColors, null, 2)}
-
-Project home page content:
-${projectHomePage}
-
-Please analyze this and generate a cohesive, modern color palette. Return it as a valid JSON array of color objects that I can directly use in my application.`,
+Create a cohesive, modern color palette based on these existing colors.`,
       },
     ];
 
-    // Call Gemini 2.5 Pro with our prompt
-    const completion = await generateAICompletion(messages, {
-      temperature: 0.7,
-      maxTokens: 2048,
+    // Print debug information for the request
+    console.log('\n========== DEBUGGING LLM REQUEST ==========');
+
+    // Count tokens in each message
+    let totalTokens = 0;
+    messages.forEach((msg, i) => {
+      const content = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);
+      const tokenCount = countTokens(content);
+      totalTokens += tokenCount;
+      console.log(`Message ${i} (${msg.role}) - Tokens: ${formatTokenCount(tokenCount)}`);
+      // Print a preview of the content
+      const preview = content.length > 300 ? content.substring(0, 300) + '...' : content;
+      console.log(`Content preview: ${preview.replace(/\n/g, ' ')}`);
     });
 
+    console.log(`Total tokens for request: ${formatTokenCount(totalTokens)}`);
+    console.log('===========================================\n');
+
+    // Make sure we have the API key
+    if (!process.env.GEMINI_API_KEY) {
+      throw new Error('GEMINI_API_KEY is not set in environment variables');
+    }
+
+    // Create Google provider with the API key
+    const googleProvider = createGoogleGenerativeAI({
+      apiKey: process.env.GEMINI_API_KEY,
+    });
+
+    // Format messages for Google
+    const formattedMessages = messages.map(msg => {
+      if (typeof msg.content === 'string') {
+        return {
+          role: msg.role,
+          content: msg.content,
+        } as FormattedMessage;
+      } else {
+        return {
+          role: msg.role,
+          content: msg.content.map(part => {
+            if (part.type === 'text') {
+              return { type: 'text', text: part.text };
+            } else if (part.type === 'image') {
+              return {
+                type: 'image_url',
+                image_url: part.image_url,
+              } as CoreMessageContent;
+            }
+            return part as CoreMessageContent;
+          }),
+        } as FormattedMessage;
+      }
+    });
+
+    console.log(`Color palette prompt prepared with ${formattedMessages.length} messages`);
+
+    // Call Gemini model directly using generateText from the 'ai' package
+    console.log(`Calling ${userModel.model} for color palette generation...`);
+    const startTime = Date.now();
+
+    console.log('Formatted messages:', formattedMessages);
+
+    const response = await generateText({
+      model: googleProvider(userModel.model),
+      messages: formattedMessages as CoreMessage[],
+      temperature: 0.5,
+      maxTokens: 10000,
+    });
+
+    const duration = (Date.now() - startTime) / 1000;
+    console.log(`Color palette generation completed in ${duration.toFixed(2)}s`);
+    console.log(`Response length: ${response.text.length} characters`);
+
+    if (!response.text || response.text.trim() === '') {
+      return {
+        success: false,
+        message: 'Received empty response from the AI model',
+      };
+    }
+
+    // Log a preview of the response for debugging
+    const previewLength = Math.min(200, response.text.length);
+    console.log(
+      `Response preview: ${response.text.substring(0, previewLength)}${response.text.length > previewLength ? '...' : ''}`
+    );
+
     // Parse the response
-    let colors: CssVariable[];
     try {
       // Extract JSON array from response (in case AI adds explanatory text)
-      const jsonMatch = completion.text.match(/\[\s*\{[\s\S]*\}\s*\]/);
-      const jsonStr = jsonMatch ? jsonMatch[0] : completion.text;
-      colors = JSON.parse(jsonStr);
+      const jsonMatch = response.text.match(/\[\s*\{[\s\S]*\}\s*\]/);
+      const jsonStr = jsonMatch ? jsonMatch[0] : response.text;
+
+      console.log('Attempting to parse JSON response...');
+      const colors = JSON.parse(jsonStr);
 
       // Validate the response has the correct structure
       if (!Array.isArray(colors) || colors.length === 0) {
@@ -97,6 +203,13 @@ Please analyze this and generate a cohesive, modern color palette. Return it as 
           throw new Error('Color missing required properties');
         }
       });
+
+      console.log(`Successfully parsed palette with ${colors.length} colors`);
+      return {
+        success: true,
+        message: 'Successfully generated color palette',
+        colors,
+      };
     } catch (parseError) {
       console.error('Failed to parse color palette:', parseError);
       return {
@@ -104,12 +217,6 @@ Please analyze this and generate a cohesive, modern color palette. Return it as 
         message: 'Failed to parse the generated color palette',
       };
     }
-
-    return {
-      success: true,
-      message: 'Successfully generated color palette',
-      colors,
-    };
   } catch (error) {
     console.error('Error generating color palette:', error);
     return {
