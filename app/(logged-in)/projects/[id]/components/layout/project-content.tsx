@@ -5,6 +5,7 @@ import { useEffect, useRef } from 'react';
 import ChatInterface from '../chat/chat-interface';
 import CodeExplorer from '../preview/code-explorer';
 import PreviewPanel from '../preview/preview-panel';
+import BrandGuidelines from '../brand/brand-guidelines';
 import { useProjectStore, type Project } from '@/lib/stores/projectStore';
 import { cn } from '@/lib/utils';
 
@@ -80,8 +81,12 @@ export default function ProjectContent({
             projectName={project.name}
             initialLoading={isNewProject}
           />
-        ) : (
+        ) : currentView === 'code' ? (
           <CodeExplorer
+            projectId={projectId}
+          />
+        ) : (
+          <BrandGuidelines
             projectId={projectId}
           />
         )}

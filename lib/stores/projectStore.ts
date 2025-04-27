@@ -13,7 +13,7 @@ export interface Project {
 }
 
 // Define the possible view types
-type ProjectView = 'preview' | 'code';
+type ProjectView = 'preview' | 'code' | 'branding';
 
 interface ProjectState {
   projects: Project[];

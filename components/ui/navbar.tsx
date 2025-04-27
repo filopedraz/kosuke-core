@@ -43,8 +43,8 @@ type NavbarProps = {
   variant?: 'standard' | 'project';
   projectProps?: {
     projectName: string;
-    currentView: 'preview' | 'code';
-    onViewChange: (view: 'preview' | 'code') => void;
+    currentView: 'preview' | 'code' | 'branding';
+    onViewChange: (view: 'preview' | 'code' | 'branding') => void;
     onRefresh?: () => void;
     isChatCollapsed?: boolean;
     onToggleChat?: () => void;
@@ -228,6 +228,15 @@ export default function Navbar({
                 >
                   <Code className="h-4 w-4 mr-1" />
                   Code
+                </Button>
+                <Button
+                  variant={projectProps.currentView === 'branding' ? 'secondary' : 'ghost'}
+                  size="sm"
+                  className="rounded-none px-3 h-8"
+                  onClick={() => projectProps.onViewChange('branding')}
+                >
+                  <Sparkles className="h-4 w-4 mr-1" />
+                  Branding
                 </Button>
               </div>
             </div>
