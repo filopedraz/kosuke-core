@@ -31,6 +31,77 @@ interface BrandGuidelinesProps {
   projectId: number;
 }
 
+/**
+ * Convert any color format to HSL string (format: "h s% l%")
+ */
+function convertToHsl(color: string): string {
+  try {
+    // If already in HSL format "h s% l%", return as is
+    if (/^\d+\s+\d+%\s+\d+%$/.test(color)) {
+      return color;
+    }
+    
+    // If it's already in hsl() format, extract the values
+    const hslMatch = color.match(/hsl\((\d+),\s*(\d+)%,\s*(\d+)%\)/);
+    if (hslMatch) {
+      return `${hslMatch[1]} ${hslMatch[2]}% ${hslMatch[3]}%`;
+    }
+    
+    // For hex colors and other formats, we need to convert
+    const temp = document.createElement('div');
+    temp.style.color = color;
+    document.body.appendChild(temp);
+    const computedColor = getComputedStyle(temp).color;
+    document.body.removeChild(temp);
+    
+    // Parse RGB values
+    const rgbMatch = computedColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+    if (rgbMatch) {
+      // Convert RGB to HSL
+      const r = parseInt(rgbMatch[1]) / 255;
+      const g = parseInt(rgbMatch[2]) / 255;
+      const b = parseInt(rgbMatch[3]) / 255;
+      
+      const max = Math.max(r, g, b);
+      const min = Math.min(r, g, b);
+      const l = (max + min) / 2;
+      
+      let h = 0;
+      let s = 0;
+      
+      if (max !== min) {
+        const d = max - min;
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        
+        switch (max) {
+          case r:
+            h = (g - b) / d + (g < b ? 6 : 0);
+            break;
+          case g:
+            h = (b - r) / d + 2;
+            break;
+          case b:
+            h = (r - g) / d + 4;
+            break;
+        }
+        
+        h = Math.round(h * 60);
+      }
+      
+      s = Math.round(s * 100);
+      const lightness = Math.round(l * 100);
+      
+      return `${h} ${s}% ${lightness}%`;
+    }
+    
+    // If conversion failed, return the original color
+    return color;
+  } catch (error) {
+    console.error('Error converting color to HSL:', error);
+    return color;
+  }
+}
+
 export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
   const [previewMode, setPreviewMode] = useState<ThemeMode>('light'); // Default to light
   const [colorVariables, setColorVariables] = useState<CssVariable[]>([]);
@@ -78,6 +149,9 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
   // Handle color change from ColorCard
   const handleColorChange = async (name: string, newValue: string) => {
     try {
+      // Convert the color to HSL format before sending to API
+      const hslValue = convertToHsl(newValue);
+      
       // Optimistically update UI
       const updatedVariables = colorVariables.map(variable => {
         if (variable.name === name) {
@@ -91,7 +165,7 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
       
       setColorVariables(updatedVariables);
       
-      // Send update to server
+      // Send update to server with HSL value
       const response = await fetch(`/api/projects/${projectId}/branding/colors`, {
         method: 'POST',
         headers: {
@@ -99,7 +173,7 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
         },
         body: JSON.stringify({
           name,
-          value: newValue,
+          value: hslValue, // Use HSL value for API
           mode: previewMode
         }),
       });

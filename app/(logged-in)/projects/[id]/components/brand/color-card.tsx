@@ -246,6 +246,7 @@ export default function ColorCard({ colorVar, previewMode, onColorChange }: Colo
   
   const handleSaveColor = () => {
     if (onColorChange && editableHexValue) {
+      // We're already converting to HSL in the parent component's handleColorChange
       onColorChange(colorVar.name, editableHexValue);
     }
     setIsEditDialogOpen(false);
