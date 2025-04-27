@@ -5,15 +5,13 @@ import { Palette, Sun, Moon, TextQuote, Wand2 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { useToast } from '@/hooks/use-toast';
 import ColorCard from './color-card';
 import ColorCardSkeleton from './color-card-skeleton';
 import FontCard from './font-card';
 import FontCardSkeleton from './font-card-skeleton';
-import { useToast } from '@/hooks/use-toast';
 import ColorPaletteModal from './color-palette-modal';
+import KeywordsModal from './keywords-modal';
 import { ThemePreviewProvider } from './theme-context';
 import { convertToHsl, groupColorsByCategory, getCategoryTitle } from './utils/color-utils';
 import { type CssVariable, type ThemeMode } from './types';
@@ -44,8 +42,7 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
   
   // Add state for keywords modal
   const [isKeywordsModalOpen, setIsKeywordsModalOpen] = useState(false);
-  const [keywords, setKeywords] = useState('');
-  
+
   const togglePreviewMode = () => {
     setPreviewMode(prev => prev === 'dark' ? 'light' : 'dark');
   };
@@ -159,12 +156,11 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
   
   // Update function to first show keywords modal
   const handleGenerateColorPalette = () => {
-    setKeywords('');
     setIsKeywordsModalOpen(true);
   };
   
   // Add function to generate color palette with keywords
-  const generateColorPaletteWithKeywords = async () => {
+  const generateColorPaletteWithKeywords = async (keywords: string) => {
     setIsKeywordsModalOpen(false);
     setIsGeneratingPalette(true);
     
@@ -436,36 +432,12 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
         </Tabs>
         
         {/* Keywords Modal */}
-        <Dialog open={isKeywordsModalOpen} onOpenChange={setIsKeywordsModalOpen}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Generate Color Palette</DialogTitle>
-              <DialogDescription>
-                Enter keywords to influence the color palette generation. For example: &ldquo;modern&rdquo;, &ldquo;vibrant&rdquo;, &ldquo;corporate&rdquo;, &ldquo;earthy&rdquo;, &ldquo;pastel&rdquo;, etc.
-              </DialogDescription>
-            </DialogHeader>
-            
-            <div className="py-4">
-              <Label htmlFor="keywords">Keywords (optional)</Label>
-              <Input
-                id="keywords"
-                value={keywords}
-                onChange={(e) => setKeywords(e.target.value)}
-                placeholder="e.g., modern, vibrant, professional"
-                className="mt-2"
-              />
-            </div>
-            
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsKeywordsModalOpen(false)}>
-                Cancel
-              </Button>
-              <Button onClick={generateColorPaletteWithKeywords} disabled={isGeneratingPalette}>
-                Generate
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <KeywordsModal 
+          isOpen={isKeywordsModalOpen}
+          onOpenChange={setIsKeywordsModalOpen}
+          onSubmit={generateColorPaletteWithKeywords}
+          isGenerating={isGeneratingPalette}
+        />
         
         {/* Color Palette Preview Modal */}
         <ColorPaletteModal
