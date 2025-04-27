@@ -5,7 +5,7 @@ import { Palette, Sun, Moon } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
-import ColorCard from './color-card';
+import ColorCard from '../brand/color-card';
 
 // Define theme modes
 type ThemeMode = 'light' | 'dark';
@@ -70,44 +70,6 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
       setError(err instanceof Error ? err.message : 'Failed to fetch colors');
     } finally {
       setIsLoading(false);
-    }
-  };
-  
-  // Update a color directly on the server
-  const updateColor = async (name: string, value: string) => {
-    try {
-      const response = await fetch(`/api/projects/${projectId}/branding/colors`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ colors: { [name]: value } }),
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Failed to save color: ${response.statusText}`);
-      }
-      
-      // Update the color locally 
-      setColorVariables(prevColors => 
-        prevColors.map(color => {
-          if (color.name === name) {
-            // Update either light or dark value based on current preview mode
-            if (previewMode === 'light') {
-              return { ...color, lightValue: value };
-            } else {
-              return { ...color, darkValue: value };
-            }
-          }
-          return color;
-        })
-      );
-      
-      return true;
-    } catch (err) {
-      console.error('Error saving color:', err);
-      setError(err instanceof Error ? err.message : 'Failed to save color');
-      return false;
     }
   };
   
@@ -188,7 +150,7 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
   
   return (
     <ThemePreviewContext.Provider value={{ previewMode, togglePreviewMode }}>
-      <div className="flex flex-col h-full overflow-auto p-6 space-y-6">
+      <div className={`flex flex-col h-full overflow-auto p-6 space-y-6 ${previewMode === 'dark' ? 'dark' : ''}`}>
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-2">
             <Palette className="h-5 w-5 text-primary" />
@@ -252,12 +214,9 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
                       key={color.name + (color.scope || '')}
                       colorVar={{
                         name: color.name,
-                        value: getCurrentColorValue(color),
-                        scope: color.scope
+                        value: getCurrentColorValue(color)
                       }}
                       previewMode={previewMode}
-                      onSave={(value: string) => updateColor(color.name, value)}
-                      hasDarkVariant={!!color.darkValue}
                     />
                   ))}
                 </div>

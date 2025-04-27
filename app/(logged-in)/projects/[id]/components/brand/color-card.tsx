@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Check, Copy, Edit2, Moon } from 'lucide-react';
-import { Card, CardContent, CardFooter } from '@/components/ui/card';
+import { Copy, Check } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 
 type ThemeMode = 'light' | 'dark';
 
@@ -17,8 +17,6 @@ interface CssVariable {
 interface ColorCardProps {
   colorVar: CssVariable;
   previewMode: ThemeMode;
-  onSave: (value: string) => Promise<boolean>;
-  hasDarkVariant?: boolean;
 }
 
 /**
@@ -117,27 +115,10 @@ function colorToHex(color: string): string {
   }
 }
 
-/**
- * Utility function to get the computed value of a CSS variable\n * within a specific element and pseudo-element context.\n * Note: This function is commented out as it was part of a previous approach.
- * The current approach uses a temporary element in useEffect.
- */
-// function getResolvedCssVariableValue(variableName: string, element: HTMLElement): string | null {\n//   return getComputedStyle(element).getPropertyValue(variableName).trim();\n// }\n
-export default function ColorCard({ colorVar, previewMode, onSave, hasDarkVariant = false }: ColorCardProps) {
+export default function ColorCard({ colorVar, previewMode }: ColorCardProps) {
   const [copied, setCopied] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [inputValue, setInputValue] = useState(colorVar.value);
-  const [isSaving, setIsSaving] = useState(false);
-  const [displayValue, setDisplayValue] = useState(colorVar.value);
-  const [isChanged, setIsChanged] = useState(false);
   const [colorPreview, setColorPreview] = useState('transparent');
   const [hexValue, setHexValue] = useState('');
-
-  // Update internal state when the color variable prop changes
-  useEffect(() => {
-    setInputValue(colorVar.value);
-    setDisplayValue(colorVar.value);
-    setIsChanged(false);
-  }, [colorVar.value]);
 
   // Resolve and convert the color value based on preview mode
   useEffect(() => {
@@ -145,7 +126,7 @@ export default function ColorCard({ colorVar, previewMode, onSave, hasDarkVarian
     
     try {
       // First, try to convert the raw value directly (for HSL values)
-      const directConvertedColor = convertHslToCssColor(displayValue);
+      const directConvertedColor = convertHslToCssColor(colorVar.value);
       
       // Create a temporary element to test the color
       const tempEl = document.createElement('div');
@@ -172,45 +153,20 @@ export default function ColorCard({ colorVar, previewMode, onSave, hasDarkVarian
       }
       
       // Convert to HEX for display
-      setHexValue(colorToHex(displayValue));
+      setHexValue(colorToHex(colorVar.value));
       
     } catch (error) {
-      console.error('Error resolving color:', displayValue, error);
+      console.error('Error resolving color:', colorVar.value, error);
       resolvedColor = '#ff6b6b'; // Error indicator color
     }
     
     setColorPreview(resolvedColor);
-  }, [displayValue, previewMode]);
+  }, [colorVar.value, previewMode]);
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(hexValue || colorVar.value);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
-  };
-
-  const handleSave = async () => {
-    if (!isChanged) {
-      setIsEditing(false);
-      return;
-    }
-
-    setIsSaving(true);
-
-    try {
-      const success = await onSave(inputValue);
-      if (success) {
-        setDisplayValue(inputValue);
-        setIsChanged(false);
-        setIsEditing(false);
-      }
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleInputChange = (value: string) => {
-    setInputValue(value);
-    setIsChanged(value !== colorVar.value);
   };
 
   const formatColorName = (name: string) => {
@@ -221,100 +177,44 @@ export default function ColorCard({ colorVar, previewMode, onSave, hasDarkVarian
   };
 
   return (
-    <Card className="overflow-hidden">
-      {/* Color preview with HEX value overlay */}
+    <Card className="overflow-hidden group">
+      {/* Color preview with copy button on hover */}
       <div className="relative h-32 w-full">
         <div
           className="absolute inset-0"
           style={{ backgroundColor: colorPreview }}
         />
-        {hexValue && (
-          <div className="absolute bottom-2 right-2 bg-black/40 text-white text-xs px-2 py-1 rounded font-mono">
-            {hexValue}
-          </div>
-        )}
-        {hasDarkVariant && previewMode === 'dark' && (
-          <div className="absolute top-2 right-2 text-white">
-            <Moon className="h-3.5 w-3.5 drop-shadow-md" />
-          </div>
-        )}
+        
+        {/* Copy button - only visible on hover */}
+        <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <Button
+            variant="secondary"
+            size="icon"
+            className="h-7 w-7 bg-white/90 dark:bg-black/50 backdrop-blur-sm"
+            onClick={copyToClipboard}
+            title={`Copy value: ${hexValue}`}
+          >
+            {copied ? (
+              <Check className="h-3.5 w-3.5 text-green-500" />
+            ) : (
+              <Copy className="h-3.5 w-3.5" />
+            )}
+          </Button>
+        </div>
       </div>
       
-      <CardContent className="pt-4 pb-2">
-        <div className="flex justify-between items-start">
-          <div>
-            <h3 className="font-medium text-sm truncate" title={formatColorName(colorVar.name)}>
-              {formatColorName(colorVar.name)}
-            </h3>
-            <p className="text-xs text-muted-foreground truncate" title={colorVar.name}>
-              {colorVar.name}
-            </p>
-          </div>
-          {previewMode === 'dark' && hasDarkVariant && (
-            <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded">
-              Dark
-            </span>
+      <CardContent className="pt-4 pb-4">
+        <div className="flex items-center gap-2">
+          {hexValue && (
+            <Badge variant="outline" className="font-mono text-xs px-1.5 py-0 h-5">
+              {hexValue}
+            </Badge>
           )}
+          <h3 className="font-medium text-sm" title={formatColorName(colorVar.name)}>
+            {formatColorName(colorVar.name)}
+          </h3>
         </div>
-
-        {isEditing ? (
-          <div className="mt-3 flex space-x-2">
-            <Input
-              value={inputValue}
-              onChange={(e) => handleInputChange(e.target.value)}
-              className="h-8 text-xs"
-              placeholder="e.g., 0 0% 100% or #ffffff"
-            />
-            <Button
-              size="sm"
-              onClick={handleSave}
-              disabled={isSaving || !isChanged}
-              className="h-8 text-xs px-3"
-            >
-              {isSaving ? '...' : 'Save'}
-            </Button>
-          </div>
-        ) : (
-          <div className="mt-3 flex justify-between items-center">
-            <p className="font-mono text-xs truncate" title={displayValue}>
-              {displayValue}
-            </p>
-            <div className="flex space-x-1 flex-shrink-0">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                onClick={() => setIsEditing(true)}
-                title="Edit color value"
-              >
-                <Edit2 className="h-3.5 w-3.5" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                onClick={() => copyToClipboard(hexValue || displayValue)}
-                title={`Copy value: ${hexValue || displayValue}`}
-              >
-                {copied ? (
-                  <Check className="h-3.5 w-3.5 text-green-500" />
-                ) : (
-                  <Copy className="h-3.5 w-3.5" />
-                )}
-              </Button>
-            </div>
-          </div>
-        )}
       </CardContent>
-      
-      {/* Only show footer when there are changes */}
-      {isChanged && (
-        <CardFooter className="p-2 border-t border-border bg-muted/30 flex justify-end">
-          <span className="text-xs text-amber-600 dark:text-amber-500 mr-auto font-medium">
-            Modified
-          </span>
-        </CardFooter>
-      )}
     </Card>
   );
 } 
