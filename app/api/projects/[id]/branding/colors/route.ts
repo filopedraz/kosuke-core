@@ -133,9 +133,9 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
-    // Ensure params is fully resolved before accessing properties
-    const { id } = params;
-    const projectId = parseInt(id);
+    // Await params object before accessing properties
+    const paramsObj = await params;
+    const projectId = parseInt(paramsObj.id);
     if (isNaN(projectId)) {
       return NextResponse.json({ error: 'Invalid project ID' }, { status: 400 });
     }
@@ -277,9 +277,9 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
-    // Ensure params is fully resolved before accessing properties
-    const { id } = params;
-    const projectId = parseInt(id);
+    // Await params object before accessing properties
+    const paramsObj = await params;
+    const projectId = parseInt(paramsObj.id);
     if (isNaN(projectId)) {
       return NextResponse.json({ error: 'Invalid project ID' }, { status: 400 });
     }
@@ -361,9 +361,9 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
-    // Ensure params is fully resolved before accessing properties
-    const { id } = params;
-    const projectId = parseInt(id);
+    // Await params object before accessing properties
+    const paramsObj = await params;
+    const projectId = parseInt(paramsObj.id);
     if (isNaN(projectId)) {
       return NextResponse.json({ error: 'Invalid project ID' }, { status: 400 });
     }

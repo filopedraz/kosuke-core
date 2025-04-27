@@ -8,9 +8,9 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    // Ensure params is fully resolved before accessing properties
-    const { id } = params;
-    const projectId = id;
+    // Await params object before accessing properties
+    const paramsObj = await params;
+    const projectId = paramsObj.id;
     
     const layoutPath = path.join(process.cwd(), 'projects', projectId, 'app/layout.tsx');
     
