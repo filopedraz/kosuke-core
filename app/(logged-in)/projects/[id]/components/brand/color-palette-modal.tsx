@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { colorToHex, formatColorName, groupColorsByCategory } from './utils/color-utils';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 
 // Use the CssVariable type from a new types file
 export interface CssVariable {
@@ -41,7 +41,6 @@ export default function ColorPaletteModal({
   // Add ref for focusing an element other than the close button
   const titleRef = useRef<HTMLHeadingElement>(null);
   const dialogContentRef = useRef<HTMLDivElement>(null);
-  const [isApplying, setIsApplying] = useState(false);
   
   // Focus management when the modal opens
   useEffect(() => {
@@ -97,19 +96,11 @@ export default function ColorPaletteModal({
   };
 
   // Handle apply with proper state management
-  const handleApply = async () => {
-    setIsApplying(true);
-    try {
-      // Close the modal first
-      onOpenChange(false);
-      // Small delay to ensure modal is closed before apply action
-      setTimeout(() => {
-        onApply();
-      }, 100);
-    } finally {
-      // Reset state (though modal will be closed)
-      setIsApplying(false);
-    }
+  const handleApply = () => {
+    // Close the modal first
+    onOpenChange(false);
+    // Apply immediately
+    onApply();
   };
 
   // Render loading state when generating
@@ -229,9 +220,9 @@ export default function ColorPaletteModal({
           </Button>
           <Button
             onClick={handleApply}
-            disabled={palette.length === 0 || isApplying}
+            disabled={palette.length === 0}
           >
-            {isApplying ? 'Applying...' : 'Apply to Project'}
+            Apply to Project
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -211,9 +211,9 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
   
   // Function to apply the generated palette
   const applyGeneratedPalette = async () => {
-    setIsGeneratingPalette(true);
-    
     try {
+      // Modal is already closed at this point from the ColorPaletteModal component
+      
       const response = await fetch(`/api/projects/${projectId}/branding/generate-palette?apply=true`, {
         method: 'POST',
         headers: {
@@ -245,9 +245,6 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
         description: err instanceof Error ? err.message : "Failed to apply color palette",
         variant: "destructive",
       });
-    } finally {
-      setIsGeneratingPalette(false);
-      setIsPalettePreviewOpen(false);
     }
   };
   
