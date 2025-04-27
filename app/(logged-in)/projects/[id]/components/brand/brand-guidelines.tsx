@@ -36,7 +36,7 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
   const [colorVariables, setColorVariables] = useState<CssVariable[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [stats, setStats] = useState({ lightCount: 0, darkCount: 0, foundLocation: '' });
+  const [, setStats] = useState({ lightCount: 0, darkCount: 0, foundLocation: '' });
   
   const togglePreviewMode = () => {
     setPreviewMode(prev => prev === 'dark' ? 'light' : 'dark');
@@ -155,11 +155,6 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
           <div className="flex items-center gap-2">
             <Palette className="h-5 w-5 text-primary" />
             <h1 className="text-2xl font-semibold">Brand Guidelines</h1>
-            {stats.darkCount > 0 && (
-              <div className="text-xs text-muted-foreground ml-2">
-                Found {stats.lightCount} light and {stats.darkCount} dark theme colors
-              </div>
-            )}
           </div>
           
           <div className="flex items-center gap-2 border border-border px-3 py-1.5 rounded-md">
@@ -170,9 +165,6 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
               aria-label="Toggle color theme preview mode"
             />
             <Moon className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm ml-2 font-medium text-muted-foreground">
-              {previewMode === 'dark' ? 'Dark Theme' : 'Light Theme'} Preview
-            </span>
           </div>
         </div>
         

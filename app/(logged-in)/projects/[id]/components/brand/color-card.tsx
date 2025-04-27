@@ -203,16 +203,16 @@ export default function ColorCard({ colorVar, previewMode }: ColorCardProps) {
         </div>
       </div>
       
-      <CardContent className="pt-4 pb-4">
-        <div className="flex items-center gap-2">
+      <CardContent className="py-4 px-3">
+        <div className="flex items-center justify-between">
+          <h3 className="font-medium text-sm" title={formatColorName(colorVar.name)}>
+            {formatColorName(colorVar.name)}
+          </h3>
           {hexValue && (
             <Badge variant="outline" className="font-mono text-xs px-1.5 py-0 h-5">
               {hexValue}
             </Badge>
           )}
-          <h3 className="font-medium text-sm" title={formatColorName(colorVar.name)}>
-            {formatColorName(colorVar.name)}
-          </h3>
         </div>
       </CardContent>
     </Card>
