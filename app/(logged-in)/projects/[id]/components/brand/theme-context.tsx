@@ -31,7 +31,7 @@ export function ThemePreviewProvider({
   
   return (
     <ThemePreviewContext.Provider value={{ previewMode, togglePreviewMode }}>
-      <div className={previewMode === 'dark' ? 'dark' : ''}>
+      <div className={`h-full overflow-auto ${previewMode === 'dark' ? 'dark' : ''}`}>
         {children}
       </div>
     </ThemePreviewContext.Provider>

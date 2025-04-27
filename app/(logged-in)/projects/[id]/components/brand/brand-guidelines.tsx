@@ -283,7 +283,7 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
   
   return (
     <ThemePreviewProvider initialMode={previewMode}>
-      <div className="flex flex-col h-full overflow-auto p-6 space-y-6">
+      <div className="flex flex-col h-full p-6 space-y-6">
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-2">
             <Palette className="h-5 w-5 text-primary" />
