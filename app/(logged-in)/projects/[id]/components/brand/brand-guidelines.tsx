@@ -1,9 +1,18 @@
 'use client';
 
 import { useState, useEffect, createContext } from 'react';
-import { Palette, Sun, Moon, TextQuote } from 'lucide-react';
+import { Palette, Sun, Moon, TextQuote, Wand2 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import ColorCard from '../brand/color-card';
 import ColorCardSkeleton from '../brand/color-card-skeleton';
 import FontCard from './font-card';
@@ -120,6 +129,11 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
   const [isFontsLoading, setIsFontsLoading] = useState(true);
   const [fontsError, setFontsError] = useState<string | null>(null);
   
+  // Add state for palette generation
+  const [isGeneratingPalette, setIsGeneratingPalette] = useState(false);
+  const [isPalettePreviewOpen, setIsPalettePreviewOpen] = useState(false);
+  const [generatedPalette, setGeneratedPalette] = useState<CssVariable[]>([]);
+  
   const togglePreviewMode = () => {
     setPreviewMode(prev => prev === 'dark' ? 'light' : 'dark');
   };
@@ -228,6 +242,88 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
       
       // Revert changes on error
       fetchCssVariables();
+    }
+  };
+  
+  // Add function to generate color palette
+  const generateColorPalette = async () => {
+    setIsGeneratingPalette(true);
+    
+    try {
+      const response = await fetch(`/api/projects/${projectId}/branding/generate-palette`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to generate color palette');
+      }
+      
+      // Successfully generated the palette
+      const data = await response.json();
+      
+      if (data.success && data.colors) {
+        // Save the generated palette and show the preview modal
+        setGeneratedPalette(data.colors);
+        setIsPalettePreviewOpen(true);
+      } else {
+        throw new Error('Failed to generate a valid color palette');
+      }
+      
+    } catch (err) {
+      console.error('Error generating color palette:', err);
+      toast({
+        title: "Generation failed",
+        description: err instanceof Error ? err.message : "Failed to generate color palette",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingPalette(false);
+    }
+  };
+  
+  // Function to apply the generated palette
+  const applyGeneratedPalette = async () => {
+    setIsGeneratingPalette(true);
+    
+    try {
+      const response = await fetch(`/api/projects/${projectId}/branding/generate-palette?apply=true`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          colors: generatedPalette
+        })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to apply color palette');
+      }
+      
+      // Show success message
+      toast({
+        title: "Palette applied",
+        description: "New color palette has been applied to your project.",
+      });
+      
+      // Refresh the colors
+      fetchCssVariables();
+      
+    } catch (err) {
+      console.error('Error applying color palette:', err);
+      toast({
+        title: "Application failed",
+        description: err instanceof Error ? err.message : "Failed to apply color palette",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingPalette(false);
+      setIsPalettePreviewOpen(false);
     }
   };
   
@@ -348,14 +444,41 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
             <h1 className="text-2xl font-semibold">Brand Guidelines</h1>
           </div>
           
-          <div className="flex items-center gap-2 border border-border px-3 py-1.5 rounded-md">
-            <Sun className="h-4 w-4 text-muted-foreground" />
-            <Switch 
-              checked={previewMode === 'dark'}
-              onCheckedChange={togglePreviewMode}
-              aria-label="Toggle color theme preview mode"
-            />
-            <Moon className="h-4 w-4 text-muted-foreground" />
+          <div className="flex items-center gap-3">
+            {/* Generate Palette Button */}
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="gap-1.5 h-9"
+              disabled={isGeneratingPalette}
+              onClick={generateColorPalette}
+            >
+              {isGeneratingPalette ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Wand2 className="h-4 w-4" />
+                  Generate Color Palette
+                </>
+              )}
+            </Button>
+            
+            {/* Theme Switcher */}
+            <div className="flex items-center gap-2 border border-border px-3 py-1.5 rounded-md">
+              <Sun className="h-4 w-4 text-muted-foreground" />
+              <Switch 
+                checked={previewMode === 'dark'}
+                onCheckedChange={togglePreviewMode}
+                aria-label="Toggle color theme preview mode"
+              />
+              <Moon className="h-4 w-4 text-muted-foreground" />
+            </div>
           </div>
         </div>
         
@@ -448,6 +571,143 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
             )}
           </TabsContent>
         </Tabs>
+        
+        {/* Preview Modal for Generated Palette */}
+        <Dialog open={isPalettePreviewOpen} onOpenChange={setIsPalettePreviewOpen}>
+          <DialogContent className="max-w-4xl">
+            <DialogHeader>
+              <DialogTitle>Preview Generated Color Palette</DialogTitle>
+              <DialogDescription>
+                Review the AI-generated color palette. You can apply these colors to your project or generate a new palette.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="py-4 max-h-[60vh] overflow-y-auto">
+              {generatedPalette.length > 0 ? (
+                <div className="space-y-6">
+                  {/* Group colors by category for the preview */}
+                  {(() => {
+                    // Create a temporary grouping of the generated colors
+                    const grouped: Record<string, CssVariable[]> = {};
+                    
+                    // Predefined color categories
+                    const categories = [
+                      'background',
+                      'foreground',
+                      'primary',
+                      'secondary',
+                      'accent',
+                      'muted',
+                      'card',
+                      'popover',
+                      'border',
+                      'destructive',
+                      'other'
+                    ];
+                    
+                    // Initialize categories
+                    categories.forEach(category => {
+                      grouped[category] = [];
+                    });
+                    
+                    // Sort colors into categories
+                    generatedPalette.forEach(variable => {
+                      const name = variable.name.replace(/^--/, '');
+                      let assigned = false;
+                      
+                      // Try to match to a category
+                      for (const category of categories) {
+                        if (name === category || name.startsWith(`${category}-`) || name.includes(category)) {
+                          grouped[category].push(variable);
+                          assigned = true;
+                          break;
+                        }
+                      }
+                      
+                      // If no category matched, put in 'other'
+                      if (!assigned) {
+                        grouped['other'].push(variable);
+                      }
+                    });
+                    
+                    // Remove empty categories
+                    const result: Record<string, CssVariable[]> = {};
+                    for (const category of categories) {
+                      if (grouped[category].length > 0) {
+                        result[category] = grouped[category];
+                      }
+                    }
+                    
+                    // Render each category
+                    return Object.entries(result).map(([category, colors]) => (
+                      <div key={category} className="space-y-4">
+                        <h2 className="text-xl font-medium">
+                          {category === 'other' ? 'Other Variables' : `${category.charAt(0).toUpperCase() + category.slice(1)} Colors`}
+                        </h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {colors.map(color => (
+                            <div key={color.name} className="flex space-x-2 items-center p-2 border rounded-md">
+                              {/* Color preview */}
+                              <div 
+                                className="w-8 h-8 rounded border"
+                                style={{ 
+                                  backgroundColor: `hsl(${color.lightValue})`,
+                                  boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
+                                }}
+                              />
+                              {/* Color name and value */}
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium truncate">
+                                  {color.name.replace(/^--/, '')}
+                                </p>
+                                <p className="text-xs text-muted-foreground truncate">
+                                  {color.lightValue}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ));
+                  })()}
+                </div>
+              ) : (
+                <div className="flex items-center justify-center h-40">
+                  <p className="text-muted-foreground">No colors generated</p>
+                </div>
+              )}
+            </div>
+            
+            <DialogFooter className="flex flex-col sm:flex-row gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsPalettePreviewOpen(false);
+                  generateColorPalette();
+                }}
+                disabled={isGeneratingPalette}
+              >
+                Regenerate
+              </Button>
+              <Button
+                onClick={applyGeneratedPalette}
+                disabled={isGeneratingPalette || generatedPalette.length === 0}
+              >
+                {isGeneratingPalette ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-background" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Applying...
+                  </>
+                ) : (
+                  'Apply to Project'
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </ThemePreviewContext.Provider>
   );
