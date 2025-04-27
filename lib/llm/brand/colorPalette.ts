@@ -64,13 +64,14 @@ export async function generateColorPalette(
         
 Follow these requirements:
 1. CRITICAL: Return ALL existing color variables with their exact names - do not miss any!
-2. Ensure proper contrast ratios for accessibility (WCAG AA compliance)
-3. Create a balanced palette with primary, secondary, and accent colors
-4. Maintain semantic meaning of color variables (e.g., destructive should be red-based)
-5. Format ALL output as a valid JSON array of color objects
-6. All colors should be in HSL format as string like "220 100% 50%" (NOT hsl(220, 100%, 50%))
-7. Return only the JSON array, no explanations or additional text
-8. IMPORTANT: Your response MUST include ALL existing color variables without exception
+2. IGNORE ALL EXISTING COLOR VALUES - only keep the variable names and generate entirely new color values
+3. Ensure proper contrast ratios for accessibility (WCAG AA compliance)
+4. Create a balanced palette with primary, secondary, and accent colors
+5. Maintain semantic meaning of color variables (e.g., destructive should be red-based)
+6. Format ALL output as a valid JSON array of color objects
+7. All colors should be in HSL format as string like "220 100% 50%" (NOT hsl(220, 100%, 50%))
+8. Return only the JSON array, no explanations or additional text
+9. IMPORTANT: Your response MUST include ALL existing color variables without exception
 
 Example output format:
 [

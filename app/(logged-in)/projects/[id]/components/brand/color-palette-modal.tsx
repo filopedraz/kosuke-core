@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { colorToHex, formatColorName, groupColorsByCategory } from './utils/color-utils';
+import { Wand2 } from 'lucide-react';
 
 // Use the CssVariable type from a new types file
 export interface CssVariable {
@@ -41,6 +42,59 @@ export default function ColorPaletteModal({
   const getHexColor = (hslValue: string): string => {
     return colorToHex(hslValue);
   };
+
+  // Render loading state when generating
+  if (isGenerating) {
+    return (
+      <Dialog open={isOpen} onOpenChange={() => {}}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Generating Color Palette</DialogTitle>
+            <DialogDescription>
+              Please wait while we generate your custom color palette.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-8 flex flex-col items-center justify-center">
+            <div className="relative h-20 w-20">
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="h-16 w-16 rounded-full bg-primary/20"></div>
+              </div>
+              <div className="absolute top-0 left-0 h-full w-full animate-spin-slow">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <div 
+                    key={i}
+                    className="absolute h-5 w-5 rounded-full"
+                    style={{
+                      backgroundColor: `hsl(${i * 45}, 100%, 65%)`,
+                      top: `${Math.sin(i * Math.PI / 4) * 8 + 8}px`,
+                      left: `${Math.cos(i * Math.PI / 4) * 8 + 8}px`,
+                      animation: `pulse 1.5s infinite ${i * 0.1}s`
+                    }}
+                  ></div>
+                ))}
+              </div>
+              <Wand2 className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 h-8 w-8 text-primary animate-pulse" />
+            </div>
+          </div>
+
+          <style jsx global>{`
+            @keyframes pulse {
+              0%, 100% { transform: scale(1); opacity: 1; }
+              50% { transform: scale(1.2); opacity: 0.7; }
+            }
+            .animate-spin-slow {
+              animation: spin 4s linear infinite;
+            }
+            @keyframes spin {
+              from { transform: rotate(0deg); }
+              to { transform: rotate(360deg); }
+            }
+          `}</style>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -131,25 +185,14 @@ export default function ColorPaletteModal({
               onOpenChange(false);
               onRegenerate();
             }}
-            disabled={isGenerating}
           >
             Regenerate
           </Button>
           <Button
             onClick={onApply}
-            disabled={isGenerating || palette.length === 0}
+            disabled={palette.length === 0}
           >
-            {isGenerating ? (
-              <>
-                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-background" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Applying...
-              </>
-            ) : (
-              'Apply to Project'
-            )}
+            Apply to Project
           </Button>
         </DialogFooter>
       </DialogContent>
