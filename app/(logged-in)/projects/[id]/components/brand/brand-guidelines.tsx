@@ -1,11 +1,15 @@
 'use client';
 
 import { useState, useEffect, createContext } from 'react';
-import { Palette, Sun, Moon } from 'lucide-react';
+import { Palette, Sun, Moon, TextQuote } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import ColorCard from '../brand/color-card';
 import ColorCardSkeleton from '../brand/color-card-skeleton';
+import FontCard from './font-card';
+import FontCardSkeleton from './font-card-skeleton';
 import { useToast } from '@/hooks/use-toast';
+import { type FontInfo } from '@/lib/font-parser';
 
 // Define theme modes
 type ThemeMode = 'light' | 'dark';
@@ -111,6 +115,11 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
   const [_stats, setStats] = useState({ lightCount: 0, darkCount: 0, foundLocation: '' });
   const { toast } = useToast();
   
+  // Add font state
+  const [fontVariables, setFontVariables] = useState<FontInfo[]>([]);
+  const [isFontsLoading, setIsFontsLoading] = useState(true);
+  const [fontsError, setFontsError] = useState<string | null>(null);
+  
   const togglePreviewMode = () => {
     setPreviewMode(prev => prev === 'dark' ? 'light' : 'dark');
   };
@@ -143,6 +152,28 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
       setError(err instanceof Error ? err.message : 'Failed to fetch colors');
     } finally {
       setIsLoading(false);
+    }
+  };
+  
+  // Add function to fetch font variables
+  const fetchFontVariables = async () => {
+    setIsFontsLoading(true);
+    setFontsError(null);
+    
+    try {
+      const response = await fetch(`/api/projects/${projectId}/branding/fonts`);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch fonts: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      setFontVariables(data.fonts || []);
+    } catch (err) {
+      console.error('Error fetching font variables:', err);
+      setFontsError(err instanceof Error ? err.message : 'Failed to fetch fonts');
+    } finally {
+      setIsFontsLoading(false);
     }
   };
   
@@ -200,9 +231,10 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
     }
   };
   
-  // Fetch CSS variables on component mount
+  // Fetch data on component mount
   useEffect(() => {
     fetchCssVariables();
+    fetchFontVariables();
   }, [projectId]);
   
   // Group colors into categories for display
@@ -275,6 +307,38 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
     return color.lightValue;
   };
   
+  // Group fonts by type
+  const groupedFonts = (() => {
+    const grouped: Record<string, FontInfo[]> = {
+      'sans': [],
+      'serif': [],
+      'mono': [],
+      'display': [],
+      'other': []
+    };
+    
+    // Group fonts by naming convention
+    fontVariables.forEach(font => {
+      const name = font.name.toLowerCase();
+      if (name.includes('mono')) {
+        grouped['mono'].push(font);
+      } else if (name.includes('serif')) {
+        grouped['serif'].push(font);
+      } else if (name.includes('display')) {
+        grouped['display'].push(font);
+      } else if (name.includes('sans')) {
+        grouped['sans'].push(font);
+      } else {
+        grouped['other'].push(font);
+      }
+    });
+    
+    // Remove empty categories
+    return Object.fromEntries(
+      Object.entries(grouped).filter(([, fonts]) => fonts.length > 0)
+    );
+  })();
+  
   return (
     <ThemePreviewContext.Provider value={{ previewMode, togglePreviewMode }}>
       <div className={`flex flex-col h-full overflow-auto p-6 space-y-6 ${previewMode === 'dark' ? 'dark' : ''}`}>
@@ -295,49 +359,95 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
           </div>
         </div>
         
-        {error && (
-          <div className="p-4 bg-destructive/10 border border-destructive text-destructive rounded-md">
-            {error}
-          </div>
-        )}
-        
-        {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {Array.from({ length: 9 }).map((_, i) => (
-              <ColorCardSkeleton key={i} />
-            ))}
-          </div>
-        ) : (
-          colorVariables.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-64 text-center">
-              <Palette className="h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="text-xl font-medium">No Color Variables Found</h3>
-              <p className="text-muted-foreground mt-2">
-                This project doesn&apos;t have any CSS color variables defined in globals.css.
-              </p>
-            </div>
-          ) : (
-            // Display each category
-            Object.entries(groupedColors).map(([category, colors]) => (
-              <div key={category} className="space-y-4">
-                <h2 className="text-xl font-medium">{getCategoryTitle(category)}</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {colors.map(color => (
-                    <ColorCard
-                      key={color.name + (color.scope || '')}
-                      colorVar={{
-                        name: color.name,
-                        value: getCurrentColorValue(color)
-                      }}
-                      previewMode={previewMode}
-                      onColorChange={handleColorChange}
-                    />
-                  ))}
-                </div>
+        <Tabs defaultValue="colors" className="w-full">
+          <TabsList>
+            <TabsTrigger value="colors">Colors</TabsTrigger>
+            <TabsTrigger value="fonts">Typography</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="colors" className="space-y-6 pt-6">
+            {error && (
+              <div className="p-4 bg-destructive/10 border border-destructive text-destructive rounded-md">
+                {error}
               </div>
-            ))
-          )
-        )}
+            )}
+            
+            {isLoading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {Array.from({ length: 9 }).map((_, i) => (
+                  <ColorCardSkeleton key={i} />
+                ))}
+              </div>
+            ) : (
+              colorVariables.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-64 text-center">
+                  <Palette className="h-12 w-12 text-muted-foreground mb-4" />
+                  <h3 className="text-xl font-medium">No Color Variables Found</h3>
+                  <p className="text-muted-foreground mt-2">
+                    This project doesn&apos;t have any CSS color variables defined in globals.css.
+                  </p>
+                </div>
+              ) : (
+                // Display each category
+                Object.entries(groupedColors).map(([category, colors]) => (
+                  <div key={category} className="space-y-4">
+                    <h2 className="text-xl font-medium">{getCategoryTitle(category)}</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {colors.map(color => (
+                        <ColorCard
+                          key={color.name + (color.scope || '')}
+                          colorVar={{
+                            name: color.name,
+                            value: getCurrentColorValue(color)
+                          }}
+                          previewMode={previewMode}
+                          onColorChange={handleColorChange}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ))
+              )
+            )}
+          </TabsContent>
+          
+          <TabsContent value="fonts" className="space-y-6 pt-6">
+            {fontsError && (
+              <div className="p-4 bg-destructive/10 border border-destructive text-destructive rounded-md">
+                {fontsError}
+              </div>
+            )}
+            
+            {isFontsLoading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <FontCardSkeleton key={i} />
+                ))}
+              </div>
+            ) : (
+              fontVariables.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-64 text-center">
+                  <TextQuote className="h-12 w-12 text-muted-foreground mb-4" />
+                  <h3 className="text-xl font-medium">No Fonts Found</h3>
+                  <p className="text-muted-foreground mt-2">
+                    No fonts could be detected in this project&apos;s layout file.
+                  </p>
+                </div>
+              ) : (
+                Object.entries(groupedFonts).map(([category, fonts]) => (
+                  <div key={category} className="space-y-4">
+                    <h2 className="text-xl font-medium capitalize">{category} Fonts</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {fonts.map(font => (
+                        <FontCard key={font.name} font={font} />
+                      ))}
+                    </div>
+                  </div>
+                ))
+              )
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
     </ThemePreviewContext.Provider>
   );
