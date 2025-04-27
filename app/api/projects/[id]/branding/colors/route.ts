@@ -209,6 +209,61 @@ async function readFile(filePath: string): Promise<string> {
   }
 }
 
+/**
+ * Update CSS variables in a CSS file
+ * This function takes the original CSS content and a map of variables to update
+ * The mode parameter determines where to update the variables (light = :root, dark = .dark)
+ */
+function updateCssVariables(cssContent: string, updates: Record<string, string>, mode: 'light' | 'dark' = 'light'): string {
+  let updatedContent = cssContent;
+  
+  // Get the selector based on the mode
+  const selector = mode === 'light' ? ':root' : '.dark';
+  
+  // Find the section for the specified mode
+  const sectionRegex = new RegExp(`(${selector}\\s*{)([^}]*)(})`, 'g');
+  const sectionMatch = sectionRegex.exec(updatedContent);
+  
+  if (sectionMatch) {
+    let sectionContent = sectionMatch[2];
+    let updated = false;
+    
+    // Update each variable in the section
+    Object.entries(updates).forEach(([name, value]) => {
+      // Make sure the name has the -- prefix
+      const varName = name.startsWith('--') ? name : `--${name}`;
+      
+      // Create regex to find the variable declaration within the section
+      const varRegex = new RegExp(`(\\s*${varName}\\s*:\\s*)([^;]+)(;)`, 'g');
+      
+      // Check if the variable exists in this section
+      if (varRegex.test(sectionContent)) {
+        // Reset lastIndex after test
+        varRegex.lastIndex = 0;
+        
+        // Replace the value in the section content
+        sectionContent = sectionContent.replace(varRegex, `$1${value}$3`);
+        console.log(`Updated ${varName} to ${value} in ${selector} section`);
+        updated = true;
+      } else {
+        console.warn(`Variable ${varName} not found in ${selector} section, cannot update.`);
+      }
+    });
+    
+    // If any updates were made, replace the entire section in the original content
+    if (updated) {
+      updatedContent = updatedContent.replace(
+        sectionRegex,
+        `$1${sectionContent}$3`
+      );
+    }
+  } else {
+    console.warn(`Could not find ${selector} section in CSS content, cannot update variables for ${mode} mode.`);
+  }
+  
+  return updatedContent;
+}
+
 // PUT route handler - Update a CSS color
 export async function PUT(
   req: NextRequest,
@@ -236,6 +291,7 @@ export async function PUT(
     }
     
     const { colors } = validation.data;
+    const mode = body.mode || 'light';
     
     const projectPath = getProjectPath(projectId);
     
@@ -247,6 +303,9 @@ export async function PUT(
       path.join(projectPath, 'css', 'globals.css'),
       path.join(projectPath, 'src', 'styles', 'globals.css'),
       path.join(projectPath, 'public', 'globals.css'),
+      // Add additional paths for theme files
+      path.join(projectPath, 'app', 'theme.css'),
+      path.join(projectPath, 'styles', 'theme.css'),
     ];
 
     let globalsCssPath: string | null = null;
@@ -267,15 +326,15 @@ export async function PUT(
     // Read the current content
     const currentCssContent = await readFile(globalsCssPath);
     
-    // Update CSS variables
-    const updatedContent = updateCssVariables(currentCssContent, colors);
+    // Update CSS variables with the specified mode
+    const updatedContent = updateCssVariables(currentCssContent, colors, mode as 'light' | 'dark');
     
     // Write the updated content back to the file
     await fs.mkdir(path.dirname(globalsCssPath), { recursive: true });
     await updateFile(globalsCssPath, updatedContent);
     
     return NextResponse.json(
-      { success: true, message: 'CSS variables updated successfully' },
+      { success: true, message: `CSS variables updated successfully in ${mode} mode` },
       { status: 200 }
     );
   } catch (error) {
@@ -287,33 +346,91 @@ export async function PUT(
   }
 }
 
-/**
- * Update CSS variables in a CSS file
- * This function takes the original CSS content and a map of variables to update
- */
-function updateCssVariables(cssContent: string, updates: Record<string, string>): string {
-  let updatedContent = cssContent;
-  
-  // Update each variable in the content
-  Object.entries(updates).forEach(([name, value]) => {
-    // Make sure the name has the -- prefix
-    const varName = name.startsWith('--') ? name : `--${name}`;
-    
-    // Create regex to find the variable declaration
-    const regex = new RegExp(`([;{]|^)(\\s*${varName}\\s*:\\s*)([^;]+)(;)`, 'gm');
-    
-    // Check if the variable exists before replacing
-    if (regex.test(updatedContent)) {
-      // Reset lastIndex after test
-      regex.lastIndex = 0;
-      
-      // Replace the value
-      updatedContent = updatedContent.replace(regex, `$1$2${value}$4`);
-      console.log(`Updated ${varName} to ${value}`);
-    } else {
-      console.warn(`Variable ${varName} not found in CSS content, cannot update.`);
+// POST route handler - Update a single CSS color variable
+export async function POST(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const session = await getSession();
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-  });
-  
-  return updatedContent;
+    
+    const projectId = parseInt(params.id);
+    if (isNaN(projectId)) {
+      return NextResponse.json({ error: 'Invalid project ID' }, { status: 400 });
+    }
+    
+    // Parse request body
+    const body = await req.json();
+    
+    // Validate required fields
+    if (!body.name || !body.value) {
+      return NextResponse.json(
+        { error: 'Missing required fields: name and value are required' },
+        { status: 400 }
+      );
+    }
+    
+    const { name, value, mode = 'light' } = body;
+    
+    const projectPath = getProjectPath(projectId);
+    
+    // Find the correct globals.css path for writing
+    const possibleLocations = [
+      path.join(projectPath, 'app', 'globals.css'),
+      path.join(projectPath, 'src', 'app', 'globals.css'),
+      path.join(projectPath, 'styles', 'globals.css'),
+      path.join(projectPath, 'css', 'globals.css'),
+      path.join(projectPath, 'src', 'styles', 'globals.css'),
+      path.join(projectPath, 'public', 'globals.css'),
+      // Add additional paths for theme files
+      path.join(projectPath, 'app', 'theme.css'),
+      path.join(projectPath, 'styles', 'theme.css'),
+    ];
+
+    let globalsCssPath: string | null = null;
+    for (const location of possibleLocations) {
+      if (await fileExists(location)) {
+        globalsCssPath = location;
+        break;
+      }
+    }
+
+    if (!globalsCssPath) {
+       return NextResponse.json(
+        { error: 'No CSS file found to update' },
+        { status: 404 }
+      );
+    }
+    
+    // Read the current content
+    const currentCssContent = await readFile(globalsCssPath);
+    
+    // Prepare a single update
+    const update = { [name]: value };
+    
+    // Update CSS variables with the specified mode
+    const updatedContent = updateCssVariables(currentCssContent, update, mode as 'light' | 'dark');
+    
+    // Write the updated content back to the file
+    await fs.mkdir(path.dirname(globalsCssPath), { recursive: true });
+    await updateFile(globalsCssPath, updatedContent);
+    
+    return NextResponse.json(
+      { 
+        success: true, 
+        message: `CSS variable ${name} updated successfully with value ${value} in ${mode} mode`,
+        mode
+      },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error('Error updating CSS variable:', error);
+    return NextResponse.json(
+      { error: 'Failed to update CSS variable' },
+      { status: 500 }
+    );
+  }
 } 

@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
 import ColorCard from '../brand/color-card';
+import { useToast } from '@/hooks/use-toast';
 
 // Define theme modes
 type ThemeMode = 'light' | 'dark';
@@ -36,7 +37,9 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
   const [colorVariables, setColorVariables] = useState<CssVariable[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [, setStats] = useState({ lightCount: 0, darkCount: 0, foundLocation: '' });
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [_stats, setStats] = useState({ lightCount: 0, darkCount: 0, foundLocation: '' });
+  const { toast } = useToast();
   
   const togglePreviewMode = () => {
     setPreviewMode(prev => prev === 'dark' ? 'light' : 'dark');
@@ -70,6 +73,57 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
       setError(err instanceof Error ? err.message : 'Failed to fetch colors');
     } finally {
       setIsLoading(false);
+    }
+  };
+  
+  // Handle color change from ColorCard
+  const handleColorChange = async (name: string, newValue: string) => {
+    try {
+      // Optimistically update UI
+      const updatedVariables = colorVariables.map(variable => {
+        if (variable.name === name) {
+          return {
+            ...variable,
+            [previewMode === 'light' ? 'lightValue' : 'darkValue']: newValue
+          };
+        }
+        return variable;
+      });
+      
+      setColorVariables(updatedVariables);
+      
+      // Send update to server
+      const response = await fetch(`/api/projects/${projectId}/branding/colors`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name,
+          value: newValue,
+          mode: previewMode
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to update color');
+      }
+      
+      toast({
+        title: "Color updated",
+        description: `${name.replace(/^--/, '')} has been updated successfully.`,
+      });
+      
+    } catch (err) {
+      console.error('Error updating color:', err);
+      toast({
+        title: "Update failed",
+        description: err instanceof Error ? err.message : "Failed to update color",
+        variant: "destructive",
+      });
+      
+      // Revert changes on error
+      fetchCssVariables();
     }
   };
   
@@ -209,6 +263,7 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
                         value: getCurrentColorValue(color)
                       }}
                       previewMode={previewMode}
+                      onColorChange={handleColorChange}
                     />
                   ))}
                 </div>
