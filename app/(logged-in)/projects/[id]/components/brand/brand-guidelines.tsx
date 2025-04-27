@@ -648,21 +648,39 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
                           {colors.map(color => (
                             <div key={color.name} className="flex space-x-2 items-center p-2 border rounded-md">
                               {/* Color preview */}
-                              <div 
-                                className="w-8 h-8 rounded border"
-                                style={{ 
-                                  backgroundColor: `hsl(${color.lightValue})`,
-                                  boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
-                                }}
-                              />
+                              <div className="flex space-x-2 items-center">
+                                <div 
+                                  className="w-8 h-8 rounded border"
+                                  style={{ 
+                                    backgroundColor: `hsl(${color.lightValue})`,
+                                    boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
+                                  }}
+                                  title="Light mode color"
+                                />
+                                {color.darkValue && (
+                                  <div 
+                                    className="w-8 h-8 rounded border"
+                                    style={{ 
+                                      backgroundColor: `hsl(${color.darkValue})`,
+                                      boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
+                                    }}
+                                    title="Dark mode color"
+                                  />
+                                )}
+                              </div>
                               {/* Color name and value */}
                               <div className="flex-1 min-w-0">
                                 <p className="text-sm font-medium truncate">
                                   {color.name.replace(/^--/, '')}
                                 </p>
                                 <p className="text-xs text-muted-foreground truncate">
-                                  {color.lightValue}
+                                  Light: {color.lightValue}
                                 </p>
+                                {color.darkValue && (
+                                  <p className="text-xs text-muted-foreground truncate">
+                                    Dark: {color.darkValue}
+                                  </p>
+                                )}
                               </div>
                             </div>
                           ))}

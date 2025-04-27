@@ -16,7 +16,7 @@ export async function POST(
     // Authentication would normally be checked here
     // Since we don't know exact auth implementation, skipping for now
     
-    const projectId = parseInt(params.id, 10);
+    const projectId = parseInt(await params.id, 10);
     if (isNaN(projectId)) {
       return NextResponse.json(
         { success: false, message: 'Invalid project ID' },
