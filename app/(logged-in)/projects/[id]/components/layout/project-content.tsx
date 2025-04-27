@@ -42,7 +42,7 @@ export default function ProjectContent({
   useEffect(() => {
     setCurrentProject(project);
     // Optionally reset view/chat state when project changes
-    // useProjectStore.setState({ currentView: 'preview', isChatCollapsed: false });
+    useProjectStore.setState({ currentView: 'preview', isChatCollapsed: false });
   }, [project, setCurrentProject]);
   
   return (
