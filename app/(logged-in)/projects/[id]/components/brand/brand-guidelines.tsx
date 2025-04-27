@@ -5,6 +5,9 @@ import { Palette, Sun, Moon, TextQuote, Wand2 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import ColorCard from './color-card';
 import ColorCardSkeleton from './color-card-skeleton';
 import FontCard from './font-card';
@@ -38,6 +41,10 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
   const [isGeneratingPalette, setIsGeneratingPalette] = useState(false);
   const [isPalettePreviewOpen, setIsPalettePreviewOpen] = useState(false);
   const [generatedPalette, setGeneratedPalette] = useState<CssVariable[]>([]);
+  
+  // Add state for keywords modal
+  const [isKeywordsModalOpen, setIsKeywordsModalOpen] = useState(false);
+  const [keywords, setKeywords] = useState('');
   
   const togglePreviewMode = () => {
     setPreviewMode(prev => prev === 'dark' ? 'light' : 'dark');
@@ -150,8 +157,15 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
     }
   };
   
-  // Add function to generate color palette
-  const generateColorPalette = async () => {
+  // Update function to first show keywords modal
+  const handleGenerateColorPalette = () => {
+    setKeywords('');
+    setIsKeywordsModalOpen(true);
+  };
+  
+  // Add function to generate color palette with keywords
+  const generateColorPaletteWithKeywords = async () => {
+    setIsKeywordsModalOpen(false);
     setIsGeneratingPalette(true);
     
     try {
@@ -160,6 +174,9 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
         headers: {
           'Content-Type': 'application/json',
         },
+        body: JSON.stringify({
+          keywords: keywords.trim()
+        })
       });
       
       if (!response.ok) {
@@ -297,7 +314,7 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
               size="sm" 
               className="gap-1.5 h-9"
               disabled={isGeneratingPalette}
-              onClick={generateColorPalette}
+              onClick={handleGenerateColorPalette}
             >
               {isGeneratingPalette ? (
                 <>
@@ -342,7 +359,7 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
             )}
             
             {isLoading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4 gap-6">
                 {Array.from({ length: 9 }).map((_, i) => (
                   <ColorCardSkeleton key={i} />
                 ))}
@@ -418,13 +435,45 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
           </TabsContent>
         </Tabs>
         
+        {/* Keywords Modal */}
+        <Dialog open={isKeywordsModalOpen} onOpenChange={setIsKeywordsModalOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Generate Color Palette</DialogTitle>
+              <DialogDescription>
+                Enter keywords to influence the color palette generation. For example: &ldquo;modern&rdquo;, &ldquo;vibrant&rdquo;, &ldquo;corporate&rdquo;, &ldquo;earthy&rdquo;, &ldquo;pastel&rdquo;, etc.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="py-4">
+              <Label htmlFor="keywords">Keywords (optional)</Label>
+              <Input
+                id="keywords"
+                value={keywords}
+                onChange={(e) => setKeywords(e.target.value)}
+                placeholder="e.g., modern, vibrant, professional"
+                className="mt-2"
+              />
+            </div>
+            
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsKeywordsModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={generateColorPaletteWithKeywords} disabled={isGeneratingPalette}>
+                Generate
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        
         {/* Color Palette Preview Modal */}
         <ColorPaletteModal
           isOpen={isPalettePreviewOpen}
           onOpenChange={setIsPalettePreviewOpen}
           palette={generatedPalette}
           isGenerating={isGeneratingPalette}
-          onRegenerate={generateColorPalette}
+          onRegenerate={handleGenerateColorPalette}
           onApply={applyGeneratedPalette}
         />
       </div>

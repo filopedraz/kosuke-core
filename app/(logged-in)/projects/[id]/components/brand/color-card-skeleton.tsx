@@ -5,7 +5,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 export default function ColorCardSkeleton() {
   return (
-    <Card className="overflow-hidden">
+    <Card className="overflow-hidden group">
       {/* Color preview area skeleton - matches h-32 from ColorCard */}
       <Skeleton className="h-32 w-full rounded-none" />
       

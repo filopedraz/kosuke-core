@@ -28,21 +28,25 @@ export async function POST(
     const url = new URL(request.url);
     const shouldApply = url.searchParams.get('apply') === 'true';
     
+    // Extract request body
+    let requestBody;
+    try {
+      requestBody = await request.json();
+    } catch {
+      requestBody = {};
+    }
+    
     // If the request body contains colors, apply those instead of generating new ones
     let colors;
-    if (shouldApply) {
-      try {
-        const body = await request.json();
-        if (body && body.colors && Array.isArray(body.colors)) {
-          colors = body.colors;
-        }
-      } catch {
-        // No valid body or not in apply mode, will generate new colors
-      }
+    if (shouldApply && requestBody.colors && Array.isArray(requestBody.colors)) {
+      colors = requestBody.colors;
     }
 
     // If we don't have colors from the request body, generate new ones
     if (!colors) {
+      // Extract keywords from request body
+      const keywords = requestBody.keywords || '';
+      
       // Fetch existing colors
       const colorsResponse = await fetch(
         `${request.nextUrl.origin}/api/projects/${projectId}/branding/colors`,
@@ -117,11 +121,12 @@ export async function POST(
         homePageContent = "No content found. Generate a modern, accessible color palette.";
       }
 
-      // Generate the color palette
+      // Generate the color palette with keywords
       const paletteResult = await generateColorPalette(
         projectId,
         existingColors,
-        homePageContent
+        homePageContent,
+        keywords
       );
 
       if (!paletteResult.success || !paletteResult.colors) {

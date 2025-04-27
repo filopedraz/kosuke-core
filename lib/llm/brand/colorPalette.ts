@@ -46,7 +46,8 @@ type FormattedMessage = {
 export async function generateColorPalette(
   projectId: number,
   existingColors: CssVariable[],
-  projectHomePage: string
+  projectHomePage: string,
+  keywords: string = ''
 ): Promise<GeneratePaletteResponse> {
   try {
     // Get the user's model info
@@ -93,13 +94,19 @@ ${existingColors.length > 10 ? `... (and ${existingColors.length - 10} more)\n` 
 
 Project ID: ${projectId}
 ${projectHomePage ? `\nProject content summary (for context):\n${projectHomePage.substring(0, 500)}${projectHomePage.length > 500 ? '...' : ''}` : ''}
+${keywords ? `\nKeywords to influence the palette: ${keywords}` : ''}
 
-Create a cohesive, modern color palette based on these existing colors.`,
+Create a cohesive, modern color palette based on these existing colors${keywords ? ` with influence from the provided keywords` : ''}.`,
       },
     ];
 
     // Print debug information for the request
     console.log('\n========== DEBUGGING LLM REQUEST ==========');
+
+    // Log keywords if provided
+    if (keywords) {
+      console.log(`Using keywords for palette generation: "${keywords}"`);
+    }
 
     // Count tokens in each message
     let totalTokens = 0;
