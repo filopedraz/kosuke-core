@@ -1,0 +1,39 @@
+'use client';
+
+import { createContext, useState, ReactNode } from 'react';
+
+// Define theme modes
+export type ThemeMode = 'light' | 'dark';
+
+// Create a context for the theme preview
+export const ThemePreviewContext = createContext<{
+  previewMode: ThemeMode;
+  togglePreviewMode: () => void;
+}>({
+  previewMode: 'light',
+  togglePreviewMode: () => {},
+});
+
+interface ThemePreviewProviderProps {
+  children: ReactNode;
+  initialMode?: ThemeMode;
+}
+
+export function ThemePreviewProvider({ 
+  children, 
+  initialMode = 'light' 
+}: ThemePreviewProviderProps) {
+  const [previewMode, setPreviewMode] = useState<ThemeMode>(initialMode);
+  
+  const togglePreviewMode = () => {
+    setPreviewMode(prev => prev === 'dark' ? 'light' : 'dark');
+  };
+  
+  return (
+    <ThemePreviewContext.Provider value={{ previewMode, togglePreviewMode }}>
+      <div className={previewMode === 'dark' ? 'dark' : ''}>
+        {children}
+      </div>
+    </ThemePreviewContext.Provider>
+  );
+} 
