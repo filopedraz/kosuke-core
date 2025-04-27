@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { colorToHex, formatColorName, groupColorsByCategory } from './utils/color-utils';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 // Use the CssVariable type from a new types file
 export interface CssVariable {
@@ -41,6 +41,7 @@ export default function ColorPaletteModal({
   // Add ref for focusing an element other than the close button
   const titleRef = useRef<HTMLHeadingElement>(null);
   const dialogContentRef = useRef<HTMLDivElement>(null);
+  const [isApplying, setIsApplying] = useState(false);
   
   // Focus management when the modal opens
   useEffect(() => {
@@ -78,9 +79,37 @@ export default function ColorPaletteModal({
     }
   }, [isOpen]);
 
+  // Prevent focus on the modal outline when generation finishes
+  useEffect(() => {
+    if (!isGenerating && isOpen) {
+      // Make sure nothing gets focused when generation completes
+      setTimeout(() => {
+        if (document.activeElement instanceof HTMLElement) {
+          document.activeElement.blur();
+        }
+      }, 10);
+    }
+  }, [isGenerating, isOpen]);
+
   // Function to convert HSL to HEX for display
   const getHexColor = (hslValue: string): string => {
     return colorToHex(hslValue);
+  };
+
+  // Handle apply with proper state management
+  const handleApply = async () => {
+    setIsApplying(true);
+    try {
+      // Close the modal first
+      onOpenChange(false);
+      // Small delay to ensure modal is closed before apply action
+      setTimeout(() => {
+        onApply();
+      }, 100);
+    } finally {
+      // Reset state (though modal will be closed)
+      setIsApplying(false);
+    }
   };
 
   // Render loading state when generating
@@ -108,7 +137,7 @@ export default function ColorPaletteModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl" ref={dialogContentRef}>
+      <DialogContent className="max-w-4xl" ref={dialogContentRef} onPointerDownOutside={e => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle ref={titleRef}>Preview Generated Color Palette</DialogTitle>
           <DialogDescription>
@@ -199,13 +228,19 @@ export default function ColorPaletteModal({
             Regenerate
           </Button>
           <Button
-            onClick={onApply}
-            disabled={palette.length === 0}
+            onClick={handleApply}
+            disabled={palette.length === 0 || isApplying}
           >
-            Apply to Project
+            {isApplying ? 'Applying...' : 'Apply to Project'}
           </Button>
         </DialogFooter>
       </DialogContent>
+      <style jsx global>{`
+        /* Hide focus outline on dialog container */
+        [role="dialog"] {
+          outline: none !important;
+        }
+      `}</style>
     </Dialog>
   );
 } 
