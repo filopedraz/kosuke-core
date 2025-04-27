@@ -52,7 +52,6 @@ export default function ColorCard({ colorVar, previewMode, onSave }: ColorCardPr
   const [displayValue, setDisplayValue] = useState(colorVar.value);
   const [isChanged, setIsChanged] = useState(false);
   const [colorPreview, setColorPreview] = useState('transparent');
-  const [textColor, setTextColor] = useState('#000000');
 
   // Update internal state when the color variable prop changes
   useEffect(() => {
@@ -98,32 +97,6 @@ export default function ColorCard({ colorVar, previewMode, onSave }: ColorCardPr
     }
     
     setColorPreview(resolvedColor);
-    
-    // Calculate appropriate text color for contrast
-    try {
-      let r = 0, g = 0, b = 0;
-      
-      // Extract RGB values from the resolved color
-      const rgbMatch = resolvedColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
-      if (rgbMatch) {
-        r = parseInt(rgbMatch[1]);
-        g = parseInt(rgbMatch[2]);
-        b = parseInt(rgbMatch[3]);
-      } else if (resolvedColor.startsWith('#')) {
-        // Handle hex colors
-        const hex = resolvedColor.substring(1);
-        const bigint = parseInt(hex, 16);
-        r = (bigint >> 16) & 255;
-        g = (bigint >> 8) & 255;
-        b = bigint & 255;
-      }
-      
-      // Calculate luminance to determine text color
-      const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-      setTextColor(luminance > 0.5 ? '#000000' : '#ffffff');
-    } catch { // Empty catch block with no parameter
-      setTextColor('#000000'); // Default to black text on error
-    }
   }, [displayValue, previewMode]);
 
   const copyToClipboard = (text: string) => {
@@ -164,37 +137,14 @@ export default function ColorCard({ colorVar, previewMode, onSave }: ColorCardPr
       .join(' ');
   };
 
-  // Get a human-readable color value for display
-  const getDisplayColorValue = () => {
-    // Show the HSL version for better readability if available
-    if (colorPreview.startsWith('rgb')) {
-      return colorPreview;
-    }
-    return colorPreview;
-  };
-
   return (
     <Card className="overflow-hidden">
+      {/* Color preview - without any text */}
       <div
-        className="h-32 w-full flex flex-col items-center justify-center p-2 text-center relative"
-        style={{
-          backgroundColor: colorPreview,
-          color: textColor
-        }}
-      >
-        {/* Tooltip showing the original value if it resolves differently */}
-        {colorPreview !== displayValue && displayValue.startsWith('var(') && (
-          <div className="absolute top-1 right-1 bg-black/50 text-white text-xs px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-            Original: {displayValue}
-          </div>
-        )}
-        <div className="text-sm font-mono break-all max-w-full overflow-hidden" title={getDisplayColorValue()}>
-          {getDisplayColorValue()}
-        </div>
-        <div className="text-xs mt-1 px-2 py-0.5 bg-black/20 rounded">
-          {previewMode === 'dark' ? 'Dark Theme' : 'Light Theme'}
-        </div>
-      </div>
+        className="h-32 w-full"
+        style={{ backgroundColor: colorPreview }}
+      />
+      
       <CardContent className="pt-4 pb-2">
         <h3 className="font-medium text-sm truncate" title={formatColorName(colorVar.name)}>
           {formatColorName(colorVar.name)}
@@ -252,12 +202,15 @@ export default function ColorCard({ colorVar, previewMode, onSave }: ColorCardPr
           </div>
         )}
       </CardContent>
-      <CardFooter className="p-2 border-t border-border bg-muted/30 flex justify-end">
-        {isChanged && (
-          <span className="text-xs text-amber-600 dark:text-amber-500 mr-auto font-medium">Modified</span>
-        )}
-        {/* Footer content can be added here if needed */}
-      </CardFooter>
+      
+      {/* Only show footer when there are changes */}
+      {isChanged && (
+        <CardFooter className="p-2 border-t border-border bg-muted/30 flex justify-end">
+          <span className="text-xs text-amber-600 dark:text-amber-500 mr-auto font-medium">
+            Modified
+          </span>
+        </CardFooter>
+      )}
     </Card>
   );
 } 
