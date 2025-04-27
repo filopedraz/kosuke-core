@@ -40,13 +40,40 @@ export default function ColorPaletteModal({
 }: ColorPaletteModalProps) {
   // Add ref for focusing an element other than the close button
   const titleRef = useRef<HTMLHeadingElement>(null);
+  const dialogContentRef = useRef<HTMLDivElement>(null);
   
-  // Focus the title element when the modal opens
+  // Focus management when the modal opens
   useEffect(() => {
-    if (isOpen && titleRef.current) {
+    if (isOpen) {
       // Small delay to ensure the modal is fully rendered
       setTimeout(() => {
-        titleRef.current?.focus();
+        // Remove focus from any element that might be focused
+        if (document.activeElement instanceof HTMLElement) {
+          document.activeElement.blur();
+        }
+        
+        // Make all focusable elements non-focusable initially
+        const focusableElements = dialogContentRef.current?.querySelectorAll(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        ) as NodeListOf<HTMLElement>;
+        
+        if (focusableElements) {
+          focusableElements.forEach(el => {
+            el.setAttribute('data-original-tabindex', el.tabIndex.toString());
+            el.tabIndex = -1;
+          });
+          
+          // Restore focusability after a short delay to prevent initial focus
+          setTimeout(() => {
+            focusableElements.forEach(el => {
+              const originalTabIndex = el.getAttribute('data-original-tabindex');
+              if (originalTabIndex) {
+                el.tabIndex = parseInt(originalTabIndex);
+                el.removeAttribute('data-original-tabindex');
+              }
+            });
+          }, 300);
+        }
       }, 50);
     }
   }, [isOpen]);
@@ -60,21 +87,19 @@ export default function ColorPaletteModal({
   if (isGenerating) {
     return (
       <Dialog open={isOpen} onOpenChange={() => {}}>
-        <DialogContent className="sm:max-w-md">
-          <div className="pt-6">
-            <DialogHeader>
-              <DialogTitle ref={titleRef} tabIndex={-1}>Generating Color Palette</DialogTitle>
-              <DialogDescription>
-                Please wait while we generate your custom color palette.
-              </DialogDescription>
-            </DialogHeader>
-            
-            <div className="py-8 flex justify-center">
-              <svg className="animate-spin h-8 w-8 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-            </div>
+        <DialogContent className="sm:max-w-md" ref={dialogContentRef}>
+          <DialogHeader>
+            <DialogTitle ref={titleRef}>Generating Color Palette</DialogTitle>
+            <DialogDescription>
+              Please wait while we generate your custom color palette.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-8 flex justify-center">
+            <svg className="animate-spin h-8 w-8 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
           </div>
         </DialogContent>
       </Dialog>
@@ -83,9 +108,9 @@ export default function ColorPaletteModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl">
+      <DialogContent className="max-w-4xl" ref={dialogContentRef}>
         <DialogHeader>
-          <DialogTitle ref={titleRef} tabIndex={-1}>Preview Generated Color Palette</DialogTitle>
+          <DialogTitle ref={titleRef}>Preview Generated Color Palette</DialogTitle>
           <DialogDescription>
             Review the AI-generated color palette. You can apply these colors to your project or generate a new palette.
           </DialogDescription>

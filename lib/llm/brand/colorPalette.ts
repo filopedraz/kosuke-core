@@ -166,8 +166,6 @@ Create a cohesive, modern color palette ${keywords ? ` with influence from the p
     console.log(`Calling ${userModel.model} for color palette generation...`);
     const startTime = Date.now();
 
-    console.log('Formatted messages:', formattedMessages);
-
     const response = await generateText({
       model: googleProvider(userModel.model),
       messages: formattedMessages as CoreMessage[],
@@ -185,12 +183,6 @@ Create a cohesive, modern color palette ${keywords ? ` with influence from the p
         message: 'Received empty response from the AI model',
       };
     }
-
-    // Log a preview of the response for debugging
-    const previewLength = Math.min(200, response.text.length);
-    console.log(
-      `Response preview: ${response.text.substring(0, previewLength)}${response.text.length > previewLength ? '...' : ''}`
-    );
 
     // Parse the response
     try {

@@ -8,7 +8,10 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const projectId = params.id;
+    // Ensure params is fully resolved before accessing properties
+    const { id } = params;
+    const projectId = id;
+    
     const layoutPath = path.join(process.cwd(), 'projects', projectId, 'app/layout.tsx');
     
     const layoutContent = await fs.readFile(layoutPath, 'utf-8');

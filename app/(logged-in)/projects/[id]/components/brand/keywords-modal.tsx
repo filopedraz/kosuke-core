@@ -32,6 +32,13 @@ export default function KeywordsModal({
     onSubmit(keywords);
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && !isGenerating) {
+      e.preventDefault();
+      handleSubmit();
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
@@ -48,6 +55,7 @@ export default function KeywordsModal({
             id="keywords"
             value={keywords}
             onChange={(e) => setKeywords(e.target.value)}
+            onKeyDown={handleKeyDown}
             placeholder="e.g., modern, vibrant, professional"
             className="mt-2"
           />
