@@ -9,7 +9,15 @@ import { fileExists, updateFile, getProjectPath } from '@/lib/fs/operations';
 type CssVariable = {
   name: string;
   value: string;
-  scope?: 'root' | 'dark' | 'light' | 'unknown'; // Add scope
+  scope: 'root' | 'dark' | 'light' | 'unknown';
+};
+
+// Combined color variable with light/dark variants
+type ColorVariable = {
+  name: string;
+  lightValue: string;
+  darkValue?: string; // Optional dark theme value
+  scope: 'root' | 'dark' | 'light' | 'unknown';
 };
 
 // Zod schema for PUT request
@@ -19,91 +27,99 @@ const UpdateColorsSchema = z.object({
 
 /**
  * Parse CSS variables from a CSS file
- * Prioritizes :root, then .dark, then falls back to global scope.
+ * Returns both root (light) and dark theme variables
  */
-function parseCssVariables(cssContent: string): CssVariable[] {
-  const variablesMap = new Map<string, CssVariable>();
+function parseCssVariables(cssContent: string): { light: CssVariable[], dark: CssVariable[] } {
+  const lightVariables: CssVariable[] = [];
+  const darkVariables: CssVariable[] = [];
 
   try {
-    // Regex to match variable declarations
-    const varRegex = /--([\w-]+)\s*:\s*([^;]+);/g;
-    
-    // Function to process a block of CSS
-    const processBlock = (blockContent: string, scope: CssVariable['scope']) => {
+    // Function to parse variables from a CSS block
+    const parseBlock = (block: string, scope: 'root' | 'dark' | 'light' | 'unknown') => {
+      const variables: CssVariable[] = [];
+      // Match CSS variable declarations
+      const regex = /--([\w-]+)\s*:\s*([^;]+);/g;
       let match;
-      while ((match = varRegex.exec(blockContent)) !== null) {
+      
+      while ((match = regex.exec(block)) !== null) {
         const name = '--' + match[1];
         const value = match[2].trim();
-        // Only add if not already found in a more specific scope
-        if (!variablesMap.has(name)) {
-          variablesMap.set(name, { name, value, scope });
-        }
+        variables.push({ name, value, scope });
       }
-      varRegex.lastIndex = 0; // Reset regex index
+      
+      return variables;
     };
 
-    // 1. Process :root block
+    // Extract root variables (light theme)
     const rootMatch = cssContent.match(/:root\s*{([^}]*)}/);
     if (rootMatch && rootMatch[1]) {
-      processBlock(rootMatch[1], 'root');
+      lightVariables.push(...parseBlock(rootMatch[1], 'root'));
     }
 
-    // 2. Process .dark block (often overrides root for dark theme)
+    // Extract .dark class variables (dark theme)
     const darkMatch = cssContent.match(/\.dark\s*{([^}]*)}/);
     if (darkMatch && darkMatch[1]) {
-      processBlock(darkMatch[1], 'dark');
-    }
-    
-    // 3. Process .light block (less common, but possible)
-    const lightMatch = cssContent.match(/\.light\s*{([^}]*)}/);
-    if (lightMatch && lightMatch[1]) {
-      processBlock(lightMatch[1], 'light');
+      darkVariables.push(...parseBlock(darkMatch[1], 'dark'));
     }
 
-    // 4. Fallback: Process the entire file content if specific blocks weren't found or didn't contain variables
-    // AND if no root variables were found at all (to avoid adding global vars if root exists)
-    if (variablesMap.size === 0) {
-       processBlock(cssContent, 'unknown');
+    // Also try to match media query for dark mode
+    const darkMediaMatch = cssContent.match(/@media\s+\(prefers-color-scheme:\s*dark\)\s*{([^}]*)}/);
+    if (darkMediaMatch && darkMediaMatch[1]) {
+      // Look for :root or html/body inside the media query
+      const nestedRootMatch = darkMediaMatch[1].match(/:root\s*{([^}]*)}/);
+      if (nestedRootMatch && nestedRootMatch[1]) {
+        darkVariables.push(...parseBlock(nestedRootMatch[1], 'dark'));
+      }
     }
 
-    console.log(`Parsed ${variablesMap.size} unique CSS variables.`);
+    // If no variables found, try to find them in the entire file
+    if (lightVariables.length === 0) {
+      lightVariables.push(...parseBlock(cssContent, 'unknown'));
+    }
 
+    console.log(`Parsed ${lightVariables.length} light theme variables and ${darkVariables.length} dark theme variables`);
   } catch (error) {
     console.error('Error parsing CSS variables:', error);
   }
 
-  // Convert map values to array
-  return Array.from(variablesMap.values());
+  return { light: lightVariables, dark: darkVariables };
 }
 
 /**
- * Update CSS variables in a CSS file
- * This function takes the original CSS content and a map of variables to update
+ * Combine light and dark variables into a single structure for easier access
  */
-function updateCssVariables(cssContent: string, updates: Record<string, string>): string {
-  let updatedContent = cssContent;
+function combineVariables(light: CssVariable[], dark: CssVariable[]): ColorVariable[] {
+  const combined: ColorVariable[] = [];
+  const darkMap = new Map<string, string>();
   
-  // Update each variable in the content
-  Object.entries(updates).forEach(([name, value]) => {
-    // Make sure the name has the -- prefix
-    const varName = name.startsWith('--') ? name : `--${name}`;
-    
-    // Create regex to find the variable declaration, ensuring it captures the full definition line
-    // Looks for start of line or { or ; followed by whitespace, then the variable, :, value, ;
-    const regex = new RegExp(`([;{]|^)(\s*${varName}\s*:\s*)([^;]+)(;)`, 'gm');
-    
-    // Replace the value part (group 3) 
-    if (regex.test(updatedContent)) { // Check if variable exists before replacing
-      updatedContent = updatedContent.replace(regex, `$1$2${value}$4`);
-      console.log(`Updating ${varName} to ${value}`);
-    } else {
-      console.warn(`Variable ${varName} not found in CSS content, cannot update.`);
-      // Optionally, decide whether to add the variable if it doesn't exist
-      // e.g., append to :root block or create it
+  // Create a map of dark variables for quick lookup
+  dark.forEach(variable => {
+    darkMap.set(variable.name, variable.value);
+  });
+  
+  // Process light variables and add dark values where available
+  light.forEach(lightVar => {
+    combined.push({
+      name: lightVar.name,
+      lightValue: lightVar.value,
+      darkValue: darkMap.get(lightVar.name),
+      scope: lightVar.scope
+    });
+  });
+  
+  // Add any dark variables that weren't in the light set
+  dark.forEach(darkVar => {
+    if (!combined.some(c => c.name === darkVar.name)) {
+      combined.push({
+        name: darkVar.name,
+        lightValue: '', // No light value available
+        darkValue: darkVar.value,
+        scope: darkVar.scope
+      });
     }
   });
   
-  return updatedContent;
+  return combined;
 }
 
 // GET route handler - Enhanced file finding
@@ -131,40 +147,49 @@ export async function GET(
       path.join(projectPath, 'styles', 'globals.css'),
       path.join(projectPath, 'css', 'globals.css'),
       path.join(projectPath, 'src', 'styles', 'globals.css'),
-      path.join(projectPath, 'public', 'globals.css'), // Another common location
+      path.join(projectPath, 'public', 'globals.css'),
+      // Add additional paths for theme files
+      path.join(projectPath, 'app', 'theme.css'),
+      path.join(projectPath, 'styles', 'theme.css'),
     ];
     
-    let globalsCssPath: string | null = null;
     let cssContent: string | null = null;
+    let foundLocation: string | null = null;
     
     for (const location of possibleLocations) {
       if (await fileExists(location)) {
-        globalsCssPath = location;
-        console.log(`Found globals.css at: ${globalsCssPath}`);
+        console.log(`Found CSS file at: ${location}`);
         try {
-          // Use the generic readFile helper
-          cssContent = await readFile(globalsCssPath);
-          console.log(`Successfully read globals.css, length: ${cssContent?.length} characters`);
-          break; // Stop searching once found and read
+          cssContent = await readFile(location);
+          foundLocation = location;
+          console.log(`Successfully read CSS file, length: ${cssContent?.length} characters`);
+          break;
         } catch (readError) {
           console.error(`Error reading file at ${location}:`, readError);
-          // Continue searching if reading fails
         }
       }
     }
 
     if (!cssContent) {
-      console.error('Could not find or read globals.css in any expected location.');
+      console.error('Could not find or read CSS files in any expected location.');
       return NextResponse.json({ 
         colors: [],
-        message: 'No globals.css file found or readable for this project'
-      }, { status: 404 }); // Use 404 if not found
+        message: 'No CSS files found or readable for this project'
+      }, { status: 404 });
     }
     
-    // Parse CSS variables
-    const cssVariables = parseCssVariables(cssContent);
+    // Parse CSS variables for both light and dark themes
+    const { light, dark } = parseCssVariables(cssContent);
     
-    return NextResponse.json({ colors: cssVariables }, { status: 200 });
+    // Combine variables for easier consumption by the client
+    const combinedColors = combineVariables(light, dark);
+    
+    return NextResponse.json({ 
+      colors: combinedColors,
+      foundLocation,
+      lightCount: light.length,
+      darkCount: dark.length
+    }, { status: 200 });
   } catch (error) {
     console.error('Error getting CSS variables:', error);
     return NextResponse.json(
@@ -180,11 +205,11 @@ async function readFile(filePath: string): Promise<string> {
     return await fs.readFile(filePath, 'utf-8');
   } catch (error) {
     console.error(`Error reading file: ${filePath}`, error);
-    throw error; // Re-throw the error to be caught by the main handler
+    throw error;
   }
 }
 
-// PUT route handler
+// PUT route handler - Update a CSS color
 export async function PUT(
   req: NextRequest,
   { params }: { params: { id: string } }
@@ -214,7 +239,7 @@ export async function PUT(
     
     const projectPath = getProjectPath(projectId);
     
-     // Find the correct globals.css path again for writing
+    // Find the correct globals.css path again for writing
     const possibleLocations = [
       path.join(projectPath, 'app', 'globals.css'),
       path.join(projectPath, 'src', 'app', 'globals.css'),
@@ -234,7 +259,7 @@ export async function PUT(
 
     if (!globalsCssPath) {
        return NextResponse.json(
-        { error: 'No globals.css file found to update' },
+        { error: 'No CSS file found to update' },
         { status: 404 }
       );
     }
@@ -246,9 +271,7 @@ export async function PUT(
     const updatedContent = updateCssVariables(currentCssContent, colors);
     
     // Write the updated content back to the file
-    // Ensure the directory exists before writing
-    const dirPath = path.dirname(globalsCssPath);
-    await fs.mkdir(dirPath, { recursive: true });
+    await fs.mkdir(path.dirname(globalsCssPath), { recursive: true });
     await updateFile(globalsCssPath, updatedContent);
     
     return NextResponse.json(
@@ -262,4 +285,35 @@ export async function PUT(
       { status: 500 }
     );
   }
+}
+
+/**
+ * Update CSS variables in a CSS file
+ * This function takes the original CSS content and a map of variables to update
+ */
+function updateCssVariables(cssContent: string, updates: Record<string, string>): string {
+  let updatedContent = cssContent;
+  
+  // Update each variable in the content
+  Object.entries(updates).forEach(([name, value]) => {
+    // Make sure the name has the -- prefix
+    const varName = name.startsWith('--') ? name : `--${name}`;
+    
+    // Create regex to find the variable declaration
+    const regex = new RegExp(`([;{]|^)(\\s*${varName}\\s*:\\s*)([^;]+)(;)`, 'gm');
+    
+    // Check if the variable exists before replacing
+    if (regex.test(updatedContent)) {
+      // Reset lastIndex after test
+      regex.lastIndex = 0;
+      
+      // Replace the value
+      updatedContent = updatedContent.replace(regex, `$1$2${value}$4`);
+      console.log(`Updated ${varName} to ${value}`);
+    } else {
+      console.warn(`Variable ${varName} not found in CSS content, cannot update.`);
+    }
+  });
+  
+  return updatedContent;
 } 

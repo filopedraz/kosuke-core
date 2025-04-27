@@ -19,10 +19,12 @@ const ThemePreviewContext = createContext<{
   togglePreviewMode: () => {},
 });
 
+// Color variable types to match API response
 interface CssVariable {
   name: string;
-  value: string;
-  scope?: 'root' | 'dark' | 'light' | 'unknown';
+  lightValue: string;
+  darkValue?: string;
+  scope: 'root' | 'dark' | 'light' | 'unknown';
 }
 
 interface BrandGuidelinesProps {
@@ -34,6 +36,7 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
   const [colorVariables, setColorVariables] = useState<CssVariable[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [stats, setStats] = useState({ lightCount: 0, darkCount: 0, foundLocation: '' });
   
   const togglePreviewMode = () => {
     setPreviewMode(prev => prev === 'dark' ? 'light' : 'dark');
@@ -52,7 +55,15 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
       }
       
       const data = await response.json();
-      console.log('Fetched colors:', data.colors);
+      console.log('Fetched colors:', data);
+      
+      // Update stats for debugging
+      setStats({
+        lightCount: data.lightCount || 0,
+        darkCount: data.darkCount || 0,
+        foundLocation: data.foundLocation || ''
+      });
+      
       setColorVariables(data.colors || []);
     } catch (err) {
       console.error('Error fetching CSS variables:', err);
@@ -79,9 +90,17 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
       
       // Update the color locally 
       setColorVariables(prevColors => 
-        prevColors.map(color => 
-          color.name === name ? { ...color, value } : color
-        )
+        prevColors.map(color => {
+          if (color.name === name) {
+            // Update either light or dark value based on current preview mode
+            if (previewMode === 'light') {
+              return { ...color, lightValue: value };
+            } else {
+              return { ...color, darkValue: value };
+            }
+          }
+          return color;
+        })
       );
       
       return true;
@@ -158,6 +177,14 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
     if (category === 'other') return 'Other Variables';
     return `${category.charAt(0).toUpperCase() + category.slice(1)} Colors`;
   };
+
+  // Get current color value based on theme mode
+  const getCurrentColorValue = (color: CssVariable) => {
+    if (previewMode === 'dark' && color.darkValue) {
+      return color.darkValue;
+    }
+    return color.lightValue;
+  };
   
   return (
     <ThemePreviewContext.Provider value={{ previewMode, togglePreviewMode }}>
@@ -166,6 +193,11 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
           <div className="flex items-center gap-2">
             <Palette className="h-5 w-5 text-primary" />
             <h1 className="text-2xl font-semibold">Brand Guidelines</h1>
+            {stats.darkCount > 0 && (
+              <div className="text-xs text-muted-foreground ml-2">
+                Found {stats.lightCount} light and {stats.darkCount} dark theme colors
+              </div>
+            )}
           </div>
           
           <div className="flex items-center gap-2 border border-border px-3 py-1.5 rounded-md">
@@ -218,9 +250,14 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
                   {colors.map(color => (
                     <ColorCard
                       key={color.name + (color.scope || '')}
-                      colorVar={color}
+                      colorVar={{
+                        name: color.name,
+                        value: getCurrentColorValue(color),
+                        scope: color.scope
+                      }}
                       previewMode={previewMode}
                       onSave={(value: string) => updateColor(color.name, value)}
+                      hasDarkVariant={!!color.darkValue}
                     />
                   ))}
                 </div>
