@@ -9,6 +9,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { colorToHex, formatColorName, groupColorsByCategory } from './utils/color-utils';
 
 // Use the CssVariable type from a new types file
 export interface CssVariable {
@@ -16,6 +17,7 @@ export interface CssVariable {
   lightValue: string;
   darkValue?: string;
   scope: 'root' | 'dark' | 'light' | 'unknown';
+  [key: string]: string | undefined; // Add index signature to satisfy ColorVariable constraint
 }
 
 interface ColorPaletteModalProps {
@@ -35,6 +37,11 @@ export default function ColorPaletteModal({
   onRegenerate,
   onApply,
 }: ColorPaletteModalProps) {
+  // Function to convert HSL to HEX for display
+  const getHexColor = (hslValue: string): string => {
+    return colorToHex(hslValue);
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl">
@@ -48,105 +55,63 @@ export default function ColorPaletteModal({
         <div className="py-4 max-h-[60vh] overflow-y-auto">
           {palette.length > 0 ? (
             <div className="space-y-6">
-              {/* Group colors by category for the preview */}
+              {/* Group colors by category for the preview - using the utility function */}
               {(() => {
-                // Create a temporary grouping of the generated colors
-                const grouped: Record<string, CssVariable[]> = {};
-                
-                // Predefined color categories
-                const categories = [
-                  'background',
-                  'foreground',
-                  'primary',
-                  'secondary',
-                  'accent',
-                  'muted',
-                  'card',
-                  'popover',
-                  'border',
-                  'destructive',
-                  'other'
-                ];
-                
-                // Initialize categories
-                categories.forEach(category => {
-                  grouped[category] = [];
-                });
-                
-                // Sort colors into categories
-                palette.forEach(variable => {
-                  const name = variable.name.replace(/^--/, '');
-                  let assigned = false;
-                  
-                  // Try to match to a category
-                  for (const category of categories) {
-                    if (name === category || name.startsWith(`${category}-`) || name.includes(category)) {
-                      grouped[category].push(variable);
-                      assigned = true;
-                      break;
-                    }
-                  }
-                  
-                  // If no category matched, put in 'other'
-                  if (!assigned) {
-                    grouped['other'].push(variable);
-                  }
-                });
-                
-                // Remove empty categories
-                const result: Record<string, CssVariable[]> = {};
-                for (const category of categories) {
-                  if (grouped[category].length > 0) {
-                    result[category] = grouped[category];
-                  }
-                }
+                // Group colors into categories
+                const groupedColors = groupColorsByCategory<CssVariable>(palette);
                 
                 // Render each category
-                return Object.entries(result).map(([category, colors]) => (
+                return Object.entries(groupedColors).map(([category, colors]) => (
                   <div key={category} className="space-y-4">
                     <h2 className="text-xl font-medium">
                       {category === 'other' ? 'Other Variables' : `${category.charAt(0).toUpperCase() + category.slice(1)} Colors`}
                     </h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {colors.map(color => (
-                        <div key={color.name} className="flex space-x-2 items-center p-2 border rounded-md">
-                          {/* Color preview */}
-                          <div className="flex space-x-2 items-center">
-                            <div 
-                              className="w-8 h-8 rounded border"
-                              style={{ 
-                                backgroundColor: `hsl(${color.lightValue})`,
-                                boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
-                              }}
-                              title="Light mode color"
-                            />
-                            {color.darkValue && (
+                      {colors.map(color => {
+                        const lightHex = getHexColor(color.lightValue);
+                        const darkHex = color.darkValue ? getHexColor(color.darkValue) : null;
+                        const formattedName = formatColorName(color.name);
+                        
+                        return (
+                          <div key={color.name} className="flex space-x-2 items-center p-2 border rounded-md">
+                            {/* Color preview */}
+                            <div className="flex space-x-2 items-center">
                               <div 
                                 className="w-8 h-8 rounded border"
                                 style={{ 
-                                  backgroundColor: `hsl(${color.darkValue})`,
+                                  backgroundColor: lightHex,
                                   boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
                                 }}
-                                title="Dark mode color"
+                                title="Light mode color"
                               />
-                            )}
-                          </div>
-                          {/* Color name and value */}
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">
-                              {color.name.replace(/^--/, '')}
-                            </p>
-                            <p className="text-xs text-muted-foreground truncate">
-                              Light: {color.lightValue}
-                            </p>
-                            {color.darkValue && (
-                              <p className="text-xs text-muted-foreground truncate">
-                                Dark: {color.darkValue}
+                              {darkHex && (
+                                <div 
+                                  className="w-8 h-8 rounded border"
+                                  style={{ 
+                                    backgroundColor: darkHex,
+                                    boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
+                                  }}
+                                  title="Dark mode color"
+                                />
+                              )}
+                            </div>
+                            {/* Color name and value */}
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">
+                                {formattedName}
                               </p>
-                            )}
+                              <p className="text-xs text-muted-foreground truncate">
+                                Light: {lightHex}
+                              </p>
+                              {darkHex && (
+                                <p className="text-xs text-muted-foreground truncate">
+                                  Dark: {darkHex}
+                                </p>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 ));

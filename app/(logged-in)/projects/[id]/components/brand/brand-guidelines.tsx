@@ -42,6 +42,9 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
   
   // Add state for keywords modal
   const [isKeywordsModalOpen, setIsKeywordsModalOpen] = useState(false);
+  
+  // Add state for active tab
+  const [activeTab, setActiveTab] = useState('colors');
 
   const togglePreviewMode = () => {
     setPreviewMode(prev => prev === 'dark' ? 'light' : 'dark');
@@ -293,6 +296,21 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
       Object.entries(grouped).filter(([, fonts]) => fonts.length > 0)
     );
   })();
+
+  // Render loading indicator for palette generation
+  const renderGeneratingIndicator = () => {
+    if (!isGeneratingPalette) return null;
+    
+    return (
+      <div className="fixed bottom-4 right-4 bg-background border border-border rounded-lg shadow-lg p-3 z-50 flex items-center space-x-2">
+        <svg className="animate-spin h-5 w-5 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <span>Generating Color Palette...</span>
+      </div>
+    );
+  };
   
   return (
     <ThemePreviewProvider initialMode={previewMode}>
@@ -341,7 +359,12 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
           </div>
         </div>
         
-        <Tabs defaultValue="colors" className="w-full">
+        <Tabs 
+          defaultValue="colors" 
+          className="w-full"
+          value={activeTab}
+          onValueChange={setActiveTab}
+        >
           <TabsList>
             <TabsTrigger value="colors">Colors</TabsTrigger>
             <TabsTrigger value="fonts">Typography</TabsTrigger>
@@ -448,6 +471,9 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
           onRegenerate={handleGenerateColorPalette}
           onApply={applyGeneratedPalette}
         />
+
+        {/* Floating loading indicator that stays visible across tabs */}
+        {renderGeneratingIndicator()}
       </div>
     </ThemePreviewProvider>
   );

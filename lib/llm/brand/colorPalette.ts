@@ -60,15 +60,17 @@ export async function generateColorPalette(
     const messages: ChatMessage[] = [
       {
         role: 'system',
-        content: `You are an expert UI/UX designer and color specialist. Your task is to analyze the provided website content and existing colors, then generate a cohesive, modern, and accessible color palette for both light and dark modes. 
+        content: `You are an expert UI/UX designer and color specialist. Your task is to generate a cohesive, modern, and accessible color palette for both light and dark modes. 
         
 Follow these requirements:
+1. CRITICAL: Return ALL existing color variables with their exact names - do not miss any!
 2. Ensure proper contrast ratios for accessibility (WCAG AA compliance)
 3. Create a balanced palette with primary, secondary, and accent colors
 4. Maintain semantic meaning of color variables (e.g., destructive should be red-based)
 5. Format ALL output as a valid JSON array of color objects
 6. All colors should be in HSL format as string like "220 100% 50%" (NOT hsl(220, 100%, 50%))
 7. Return only the JSON array, no explanations or additional text
+8. IMPORTANT: Your response MUST include ALL existing color variables without exception
 
 Example output format:
 [
@@ -88,15 +90,14 @@ Example output format:
       },
       {
         role: 'user',
-        content: `Generate a color palette for my website. Here are my existing color variables:
-${JSON.stringify(existingColors.slice(0, 10), null, 2)}
-${existingColors.length > 10 ? `... (and ${existingColors.length - 10} more)\n` : ''}
+        content: `Generate a color palette for my website. Here are my existing color variables which MUST ALL be included in your response:
+${JSON.stringify(existingColors, null, 2)}
 
 Project ID: ${projectId}
 ${projectHomePage ? `\nProject content summary (for context):\n${projectHomePage.substring(0, 500)}${projectHomePage.length > 500 ? '...' : ''}` : ''}
 ${keywords ? `\nKeywords to influence the palette: ${keywords}` : ''}
 
-Create a cohesive, modern color palette based on these existing colors${keywords ? ` with influence from the provided keywords` : ''}.`,
+Create a cohesive, modern color palette ${keywords ? ` with influence from the provided keywords` : ''}. You MUST include ALL existing color variables in your response - do not miss any variables that were in the input list.`,
       },
     ];
 
