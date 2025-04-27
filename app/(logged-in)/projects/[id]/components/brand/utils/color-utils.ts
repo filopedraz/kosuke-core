@@ -72,6 +72,158 @@ export function convertToHsl(color: string): string {
   }
 }
 
+/**
+ * Convert a raw HSL value (e.g. "0 0% 100%") to a CSS color
+ */
+export function convertHslToCssColor(hslValue: string): string {
+  // If it's already a full CSS color, return it
+  if (hslValue.startsWith('hsl') || hslValue.startsWith('rgb') || hslValue.startsWith('#')) {
+    return hslValue;
+  }
+
+  // Try to match an HSL pattern (three values: hue saturation lightness)
+  const hslParts = hslValue.trim().split(/\s+/);
+  if (hslParts.length === 3 && hslParts[1].endsWith('%') && hslParts[2].endsWith('%')) {
+    return `hsl(${hslParts[0]}, ${hslParts[1]}, ${hslParts[2]})`;
+  }
+
+  // Return the original if we can't convert it
+  return hslValue;
+}
+
+/**
+ * Convert HSL to HEX color
+ */
+export function hslToHex(h: number, s: number, l: number): string {
+  // Must convert HSL to RGB first
+  s /= 100;
+  l /= 100;
+
+  const c = (1 - Math.abs(2 * l - 1)) * s;
+  const x = c * (1 - Math.abs((h / 60) % 2 - 1));
+  const m = l - c / 2;
+  
+  let r = 0, g = 0, b = 0;
+  
+  if (0 <= h && h < 60) {
+    r = c; g = x; b = 0;
+  } else if (60 <= h && h < 120) {
+    r = x; g = c; b = 0;
+  } else if (120 <= h && h < 180) {
+    r = 0; g = c; b = x;
+  } else if (180 <= h && h < 240) {
+    r = 0; g = x; b = c;
+  } else if (240 <= h && h < 300) {
+    r = x; g = 0; b = c;
+  } else if (300 <= h && h < 360) {
+    r = c; g = 0; b = x;
+  }
+  
+  // Convert RGB to hex
+  const rHex = Math.round((r + m) * 255).toString(16).padStart(2, '0');
+  const gHex = Math.round((g + m) * 255).toString(16).padStart(2, '0');
+  const bHex = Math.round((b + m) * 255).toString(16).padStart(2, '0');
+  
+  return `#${rHex}${gHex}${bHex}`.toUpperCase();
+}
+
+/**
+ * Try to convert any CSS color to HEX
+ */
+export function colorToHex(color: string): string {
+  try {
+    // If already hex, just return it
+    if (color.startsWith('#')) {
+      return color.toUpperCase();
+    }
+    
+    // If it's an HSL color in the format "h s% l%"
+    if (/^\d+\s+\d+%\s+\d+%$/.test(color)) {
+      const [h, s, l] = color.split(/\s+/).map(part => 
+        parseFloat(part.replace('%', ''))
+      );
+      return hslToHex(h, s, l);
+    }
+    
+    // If it's hsl() or rgb(), we need to render it to get the computed color
+    if (typeof document !== 'undefined') {
+      const temp = document.createElement('div');
+      temp.style.color = convertHslToCssColor(color);
+      document.body.appendChild(temp);
+      const computedColor = getComputedStyle(temp).color;
+      document.body.removeChild(temp);
+      
+      // Now parse the rgb() format
+      const rgbMatch = computedColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+      if (rgbMatch) {
+        const r = parseInt(rgbMatch[1]).toString(16).padStart(2, '0');
+        const g = parseInt(rgbMatch[2]).toString(16).padStart(2, '0');
+        const b = parseInt(rgbMatch[3]).toString(16).padStart(2, '0');
+        return `#${r}${g}${b}`.toUpperCase();
+      }
+    }
+    
+    // If we couldn't convert, return the original
+    return color;
+  } catch {
+    return color; // Return original on error
+  }
+}
+
+/**
+ * Convert HEX to HSL
+ */
+export function hexToHSL(hex: string): { h: number; s: number; l: number } {
+  // Remove # if present
+  hex = hex.replace(/^#/, '');
+  
+  // Parse the hex values
+  let r = 0, g = 0, b = 0;
+  if (hex.length === 3) {
+    r = parseInt(hex[0] + hex[0], 16) / 255;
+    g = parseInt(hex[1] + hex[1], 16) / 255;
+    b = parseInt(hex[2] + hex[2], 16) / 255;
+  } else {
+    r = parseInt(hex.substring(0, 2), 16) / 255;
+    g = parseInt(hex.substring(2, 4), 16) / 255;
+    b = parseInt(hex.substring(4, 6), 16) / 255;
+  }
+  
+  // Find min and max
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const delta = max - min;
+  
+  // Calculate HSL
+  let h = 0;
+  let s = 0;
+  const l = (max + min) / 2;
+  
+  if (delta !== 0) {
+    s = l > 0.5 ? delta / (2 - max - min) : delta / (max + min);
+    
+    if (max === r) {
+      h = ((g - b) / delta + (g < b ? 6 : 0)) * 60;
+    } else if (max === g) {
+      h = ((b - r) / delta + 2) * 60;
+    } else {
+      h = ((r - g) / delta + 4) * 60;
+    }
+  }
+  
+  return { h, s: s * 100, l: l * 100 };
+}
+
+/**
+ * Format a color name for display
+ */
+export function formatColorName(name: string): string {
+  return name.replace(/^--/, '')
+    .split('-')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
 // Define a generic type for color variables
 export interface ColorVariable {
   name: string;
