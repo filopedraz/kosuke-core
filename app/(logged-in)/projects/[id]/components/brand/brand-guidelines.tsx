@@ -2,10 +2,9 @@
 
 import { useState, useEffect, createContext } from 'react';
 import { Palette, Sun, Moon } from 'lucide-react';
-import { Card } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
-import { Skeleton } from '@/components/ui/skeleton';
 import ColorCard from '../brand/color-card';
+import ColorCardSkeleton from '../brand/color-card-skeleton';
 import { useToast } from '@/hooks/use-toast';
 
 // Define theme modes
@@ -231,13 +230,7 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {Array.from({ length: 9 }).map((_, i) => (
-              <Card key={i} className="p-6 space-y-4">
-                <Skeleton className="h-4 w-1/3" />
-                <Skeleton className="h-24 w-full" />
-                <div className="flex justify-between">
-                  <Skeleton className="h-4 w-1/2" />
-                </div>
-              </Card>
+              <ColorCardSkeleton key={i} />
             ))}
           </div>
         ) : (
