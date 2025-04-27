@@ -351,7 +351,7 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
             <TabsTrigger value="fonts">Typography</TabsTrigger>
           </TabsList>
           
-          <TabsContent value="colors" className="space-y-6 pt-6">
+          <TabsContent value="colors" className="space-y-6 pt-6 pb-12">
             {error && (
               <div className="p-4 bg-destructive/10 border border-destructive text-destructive rounded-md">
                 {error}
@@ -397,7 +397,7 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
             )}
           </TabsContent>
           
-          <TabsContent value="fonts" className="space-y-6 pt-6">
+          <TabsContent value="fonts" className="space-y-6 pt-6 pb-12">
             {fontsError && (
               <div className="p-4 bg-destructive/10 border border-destructive text-destructive rounded-md">
                 {fontsError}
@@ -420,8 +420,8 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
                   </p>
                 </div>
               ) : (
-                Object.entries(groupedFonts).map(([category, fonts]) => (
-                  <div key={category} className="space-y-4">
+                Object.entries(groupedFonts).map(([category, fonts], index, arr) => (
+                  <div key={category} className={`space-y-4 ${index === arr.length - 1 ? 'mb-6' : 'mb-10'}`}>
                     <h2 className="text-xl font-medium capitalize">{category} Fonts</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {fonts.map(font => (
