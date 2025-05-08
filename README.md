@@ -2,6 +2,8 @@
 
 Today the first open-source vibe-coding platform, tomorrow the next geneation "IDE" for Web Applications.
 
+[![Discord](https://img.shields.io/badge/Discord-Join%20our%20community-5865F2?logo=discord&logoColor=white)](https://discord.gg/b9kD9ghPwW)
+
 ## 🍿 Demo
 
 https://github.com/user-attachments/assets/e08f5b94-4f52-4a45-8de6-c2ca3422f113
