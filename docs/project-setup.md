@@ -110,19 +110,42 @@ npm run db:push
 npm run db:seed
 ```
 
-### 5. Start Development Server
+### 5. Clone and Configure Template Project
+
+The project requires a template project that contains the base UI components and configurations. Follow these steps:
+
+1. Clone the template project:
+
+   ```bash
+   git clone https://github.com/filopedraz/kosuke-template
+   ```
+
+2. Set the template directory in your environment:
+
+   - Open your `.env` file
+   - Add the following line:
+     ```
+     TEMPLATE_DIR=/absolute/path/to/kosuke-template
+     ```
+   - Replace `/absolute/path/to/kosuke-template` with the full path to your cloned template directory
+   - Example for macOS/Linux: `/Users/username/projects/kosuke-template`
+   - Example for Windows: `C:\Users\username\projects\kosuke-template`
+
+   > 💡 **Tip**: You can get the full path by running `pwd` (macOS/Linux) or `cd` (Windows) in the template directory.
+
+### 6. Start Development Server
 
 ```bash
 # Start the development server
 npm run dev
 ```
 
-### 6. Access the Application
+### 7. Access the Application
 
 1. Open your browser and navigate to [http://localhost:3000/sign-in](http://localhost:3000/sign-in)
 2. Use the following credentials to log in:
-   - Email: admin@example.com
-   - Password: admin12345
+   - Email: `admin@example.com`
+   - Password: `admin12345`
 
 ## Troubleshooting
 
@@ -140,15 +163,15 @@ npm run dev
    - Verify database credentials in `.env`
 
 3. **Stripe Webhook Issues**
+
    - Ensure Stripe CLI is running
    - Check webhook secret in `.env`
    - Verify Stripe API keys are correct
 
-## Next Steps
-
-- Read the [Contributing Guidelines](CONTRIBUTING.md)
-- Check out the [Project Structure](docs/project-structure.md)
-- Review [Code Style Guide](docs/code-style.md)
+4. **Template Project Issues**
+   - Verify `TEMPLATE_DIR` is set correctly in `.env`
+   - Ensure the template project is cloned and accessible
+   - Check file permissions on the template directory
 
 ## Need Help?
 
