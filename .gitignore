@@ -49,3 +49,5 @@ next-env.d.ts
 
 *storybook.log
 
+projects/*
+!projects/.keep
