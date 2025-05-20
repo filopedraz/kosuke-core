@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Palette, Sun, Moon, TextQuote, Wand2 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -51,7 +51,7 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
   };
   
   // Function to fetch CSS variables
-  const fetchCssVariables = async () => {
+  const fetchCssVariables = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     
@@ -79,10 +79,10 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [projectId]);
   
   // Add function to fetch font variables
-  const fetchFontVariables = async () => {
+  const fetchFontVariables = useCallback(async () => {
     setIsFontsLoading(true);
     setFontsError(null);
     
@@ -101,7 +101,7 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
     } finally {
       setIsFontsLoading(false);
     }
-  };
+  }, [projectId]);
   
   // Handle color change from ColorCard
   const handleColorChange = async (name: string, newValue: string) => {
@@ -252,7 +252,7 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
   useEffect(() => {
     fetchCssVariables();
     fetchFontVariables();
-  }, [projectId]);
+  }, [projectId, fetchCssVariables, fetchFontVariables]);
   
   // Group colors into categories for display
   const groupedColors = groupColorsByCategory<CssVariable>(colorVariables);
