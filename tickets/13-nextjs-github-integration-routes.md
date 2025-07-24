@@ -15,9 +15,318 @@ app/api/projects/[id]/github/import/route.ts
 app/api/projects/[id]/webhook/commit/route.ts
 app/api/auth/github/status/route.ts
 app/api/auth/github/disconnect/route.ts
+hooks/use-github-repositories.ts
+hooks/use-github-operations.ts
+components/github/skeletons/repository-list-skeleton.tsx
+components/github/skeletons/repository-form-skeleton.tsx
+lib/types/github.ts (extend existing)
 ```
 
 ## Implementation Details
+
+**lib/types/github.ts** - Extended GitHub types for repositories:
+
+```typescript
+// Extend existing github.ts with additional repository types
+export interface GitHubRepository {
+  id: number;
+  name: string;
+  full_name: string;
+  description: string | null;
+  private: boolean;
+  html_url: string;
+  clone_url: string;
+  default_branch: string;
+  language: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateRepositoryData {
+  name: string;
+  description?: string;
+  private: boolean;
+  auto_init?: boolean;
+}
+
+export interface ImportRepositoryData {
+  repository_url: string;
+  access_token?: string;
+}
+
+export interface GitHubWebhookPayload {
+  action: string;
+  repository: GitHubRepository;
+  commits?: Array<{
+    id: string;
+    message: string;
+    author: {
+      name: string;
+      email: string;
+    };
+    modified: string[];
+    added: string[];
+    removed: string[];
+  }>;
+}
+```
+
+**hooks/use-github-repositories.ts** - TanStack Query hook for GitHub repositories:
+
+```typescript
+import { useQuery } from '@tanstack/react-query';
+import type { GitHubRepository } from '@/lib/types/github';
+import type { ApiResponse } from '@/lib/api';
+
+export function useGitHubRepositories(userId: string) {
+  return useQuery({
+    queryKey: ['github-repositories', userId],
+    queryFn: async (): Promise<GitHubRepository[]> => {
+      const response = await fetch(`/api/auth/github/repositories`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch GitHub repositories');
+      }
+      const data: ApiResponse<{ repositories: GitHubRepository[] }> = await response.json();
+      return data.data.repositories;
+    },
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    retry: 2,
+    enabled: !!userId,
+  });
+}
+
+export function useGitHubStatus(userId: string) {
+  return useQuery({
+    queryKey: ['github-status', userId],
+    queryFn: async () => {
+      const response = await fetch('/api/auth/github/status');
+      if (!response.ok) {
+        throw new Error('Failed to fetch GitHub status');
+      }
+      const data: ApiResponse<{
+        connected: boolean;
+        githubUsername?: string;
+        githubId?: string;
+        connectedAt?: string;
+      }> = await response.json();
+      return data.data;
+    },
+    staleTime: 1000 * 60 * 2, // 2 minutes
+    retry: 2,
+    enabled: !!userId,
+  });
+}
+```
+
+**hooks/use-github-operations.ts** - TanStack Query mutations for GitHub operations:
+
+```typescript
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useToast } from '@/hooks/use-toast';
+import type {
+  CreateRepositoryData,
+  ImportRepositoryData,
+  GitHubRepository,
+} from '@/lib/types/github';
+import type { ApiResponse } from '@/lib/api';
+
+export function useCreateRepository(projectId: number) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: CreateRepositoryData): Promise<GitHubRepository> => {
+      const response = await fetch(`/api/projects/${projectId}/github/create-repo`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(error || 'Failed to create repository');
+      }
+
+      const result: ApiResponse<GitHubRepository> = await response.json();
+      return result.data;
+    },
+    onSuccess: repository => {
+      queryClient.invalidateQueries({ queryKey: ['github-repositories'] });
+      queryClient.invalidateQueries({ queryKey: ['project', projectId] });
+      toast({
+        title: 'Repository Created',
+        description: `Successfully created repository: ${repository.name}`,
+      });
+    },
+    onError: error => {
+      toast({
+        title: 'Failed to Create Repository',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+}
+
+export function useImportRepository(projectId: number) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: ImportRepositoryData): Promise<GitHubRepository> => {
+      const response = await fetch(`/api/projects/${projectId}/github/import`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(error || 'Failed to import repository');
+      }
+
+      const result: ApiResponse<GitHubRepository> = await response.json();
+      return result.data;
+    },
+    onSuccess: repository => {
+      queryClient.invalidateQueries({ queryKey: ['github-repositories'] });
+      queryClient.invalidateQueries({ queryKey: ['project', projectId] });
+      toast({
+        title: 'Repository Imported',
+        description: `Successfully imported repository: ${repository.name}`,
+      });
+    },
+    onError: error => {
+      toast({
+        title: 'Failed to Import Repository',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+}
+
+export function useDisconnectGitHub() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (): Promise<void> => {
+      const response = await fetch('/api/auth/github/disconnect', {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(error || 'Failed to disconnect GitHub');
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['github-status'] });
+      queryClient.invalidateQueries({ queryKey: ['github-repositories'] });
+      toast({
+        title: 'GitHub Disconnected',
+        description: 'Successfully disconnected your GitHub account.',
+      });
+    },
+    onError: error => {
+      toast({
+        title: 'Failed to Disconnect',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+}
+```
+
+**components/github/skeletons/repository-list-skeleton.tsx** - Skeleton for repository lists:
+
+```tsx
+import { Skeleton } from '@/components/ui/skeleton';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+
+export function RepositoryListSkeleton() {
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <div className="space-y-2">
+          <Skeleton className="h-6 w-48" />
+          <Skeleton className="h-4 w-96" />
+        </div>
+        <Skeleton className="h-10 w-32" />
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Card key={i}>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="space-y-2">
+                  <Skeleton className="h-5 w-32" />
+                  <Skeleton className="h-4 w-24" />
+                </div>
+                <Skeleton className="h-5 w-16" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-3/4" />
+                <div className="flex gap-2">
+                  <Skeleton className="h-6 w-16" />
+                  <Skeleton className="h-6 w-20" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
+```
+
+**components/github/skeletons/repository-form-skeleton.tsx** - Skeleton for repository forms:
+
+```tsx
+import { Skeleton } from '@/components/ui/skeleton';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+
+export function RepositoryFormSkeleton() {
+  return (
+    <Card>
+      <CardHeader>
+        <div className="space-y-2">
+          <Skeleton className="h-6 w-48" />
+          <Skeleton className="h-4 w-96" />
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-10 w-full" />
+        </div>
+
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-20 w-full" />
+        </div>
+
+        <div className="flex items-center space-x-2">
+          <Skeleton className="h-4 w-4" />
+          <Skeleton className="h-4 w-32" />
+        </div>
+
+        <div className="flex gap-3">
+          <Skeleton className="h-10 w-24" />
+          <Skeleton className="h-10 w-32" />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+```
 
 **app/api/projects/[id]/github/create-repo/route.ts** - Create GitHub repo:
 

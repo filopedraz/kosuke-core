@@ -12,10 +12,360 @@ Add UI to the project settings for managing custom subdomains. Users can set the
 ```
 app/(logged-in)/projects/[id]/components/settings/domain-management.tsx
 app/(logged-in)/projects/[id]/components/settings/settings-tab.tsx (update)
+app/(logged-in)/projects/[id]/components/settings/skeletons/domain-management-skeleton.tsx
 app/api/projects/[id]/domain/route.ts
+hooks/use-custom-domains.ts
+hooks/use-domain-operations.ts
+lib/types/domains.ts (centralized domain types)
 ```
 
 ## Implementation Details
+
+**lib/types/domains.ts** - Centralized domain types:
+
+```typescript
+export interface ProjectDomain {
+  id: number;
+  project_id: number;
+  subdomain: string;
+  full_domain: string;
+  is_active: boolean;
+  ssl_enabled: boolean;
+  dns_configured: boolean;
+  deployment_status: 'pending' | 'deploying' | 'deployed' | 'failed';
+  last_deployed: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateDomainData {
+  subdomain: string;
+}
+
+export interface UpdateDomainData {
+  subdomain?: string;
+  is_active?: boolean;
+}
+
+export interface DomainValidation {
+  subdomain: string;
+  is_available: boolean;
+  is_valid: boolean;
+  error_message?: string;
+}
+
+export interface DomainDeployment {
+  id: number;
+  domain_id: number;
+  status: 'pending' | 'deploying' | 'deployed' | 'failed';
+  deployment_url?: string;
+  error_message?: string;
+  started_at: string;
+  completed_at?: string;
+}
+
+export interface DomainStats {
+  total_domains: number;
+  active_domains: number;
+  ssl_enabled_count: number;
+  deployment_status_count: Record<string, number>;
+}
+```
+
+**hooks/use-custom-domains.ts** - TanStack Query hook for domain management:
+
+```typescript
+import { useQuery } from '@tanstack/react-query';
+import type { ProjectDomain, DomainStats, DomainValidation } from '@/lib/types/domains';
+import type { ApiResponse } from '@/lib/api';
+
+export function useProjectDomain(projectId: number) {
+  return useQuery({
+    queryKey: ['project-domain', projectId],
+    queryFn: async (): Promise<ProjectDomain | null> => {
+      const response = await fetch(`/api/projects/${projectId}/domain`);
+      if (!response.ok) {
+        if (response.status === 404) {
+          return null; // No domain configured
+        }
+        throw new Error('Failed to fetch project domain');
+      }
+      const data: ApiResponse<ProjectDomain> = await response.json();
+      return data.data;
+    },
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    retry: 2,
+  });
+}
+
+export function useDomainValidation(subdomain: string, enabled: boolean = true) {
+  return useQuery({
+    queryKey: ['domain-validation', subdomain],
+    queryFn: async (): Promise<DomainValidation> => {
+      const response = await fetch(
+        `/api/domains/validate?subdomain=${encodeURIComponent(subdomain)}`
+      );
+      if (!response.ok) {
+        throw new Error('Failed to validate domain');
+      }
+      const data: ApiResponse<DomainValidation> = await response.json();
+      return data.data;
+    },
+    enabled: enabled && !!subdomain && subdomain.length > 0,
+    staleTime: 1000 * 30, // 30 seconds
+    retry: 1,
+  });
+}
+
+export function useDomainStats() {
+  return useQuery({
+    queryKey: ['domain-stats'],
+    queryFn: async (): Promise<DomainStats> => {
+      const response = await fetch('/api/domains/stats');
+      if (!response.ok) {
+        throw new Error('Failed to fetch domain stats');
+      }
+      const data: ApiResponse<DomainStats> = await response.json();
+      return data.data;
+    },
+    staleTime: 1000 * 60 * 10, // 10 minutes
+    retry: 2,
+  });
+}
+```
+
+**hooks/use-domain-operations.ts** - TanStack Query mutations for domain operations:
+
+```typescript
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useToast } from '@/hooks/use-toast';
+import type { CreateDomainData, UpdateDomainData, ProjectDomain } from '@/lib/types/domains';
+import type { ApiResponse } from '@/lib/api';
+
+export function useCreateDomain(projectId: number) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: CreateDomainData): Promise<ProjectDomain> => {
+      const response = await fetch(`/api/projects/${projectId}/domain`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(error || 'Failed to create domain');
+      }
+
+      const result: ApiResponse<ProjectDomain> = await response.json();
+      return result.data;
+    },
+    onSuccess: domain => {
+      queryClient.invalidateQueries({ queryKey: ['project-domain', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['domain-stats'] });
+      toast({
+        title: 'Domain Created',
+        description: `Created domain: ${domain.full_domain}`,
+      });
+    },
+    onError: error => {
+      toast({
+        title: 'Failed to Create Domain',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+}
+
+export function useUpdateDomain(projectId: number) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: UpdateDomainData): Promise<ProjectDomain> => {
+      const response = await fetch(`/api/projects/${projectId}/domain`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(error || 'Failed to update domain');
+      }
+
+      const result: ApiResponse<ProjectDomain> = await response.json();
+      return result.data;
+    },
+    onSuccess: domain => {
+      queryClient.invalidateQueries({ queryKey: ['project-domain', projectId] });
+      toast({
+        title: 'Domain Updated',
+        description: `Updated domain: ${domain.full_domain}`,
+      });
+    },
+    onError: error => {
+      toast({
+        title: 'Failed to Update Domain',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+}
+
+export function useDeleteDomain(projectId: number) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (): Promise<void> => {
+      const response = await fetch(`/api/projects/${projectId}/domain`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(error || 'Failed to delete domain');
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['project-domain', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['domain-stats'] });
+      toast({
+        title: 'Domain Deleted',
+        description: 'The custom domain has been removed successfully.',
+      });
+    },
+    onError: error => {
+      toast({
+        title: 'Failed to Delete Domain',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+}
+
+export function useDeployDomain(projectId: number) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (): Promise<void> => {
+      const response = await fetch(`/api/projects/${projectId}/domain/deploy`, {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(error || 'Failed to deploy domain');
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['project-domain', projectId] });
+      toast({
+        title: 'Deployment Started',
+        description: 'Your domain deployment has been initiated.',
+      });
+    },
+    onError: error => {
+      toast({
+        title: 'Deployment Failed',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+}
+```
+
+**app/(logged-in)/projects/[id]/components/settings/skeletons/domain-management-skeleton.tsx** - Skeleton for domain management:
+
+```tsx
+import { Skeleton } from '@/components/ui/skeleton';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+
+export function DomainManagementSkeleton() {
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <div className="space-y-2">
+            <Skeleton className="h-6 w-48" />
+            <Skeleton className="h-4 w-96" />
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-20" />
+            <div className="flex gap-2">
+              <Skeleton className="h-10 flex-1" />
+              <Skeleton className="h-10 w-24" />
+            </div>
+            <Skeleton className="h-4 w-64" />
+          </div>
+
+          <div className="space-y-4">
+            <Skeleton className="h-5 w-32" />
+            <div className="p-4 border rounded-lg space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <Skeleton className="h-4 w-40" />
+                  <Skeleton className="h-3 w-24" />
+                </div>
+                <Skeleton className="h-6 w-16" />
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-1">
+                  <Skeleton className="h-3 w-16" />
+                  <Skeleton className="h-4 w-12" />
+                </div>
+                <div className="space-y-1">
+                  <Skeleton className="h-3 w-12" />
+                  <Skeleton className="h-4 w-8" />
+                </div>
+                <div className="space-y-1">
+                  <Skeleton className="h-3 w-20" />
+                  <Skeleton className="h-4 w-16" />
+                </div>
+              </div>
+
+              <div className="flex justify-between items-center">
+                <Skeleton className="h-4 w-32" />
+                <div className="flex gap-2">
+                  <Skeleton className="h-8 w-16" />
+                  <Skeleton className="h-8 w-20" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <Skeleton className="h-6 w-32" />
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="flex justify-between items-center">
+                <Skeleton className="h-4 w-48" />
+                <Skeleton className="h-4 w-24" />
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+```
 
 **app/(logged-in)/projects/[id]/components/settings/domain-management.tsx** - Domain management UI:
 
