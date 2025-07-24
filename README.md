@@ -17,7 +17,7 @@ https://github.com/user-attachments/assets/e08f5b94-4f52-4a45-8de6-c2ca3422f113
 ```bash
 # run postgres and minio
 cp .env.example .env
-docker compose up -d
+docker compose up -d minio postgres agent
 # run the database migrations
 npm run db:push
 # seed the db with a User.
@@ -31,7 +31,7 @@ This will create the following user:
 
 You can, of course, create new users as well through `/sign-up`.
 
-For the storage of static files such as profile pictures we are using MinIO. For this reason, after you have the docker-compose up and running, you can visit `http://localhost:9001` with the `.env` credentials and create anew bucket `uploads` which will be used by the web application and make it public.
+For the storage of static files such as profile pictures we are using MinIO. For this reason, after you have the docker-compose up and running, you can visit `http://localhost:9001` with the `.env` credentials and create a new bucket `uploads` which will be used by the web application and make it public.
 
 Finally, run the Next.js development server:
 

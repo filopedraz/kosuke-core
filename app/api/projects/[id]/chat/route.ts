@@ -8,7 +8,6 @@ import { getProjectById } from '@/lib/db/projects';
 import { chatMessages, actions, Action } from '@/lib/db/schema';
 import { uploadFile } from '@/lib/storage';
 import { hasReachedMessageLimit } from '@/lib/models';
-import { Agent } from '@/lib/llm/core/agent';
 
 // Schema for sending a message - support both formats
 const sendMessageSchema = z.union([
@@ -87,6 +86,8 @@ async function processFormDataRequest(req: NextRequest, projectId: number): Prom
     imageUrl
   };
 }
+
+// Removed proxyToPythonAgent - now using webhook-based approach
 
 /**
  * GET /api/projects/[id]/chat
@@ -288,7 +289,7 @@ export async function POST(
     }
 
     // Count tokens for input message using tiktoken
-    const { countTokens } = await import('@/lib/llm/context');
+    const { countTokens } = await import('@/lib/llm/utils');
     const messageTokens = countTokens(messageContent);
     
     // Calculate cumulative token totals
@@ -325,30 +326,12 @@ export async function POST(
       contextTokens,                   // Reset context tokens to just this message
     });
 
-    console.log(`Processing request with Agent class for project ${projectId}`);
+    console.log(`✅ User message saved. Python agent will process via streaming and send webhooks.`);
     
-    // Create an Agent instance and run it with the message content
-    const agent = new Agent(projectId);
-    const agentResult = await agent.run(messageContent);
-
-    if (!agentResult.success) {
-      console.error('Error processing request:', agentResult.error);
-      
-      // Return error with type information if available
-      return NextResponse.json(
-        { 
-          success: false, 
-          error: agentResult.error || 'Error processing request',
-          errorType: agentResult.errorType || 'unknown',
-          errorDetails: agentResult.errorDetails
-        },
-        { status: 500 }
-      );
-    }
-
-    // Success response
+    // Return success immediately - Python agent will handle processing via webhooks
     return NextResponse.json({ 
       success: true, 
+      message: "Message received. Processing will be handled via streaming endpoint.",
       totalTokensInput,
       totalTokensOutput,
       contextTokens: messageTokens

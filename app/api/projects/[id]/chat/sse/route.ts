@@ -25,6 +25,7 @@ interface ChatMessage {
 
 /**
  * GET - Server-Sent Events endpoint for real-time chat updates
+ * Proxies streaming updates from Python FastAPI service
  */
 export async function GET(
   request: NextRequest,
@@ -54,16 +55,18 @@ export async function GET(
     }
 
     // Set up SSE headers
-    const encoder = new TextEncoder();
     const responseHeaders = {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache, no-transform',
       'Connection': 'keep-alive',
     };
 
+    // Create a hybrid stream that combines Python service updates with database polling
     const stream = new ReadableStream({
       async start(controller) {
-        // Token totals
+        const encoder = new TextEncoder();
+        
+        // Token totals tracking
         let lastTokens = {
           tokensSent: 0,
           tokensReceived: 0,
@@ -73,8 +76,8 @@ export async function GET(
         // Track the last message ID we've seen
         let lastMessageId = 0;
 
-        // Event loop
-        while (true) {
+        // Polling function for database updates (token counts, new messages)
+        const pollDatabaseUpdates = async () => {
           try {
             // Get the latest message
             const latestMessages = await db
@@ -175,34 +178,35 @@ export async function GET(
                 );
               }
             }
-
-            // Send heartbeat to keep connection alive
-            controller.enqueue(
-              encoder.encode(
-                `data: ${JSON.stringify({ type: 'heartbeat' })}\n\n`
-              )
-            );
-
-            // Wait before checking again
-            await new Promise(resolve => setTimeout(resolve, 3000));
           } catch (error) {
-            console.error('Error in SSE stream:', error);
-            
-            // Send an error event
-            controller.enqueue(
-              encoder.encode(
-                `data: ${JSON.stringify({
-                  type: 'error',
-                  errorType: 'unknown',
-                  message: 'Error in SSE stream'
-                })}\n\n`
-              )
-            );
-            
-            // Wait a bit before trying again or ending
-            await new Promise(resolve => setTimeout(resolve, 5000));
+            console.error('Error polling database updates:', error);
           }
+        };
+
+        // Set up periodic database polling
+        const dbPollingInterval = setInterval(pollDatabaseUpdates, 3000);
+
+        // Set up heartbeat
+        const heartbeatInterval = setInterval(() => {
+          controller.enqueue(
+            encoder.encode(
+              `data: ${JSON.stringify({ type: 'heartbeat' })}\n\n`
+            )
+          );
+        }, 30000);
+
+        // Clean up on close
+        const cleanup = () => {
+          clearInterval(dbPollingInterval);
+          clearInterval(heartbeatInterval);
+        };
+
+        // Set up abort handling
+        if (request.signal) {
+          request.signal.addEventListener('abort', cleanup);
         }
+
+        return cleanup;
       }
     });
 

@@ -1,0 +1,13 @@
+fastapi==0.115.6
+uvicorn[standard]==0.32.1
+pydantic==2.10.3
+pydantic-ai==0.0.14
+anthropic==0.40.0
+aiofiles==24.1.0
+tiktoken==0.8.0
+watchdog==6.0.0
+python-multipart==0.0.12
+pydantic-settings==2.7.0
+psutil==6.1.0
+requests==2.32.3
+aiohttp==3.11.10 

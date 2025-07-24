@@ -144,6 +144,7 @@ const fetchMessages = async (projectId: number): Promise<ChatMessageProps[]> => 
     });
 };
 
+// Enhanced sendMessage function with streaming support
 const sendMessage = async (
   projectId: number,
   content: string,
@@ -158,8 +159,7 @@ const sendMessage = async (
   error?: string;
   errorType?: ErrorType;
 }> => {
-  let requestOptions: RequestInit;
-  
+  // For image uploads, still use the traditional endpoint
   if (options?.imageFile) {
     const formData = new FormData();
     formData.append('content', content);
@@ -171,12 +171,27 @@ const sendMessage = async (
     
     formData.append('image', options.imageFile);
     
-    requestOptions = {
+    const response = await fetch(`/api/projects/${projectId}/chat`, {
       method: 'POST',
       body: formData,
-    };
-  } else {
-    requestOptions = {
+    });
+    
+    if (!response.ok) {
+      if (response.status === 403) {
+        throw new Error('LIMIT_REACHED');
+      }
+      throw new Error(`Failed to send message: ${response.statusText}`);
+    }
+    
+    return await response.json();
+  }
+  
+  // For text messages, save to database and return success
+  // Actual processing will happen via streaming endpoint
+  try {
+    console.log('💾 Saving user message to database');
+    
+    const saveResponse = await fetch(`/api/projects/${projectId}/chat`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -186,33 +201,96 @@ const sendMessage = async (
         includeContext: options?.includeContext || false,
         contextFiles: options?.contextFiles || [],
       }),
-    };
-  }
-  
-  const response = await fetch(`/api/projects/${projectId}/chat`, requestOptions);
-  
-  if (!response.ok) {
-    if (response.status === 403) {
-      throw new Error('LIMIT_REACHED');
-    }
+    });
     
-    // Try to parse error response for more details
-    try {
-      const errorData = await response.json();
+    if (!saveResponse.ok) {
+      if (saveResponse.status === 403) {
+        throw new Error('LIMIT_REACHED');
+      }
+      
+      const errorData = await saveResponse.json().catch(() => ({}));
       if (errorData && typeof errorData === 'object' && 'errorType' in errorData) {
         const error = new Error(errorData.error || 'Failed to send message');
         Object.assign(error, { errorType: errorData.errorType });
         throw error;
       }
-    } catch (_parseError) {
-      // Ignore parse errors and continue with default error
-      console.error('Error parsing error response:', _parseError);
+      
+      throw new Error(`Failed to send message: ${saveResponse.statusText}`);
     }
     
-    throw new Error(`Failed to send message: ${response.statusText}`);
+    const saveResult = await saveResponse.json();
+    
+    // Start streaming processing in background
+    setTimeout(() => {
+      startStreamingProcessing(projectId, content);
+    }, 100);
+    
+    return saveResult;
+    
+  } catch (error) {
+    console.error('Error in sendMessage:', error);
+    throw error;
   }
-  
-  return await response.json();
+};
+
+// Streaming processing function
+const startStreamingProcessing = async (projectId: number, content: string) => {
+  try {
+    console.log('🚀 Starting streaming processing via Python agent');
+    
+    const response = await fetch(`/api/projects/${projectId}/chat/stream`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ content }),
+    });
+
+    if (!response.ok) {
+      console.error('Streaming failed:', response.statusText);
+      return;
+    }
+
+    const reader = response.body?.getReader();
+    if (!reader) {
+      console.error('No reader available for streaming');
+      return;
+    }
+
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      
+      if (done) {
+        console.log('✅ Streaming completed');
+        break;
+      }
+
+      buffer += decoder.decode(value, { stream: true });
+      
+      // Process complete SSE messages
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+      
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          try {
+            const data = JSON.parse(line.substring(6));
+            console.log('📡 Streaming update:', data);
+            
+            // Streaming updates will trigger database updates via webhooks
+            // The SSE connection will pick up those updates automatically
+          } catch {
+            console.warn('Failed to parse streaming data:', line);
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Streaming processing error:', error);
+  }
 };
 
 export default function ChatInterface({
