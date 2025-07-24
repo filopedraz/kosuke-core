@@ -1,5 +1,7 @@
 # Kosuke - The First Open-Source Vibe-Coding Platform
 
+> The project is currently under heavy development, so expect a lot of changes and breaking changes. v2.0.0 is coming soon with a managed version of the project.
+
 Today the first open-source vibe-coding platform, tomorrow the next geneation "IDE" for Web Applications.
 
 [![Discord](https://img.shields.io/badge/Discord-Join%20our%20community-5865F2?logo=discord&logoColor=white)](https://discord.gg/b9kD9ghPwW)
