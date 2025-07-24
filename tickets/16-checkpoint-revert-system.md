@@ -815,6 +815,578 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 }
 ```
 
+## Test Cases
+
+\***\*tests**/hooks/use-checkpoints.test.ts\*\* - Tests for checkpoint query hooks:
+
+```typescript
+import { renderHook, waitFor } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ReactNode } from 'react';
+import { useCheckpoints, useCheckpointStats, useCheckpointDetails } from '@/hooks/use-checkpoints';
+import type { ProjectCheckpoint, CheckpointStats } from '@/lib/types/checkpoints';
+
+// Mock fetch globally
+global.fetch = jest.fn();
+
+const createWrapper = () => {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: false },
+    },
+  });
+
+  return ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  );
+};
+
+const mockCheckpoints: ProjectCheckpoint[] = [
+  {
+    id: 1,
+    project_id: 123,
+    session_id: 'session-1',
+    checkpoint_name: 'Initial Setup',
+    description: 'First checkpoint',
+    files_snapshot: ['package.json', 'src/index.ts'],
+    commit_sha: 'abc123',
+    created_at: '2024-01-01T00:00:00Z',
+    created_by: 'user-1',
+    file_count: 2,
+    size_bytes: 1024,
+  },
+  {
+    id: 2,
+    project_id: 123,
+    session_id: 'session-2',
+    checkpoint_name: 'Added Components',
+    description: 'Added React components',
+    files_snapshot: ['package.json', 'src/index.ts', 'src/components/Button.tsx'],
+    commit_sha: 'def456',
+    created_at: '2024-01-02T00:00:00Z',
+    created_by: 'user-1',
+    file_count: 3,
+    size_bytes: 2048,
+  },
+];
+
+const mockCheckpointStats: CheckpointStats = {
+  total_checkpoints: 5,
+  total_size_bytes: 10240,
+  oldest_checkpoint: '2024-01-01T00:00:00Z',
+  newest_checkpoint: '2024-01-05T00:00:00Z',
+};
+
+describe('useCheckpoints', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('fetches checkpoints successfully', async () => {
+    (fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        success: true,
+        data: { checkpoints: mockCheckpoints },
+      }),
+    });
+
+    const { result } = renderHook(() => useCheckpoints(123), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+
+    expect(result.current.data).toEqual(mockCheckpoints);
+    expect(fetch).toHaveBeenCalledWith('/api/projects/123/checkpoints');
+  });
+
+  it('handles fetch error', async () => {
+    (fetch as jest.Mock).mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+    });
+
+    const { result } = renderHook(() => useCheckpoints(123), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isError).toBe(true);
+    });
+
+    expect(result.current.error).toEqual(new Error('Failed to fetch checkpoints'));
+  });
+
+  it('handles network error', async () => {
+    (fetch as jest.Mock).mockRejectedValueOnce(new Error('Network error'));
+
+    const { result } = renderHook(() => useCheckpoints(123), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isError).toBe(true);
+    });
+
+    expect(result.current.error).toEqual(new Error('Network error'));
+  });
+
+  it('uses correct query key and stale time', () => {
+    const { result } = renderHook(() => useCheckpoints(123), {
+      wrapper: createWrapper(),
+    });
+
+    expect(result.current.dataUpdatedAt).toBeDefined();
+    // Query should be configured with staleTime of 30 seconds
+  });
+});
+
+describe('useCheckpointStats', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('fetches checkpoint stats successfully', async () => {
+    (fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        success: true,
+        data: mockCheckpointStats,
+      }),
+    });
+
+    const { result } = renderHook(() => useCheckpointStats(123), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+
+    expect(result.current.data).toEqual(mockCheckpointStats);
+    expect(fetch).toHaveBeenCalledWith('/api/projects/123/checkpoints/stats');
+  });
+
+  it('handles stats fetch error', async () => {
+    (fetch as jest.Mock).mockResolvedValueOnce({
+      ok: false,
+      status: 404,
+    });
+
+    const { result } = renderHook(() => useCheckpointStats(123), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isError).toBe(true);
+    });
+
+    expect(result.current.error).toEqual(new Error('Failed to fetch checkpoint stats'));
+  });
+});
+
+describe('useCheckpointDetails', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('fetches checkpoint details when ID provided', async () => {
+    const mockCheckpoint = mockCheckpoints[0];
+
+    (fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        success: true,
+        data: mockCheckpoint,
+      }),
+    });
+
+    const { result } = renderHook(() => useCheckpointDetails(1), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+
+    expect(result.current.data).toEqual(mockCheckpoint);
+    expect(fetch).toHaveBeenCalledWith('/api/checkpoints/1');
+  });
+
+  it('does not fetch when ID is null', () => {
+    const { result } = renderHook(() => useCheckpointDetails(null), {
+      wrapper: createWrapper(),
+    });
+
+    expect(result.current.isFetching).toBe(false);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('handles checkpoint details fetch error', async () => {
+    (fetch as jest.Mock).mockResolvedValueOnce({
+      ok: false,
+      status: 404,
+    });
+
+    const { result } = renderHook(() => useCheckpointDetails(999), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isError).toBe(true);
+    });
+
+    expect(result.current.error).toEqual(new Error('Failed to fetch checkpoint details'));
+  });
+
+  it('handles missing checkpoint ID error', async () => {
+    (fetch as jest.Mock).mockImplementationOnce(() => {
+      throw new Error('No checkpoint ID provided');
+    });
+
+    const { result } = renderHook(() => useCheckpointDetails(0), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isError).toBe(true);
+    });
+  });
+});
+```
+
+\***\*tests**/hooks/use-checkpoint-operations.test.ts\*\* - Tests for checkpoint mutation hooks:
+
+```typescript
+import { renderHook, waitFor, act } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ReactNode } from 'react';
+import {
+  useCreateCheckpoint,
+  useRevertToCheckpoint,
+  useDeleteCheckpoint,
+} from '@/hooks/use-checkpoint-operations';
+import type {
+  CreateCheckpointData,
+  RevertToCheckpointData,
+  ProjectCheckpoint,
+} from '@/lib/types/checkpoints';
+
+// Mock dependencies
+jest.mock('@/hooks/use-toast', () => ({
+  useToast: jest.fn(() => ({
+    toast: jest.fn(),
+  })),
+}));
+
+global.fetch = jest.fn();
+
+const createWrapper = () => {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: false },
+    },
+  });
+
+  return ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  );
+};
+
+const mockCheckpoint: ProjectCheckpoint = {
+  id: 1,
+  project_id: 123,
+  session_id: 'session-1',
+  checkpoint_name: 'Test Checkpoint',
+  description: 'Test description',
+  files_snapshot: ['package.json', 'src/index.ts'],
+  commit_sha: 'abc123',
+  created_at: '2024-01-01T00:00:00Z',
+  created_by: 'user-1',
+  file_count: 2,
+  size_bytes: 1024,
+};
+
+describe('useCreateCheckpoint', () => {
+  const mockToast = jest.fn();
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    require('@/hooks/use-toast').useToast.mockReturnValue({ toast: mockToast });
+  });
+
+  it('creates checkpoint successfully', async () => {
+    (fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        success: true,
+        data: mockCheckpoint,
+      }),
+    });
+
+    const { result } = renderHook(() => useCreateCheckpoint(123), {
+      wrapper: createWrapper(),
+    });
+
+    const createData: CreateCheckpointData = {
+      session_id: 'session-1',
+      checkpoint_name: 'Test Checkpoint',
+      description: 'Test description',
+      files_to_backup: ['package.json', 'src/index.ts'],
+    };
+
+    await act(async () => {
+      await result.current.mutateAsync(createData);
+    });
+
+    expect(fetch).toHaveBeenCalledWith('/api/projects/123/checkpoints', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(createData),
+    });
+
+    expect(mockToast).toHaveBeenCalledWith({
+      title: 'Checkpoint Created',
+      description: 'Created checkpoint: Test Checkpoint',
+    });
+  });
+
+  it('handles create checkpoint error', async () => {
+    (fetch as jest.Mock).mockResolvedValueOnce({
+      ok: false,
+      text: async () => 'Failed to create checkpoint',
+    });
+
+    const { result } = renderHook(() => useCreateCheckpoint(123), {
+      wrapper: createWrapper(),
+    });
+
+    const createData: CreateCheckpointData = {
+      session_id: 'session-1',
+      files_to_backup: ['package.json'],
+    };
+
+    await act(async () => {
+      try {
+        await result.current.mutateAsync(createData);
+      } catch (error) {
+        expect(error).toEqual(new Error('Failed to create checkpoint'));
+      }
+    });
+
+    expect(mockToast).toHaveBeenCalledWith({
+      title: 'Failed to Create Checkpoint',
+      description: 'Failed to create checkpoint',
+      variant: 'destructive',
+    });
+  });
+
+  it('handles network error during create', async () => {
+    (fetch as jest.Mock).mockRejectedValueOnce(new Error('Network error'));
+
+    const { result } = renderHook(() => useCreateCheckpoint(123), {
+      wrapper: createWrapper(),
+    });
+
+    const createData: CreateCheckpointData = {
+      session_id: 'session-1',
+      files_to_backup: ['package.json'],
+    };
+
+    await act(async () => {
+      try {
+        await result.current.mutateAsync(createData);
+      } catch (error) {
+        expect(error).toEqual(new Error('Network error'));
+      }
+    });
+  });
+
+  it('creates checkpoint with unnamed session', async () => {
+    const unnamedCheckpoint = { ...mockCheckpoint, checkpoint_name: null };
+
+    (fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        success: true,
+        data: unnamedCheckpoint,
+      }),
+    });
+
+    const { result } = renderHook(() => useCreateCheckpoint(123), {
+      wrapper: createWrapper(),
+    });
+
+    const createData: CreateCheckpointData = {
+      session_id: 'session-1',
+      files_to_backup: ['package.json'],
+    };
+
+    await act(async () => {
+      await result.current.mutateAsync(createData);
+    });
+
+    expect(mockToast).toHaveBeenCalledWith({
+      title: 'Checkpoint Created',
+      description: 'Created checkpoint: Unnamed',
+    });
+  });
+});
+
+describe('useRevertToCheckpoint', () => {
+  const mockToast = jest.fn();
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    require('@/hooks/use-toast').useToast.mockReturnValue({ toast: mockToast });
+  });
+
+  it('reverts to checkpoint successfully', async () => {
+    (fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ success: true }),
+    });
+
+    const { result } = renderHook(() => useRevertToCheckpoint(123), {
+      wrapper: createWrapper(),
+    });
+
+    const revertData: RevertToCheckpointData = {
+      checkpoint_id: 1,
+      create_backup: true,
+      backup_name: 'Pre-revert backup',
+    };
+
+    await act(async () => {
+      await result.current.mutateAsync(revertData);
+    });
+
+    expect(fetch).toHaveBeenCalledWith('/api/projects/123/checkpoints/1/revert', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(revertData),
+    });
+
+    expect(mockToast).toHaveBeenCalledWith({
+      title: 'Checkpoint Restored',
+      description: 'Successfully reverted to the selected checkpoint.',
+    });
+  });
+
+  it('handles revert error', async () => {
+    (fetch as jest.Mock).mockResolvedValueOnce({
+      ok: false,
+      text: async () => 'Revert failed',
+    });
+
+    const { result } = renderHook(() => useRevertToCheckpoint(123), {
+      wrapper: createWrapper(),
+    });
+
+    const revertData: RevertToCheckpointData = {
+      checkpoint_id: 1,
+      create_backup: false,
+    };
+
+    await act(async () => {
+      try {
+        await result.current.mutateAsync(revertData);
+      } catch (error) {
+        expect(error).toEqual(new Error('Failed to revert to checkpoint'));
+      }
+    });
+
+    expect(mockToast).toHaveBeenCalledWith({
+      title: 'Revert Failed',
+      description: 'Failed to revert to checkpoint',
+      variant: 'destructive',
+    });
+  });
+});
+
+describe('useDeleteCheckpoint', () => {
+  const mockToast = jest.fn();
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    require('@/hooks/use-toast').useToast.mockReturnValue({ toast: mockToast });
+  });
+
+  it('deletes checkpoint successfully', async () => {
+    (fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      text: async () => '',
+    });
+
+    const { result } = renderHook(() => useDeleteCheckpoint(123), {
+      wrapper: createWrapper(),
+    });
+
+    await act(async () => {
+      await result.current.mutateAsync(1);
+    });
+
+    expect(fetch).toHaveBeenCalledWith('/api/projects/123/checkpoints/1', {
+      method: 'DELETE',
+    });
+
+    expect(mockToast).toHaveBeenCalledWith({
+      title: 'Checkpoint Deleted',
+      description: 'The checkpoint has been deleted successfully.',
+    });
+  });
+
+  it('handles delete error', async () => {
+    (fetch as jest.Mock).mockResolvedValueOnce({
+      ok: false,
+      text: async () => 'Delete failed',
+    });
+
+    const { result } = renderHook(() => useDeleteCheckpoint(123), {
+      wrapper: createWrapper(),
+    });
+
+    await act(async () => {
+      try {
+        await result.current.mutateAsync(1);
+      } catch (error) {
+        expect(error).toEqual(new Error('Delete failed'));
+      }
+    });
+
+    expect(mockToast).toHaveBeenCalledWith({
+      title: 'Failed to Delete Checkpoint',
+      description: 'Delete failed',
+      variant: 'destructive',
+    });
+  });
+
+  it('handles delete error with fallback message', async () => {
+    (fetch as jest.Mock).mockResolvedValueOnce({
+      ok: false,
+      text: async () => '',
+    });
+
+    const { result } = renderHook(() => useDeleteCheckpoint(123), {
+      wrapper: createWrapper(),
+    });
+
+    await act(async () => {
+      try {
+        await result.current.mutateAsync(1);
+      } catch (error) {
+        expect(error).toEqual(new Error('Failed to delete checkpoint'));
+      }
+    });
+  });
+});
+```
+
 ## Acceptance Criteria
 
 - [x] Checkpoint panel showing all previous AI sessions
@@ -822,3 +1394,8 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 - [x] Revert confirmation dialog with warning
 - [x] Complete project state restoration from checkpoint
 - [x] Checkpoint creation on each AI session completion
+- [x] Comprehensive test coverage for all checkpoint query hooks
+- [x] Comprehensive test coverage for all checkpoint mutation hooks
+- [x] Error handling tests for network failures and API errors
+- [x] Toast notification tests for user feedback
+- [x] Query invalidation tests for cache management

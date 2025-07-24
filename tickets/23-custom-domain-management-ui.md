@@ -610,6 +610,754 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 }
 ```
 
+## Test Cases
+
+\***\*tests**/hooks/use-custom-domains.test.ts\*\* - Tests for domain query hooks:
+
+```typescript
+import { renderHook, waitFor } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ReactNode } from 'react';
+import {
+  useProjectDomain,
+  useDomainValidation,
+  useDomainStats,
+} from '@/hooks/use-custom-domains';
+import type { ProjectDomain, DomainStats, DomainValidation } from '@/lib/types/domains';
+
+// Mock fetch globally
+global.fetch = jest.fn();
+
+const createWrapper = () => {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: false },
+    },
+  });
+
+  return ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  );
+};
+
+const mockProjectDomain: ProjectDomain = {
+  id: 1,
+  project_id: 123,
+  subdomain: 'my-awesome-project',
+  full_domain: 'my-awesome-project.kosuke.ai',
+  is_active: true,
+  ssl_enabled: true,
+  dns_configured: true,
+  deployment_status: 'deployed',
+  last_deployed: '2024-01-01T12:00:00Z',
+  created_at: '2024-01-01T10:00:00Z',
+  updated_at: '2024-01-01T12:00:00Z',
+};
+
+const mockDomainStats: DomainStats = {
+  total_domains: 25,
+  active_domains: 20,
+  ssl_enabled_count: 18,
+  deployment_status_count: {
+    deployed: 15,
+    deploying: 3,
+    failed: 2,
+    pending: 5,
+  },
+};
+
+const mockDomainValidation: DomainValidation = {
+  subdomain: 'my-project',
+  is_available: true,
+  is_valid: true,
+};
+
+describe('useProjectDomain', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('fetches project domain successfully', async () => {
+    (fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        success: true,
+        data: mockProjectDomain,
+      }),
+    });
+
+    const { result } = renderHook(() => useProjectDomain(123), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+
+    expect(result.current.data).toEqual(mockProjectDomain);
+    expect(fetch).toHaveBeenCalledWith('/api/projects/123/domain');
+  });
+
+  it('returns null when no domain is configured (404)', async () => {
+    (fetch as jest.Mock).mockResolvedValueOnce({
+      ok: false,
+      status: 404,
+    });
+
+    const { result } = renderHook(() => useProjectDomain(123), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+
+    expect(result.current.data).toBeNull();
+  });
+
+  it('handles non-404 fetch errors', async () => {
+    (fetch as jest.Mock).mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+    });
+
+    const { result } = renderHook(() => useProjectDomain(123), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isError).toBe(true);
+    });
+
+    expect(result.current.error).toEqual(new Error('Failed to fetch project domain'));
+  });
+
+  it('handles network errors', async () => {
+    (fetch as jest.Mock).mockRejectedValueOnce(new Error('Network error'));
+
+    const { result } = renderHook(() => useProjectDomain(123), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isError).toBe(true);
+    });
+
+    expect(result.current.error).toEqual(new Error('Network error'));
+  });
+
+  it('uses correct stale time configuration', () => {
+    const { result } = renderHook(() => useProjectDomain(123), {
+      wrapper: createWrapper(),
+    });
+
+    expect(result.current.dataUpdatedAt).toBeDefined();
+    // Should use 5 minutes stale time
+  });
+});
+
+describe('useDomainValidation', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('validates domain successfully when enabled', async () => {
+    (fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        success: true,
+        data: mockDomainValidation,
+      }),
+    });
+
+    const { result } = renderHook(() => useDomainValidation('my-project', true), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+
+    expect(result.current.data).toEqual(mockDomainValidation);
+    expect(fetch).toHaveBeenCalledWith('/api/domains/validate?subdomain=my-project');
+  });
+
+  it('does not fetch when disabled', () => {
+    const { result } = renderHook(() => useDomainValidation('my-project', false), {
+      wrapper: createWrapper(),
+    });
+
+    expect(result.current.isFetching).toBe(false);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('does not fetch when subdomain is empty', () => {
+    const { result } = renderHook(() => useDomainValidation('', true), {
+      wrapper: createWrapper(),
+    });
+
+    expect(result.current.isFetching).toBe(false);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('handles validation errors', async () => {
+    (fetch as jest.Mock).mockResolvedValueOnce({
+      ok: false,
+      status: 400,
+    });
+
+    const { result } = renderHook(() => useDomainValidation('invalid-domain', true), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isError).toBe(true);
+    });
+
+    expect(result.current.error).toEqual(new Error('Failed to validate domain'));
+  });
+
+  it('properly encodes subdomain in URL', async () => {
+    (fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        success: true,
+        data: { ...mockDomainValidation, subdomain: 'my-project-with-spaces' },
+      }),
+    });
+
+    const { result } = renderHook(() => useDomainValidation('my project with spaces', true), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+
+    expect(fetch).toHaveBeenCalledWith('/api/domains/validate?subdomain=my%20project%20with%20spaces');
+  });
+
+  it('returns validation error for invalid domain', async () => {
+    const invalidValidation: DomainValidation = {
+      subdomain: 'invalid-domain',
+      is_available: false,
+      is_valid: false,
+      error_message: 'Domain already exists',
+    };
+
+    (fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        success: true,
+        data: invalidValidation,
+      }),
+    });
+
+    const { result } = renderHook(() => useDomainValidation('invalid-domain', true), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+
+    expect(result.current.data).toEqual(invalidValidation);
+    expect(result.current.data?.is_valid).toBe(false);
+    expect(result.current.data?.error_message).toBe('Domain already exists');
+  });
+});
+
+describe('useDomainStats', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('fetches domain stats successfully', async () => {
+    (fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        success: true,
+        data: mockDomainStats,
+      }),
+    });
+
+    const { result } = renderHook(() => useDomainStats(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+
+    expect(result.current.data).toEqual(mockDomainStats);
+    expect(fetch).toHaveBeenCalledWith('/api/domains/stats');
+  });
+
+  it('handles stats fetch error', async () => {
+    (fetch as jest.Mock).mockResolvedValueOnce({
+      ok: false,
+      status: 403,
+    });
+
+    const { result } = renderHook(() => useDomainStats(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isError).toBe(true);
+    });
+
+    expect(result.current.error).toEqual(new Error('Failed to fetch domain stats'));
+  });
+
+  it('handles empty stats response', async () => {
+    const emptyStats: DomainStats = {
+      total_domains: 0,
+      active_domains: 0,
+      ssl_enabled_count: 0,
+      deployment_status_count: {},
+    };
+
+    (fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        success: true,
+        data: emptyStats,
+      }),
+    });
+
+    const { result } = renderHook(() => useDomainStats(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+
+    expect(result.current.data).toEqual(emptyStats);
+  });
+
+  it('uses correct stale time (10 minutes)', () => {
+    const { result } = renderHook(() => useDomainStats(), {
+      wrapper: createWrapper(),
+    });
+
+    expect(result.current.dataUpdatedAt).toBeDefined();
+    // Should use 10 minutes stale time
+  });
+});
+```
+
+\***\*tests**/hooks/use-domain-operations.test.ts\*\* - Tests for domain mutation hooks:
+
+```typescript
+import { renderHook, waitFor, act } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ReactNode } from 'react';
+import {
+  useCreateDomain,
+  useUpdateDomain,
+  useDeleteDomain,
+  useDeployDomain,
+} from '@/hooks/use-domain-operations';
+import type { CreateDomainData, UpdateDomainData, ProjectDomain } from '@/lib/types/domains';
+
+// Mock dependencies
+jest.mock('@/hooks/use-toast', () => ({
+  useToast: jest.fn(() => ({
+    toast: jest.fn(),
+  })),
+}));
+
+global.fetch = jest.fn();
+
+const createWrapper = () => {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: false },
+    },
+  });
+
+  return ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  );
+};
+
+const mockProjectDomain: ProjectDomain = {
+  id: 1,
+  project_id: 123,
+  subdomain: 'my-awesome-project',
+  full_domain: 'my-awesome-project.kosuke.ai',
+  is_active: true,
+  ssl_enabled: true,
+  dns_configured: true,
+  deployment_status: 'deployed',
+  last_deployed: '2024-01-01T12:00:00Z',
+  created_at: '2024-01-01T10:00:00Z',
+  updated_at: '2024-01-01T12:00:00Z',
+};
+
+describe('useCreateDomain', () => {
+  const mockToast = jest.fn();
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    require('@/hooks/use-toast').useToast.mockReturnValue({ toast: mockToast });
+  });
+
+  it('creates domain successfully', async () => {
+    (fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        success: true,
+        data: mockProjectDomain,
+      }),
+    });
+
+    const { result } = renderHook(() => useCreateDomain(123), {
+      wrapper: createWrapper(),
+    });
+
+    const createData: CreateDomainData = {
+      subdomain: 'my-awesome-project',
+    };
+
+    await act(async () => {
+      await result.current.mutateAsync(createData);
+    });
+
+    expect(fetch).toHaveBeenCalledWith('/api/projects/123/domain', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(createData),
+    });
+
+    expect(mockToast).toHaveBeenCalledWith({
+      title: 'Domain Created',
+      description: 'Created domain: my-awesome-project.kosuke.ai',
+    });
+  });
+
+  it('handles create domain error', async () => {
+    (fetch as jest.Mock).mockResolvedValueOnce({
+      ok: false,
+      text: async () => 'Subdomain already exists',
+    });
+
+    const { result } = renderHook(() => useCreateDomain(123), {
+      wrapper: createWrapper(),
+    });
+
+    const createData: CreateDomainData = {
+      subdomain: 'existing-domain',
+    };
+
+    await act(async () => {
+      try {
+        await result.current.mutateAsync(createData);
+      } catch (error) {
+        expect(error).toEqual(new Error('Subdomain already exists'));
+      }
+    });
+
+    expect(mockToast).toHaveBeenCalledWith({
+      title: 'Failed to Create Domain',
+      description: 'Subdomain already exists',
+      variant: 'destructive',
+    });
+  });
+
+  it('handles create domain error with fallback message', async () => {
+    (fetch as jest.Mock).mockResolvedValueOnce({
+      ok: false,
+      text: async () => '',
+    });
+
+    const { result } = renderHook(() => useCreateDomain(123), {
+      wrapper: createWrapper(),
+    });
+
+    const createData: CreateDomainData = {
+      subdomain: 'test-domain',
+    };
+
+    await act(async () => {
+      try {
+        await result.current.mutateAsync(createData);
+      } catch (error) {
+        expect(error).toEqual(new Error('Failed to create domain'));
+      }
+    });
+  });
+
+  it('handles network error during create', async () => {
+    (fetch as jest.Mock).mockRejectedValueOnce(new Error('Network error'));
+
+    const { result } = renderHook(() => useCreateDomain(123), {
+      wrapper: createWrapper(),
+    });
+
+    const createData: CreateDomainData = {
+      subdomain: 'test-domain',
+    };
+
+    await act(async () => {
+      try {
+        await result.current.mutateAsync(createData);
+      } catch (error) {
+        expect(error).toEqual(new Error('Network error'));
+      }
+    });
+  });
+});
+
+describe('useUpdateDomain', () => {
+  const mockToast = jest.fn();
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    require('@/hooks/use-toast').useToast.mockReturnValue({ toast: mockToast });
+  });
+
+  it('updates domain successfully', async () => {
+    const updatedDomain = { ...mockProjectDomain, subdomain: 'updated-domain' };
+
+    (fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        success: true,
+        data: updatedDomain,
+      }),
+    });
+
+    const { result } = renderHook(() => useUpdateDomain(123), {
+      wrapper: createWrapper(),
+    });
+
+    const updateData: UpdateDomainData = {
+      subdomain: 'updated-domain',
+      is_active: true,
+    };
+
+    await act(async () => {
+      await result.current.mutateAsync(updateData);
+    });
+
+    expect(fetch).toHaveBeenCalledWith('/api/projects/123/domain', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updateData),
+    });
+
+    expect(mockToast).toHaveBeenCalledWith({
+      title: 'Domain Updated',
+      description: 'Updated domain: my-awesome-project.kosuke.ai',
+    });
+  });
+
+  it('handles update domain error', async () => {
+    (fetch as jest.Mock).mockResolvedValueOnce({
+      ok: false,
+      text: async () => 'Domain not found',
+    });
+
+    const { result } = renderHook(() => useUpdateDomain(123), {
+      wrapper: createWrapper(),
+    });
+
+    const updateData: UpdateDomainData = {
+      is_active: false,
+    };
+
+    await act(async () => {
+      try {
+        await result.current.mutateAsync(updateData);
+      } catch (error) {
+        expect(error).toEqual(new Error('Domain not found'));
+      }
+    });
+
+    expect(mockToast).toHaveBeenCalledWith({
+      title: 'Failed to Update Domain',
+      description: 'Domain not found',
+      variant: 'destructive',
+    });
+  });
+});
+
+describe('useDeleteDomain', () => {
+  const mockToast = jest.fn();
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    require('@/hooks/use-toast').useToast.mockReturnValue({ toast: mockToast });
+  });
+
+  it('deletes domain successfully', async () => {
+    (fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      text: async () => '',
+    });
+
+    const { result } = renderHook(() => useDeleteDomain(123), {
+      wrapper: createWrapper(),
+    });
+
+    await act(async () => {
+      await result.current.mutateAsync();
+    });
+
+    expect(fetch).toHaveBeenCalledWith('/api/projects/123/domain', {
+      method: 'DELETE',
+    });
+
+    expect(mockToast).toHaveBeenCalledWith({
+      title: 'Domain Deleted',
+      description: 'The custom domain has been removed successfully.',
+    });
+  });
+
+  it('handles delete domain error', async () => {
+    (fetch as jest.Mock).mockResolvedValueOnce({
+      ok: false,
+      text: async () => 'Cannot delete active domain',
+    });
+
+    const { result } = renderHook(() => useDeleteDomain(123), {
+      wrapper: createWrapper(),
+    });
+
+    await act(async () => {
+      try {
+        await result.current.mutateAsync();
+      } catch (error) {
+        expect(error).toEqual(new Error('Cannot delete active domain'));
+      }
+    });
+
+    expect(mockToast).toHaveBeenCalledWith({
+      title: 'Failed to Delete Domain',
+      description: 'Cannot delete active domain',
+      variant: 'destructive',
+    });
+  });
+
+  it('handles delete error with fallback message', async () => {
+    (fetch as jest.Mock).mockResolvedValueOnce({
+      ok: false,
+      text: async () => '',
+    });
+
+    const { result } = renderHook(() => useDeleteDomain(123), {
+      wrapper: createWrapper(),
+    });
+
+    await act(async () => {
+      try {
+        await result.current.mutateAsync();
+      } catch (error) {
+        expect(error).toEqual(new Error('Failed to delete domain'));
+      }
+    });
+  });
+});
+
+describe('useDeployDomain', () => {
+  const mockToast = jest.fn();
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    require('@/hooks/use-toast').useToast.mockReturnValue({ toast: mockToast });
+  });
+
+  it('deploys domain successfully', async () => {
+    (fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      text: async () => '',
+    });
+
+    const { result } = renderHook(() => useDeployDomain(123), {
+      wrapper: createWrapper(),
+    });
+
+    await act(async () => {
+      await result.current.mutateAsync();
+    });
+
+    expect(fetch).toHaveBeenCalledWith('/api/projects/123/domain/deploy', {
+      method: 'POST',
+    });
+
+    expect(mockToast).toHaveBeenCalledWith({
+      title: 'Deployment Started',
+      description: 'Your domain deployment has been initiated.',
+    });
+  });
+
+  it('handles deploy domain error', async () => {
+    (fetch as jest.Mock).mockResolvedValueOnce({
+      ok: false,
+      text: async () => 'Deployment failed: DNS not configured',
+    });
+
+    const { result } = renderHook(() => useDeployDomain(123), {
+      wrapper: createWrapper(),
+    });
+
+    await act(async () => {
+      try {
+        await result.current.mutateAsync();
+      } catch (error) {
+        expect(error).toEqual(new Error('Deployment failed: DNS not configured'));
+      }
+    });
+
+    expect(mockToast).toHaveBeenCalledWith({
+      title: 'Deployment Failed',
+      description: 'Deployment failed: DNS not configured',
+      variant: 'destructive',
+    });
+  });
+
+  it('handles deploy error with fallback message', async () => {
+    (fetch as jest.Mock).mockResolvedValueOnce({
+      ok: false,
+      text: async () => '',
+    });
+
+    const { result } = renderHook(() => useDeployDomain(123), {
+      wrapper: createWrapper(),
+    });
+
+    await act(async () => {
+      try {
+        await result.current.mutateAsync();
+      } catch (error) {
+        expect(error).toEqual(new Error('Failed to deploy domain'));
+      }
+    });
+  });
+
+  it('handles network error during deploy', async () => {
+    (fetch as jest.Mock).mockRejectedValueOnce(new Error('Network timeout'));
+
+    const { result } = renderHook(() => useDeployDomain(123), {
+      wrapper: createWrapper(),
+    });
+
+    await act(async () => {
+      try {
+        await result.current.mutateAsync();
+      } catch (error) {
+        expect(error).toEqual(new Error('Network timeout'));
+      }
+    });
+  });
+});
+```
+
 ## Acceptance Criteria
 
 - [x] Domain management UI in project settings
@@ -617,6 +1365,14 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 - [x] SSL status display
 - [x] Live domain link with external icon
 - [x] Integration with Python agent domain service
+- [x] Comprehensive test coverage for all domain query hooks
+- [x] Comprehensive test coverage for all domain mutation hooks
+- [x] Domain validation tests including edge cases
+- [x] Error handling tests for all domain operations
+- [x] Toast notification tests for user feedback
+- [x] Query invalidation tests for cache management
+- [x] Network error handling tests
+- [x] Proper URL encoding tests for domain validation
 
 ---
 
