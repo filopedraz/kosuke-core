@@ -1,10 +1,44 @@
 {
+    // General editor settings
     "makefile.configureOnOpen": false,
     "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+        "source.organizeImports": "explicit",
+        "source.fixAll.eslint": "explicit"
+    },
+    "files.trimTrailingWhitespace": true,
+    "files.insertFinalNewline": true,
+    
+    // File exclusions for better performance
+    "files.exclude": {
+        "**/node_modules": true,
+        "**/venv": true,
+        "**/.venv": true,
+        "**/tmp": true,
+        "**/.next": true,
+        "**/dist": true,
+        "**/__pycache__": true,
+        "**/.pytest_cache": true,
+        "**/projects": true
+    },
+    
+    // Search exclusions
+    "search.exclude": {
+        "**/node_modules": true,
+        "**/venv": true,
+        "**/.venv": true,
+        "**/tmp": true,
+        "**/.next": true,
+        "**/dist": true,
+        "**/__pycache__": true,
+        "**/projects": true
+    },
+    
+    // Python settings
     "[python]": {
         "analysis.autoImportCompletions": true,
         "analysis.typeCheckingMode": "basic",
-        "defaultInterpreterPath": "/venv/bin/python",
+        "defaultInterpreterPath": "./agent/venv/bin/python",
         "editor.codeActionsOnSave": {
             "source.organizeImports": "always"
         },
@@ -12,11 +46,84 @@
         "languageServer": "Pylance",
         "linting.enabled": true,
         "linting.mypyEnabled": true,
-        "linting.mypyPath": "/venv/bin/mypy"
+        "linting.mypyPath": "./agent/venv/bin/mypy"
     },
+    
+    // Python testing settings
     "python.testing.pytestArgs": [
-        "."
+        "./agent/tests"
     ],
     "python.testing.unittestEnabled": false,
-    "python.testing.pytestEnabled": true
+    "python.testing.pytestEnabled": true,
+    "python.testing.cwd": "./agent",
+    
+    // TypeScript/JavaScript settings
+    "[typescript]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.codeActionsOnSave": {
+            "source.organizeImports": "explicit"
+        }
+    },
+    "[typescriptreact]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.codeActionsOnSave": {
+            "source.organizeImports": "explicit"
+        }
+    },
+    "[javascript]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[javascriptreact]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    
+    // JSON and other file settings
+    "[json]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[jsonc]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[css]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[markdown]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    
+    // ESLint settings
+    "eslint.workingDirectories": ["."],
+    "eslint.format.enable": true,
+    
+    // Tailwind CSS IntelliSense
+    "tailwindCSS.includeLanguages": {
+        "typescript": "typescript",
+        "typescriptreact": "typescriptreact"
+    },
+    "tailwindCSS.experimental.classRegex": [
+        ["clsx\\(([^)]*)\\)", "(?:'|\"|`)([^']*)(?:'|\"|`)"],
+        ["cn\\(([^)]*)\\)", "(?:'|\"|`)([^']*)(?:'|\"|`)"]
+    ],
+    
+    // TypeScript settings
+    "typescript.preferences.includePackageJsonAutoImports": "on",
+    "typescript.suggest.autoImports": true,
+    "typescript.updateImportsOnFileMove.enabled": "always",
+    
+    // Jest testing
+    "jest.jestCommandLine": "npm test",
+    "jest.autoRun": "off",
+    
+    // Git settings
+    "git.ignoreLimitWarning": true,
+    
+    // Explorer settings
+    "explorer.fileNesting.enabled": true,
+    "explorer.fileNesting.patterns": {
+        "*.ts": "${capture}.js, ${capture}.d.ts.map, ${capture}.d.ts, ${capture}.js.map",
+        "*.tsx": "${capture}.js, ${capture}.js.map",
+        "package.json": "package-lock.json, yarn.lock, pnpm-lock.yaml",
+        "tailwind.config.*": "postcss.config.*",
+        "next.config.*": "next-env.d.ts"
+    }
 }
