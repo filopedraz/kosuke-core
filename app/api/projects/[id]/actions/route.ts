@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { inArray, sql, eq, and } from 'drizzle-orm';
 import { db } from '@/lib/db/drizzle';
 import { actions } from '@/lib/db/schema';
-import { getSession } from '@/lib/auth/session';
+import { auth } from '@clerk/nextjs';
 
 interface ActionOperation {
   messageId: number;

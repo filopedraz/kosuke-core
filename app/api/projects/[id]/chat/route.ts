@@ -2,7 +2,7 @@ import { eq, desc, inArray, sql } from 'drizzle-orm';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
-import { getSession } from '@/lib/auth/session';
+import { auth } from '@clerk/nextjs';
 import { db } from '@/lib/db/drizzle';
 import { getProjectById } from '@/lib/db/projects';
 import { chatMessages, actions, Action } from '@/lib/db/schema';

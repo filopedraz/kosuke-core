@@ -1,163 +1,49 @@
 'use server';
 
 import { eq, sql } from 'drizzle-orm';
-import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
+import { auth } from '@clerk/nextjs';
 
-import { validatedAction, validatedActionWithUser } from '@/lib/auth/middleware';
-import { comparePasswords, hashPassword, setSession } from '@/lib/auth/session';
 import { db } from '@/lib/db/drizzle';
-import { getUser } from '@/lib/db/queries';
 import {
-  users,
   activityLogs,
-  type NewUser,
   type NewActivityLog,
   ActivityType,
 } from '@/lib/db/schema';
 
-async function logActivity(userId: number, type: ActivityType, ipAddress?: string) {
+// Note: These auth actions are now deprecated since Clerk handles authentication
+// They are kept for compatibility with existing forms that may still reference them
+// In a complete migration, these should be removed and forms updated to use Clerk directly
+
+async function logActivity(userId: string, type: ActivityType, ipAddress?: string) {
   const newActivity: NewActivityLog = {
-    userId,
+    userId: parseInt(userId), // Temporary conversion - this needs schema update for Clerk IDs
     action: type,
     ipAddress: ipAddress || '',
   };
   await db.insert(activityLogs).values(newActivity);
 }
 
-const signInSchema = z.object({
-  email: z.string().email().min(3).max(255),
-  password: z.string().min(8).max(100),
-});
-
-export const signIn = validatedAction(signInSchema, async data => {
-  const { email, password } = data;
-
-  const userResult = await db.select().from(users).where(eq(users.email, email)).limit(1);
-
-  if (userResult.length === 0) {
-    return {
-      error: 'Invalid email or password. Please try again.',
-      email,
-      password,
-    };
-  }
-
-  const foundUser = userResult[0];
-
-  const isPasswordValid = await comparePasswords(password, foundUser.passwordHash);
-
-  if (!isPasswordValid) {
-    return {
-      error: 'Invalid email or password. Please try again.',
-      email,
-      password,
-    };
-  }
-
-  await Promise.all([setSession(foundUser), logActivity(foundUser.id, ActivityType.SIGN_IN)]);
-
-  redirect('/projects');
-});
-
-const signUpSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(8),
-});
-
-export const signUp = validatedAction(signUpSchema, async data => {
-  const { email, password } = data;
-
-  const existingUser = await db.select().from(users).where(eq(users.email, email)).limit(1);
-
-  if (existingUser.length > 0) {
-    return {
-      error: 'Failed to create user. Please try again.',
-      email,
-      password,
-    };
-  }
-
-  const passwordHash = await hashPassword(password);
-
-  const newUser: NewUser = {
-    email,
-    passwordHash,
-    role: 'owner', // Default role
-  };
-
-  const [createdUser] = await db.insert(users).values(newUser).returning();
-
-  if (!createdUser) {
-    return {
-      error: 'Failed to create user. Please try again.',
-      email,
-      password,
-    };
-  }
-
-  await Promise.all([logActivity(createdUser.id, ActivityType.SIGN_UP), setSession(createdUser)]);
-
-  redirect('/projects');
-});
-
-export async function signOut() {
-  try {
-    const user = await getUser();
-
-    // Only log activity if user exists
-    if (user) {
-      await logActivity(user.id, ActivityType.SIGN_OUT);
-    }
-
-    // Always delete the session cookie
-    (await cookies()).delete('session');
-  } catch (error) {
-    console.error('Error during sign out:', error);
-    // Still delete the session cookie even if there's an error
-    (await cookies()).delete('session');
-  }
+// Deprecated: Use Clerk's sign-in instead
+export async function signIn() {
+  redirect('/sign-in');
 }
 
-const updatePasswordSchema = z
-  .object({
-    currentPassword: z.string().min(8).max(100),
-    newPassword: z.string().min(8).max(100),
-    confirmPassword: z.string().min(8).max(100),
-  })
-  .refine(data => data.newPassword === data.confirmPassword, {
-    message: "Passwords don't match",
-    path: ['confirmPassword'],
-  });
+// Deprecated: Use Clerk's sign-up instead
+export async function signUp() {
+  redirect('/sign-up');
+}
 
-export const updatePassword = validatedActionWithUser(
-  updatePasswordSchema,
-  async (data, _, user) => {
-    const { currentPassword, newPassword } = data;
+// Deprecated: Use Clerk's sign-out instead
+export async function signOut() {
+  redirect('/sign-in');
+}
 
-    const isPasswordValid = await comparePasswords(currentPassword, user.passwordHash);
-
-    if (!isPasswordValid) {
-      return { error: 'Current password is incorrect.' };
-    }
-
-    if (currentPassword === newPassword) {
-      return {
-        error: 'New password must be different from the current password.',
-      };
-    }
-
-    const newPasswordHash = await hashPassword(newPassword);
-
-    await Promise.all([
-      db.update(users).set({ passwordHash: newPasswordHash }).where(eq(users.id, user.id)),
-      logActivity(user.id, ActivityType.UPDATE_PASSWORD),
-    ]);
-
-    return { success: 'Password updated successfully.' };
-  }
-);
+// Deprecated: Password management now handled by Clerk
+export async function updatePassword() {
+  redirect('/sign-in');
+}
 
 const deleteAccountSchema = z.object({
   password: z.string().min(8).max(100),

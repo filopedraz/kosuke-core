@@ -1,4 +1,4 @@
-import { getSession } from '@/lib/auth/session';
+import { auth } from '@clerk/nextjs';
 import { db } from '@/lib/db/drizzle';
 import { getProjectById } from '@/lib/db/projects';
 import { chatMessages } from '@/lib/db/schema';

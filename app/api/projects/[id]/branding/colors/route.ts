@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import path from 'path';
 import { z } from 'zod';
 import fs from 'fs/promises';
-import { getSession } from '@/lib/auth/session';
+import { auth } from '@clerk/nextjs';
 import { fileExists, updateFile, getProjectPath } from '@/lib/fs/operations';
 
 // Type for CSS variable

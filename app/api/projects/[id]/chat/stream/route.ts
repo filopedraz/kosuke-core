@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { getSession } from '@/lib/auth/session';
+import { auth } from '@clerk/nextjs';
 import { getProjectById } from '@/lib/db/projects';
 
 /**

@@ -2,7 +2,7 @@ import { ReactNode } from 'react';
 import { notFound } from 'next/navigation';
 import { eq } from 'drizzle-orm';
 
-import { getSession } from '@/lib/auth/session';
+import { auth } from '@clerk/nextjs';
 import { db } from '@/lib/db/drizzle';
 import { users } from '@/lib/db/schema';
 import ProjectNavbar from './components/layout/project-navbar';
