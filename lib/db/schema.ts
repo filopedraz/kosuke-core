@@ -54,6 +54,12 @@ export const projects = pgTable('projects', {
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
   isArchived: boolean('is_archived').default(false),
+  githubRepoUrl: text('github_repo_url'),
+  githubOwner: text('github_owner'),
+  githubRepoName: text('github_repo_name'),
+  githubBranch: text('github_branch').default('main'),
+  autoCommit: boolean('auto_commit').default(true),
+  lastGithubSync: timestamp('last_github_sync'),
 });
 
 export const chatMessages = pgTable('chat_messages', {
@@ -127,8 +133,46 @@ export const actions = pgTable('actions', {
   status: varchar('status', { length: 20 }).notNull().default('completed'), // 'pending', 'completed', 'error'
 });
 
+export const userGithubTokens = pgTable('user_github_tokens', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  githubToken: text('github_token').notNull(),
+  githubUsername: text('github_username'),
+  tokenScope: text('token_scope').array(),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+export const projectCommits = pgTable('project_commits', {
+  id: serial('id').primaryKey(),
+  projectId: integer('project_id')
+    .notNull()
+    .references(() => projects.id, { onDelete: 'cascade' }),
+  commitSha: text('commit_sha').notNull(),
+  commitMessage: text('commit_message').notNull(),
+  commitUrl: text('commit_url'),
+  filesChanged: integer('files_changed').default(0),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+export const githubSyncSessions = pgTable('github_sync_sessions', {
+  id: serial('id').primaryKey(),
+  projectId: integer('project_id')
+    .notNull()
+    .references(() => projects.id, { onDelete: 'cascade' }),
+  sessionId: text('session_id').notNull(),
+  startTime: timestamp('start_time').defaultNow(),
+  endTime: timestamp('end_time'),
+  commitSha: text('commit_sha'),
+  filesChanged: integer('files_changed').default(0),
+  status: text('status').default('active'), // active, completed, failed
+});
+
 export const usersRelations = relations(users, ({ many }) => ({
   projects: many(projects),
+  githubTokens: many(userGithubTokens),
 }));
 
 export const activityLogsRelations = relations(activityLogs, ({ one }) => ({
@@ -149,6 +193,8 @@ export const projectsRelations = relations(projects, ({ one, many }) => ({
   }),
   chatMessages: many(chatMessages),
   diffs: many(diffs),
+  commits: many(projectCommits),
+  githubSyncSessions: many(githubSyncSessions),
 }));
 
 export const chatMessagesRelations = relations(chatMessages, ({ one, many }) => ({
@@ -197,6 +243,27 @@ export const actionsRelations = relations(actions, ({ one }) => ({
   }),
 }));
 
+export const userGithubTokensRelations = relations(userGithubTokens, ({ one }) => ({
+  user: one(users, {
+    fields: [userGithubTokens.userId],
+    references: [users.id],
+  }),
+}));
+
+export const projectCommitsRelations = relations(projectCommits, ({ one }) => ({
+  project: one(projects, {
+    fields: [projectCommits.projectId],
+    references: [projects.id],
+  }),
+}));
+
+export const githubSyncSessionsRelations = relations(githubSyncSessions, ({ one }) => ({
+  project: one(projects, {
+    fields: [githubSyncSessions.projectId],
+    references: [projects.id],
+  }),
+}));
+
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type ActivityLog = typeof activityLogs.$inferSelect;
@@ -228,3 +295,10 @@ export type NewAction = typeof actions.$inferInsert;
 
 export type WaitlistEntry = typeof waitlistEntries.$inferSelect;
 export type NewWaitlistEntry = typeof waitlistEntries.$inferInsert;
+
+export type UserGithubToken = typeof userGithubTokens.$inferSelect;
+export type NewUserGithubToken = typeof userGithubTokens.$inferInsert;
+export type ProjectCommit = typeof projectCommits.$inferSelect;
+export type NewProjectCommit = typeof projectCommits.$inferInsert;
+export type GithubSyncSession = typeof githubSyncSessions.$inferSelect;
+export type NewGithubSyncSession = typeof githubSyncSessions.$inferInsert;
