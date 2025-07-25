@@ -40,13 +40,28 @@ You are thoughtful, precise, and focus on delivering high-quality, maintainable 
 docker-compose up agent --build     # Start with Docker (recommended)
 uvicorn app.main:app --reload       # Local development server
 
-# Code Quality & Testing
+# Virtual Environment Setup (from root directory)
+source ./venv/bin/activate          # Activate virtual environment
+cd ./agent                          # Navigate to agent directory
+
+# Code Quality & Testing (with virtual environment activated)
+pytest                              # Run tests (from ./agent directory)
+pytest --cov=app --cov-report=term-missing  # Run with coverage
+pytest -v                           # Run tests with verbose output
+pytest tests/test_specific.py       # Run specific test file
+
+# Linting & Formatting (from ./agent directory)
 ruff check .                        # Lint codebase
 ruff format .                       # Format code
+ruff check --fix .                  # Auto-fix linting issues
 bandit -r app/                      # Security analysis
 mypy app/                           # Type checking
-pytest                              # Run tests
-pytest --cov=app --cov-report=term-missing  # Run with coverage
+
+# Development Workflow (recommended sequence)
+source ./venv/bin/activate && cd ./agent  # Setup environment
+ruff format . && ruff check --fix .       # Format and lint
+mypy app/                                  # Type check
+pytest --cov=app                          # Run tests
 
 # Docker Operations
 docker-compose build agent          # Rebuild image
