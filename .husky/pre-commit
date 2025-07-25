@@ -1,6 +1,3 @@
-#!/usr/bin/env sh
-. "$(dirname -- "$0")/_/husky.sh"
-
 # Check if we have Python files in the commit
 python_files=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(py)$' | grep '^agent/' || true)
 
