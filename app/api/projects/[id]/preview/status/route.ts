@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth/session';
 import { getProjectById } from '@/lib/db/projects';
-import { getRunner } from '@/lib/preview';
 
 /**
  * GET /api/projects/[id]/preview/status
- * Check the status of a project preview
+ * Check the status of a project preview (proxied to Python agent)
  */
 export async function GET(
   request: NextRequest,
@@ -46,19 +45,26 @@ export async function GET(
       );
     }
 
-    // Get the preview manager
-    const runner = await getRunner();
-    if (!runner) {
+    // Proxy request to Python agent
+    const agentUrl = process.env.AGENT_SERVICE_URL || 'http://localhost:8000';
+    const response = await fetch(`${agentUrl}/api/preview/status/${projectId}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      console.error(`[Preview Status API] Agent error: ${error}`);
       return NextResponse.json(
-        { error: 'Preview system not available' },
-        { status: 500 }
+        { error: 'Failed to get preview status', details: error },
+        { status: response.status }
       );
     }
-    
-    // Get the project status
-    const status = await runner.getProjectStatus(projectId);
 
-    return NextResponse.json(status);
+    const result = await response.json();
+    return NextResponse.json(result);
   } catch (error: unknown) {
     console.error('Error getting preview status:', error);
     return NextResponse.json(
