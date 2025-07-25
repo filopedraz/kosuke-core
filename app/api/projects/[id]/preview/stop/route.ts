@@ -2,14 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { AGENT_SERVICE_URL } from '@/lib/constants';
 
-/**
- * GET /api/projects/[id]/preview/status
- * Check the status of a project preview
- */
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -22,17 +15,18 @@ export async function GET(
     }
 
     // Proxy request to Python agent
-    const response = await fetch(`${AGENT_SERVICE_URL}/api/preview/status/${projectId}`, {
-      method: 'GET',
+    const response = await fetch(`${AGENT_SERVICE_URL}/api/preview/stop`, {
+      method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
+      body: JSON.stringify({ project_id: projectId }),
     });
 
     if (!response.ok) {
       const error = await response.text();
       return NextResponse.json(
-        { error: 'Failed to get preview status', details: error },
+        { error: 'Failed to stop preview', details: error },
         { status: response.status }
       );
     }
@@ -40,7 +34,7 @@ export async function GET(
     const result = await response.json();
     return NextResponse.json(result);
   } catch (error) {
-    console.error('Error getting preview status:', error);
+    console.error('Error stopping preview:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-} 
+}

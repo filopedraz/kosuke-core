@@ -33,6 +33,9 @@ export const LLM = {
   },
 };
 
+// Agent Service
+export const AGENT_SERVICE_URL = process.env.AGENT_SERVICE_URL || 'http://localhost:8000';
+
 // Preview
 export const PREVIEW = {
   CONTAINER_NAME_PREFIX: 'project-preview-',
