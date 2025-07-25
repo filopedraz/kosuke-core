@@ -100,7 +100,7 @@ class TestLLMService:
     @patch.object(LLMService, "generate_completion")
     async def test_error_handling_llm_service_error(self, mock_generate_completion):
         """Test handling of LLM service errors"""
-        mock_generate_completion.side_effect = Exception("LLM service error")
+        mock_generate_completion.side_effect = Exception("Claude API error: LLM service error")
 
         llm_service = LLMService()
         messages = [ChatMessage(role="user", content="Test")]
