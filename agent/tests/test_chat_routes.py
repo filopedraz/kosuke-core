@@ -299,7 +299,7 @@ class TestChatRoutes:
             "Create a component with emoji 🚀",
             "Handle special chars: <>&\"'",
             "Unicode text: 你好世界",
-            "Mixed: Hello 🌍 World с русским текстом",
+            "Mixed: Hello 🌍 World с русским текстом",  # noqa: RUF001,
         ]
 
         for prompt in unicode_prompts:
