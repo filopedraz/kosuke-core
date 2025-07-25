@@ -1,4 +1,5 @@
 from pydantic_settings import BaseSettings
+import os
 
 
 class Settings(BaseSettings):
@@ -25,6 +26,9 @@ class Settings(BaseSettings):
     # Webhook Configuration
     nextjs_url: str = "http://localhost:3000"
     webhook_secret: str = "dev-secret-change-in-production"
+
+    # Preview Configuration
+    preview_default_image: str = os.getenv("PREVIEW_DEFAULT_IMAGE", "ghcr.io/filopedraz/kosuke-template:v0.0.73")
 
     class Config:
         env_file = ".env"
@@ -56,6 +60,7 @@ try:
     print(f"   - Max iterations: {settings.max_iterations}")
     print(f"   - Projects directory: {settings.projects_dir}")
     print(f"   - Model: {settings.model_name}")
+    print(f"   - Preview image: {settings.preview_default_image}")
 except ValueError as e:
     print(f"❌ Configuration error: {e}")
     print("   Please check your environment variables in config.env or .env")
