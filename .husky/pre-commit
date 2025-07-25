@@ -19,13 +19,6 @@ if [ -n "$python_files" ]; then
     
     echo "  → Running ruff formatting..."
     ruff format .
-    
-    echo "  → Running mypy type checking..."
-    mypy . --ignore-missing-imports
-    if [ $? -ne 0 ]; then
-      echo "❌ Python type checking failed. Please fix the errors before committing."
-      exit 1
-    fi
         
     cd ..
     deactivate

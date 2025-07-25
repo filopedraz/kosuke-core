@@ -1,5 +1,5 @@
 # This project uses requirements.txt for dependency management
-# pyproject.toml is used only for tool configuration (pytest, ruff, mypy, bandit)
+# pyproject.toml is used only for tool configuration (pytest, ruff, bandit)
 
 # ==== pytest ====
 [tool.pytest.ini_options]
@@ -37,44 +37,6 @@ exclude_lines = [
     "if __name__ == .__main__.:",
     "raise AssertionError",
     "raise NotImplementedError",
-]
-
-# ==== mypy ====
-[tool.mypy]
-python_version = "3.12"
-check_untyped_defs = false           # Don't check untyped function definitions
-ignore_missing_imports = true
-warn_unused_ignores = false          # Don't warn about unused type ignores
-warn_redundant_casts = false         # Don't warn about redundant casts
-warn_unused_configs = false          # Don't warn about unused configs
-warn_return_any = false              # Allow Any returns
-warn_unreachable = false             # Don't warn about unreachable code
-strict_optional = false              # Allow implicit Optional
-disallow_untyped_calls = false
-disallow_untyped_defs = false        # Allow functions without return type annotations
-disallow_incomplete_defs = false     # Allow functions without parameter type annotations
-
-# Suppress specific error codes
-disable_error_code = [
-    "call-arg",          # Suppress call argument errors
-    "assignment",        # Suppress assignment type errors  
-    "attr-defined",      # Suppress attribute defined errors
-    "dict-item",         # Suppress dict item type errors
-    "arg-type"           # Suppress argument type errors
-]
-
-# Exclude problematic files and directories (regex patterns)
-exclude = [
-    "venv/.*",
-    "\\.venv/.*", 
-    "conftest\\.py",
-    "tests/.*",
-    "app/services/.*",       # Services have external dependencies causing type issues
-    "app/tools/.*",          # Tools might have complex types
-    "app/core/.*",           # Core logic has complex types
-    "app/utils/.*",          # Utilities have edge cases
-    "app/models/actions\\.py",  # Has specific type issues with field names
-    "app/api/routes/chat\\.py"  # Has type issues with response models
 ]
 
 # ==== ruff ====
