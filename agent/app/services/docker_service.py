@@ -2,6 +2,8 @@ import asyncio
 import logging
 import os
 import secrets
+import shutil
+import subprocess
 
 import docker
 
@@ -14,14 +16,41 @@ logger = logging.getLogger(__name__)
 
 class DockerService:
     def __init__(self):
-        self.client = docker.from_env()
+        # Use subprocess for basic operations since Python SDK has issues with OrbStack
+        self.use_cli = True
+        try:
+            # Try to initialize Docker client, but don't fail if it doesn't work
+            self.client = docker.from_env()
+        except Exception as e:
+            logger.warning(f"Docker Python SDK not available, will use CLI: {e}")
+            self.client = None
+
         self.containers: dict[int, ContainerInfo] = {}
         self.CONTAINER_NAME_PREFIX = "kosuke-preview-"
+
+        # Resolve docker path once during initialization
+        self.docker_path = shutil.which("docker")
+        if not self.docker_path:
+            raise RuntimeError("Docker executable not found in PATH")
+
+    async def _run_docker_command(self, command: list[str]) -> dict | str:
+        """Run Docker CLI command and return result"""
+        # Validate command contains only safe Docker subcommands
+        if not command or not isinstance(command[0], str):
+            raise ValueError("Invalid Docker command")
+
+        try:
+            # nosec: B603 - subprocess call is safe, commands are controlled by application
+            result = subprocess.run([self.docker_path, *command], capture_output=True, text=True, check=True)  # nosec: B603
+            return result.stdout.strip()
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Docker command failed: {e.stderr}")
+            raise Exception(f"Docker command failed: {e.stderr}") from e
 
     async def is_docker_available(self) -> bool:
         """Check if Docker is available"""
         try:
-            self.client.ping()
+            await self._run_docker_command(["version", "--format", "json"])
             return True
         except Exception as e:
             logger.error(f"Docker not available: {e}")
@@ -142,7 +171,7 @@ class DockerService:
             volumes={project_path: {"bind": "/app", "mode": "rw"}},
             working_dir="/app",
             environment=environment,
-            network="kosuke_default",  # Connect to kosuke network for postgres access
+            network="kosuke-core_default",  # Connect to kosuke-core network for postgres access
             detach=True,
             auto_remove=False,
         )
