@@ -5,7 +5,6 @@ import { ApiErrorHandler } from '@/lib/api/errors';
 import { ApiResponseHandler } from '@/lib/api/responses';
 import { withProjectAccess, RouteContext } from '@/lib/auth/middleware';
 import { updateProject, archiveProject } from '@/lib/db/projects';
-import { getRunner } from '@/lib/preview';
 
 // Schema for updating a project
 const updateProjectSchema = z.object({
@@ -69,11 +68,22 @@ export const DELETE = withProjectAccess(
 
       // First, try to stop the project preview if it's running
       try {
-        const runner = await getRunner();
-        if (runner) {
-          console.log(`Stopping preview for project ${context.project.id} before archiving`);
-          await runner.stopApp(context.project.id);
+        console.log(`Stopping preview for project ${context.project.id} before archiving`);
+        
+        // Proxy stop request to Python agent
+        const agentUrl = process.env.AGENT_SERVICE_URL || 'http://localhost:8000';
+        const response = await fetch(`${agentUrl}/api/preview/stop`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ project_id: context.project.id }),
+        });
+
+        if (response.ok) {
           console.log(`Preview for project ${context.project.id} stopped successfully`);
+        } else {
+          console.log(`Preview stop request failed, but continuing with archive`);
         }
       } catch (previewError) {
         // Log but continue - we still want to archive the project even if stopping the preview fails

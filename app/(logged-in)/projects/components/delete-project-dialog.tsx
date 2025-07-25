@@ -12,7 +12,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { useDeleteProject } from '@/lib/hooks/useProjects';
+import { useDeleteProject } from '@/hooks/use-projects';
 import { Project } from '@/lib/stores/projectStore';
 
 interface DeleteProjectDialogProps {

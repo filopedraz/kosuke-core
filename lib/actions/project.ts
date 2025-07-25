@@ -55,31 +55,38 @@ export async function createProject(prompt: string, name?: string) {
 
     console.log(`✅ Placeholder message created`);
 
-    // Start the preview app asynchronously
+    // Start the preview app asynchronously by calling the Python agent
     console.log(`🚀 Starting preview for project ID: ${project.id}`);
 
-    // Use dynamic import to load the preview runner only on the server
-    const { getRunner } = await import('@/lib/preview');
-    const runner = await getRunner();
-
-    if (!runner) {
-      console.error('Preview system not available');
-      return project;
-    }
-
-    // Start the preview
     try {
-      runner
-        .startApp(project.id)
-        .then(async (previewUrl: string) => {
-          console.log(`✅ Preview started at ${previewUrl} for project ID: ${project.id}`);
-          // The preview status and health will be checked by the UI components
+      // Proxy start request to Python agent
+      const agentUrl = process.env.AGENT_SERVICE_URL || 'http://localhost:8000';
+
+      // Start the preview asynchronously - don't await to avoid blocking project creation
+      fetch(`${agentUrl}/api/preview/start`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          project_id: project.id,
+          env_vars: {}, // TODO: Add environment variables from database
+        }),
+      })
+        .then(async response => {
+          if (response.ok) {
+            const result = await response.json();
+            console.log(`✅ Preview started for project ID: ${project.id}`, result);
+          } else {
+            const error = await response.text();
+            console.error(`❌ Error starting preview for project ID: ${project.id}:`, error);
+          }
         })
-        .catch((err: Error) => {
-          console.error(`❌ Error starting preview for project ID: ${project.id}:`, err);
+        .catch(err => {
+          console.error(`❌ Error in preview startup process for project ID: ${project.id}:`, err);
         });
     } catch (err: unknown) {
-      console.error(`❌ Error in preview startup process for project ID: ${project.id}:`, err);
+      console.error(`❌ Error setting up preview startup for project ID: ${project.id}:`, err);
       // Don't fail the project creation if preview fails to start
     }
 

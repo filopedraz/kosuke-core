@@ -1,17 +1,17 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { getSession } from '@/lib/auth/session';
 import { AGENT_SERVICE_URL } from '@/lib/constants';
+import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * GET /api/projects/[id]/preview/status
- * Check the status of a project preview
+ * Check the status of a project preview (proxied to Python agent)
  */
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await auth();
+    const session = await getSession();
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -43,4 +43,4 @@ export async function GET(
     console.error('Error getting preview status:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-} 
+}

@@ -6,41 +6,41 @@
   :root {
     --background: 240 4% 3%; /* #080A0A */
     --foreground: 0 0% 97%; /* #F7F8F8 */
-    
+
     --card: 240 4% 4%; /* #0C0D0D */
     --card-foreground: 0 0% 97%; /* #F7F8F8 */
-    
+
     --popover: 240 4% 4%; /* #0C0D0D */
     --popover-foreground: 0 0% 97%; /* #F7F8F8 */
-    
+
     --primary: 0 0% 97%; /* #F7F8F8 */
     --primary-foreground: 240 4% 3%; /* #080A0A */
-    
+
     --secondary: 220 1% 19%; /* #303132 */
     --secondary-foreground: 0 0% 97%; /* #F7F8F8 */
-    
+
     --muted: 220 1% 19%; /* #303132 */
     --muted-foreground: 220 4% 55%; /* #7F848D */
-    
+
     --accent: 220 1% 19%; /* #303132 */
     --accent-foreground: 0 0% 97%; /* #F7F8F8 */
-    
+
     --destructive: 0 84% 60%; /* #EF4444 */
     --destructive-foreground: 0 0% 97%; /* #F7F8F8 */
-    
+
     --border: 220 1% 13%; /* #202122 */
     --input: 220 1% 13%; /* #202122 */
     --ring: 220 1% 13%; /* #202122 */
-    
+
     --radius: 0.5rem;
-    
+
     /* Additional colors for charts and sidebar */
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
-    
+
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;
@@ -54,41 +54,41 @@
   .dark {
     --background: 240 4% 3%; /* #080A0A */
     --foreground: 0 0% 97%; /* #F7F8F8 */
-    
+
     --card: 240 4% 4%; /* #0C0D0D */
     --card-foreground: 0 0% 97%; /* #F7F8F8 */
-    
+
     --popover: 240 4% 4%; /* #0C0D0D */
     --popover-foreground: 0 0% 97%; /* #F7F8F8 */
-    
+
     --primary: 0 0% 97%; /* #F7F8F8 */
     --primary-foreground: 240 4% 3%; /* #080A0A */
-    
+
     --secondary: 220 1% 19%; /* #303132 */
     --secondary-foreground: 0 0% 97%; /* #F7F8F8 */
-    
+
     --muted: 220 1% 19%; /* #303132 */
     --muted-foreground: 220 4% 55%; /* #7F848D */
-    
+
     --accent: 220 1% 19%; /* #303132 */
     --accent-foreground: 0 0% 97%; /* #F7F8F8 */
-    
+
     --destructive: 0 84% 60%; /* #EF4444 */
     --destructive-foreground: 0 0% 97%; /* #F7F8F8 */
-    
+
     --border: 220 1% 13%; /* #202122 */
     --input: 220 1% 13%; /* #202122 */
     --ring: 220 1% 13%; /* #202122 */
-    
+
     --radius: 0.5rem;
-    
+
     /* Additional colors for charts and sidebar */
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
-    
+
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;
@@ -98,11 +98,11 @@
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
-  
+
   * {
     border-color: hsl(var(--border));
   }
-  
+
   body {
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));

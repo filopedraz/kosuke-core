@@ -200,8 +200,8 @@ Files ({len(files)} total):
         for i, action in enumerate(actions):
             print(f"⏳ Executing action {i+1}/{len(actions)}: {action.action} on {action.file_path}")
 
-            # Map action type to update type
-            update_type = self._map_action_to_update_type(action.action.value)
+            # Map action type to update type (action.action is already a string due to use_enum_values=True)
+            update_type = self._map_action_to_update_type(action.action)
 
             yield {"type": update_type, "file_path": action.file_path, "message": action.message, "status": "pending"}
 
@@ -219,7 +219,7 @@ Files ({len(files)} total):
                     async with self.webhook_service as webhook:
                         await webhook.send_action(
                             project_id=self.project_id,
-                            action_type=action.action.value,
+                            action_type=action.action,  # Already a string due to use_enum_values=True
                             path=action.file_path,
                             status="completed",
                         )
@@ -237,7 +237,7 @@ Files ({len(files)} total):
                     async with self.webhook_service as webhook:
                         await webhook.send_action(
                             project_id=self.project_id,
-                            action_type=action.action.value,
+                            action_type=action.action,  # Already a string due to use_enum_values=True
                             path=action.file_path,
                             status="error",
                         )
@@ -275,7 +275,7 @@ Files ({len(files)} total):
 
         Mirrors the TypeScript executeReadActionsForContext function
         """
-        read_actions = [a for a in actions if a.action.value == "readFile"]
+        read_actions = [a for a in actions if a.action == "readFile"]  # action is already a string
 
         if not read_actions:
             print("No read actions to execute")
@@ -323,7 +323,9 @@ Files ({len(files)} total):
 
     def _should_force_execution(self, actions: list[Action], read_files: set[str], iteration_count: int) -> bool:
         """Determine if we should force execution mode"""
-        duplicate_reads = [a for a in actions if a.action.value == "readFile" and a.file_path in read_files]
+        duplicate_reads = [
+            a for a in actions if a.action == "readFile" and a.file_path in read_files
+        ]  # action is already a string
 
         return len(duplicate_reads) >= 3 or iteration_count >= int(self.max_iterations * 0.8)
 
