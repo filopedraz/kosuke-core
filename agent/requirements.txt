@@ -6,7 +6,7 @@ anthropic==0.40.0
 aiofiles==24.1.0
 tiktoken==0.8.0
 watchdog==6.0.0
-python-multipart==0.0.12
+python-multipart==0.0.18
 pydantic-settings==2.7.0
 psutil==6.1.0
 requests==2.32.3
