@@ -8,7 +8,7 @@
     },
     "files.trimTrailingWhitespace": true,
     "files.insertFinalNewline": true,
-    
+
     // File exclusions for better performance
     "files.exclude": {
         "**/node_modules": true,
@@ -21,7 +21,7 @@
         "**/.pytest_cache": true,
         "**/projects": true
     },
-    
+
     // Search exclusions
     "search.exclude": {
         "**/node_modules": true,
@@ -33,22 +33,15 @@
         "**/__pycache__": true,
         "**/projects": true
     },
-    
+
     // Python settings
     "[python]": {
-        "analysis.autoImportCompletions": true,
-        "analysis.typeCheckingMode": "basic",
-        "defaultInterpreterPath": "./agent/venv/bin/python",
         "editor.codeActionsOnSave": {
             "source.organizeImports": "always"
         },
-        "editor.defaultFormatter": "charliermarsh.ruff",
-        "languageServer": "Pylance",
-        "linting.enabled": true,
-        "linting.mypyEnabled": true,
-        "linting.mypyPath": "./agent/venv/bin/mypy"
+        "editor.defaultFormatter": "charliermarsh.ruff"
     },
-    
+
     // Python testing settings
     "python.testing.pytestArgs": [
         "./agent/tests"
@@ -56,7 +49,7 @@
     "python.testing.unittestEnabled": false,
     "python.testing.pytestEnabled": true,
     "python.testing.cwd": "./agent",
-    
+
     // TypeScript/JavaScript settings
     "[typescript]": {
         "editor.defaultFormatter": "esbenp.prettier-vscode",
@@ -76,7 +69,7 @@
     "[javascriptreact]": {
         "editor.defaultFormatter": "esbenp.prettier-vscode"
     },
-    
+
     // JSON and other file settings
     "[json]": {
         "editor.defaultFormatter": "esbenp.prettier-vscode"
@@ -90,11 +83,11 @@
     "[markdown]": {
         "editor.defaultFormatter": "esbenp.prettier-vscode"
     },
-    
+
     // ESLint settings
     "eslint.workingDirectories": ["."],
     "eslint.format.enable": true,
-    
+
     // Tailwind CSS IntelliSense
     "tailwindCSS.includeLanguages": {
         "typescript": "typescript",
@@ -104,19 +97,15 @@
         ["clsx\\(([^)]*)\\)", "(?:'|\"|`)([^']*)(?:'|\"|`)"],
         ["cn\\(([^)]*)\\)", "(?:'|\"|`)([^']*)(?:'|\"|`)"]
     ],
-    
+
     // TypeScript settings
     "typescript.preferences.includePackageJsonAutoImports": "on",
     "typescript.suggest.autoImports": true,
     "typescript.updateImportsOnFileMove.enabled": "always",
-    
-    // Jest testing
-    "jest.jestCommandLine": "npm test",
-    "jest.autoRun": "off",
-    
+
     // Git settings
     "git.ignoreLimitWarning": true,
-    
+
     // Explorer settings
     "explorer.fileNesting.enabled": true,
     "explorer.fileNesting.patterns": {
