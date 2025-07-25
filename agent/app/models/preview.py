@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional, Dict
+
 
 class ContainerInfo(BaseModel):
     project_id: int
@@ -10,15 +10,18 @@ class ContainerInfo(BaseModel):
     compilation_complete: bool = False
     is_responding: bool = False
 
+
 class PreviewStatus(BaseModel):
     running: bool
-    url: Optional[str] = None
+    url: str | None = None
     compilation_complete: bool
     is_responding: bool
 
+
 class StartPreviewRequest(BaseModel):
     project_id: int
-    env_vars: Dict[str, str] = {}
+    env_vars: dict[str, str] = {}
+
 
 class StopPreviewRequest(BaseModel):
     project_id: int

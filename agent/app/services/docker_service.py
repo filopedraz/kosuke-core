@@ -1,17 +1,21 @@
-import docker
 import asyncio
-import random
-from typing import Dict, Optional
-from app.models.preview import ContainerInfo, PreviewStatus
-from app.utils.config import settings
 import logging
+import os
+import secrets
+
+import docker
+
+from app.models.preview import ContainerInfo
+from app.models.preview import PreviewStatus
+from app.utils.config import settings
 
 logger = logging.getLogger(__name__)
+
 
 class DockerService:
     def __init__(self):
         self.client = docker.from_env()
-        self.containers: Dict[int, ContainerInfo] = {}
+        self.containers: dict[int, ContainerInfo] = {}
         self.CONTAINER_NAME_PREFIX = "kosuke-preview-"
 
     async def is_docker_available(self) -> bool:
@@ -25,26 +29,26 @@ class DockerService:
 
     def _get_random_port(self, min_port: int = 3000, max_port: int = 4000) -> int:
         """Get a random port in range"""
-        return random.randint(min_port, max_port)
+        return min_port + secrets.randbelow(max_port - min_port + 1)
 
     def _get_container_name(self, project_id: int) -> str:
         """Generate container name for project"""
         return f"{self.CONTAINER_NAME_PREFIX}{project_id}"
 
-    async def _get_project_environment(self, project_id: int) -> Dict[str, str]:
+    async def _get_project_environment(self, project_id: int) -> dict[str, str]:
         """Get project-specific environment variables from database"""
         # TODO: Implement environment service integration
         return {}
 
-    def _prepare_container_environment(self, project_id: int, env_vars: Dict[str, str]) -> Dict[str, str]:
+    def _prepare_container_environment(self, project_id: int, env_vars: dict[str, str]) -> dict[str, str]:
         """Prepare environment variables for container"""
-        environment = {
+        db_password = os.getenv("POSTGRES_PASSWORD", "postgres")
+        return {
             "NODE_ENV": "development",
             "PORT": "3000",
-            "DATABASE_URL": f"postgres://postgres:postgres@postgres:5432/kosuke_project_{project_id}",
-            **env_vars
+            "DATABASE_URL": f"postgres://postgres:{db_password}@postgres:5432/kosuke_project_{project_id}",
+            **env_vars,
         }
-        return environment
 
     async def _ensure_project_database(self, project_id: int) -> None:
         """Ensure project has its own database in postgres"""
@@ -52,12 +56,9 @@ class DockerService:
             import asyncpg
 
             # Connect to postgres as admin
+            db_password = os.getenv("POSTGRES_PASSWORD", "postgres")
             conn = await asyncpg.connect(
-                host="postgres",
-                port=5432,
-                user="postgres",
-                password="postgres",
-                database="postgres"
+                host="postgres", port=5432, user="postgres", password=db_password, database="postgres"
             )
 
             # Create project database if it doesn't exist
@@ -74,7 +75,7 @@ class DockerService:
             logger.error(f"Error creating database for project {project_id}: {e}")
             # Don't fail the container start if database creation fails
 
-    async def start_preview(self, project_id: int, env_vars: Dict[str, str] = None) -> str:
+    async def start_preview(self, project_id: int, env_vars: dict[str, str] | None = None) -> str:
         """Start preview container for project"""
         if env_vars is None:
             env_vars = {}
@@ -88,11 +89,11 @@ class DockerService:
         # Check for existing Docker container
         try:
             existing_container = self.client.containers.get(container_name)
-            if existing_container.status == 'running':
+            if existing_container.status == "running":
                 # Container exists and running, extract port and reuse
                 ports = existing_container.ports
-                if '3000/tcp' in ports and ports['3000/tcp']:
-                    host_port = int(ports['3000/tcp'][0]['HostPort'])
+                if "3000/tcp" in ports and ports["3000/tcp"]:
+                    host_port = int(ports["3000/tcp"][0]["HostPort"])
                     url = f"http://localhost:{host_port}"
 
                     container_info = ContainerInfo(
@@ -101,7 +102,7 @@ class DockerService:
                         container_name=container_name,
                         port=host_port,
                         url=url,
-                        compilation_complete=True
+                        compilation_complete=True,
                     )
                     self.containers[project_id] = container_info
                     return url
@@ -126,13 +127,13 @@ class DockerService:
             image=settings.preview_default_image,  # Use the kosuke-template image
             name=container_name,
             command=["sh", "-c", "cd /app && npm run dev -- -H 0.0.0.0"],
-            ports={'3000/tcp': host_port},
-            volumes={project_path: {'bind': '/app', 'mode': 'rw'}},
-            working_dir='/app',
+            ports={"3000/tcp": host_port},
+            volumes={project_path: {"bind": "/app", "mode": "rw"}},
+            working_dir="/app",
             environment=environment,
-            network='kosuke_default',  # Connect to kosuke network for postgres access
+            network="kosuke_default",  # Connect to kosuke network for postgres access
             detach=True,
-            auto_remove=False
+            auto_remove=False,
         )
 
         url = f"http://localhost:{host_port}"
@@ -142,13 +143,18 @@ class DockerService:
             container_name=container_name,
             port=host_port,
             url=url,
-            compilation_complete=False
+            compilation_complete=False,
         )
 
         self.containers[project_id] = container_info
 
         # Start monitoring compilation in background
-        asyncio.create_task(self._monitor_compilation(project_id, container))
+        monitoring_task = asyncio.create_task(self._monitor_compilation(project_id, container))
+        # Store reference to prevent garbage collection
+        if not hasattr(self, "_monitoring_tasks"):
+            self._monitoring_tasks = set()
+        self._monitoring_tasks.add(monitoring_task)
+        monitoring_task.add_done_callback(self._monitoring_tasks.discard)
 
         return url
 
@@ -156,8 +162,8 @@ class DockerService:
         """Monitor container logs for compilation completion"""
         try:
             for log in container.logs(stream=True, follow=True):
-                log_str = log.decode('utf-8')
-                if 'compiled successfully' in log_str or 'ready started server' in log_str:
+                log_str = log.decode("utf-8")
+                if "compiled successfully" in log_str or "ready started server" in log_str:
                     if project_id in self.containers:
                         self.containers[project_id].compilation_complete = True
                     break
@@ -184,12 +190,7 @@ class DockerService:
     async def get_preview_status(self, project_id: int) -> PreviewStatus:
         """Get preview status for project"""
         if project_id not in self.containers:
-            return PreviewStatus(
-                running=False,
-                url=None,
-                compilation_complete=False,
-                is_responding=False
-            )
+            return PreviewStatus(running=False, url=None, compilation_complete=False, is_responding=False)
 
         container_info = self.containers[project_id]
 
@@ -197,17 +198,17 @@ class DockerService:
         is_responding = False
         try:
             import aiohttp
-            async with aiohttp.ClientSession() as session:
-                async with session.get(container_info.url, timeout=5) as response:
-                    is_responding = response.status == 200
-        except:
+
+            async with aiohttp.ClientSession() as session, session.get(container_info.url, timeout=5) as response:
+                is_responding = response.status == 200
+        except (aiohttp.ClientError, asyncio.TimeoutError):
             is_responding = False
 
         return PreviewStatus(
             running=True,
             url=container_info.url,
             compilation_complete=container_info.compilation_complete,
-            is_responding=is_responding
+            is_responding=is_responding,
         )
 
     async def stop_all_previews(self) -> None:
