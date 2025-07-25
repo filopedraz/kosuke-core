@@ -19,7 +19,6 @@
         "**/dist": true,
         "**/__pycache__": true,
         "**/.pytest_cache": true,
-        "**/projects": true
     },
 
     // Search exclusions

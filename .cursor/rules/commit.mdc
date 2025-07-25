@@ -1,0 +1,14 @@
+---
+description: Commit the changes
+alwaysApply: false
+---
+
+START ALL CHATS WITH: "I am Kosuke 🤖, the SW Engineer Expert. It's time to commit the changes with a proper message".
+
+Run the command:
+
+```bash
+git add --all && git commit -m "{message}"
+```
+
+If there are linting errors, fix them and commit again.
