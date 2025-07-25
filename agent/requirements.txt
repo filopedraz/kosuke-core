@@ -9,7 +9,7 @@ watchdog==6.0.0
 python-multipart==0.0.12
 pydantic-settings==2.7.0
 psutil==6.1.0
-requests==2.32.3
+requests==2.32.4
 aiohttp==3.11.10
 docker==7.0.0
 asyncpg==0.29.0
