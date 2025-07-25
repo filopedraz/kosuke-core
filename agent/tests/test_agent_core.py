@@ -1,6 +1,8 @@
 """Tests for core agent functionality"""
 
 import json
+import tempfile
+from pathlib import Path
 from unittest.mock import AsyncMock
 from unittest.mock import MagicMock
 from unittest.mock import patch
@@ -58,8 +60,11 @@ class TestAgent:
             mock_execute.return_value = True
 
             # Mock webhook service to prevent real webhook calls
-            with patch.object(agent.webhook_service, "send_action_update") as mock_webhook:
-                mock_webhook.return_value = None
+            with patch.object(agent.webhook_service, "send_action") as mock_webhook_action, patch.object(
+                agent.webhook_service, "send_completion"
+            ) as mock_webhook_completion:
+                mock_webhook_action.return_value = True
+                mock_webhook_completion.return_value = True
 
                 # Collect streaming results
                 results = []
@@ -96,8 +101,11 @@ class TestAgent:
             mock_execute.return_value = True
 
             # Mock webhook service to prevent real webhook calls
-            with patch.object(agent.webhook_service, "send_action_update") as mock_webhook:
-                mock_webhook.return_value = None
+            with patch.object(agent.webhook_service, "send_action") as mock_webhook_action, patch.object(
+                agent.webhook_service, "send_completion"
+            ) as mock_webhook_completion:
+                mock_webhook_action.return_value = True
+                mock_webhook_completion.return_value = True
 
                 results = []
                 async for update in agent.run("Create components and update files"):
@@ -159,8 +167,11 @@ class TestAgent:
             mock_execute.return_value = True
 
             # Mock webhook service to prevent real webhook calls
-            with patch.object(agent.webhook_service, "send_action_update") as mock_webhook:
-                mock_webhook.return_value = None
+            with patch.object(agent.webhook_service, "send_action") as mock_webhook_action, patch.object(
+                agent.webhook_service, "send_completion"
+            ) as mock_webhook_completion:
+                mock_webhook_action.return_value = True
+                mock_webhook_completion.return_value = True
 
                 results = []
                 async for update in agent.run("Keep creating components"):
@@ -185,7 +196,7 @@ class TestActionExecutor:
         assert executor.project_id == 123
 
     @patch("app.utils.config.settings.projects_dir")
-    @patch("app.tools.file_tools.get_tool")
+    @patch("app.core.actions.get_tool")
     @pytest.mark.asyncio()
     async def test_execute_create_file_action(self, mock_get_tool, mock_projects_dir, temp_project_dir):
         """Test executing create file action"""
@@ -212,7 +223,7 @@ class TestActionExecutor:
         mock_tool.execute.assert_called_once()
 
     @patch("app.utils.config.settings.projects_dir")
-    @patch("app.tools.file_tools.get_tool")
+    @patch("app.core.actions.get_tool")
     @pytest.mark.asyncio()
     async def test_execute_edit_file_action(self, mock_get_tool, mock_projects_dir, temp_project_dir):
         """Test executing edit file action"""
@@ -235,7 +246,7 @@ class TestActionExecutor:
         mock_tool.execute.assert_called_once()
 
     @patch("app.utils.config.settings.projects_dir")
-    @patch("app.tools.file_tools.get_tool")
+    @patch("app.core.actions.get_tool")
     @pytest.mark.asyncio()
     async def test_execute_unknown_action_type(self, mock_get_tool, mock_projects_dir, temp_project_dir):
         """Test executing when tool is not found"""
@@ -257,7 +268,7 @@ class TestActionExecutor:
         assert result is False
 
     @patch("app.utils.config.settings.projects_dir")
-    @patch("app.tools.file_tools.get_tool")
+    @patch("app.core.actions.get_tool")
     @pytest.mark.asyncio()
     async def test_execute_action_tool_error(self, mock_get_tool, mock_projects_dir, temp_project_dir):
         """Test executing action when tool raises an error"""
@@ -277,7 +288,7 @@ class TestActionExecutor:
         assert result is False
 
     @patch("app.utils.config.settings.projects_dir")
-    @patch("app.tools.file_tools.get_tool")
+    @patch("app.core.actions.get_tool")
     @pytest.mark.asyncio()
     async def test_action_executor_success_flow(self, mock_get_tool, mock_projects_dir, temp_project_dir):
         """Test successful action execution flow"""
@@ -295,4 +306,6 @@ class TestActionExecutor:
         result = await executor.execute_action(action)
 
         assert result is True
-        mock_tool.execute.assert_called_once_with(action)
+        # Tool is called with full path and content, not the action object
+        expected_path = str(Path(tempfile.gettempdir()) / "test-projects" / "123" / "src" / "test.tsx")
+        mock_tool.execute.assert_called_once_with(expected_path, "test content")
