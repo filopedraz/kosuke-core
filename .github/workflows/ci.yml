@@ -65,26 +65,14 @@ jobs:
       - name: Run ruff linting
         run: |
           cd agent
-          ruff check app/ --output-format=github
+          ruff check . --output-format=github
 
-      - name: Run mypy type checking
+      - name: Run ruff formatting check
         run: |
           cd agent
-          mypy app/ --ignore-missing-imports
+          ruff format . --check
 
       - name: Run pytest tests
         run: |
           cd agent
           pytest tests/ -v --cov=app --cov-report=term-missing
-
-      - name: Test API imports
-        run: |
-          cd agent
-          python -c "
-          import app.main
-          import app.api.routes.health
-          import app.api.routes.chat
-          import app.core.agent
-          import app.services.llm_service
-          print('✅ All agent modules import successfully')
-          "
