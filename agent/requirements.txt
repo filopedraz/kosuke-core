@@ -10,4 +10,13 @@ python-multipart==0.0.12
 pydantic-settings==2.7.0
 psutil==6.1.0
 requests==2.32.3
-aiohttp==3.11.10 
+aiohttp==3.11.10
+
+# Testing dependencies
+pytest==7.4.3
+pytest-asyncio==0.21.1
+pytest-cov==4.1.0
+mypy==1.7.1
+ruff==0.1.7
+bandit[toml]==1.7.5
+httpx==0.26.0 

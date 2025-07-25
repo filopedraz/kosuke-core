@@ -7,8 +7,8 @@ on:
     types: [ opened, synchronize, reopened ]
 
 jobs:
-  test:
-    name: Test and Lint
+  test-nextjs:
+    name: Test and Lint Next.js
     runs-on: ubuntu-latest
     
     steps:
@@ -37,3 +37,54 @@ jobs:
         
       - name: Build application
         run: npm run build
+
+  test-agent:
+    name: Test Python Agent
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: 'agent/requirements.txt'
+
+      - name: Install Python dependencies
+        run: |
+          cd agent
+          pip install -r requirements.txt
+
+      - name: Copy environment variables
+        run: |
+          cd agent
+          if [ -f .env.example ]; then cp .env.example .env; fi
+
+      - name: Run ruff linting
+        run: |
+          cd agent
+          ruff check app/ --output-format=github
+
+      - name: Run mypy type checking
+        run: |
+          cd agent
+          mypy app/ --ignore-missing-imports
+
+      - name: Run pytest tests
+        run: |
+          cd agent
+          pytest tests/ -v --cov=app --cov-report=term-missing
+
+      - name: Test API imports
+        run: |
+          cd agent
+          python -c "
+          import app.main
+          import app.api.routes.health
+          import app.api.routes.chat
+          import app.core.agent
+          import app.services.llm_service
+          print('✅ All agent modules import successfully')
+          "
