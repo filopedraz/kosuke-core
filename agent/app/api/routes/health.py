@@ -1,5 +1,5 @@
 import platform
-import time
+from datetime import datetime
 
 import psutil
 from fastapi import APIRouter
@@ -23,9 +23,9 @@ async def health_check():
 
         return {
             "status": "healthy",
-            "service": "agentic-coding-pipeline",
+            "service": "Agentic Coding Pipeline",
             "version": "1.0.0",
-            "timestamp": time.time(),
+            "timestamp": datetime.now().isoformat(),
             "configuration": {
                 "max_iterations": settings.max_iterations,
                 "max_tokens": settings.max_tokens,
@@ -48,17 +48,17 @@ async def health_check():
     except Exception as e:
         return {
             "status": "unhealthy",
-            "service": "agentic-coding-pipeline",
+            "service": "Agentic Coding Pipeline",
             "version": "1.0.0",
             "error": str(e),
-            "timestamp": time.time(),
+            "timestamp": datetime.now().isoformat(),
         }
 
 
 @router.get("/health/simple")
 async def simple_health_check():
     """Simple health check for basic monitoring"""
-    return {"status": "healthy", "service": "agentic-coding-pipeline", "version": "1.0.0"}
+    return {"status": "healthy", "service": "Agentic Coding Pipeline", "version": "1.0.0"}
 
 
 @router.get("/")
@@ -66,7 +66,7 @@ async def root():
     """Root endpoint with service information"""
     return {
         "message": "Agentic Coding Pipeline API",
-        "service": "agentic-coding-pipeline",
+        "service": "Agentic Coding Pipeline",
         "version": "1.0.0",
         "description": "AI-powered code generation microservice built with FastAPI, PydanticAI, and Claude 3.5 Sonnet",
         "endpoints": {

@@ -1,0 +1,22 @@
+{
+    "makefile.configureOnOpen": false,
+    "editor.formatOnSave": true,
+    "[python]": {
+        "analysis.autoImportCompletions": true,
+        "analysis.typeCheckingMode": "basic",
+        "defaultInterpreterPath": "/venv/bin/python",
+        "editor.codeActionsOnSave": {
+            "source.organizeImports": "always"
+        },
+        "editor.defaultFormatter": "charliermarsh.ruff",
+        "languageServer": "Pylance",
+        "linting.enabled": true,
+        "linting.mypyEnabled": true,
+        "linting.mypyPath": "/venv/bin/mypy"
+    },
+    "python.testing.pytestArgs": [
+        "."
+    ],
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestEnabled": true
+}

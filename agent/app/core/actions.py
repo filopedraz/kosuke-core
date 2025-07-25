@@ -31,8 +31,8 @@ class ActionExecutor:
             normalized_action = normalize_action(action)
             print(f"🔧 Normalized action: {normalized_action.dict()}")
 
-            # Get the appropriate tool
-            tool_name = normalized_action.action.value
+            # Get the appropriate tool name (action is already a string due to use_enum_values=True)
+            tool_name = str(normalized_action.action)
             print(f"🔧 Looking for tool with name: {tool_name}")
 
             tool = get_tool(tool_name)
@@ -65,22 +65,26 @@ class ActionExecutor:
             action_type = normalized_action.action
             full_path = self._get_full_path(normalized_action.file_path)
 
-            # Handle file operations that require content
-            if action_type in [ActionType.EDIT_FILE, ActionType.CREATE_FILE]:
+            # Handle file operations that require content (compare string values)
+            if action_type in [ActionType.EDIT_FILE.value, ActionType.CREATE_FILE.value]:
                 return await self._handle_content_action(normalized_action, tool, full_path)
 
-            # Handle file operations that don't require content
-            if action_type in [ActionType.DELETE_FILE, ActionType.REMOVE_DIRECTORY, ActionType.CREATE_DIRECTORY]:
+            # Handle file operations that don't require content (compare string values)
+            if action_type in [
+                ActionType.DELETE_FILE.value,
+                ActionType.REMOVE_DIRECTORY.value,
+                ActionType.CREATE_DIRECTORY.value,
+            ]:
                 return await self._handle_path_action(normalized_action, tool, full_path)
 
-            # Handle read file action
-            if action_type == ActionType.READ_FILE:
+            # Handle read file action (compare string values)
+            if action_type == ActionType.READ_FILE.value:
                 print(f"📝 Executing read on full path: {full_path}")
                 result = await tool.execute(str(full_path))
                 return result.get("success", False)
 
-            # Handle search action
-            if action_type == ActionType.SEARCH:
+            # Handle search action (compare string values)
+            if action_type == ActionType.SEARCH.value:
                 print(f"📝 Executing search for: {normalized_action.file_path}")
                 result = await tool.execute(normalized_action.file_path)
                 return result.get("success", False)
