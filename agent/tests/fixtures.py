@@ -102,14 +102,11 @@ def create_sample_project_structure():
 
 
 # Mock action objects using the actual Action model
-def create_mock_action(action_type: ActionType, file_path: str, content: str = "", message: str = "Test action") -> Action:
+def create_mock_action(
+    action_type: ActionType, file_path: str, content: str = "", message: str = "Test action"
+) -> Action:
     """Create a mock Action object with proper typing"""
-    return Action(
-        action=action_type,
-        file_path=file_path,
-        content=content,
-        message=message
-    )
+    return Action(action=action_type, file_path=file_path, content=content, message=message)
 
 
 # Mock LLM response structures - using plain dictionaries that can be JSON serialized
@@ -120,10 +117,10 @@ MOCK_LLM_RESPONSE = {
             "action": "createFile",
             "filePath": "src/components/Button.tsx",
             "content": "export const Button = () => <button>Click me</button>;",
-            "message": "Creating a simple button component"
+            "message": "Creating a simple button component",
         }
     ],
-    "reasoning": "Creating a simple button component"
+    "reasoning": "Creating a simple button component",
 }
 
 MOCK_COMPLEX_LLM_RESPONSE = {
@@ -133,16 +130,16 @@ MOCK_COMPLEX_LLM_RESPONSE = {
             "action": "createFile",
             "filePath": "src/components/Modal.tsx",
             "content": "export const Modal = ({ children, onClose }) => { /* modal implementation */ };",
-            "message": "Creating modal component"
+            "message": "Creating modal component",
         },
         {
             "action": "editFile",
             "filePath": "src/index.js",
             "content": "console.log('updated test');",
-            "message": "Updating index file"
-        }
+            "message": "Updating index file",
+        },
     ],
-    "reasoning": "Creating a modal component and updating the index file"
+    "reasoning": "Creating a modal component and updating the index file",
 }
 
 
@@ -196,11 +193,10 @@ def mock_anthropic_client():
 @pytest.fixture()
 def mock_pydantic_ai_model():
     """Mock PydanticAI AnthropicModel"""
-    mock_model = MagicMock()
-    return mock_model
+    return MagicMock()
 
 
-def mock_anthropic_response(content: dict = None) -> Any:
+def mock_anthropic_response(content: dict | None = None) -> Any:
     """Create a mock PydanticAI response"""
     mock_response = MagicMock()
     mock_response.data = json.dumps(content or MOCK_LLM_RESPONSE)
@@ -210,20 +206,13 @@ def mock_anthropic_response(content: dict = None) -> Any:
 @pytest.fixture()
 def sample_chat_request():
     """Sample chat request for testing"""
-    return ChatRequest(
-        project_id=123,
-        prompt="Create a button component",
-        chat_history=[]
-    )
+    return ChatRequest(project_id=123, prompt="Create a button component", chat_history=[])
 
 
 @pytest.fixture()
 def sample_chat_message():
     """Sample chat message for testing"""
-    return ChatMessage(
-        role="user",
-        content="Create a new React component"
-    )
+    return ChatMessage(role="user", content="Create a new React component")
 
 
 @pytest.fixture()

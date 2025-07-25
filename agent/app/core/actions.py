@@ -70,7 +70,11 @@ class ActionExecutor:
                 return await self._handle_content_action(normalized_action, tool, full_path)
 
             # Handle file operations that don't require content (compare string values)
-            if action_type in [ActionType.DELETE_FILE.value, ActionType.REMOVE_DIRECTORY.value, ActionType.CREATE_DIRECTORY.value]:
+            if action_type in [
+                ActionType.DELETE_FILE.value,
+                ActionType.REMOVE_DIRECTORY.value,
+                ActionType.CREATE_DIRECTORY.value,
+            ]:
                 return await self._handle_path_action(normalized_action, tool, full_path)
 
             # Handle read file action (compare string values)

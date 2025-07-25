@@ -323,7 +323,9 @@ Files ({len(files)} total):
 
     def _should_force_execution(self, actions: list[Action], read_files: set[str], iteration_count: int) -> bool:
         """Determine if we should force execution mode"""
-        duplicate_reads = [a for a in actions if a.action == "readFile" and a.file_path in read_files]  # action is already a string
+        duplicate_reads = [
+            a for a in actions if a.action == "readFile" and a.file_path in read_files
+        ]  # action is already a string
 
         return len(duplicate_reads) >= 3 or iteration_count >= int(self.max_iterations * 0.8)
 

@@ -68,9 +68,9 @@ def test_health_endpoint_simple(client: TestClient):
         if response.status_code == 200:
             data = response.json()
             assert data["status"] == "healthy"
-    except Exception:
+    except Exception as e:
         # If simple endpoint doesn't exist, just pass
-        pass
+        print(f"Health endpoint test failed: {e}")
 
 
 def test_health_endpoint_response_format(client: TestClient):
@@ -109,7 +109,7 @@ def test_health_endpoint_status_values(client: TestClient):
 
 def test_multiple_health_requests(client: TestClient):
     """Test multiple consecutive health requests"""
-    for i in range(5):
+    for _ in range(5):
         response = client.get("/api/health")
         assert response.status_code == 200
         data = response.json()

@@ -34,27 +34,28 @@ class TestErrorHandling:
         ]
 
         for case in test_cases:
-            response = client.post("/api/chat/stream", json={
-                "project_id": case["project_id"],
-                "prompt": "Test message"
-            })
+            response = client.post(
+                "/api/chat/stream", json={"project_id": case["project_id"], "prompt": "Test message"}
+            )
 
             assert response.status_code in case["expected_codes"]
 
-    @patch('app.utils.config.settings.projects_dir')
+    @patch("app.utils.config.settings.projects_dir")
     def test_nonexistent_project_directory(self, mock_projects_dir):
         """Test handling of nonexistent project directory"""
-        mock_projects_dir.return_value = '/nonexistent/path'
+        mock_projects_dir.return_value = "/nonexistent/path"
 
         # Should handle gracefully without crashing
         agent = Agent(project_id=999)
         assert agent.project_id == 999
 
-    @patch('app.utils.config.settings.projects_dir')
-    @patch.object(LLMService, 'generate_completion')
-    @patch('app.services.fs_service.fs_service')
+    @patch("app.utils.config.settings.projects_dir")
+    @patch.object(LLMService, "generate_completion")
+    @patch("app.services.fs_service.fs_service")
     @pytest.mark.asyncio()
-    async def test_llm_service_timeout(self, mock_fs_service, mock_generate_completion, mock_projects_dir, temp_project_dir):
+    async def test_llm_service_timeout(
+        self, mock_fs_service, mock_generate_completion, mock_projects_dir, temp_project_dir
+    ):
         """Test LLM service timeout handling"""
         mock_projects_dir.return_value = str(temp_project_dir.parent)
 
@@ -80,11 +81,13 @@ class TestErrorHandling:
         processing_errors = [r for r in error_updates if r.get("error_type") == "processing"]
         assert len(processing_errors) > 0, "No processing errors found"
 
-    @patch('app.utils.config.settings.projects_dir')
-    @patch.object(LLMService, 'generate_completion')
-    @patch('app.services.fs_service.fs_service')
+    @patch("app.utils.config.settings.projects_dir")
+    @patch.object(LLMService, "generate_completion")
+    @patch("app.services.fs_service.fs_service")
     @pytest.mark.asyncio()
-    async def test_llm_service_api_error(self, mock_fs_service, mock_generate_completion, mock_projects_dir, temp_project_dir):
+    async def test_llm_service_api_error(
+        self, mock_fs_service, mock_generate_completion, mock_projects_dir, temp_project_dir
+    ):
         """Test LLM service API error handling"""
         mock_projects_dir.return_value = str(temp_project_dir.parent)
 
@@ -117,9 +120,10 @@ class TestErrorHandling:
             test_file.chmod(0o444)  # Read-only
 
             # Attempt to write to read-only file should be handled gracefully
+            # Use asyncio.run for async method
+            import asyncio
+
             with pytest.raises((PermissionError, OSError)):
-                # Use asyncio.run for async method
-                import asyncio
                 asyncio.run(fs_service.create_file(str(test_file), "new content"))
 
         except (OSError, NotImplementedError):
@@ -128,11 +132,7 @@ class TestErrorHandling:
 
     def test_malformed_json_in_request(self, client: TestClient):
         """Test handling of malformed JSON in requests"""
-        response = client.post(
-            "/api/chat/stream",
-            data="malformed json",
-            headers={"Content-Type": "application/json"}
-        )
+        response = client.post("/api/chat/stream", data="malformed json", headers={"Content-Type": "application/json"})
 
         assert response.status_code == 422  # Unprocessable Entity
 
@@ -149,8 +149,8 @@ class TestErrorHandling:
             response = client.post("/api/chat/stream", json=payload)
             assert response.status_code == 422
 
-    @patch('app.utils.config.settings.projects_dir')
-    @patch('app.services.fs_service.fs_service')
+    @patch("app.utils.config.settings.projects_dir")
+    @patch("app.services.fs_service.fs_service")
     @pytest.mark.asyncio()
     async def test_file_system_errors(self, mock_fs_service, mock_projects_dir, temp_project_dir):
         """Test handling of file system errors"""
@@ -168,14 +168,9 @@ class TestErrorHandling:
 
         executor = ActionExecutor(project_id=123)
 
-        action = create_mock_action(
-            ActionType.CREATE_FILE,
-            "test.js",
-            "test content",
-            "Creating test file"
-        )
+        action = create_mock_action(ActionType.CREATE_FILE, "test.js", "test content", "Creating test file")
 
-        with patch('app.tools.file_tools.get_tool') as mock_get_tool:
+        with patch("app.tools.file_tools.get_tool") as mock_get_tool:
             mock_tool = MagicMock()
             mock_tool.execute = AsyncMock(return_value={"success": False, "error": "Disk full"})
             mock_get_tool.return_value = mock_tool
@@ -184,7 +179,7 @@ class TestErrorHandling:
 
             assert result is False
 
-    @patch('app.utils.config.settings.projects_dir')
+    @patch("app.utils.config.settings.projects_dir")
     @pytest.mark.asyncio()
     async def test_large_file_handling_errors(self, mock_projects_dir, temp_project_dir):
         """Test handling of large file errors"""
@@ -193,16 +188,18 @@ class TestErrorHandling:
         fs_service = FileSystemService()
 
         # Try to create an extremely large file (simulate memory error)
-        with patch.object(fs_service, 'create_file') as mock_create:
+        with patch.object(fs_service, "create_file") as mock_create:
             mock_create.side_effect = MemoryError("Not enough memory")
 
             with pytest.raises(MemoryError):
                 await fs_service.create_file("huge_file.txt", "x" * (1024 * 1024 * 1024))  # 1GB
 
-    @patch('app.core.agent.Agent')
-    @patch.object(LLMService, 'generate_completion')
-    @patch('app.services.fs_service.fs_service')
-    def test_concurrent_requests_error_isolation(self, mock_fs_service, mock_generate_completion, mock_agent_class, client: TestClient):
+    @patch("app.core.agent.Agent")
+    @patch.object(LLMService, "generate_completion")
+    @patch("app.services.fs_service.fs_service")
+    def test_concurrent_requests_error_isolation(
+        self, mock_fs_service, mock_generate_completion, mock_agent_class, client: TestClient
+    ):
         """Test that errors in one request don't affect others"""
         import threading
 
@@ -214,10 +211,7 @@ class TestErrorHandling:
         def make_request(should_fail=False):
             if should_fail:
                 # Make an invalid request
-                response = client.post("/api/chat/stream", json={
-                    "project_id": "invalid",
-                    "prompt": "Test"
-                })
+                response = client.post("/api/chat/stream", json={"project_id": "invalid", "prompt": "Test"})
             else:
                 # Make a valid request with proper mocking
                 mock_instance = MagicMock()
@@ -227,10 +221,7 @@ class TestErrorHandling:
                 mock_fs_service.get_project_path.return_value = "/mock/path"
                 mock_fs_service.scan_directory.return_value = {"files": []}
 
-                response = client.post("/api/chat/stream", json={
-                    "project_id": 123,
-                    "prompt": "Valid request"
-                })
+                response = client.post("/api/chat/stream", json={"project_id": 123, "prompt": "Valid request"})
 
             results.append(response.status_code)
 
@@ -254,20 +245,20 @@ class TestErrorHandling:
         assert 200 in results  # Some successful
         assert 422 in results  # Some failed
 
-    @patch('app.utils.config.settings.projects_dir')
-    @patch.object(LLMService, 'generate_completion')
-    @patch('app.services.fs_service.fs_service')
+    @patch("app.utils.config.settings.projects_dir")
+    @patch.object(LLMService, "generate_completion")
+    @patch("app.services.fs_service.fs_service")
     @pytest.mark.asyncio()
-    async def test_webhook_service_errors(self, mock_fs_service, mock_generate_completion, mock_projects_dir, temp_project_dir):
+    async def test_webhook_service_errors(
+        self, mock_fs_service, mock_generate_completion, mock_projects_dir, temp_project_dir
+    ):
         """Test handling of webhook service errors"""
         mock_projects_dir.return_value = str(temp_project_dir.parent)
 
         # Mock LLM service
-        mock_generate_completion.return_value = json.dumps({
-            "thinking": False,
-            "actions": [],
-            "reasoning": "No actions needed"
-        })
+        mock_generate_completion.return_value = json.dumps(
+            {"thinking": False, "actions": [], "reasoning": "No actions needed"}
+        )
 
         # Mock file system service
         mock_fs_service.get_project_path.return_value = temp_project_dir
@@ -275,7 +266,7 @@ class TestErrorHandling:
 
         agent = Agent(project_id=123)
 
-        with patch.object(agent.webhook_service, 'send_action_update') as mock_webhook:
+        with patch.object(agent.webhook_service, "send_action_update") as mock_webhook:
             mock_webhook.side_effect = Exception("Webhook service unavailable")
 
             # Agent should continue working even if webhooks fail
@@ -288,11 +279,7 @@ class TestErrorHandling:
 
     def test_invalid_content_type(self, client: TestClient):
         """Test handling of invalid content type"""
-        response = client.post(
-            "/api/chat/stream",
-            data="not json",
-            headers={"Content-Type": "text/plain"}
-        )
+        response = client.post("/api/chat/stream", data="not json", headers={"Content-Type": "text/plain"})
         assert response.status_code == 422
 
     def test_request_size_limits(self, client: TestClient):
@@ -300,16 +287,13 @@ class TestErrorHandling:
         # Create a very large prompt
         large_prompt = "A" * (10 * 1024 * 1024)  # 10MB
 
-        response = client.post("/api/chat/stream", json={
-            "project_id": 123,
-            "prompt": large_prompt
-        })
+        response = client.post("/api/chat/stream", json={"project_id": 123, "prompt": large_prompt})
 
         # Should either accept it or reject gracefully
         assert response.status_code in [200, 413, 422, 500]
 
-    @patch('app.utils.config.settings.projects_dir')
-    @patch('app.services.fs_service.fs_service')
+    @patch("app.utils.config.settings.projects_dir")
+    @patch("app.services.fs_service.fs_service")
     @pytest.mark.asyncio()
     async def test_action_execution_rollback(self, mock_fs_service, mock_projects_dir, temp_project_dir):
         """Test rollback on action execution failure"""
@@ -326,14 +310,9 @@ class TestErrorHandling:
         mock_fs_service.file_exists.return_value = False
         mock_fs_service.create_file = AsyncMock()
 
-        action1 = create_mock_action(
-            ActionType.CREATE_FILE,
-            "test1.js",
-            "content1",
-            "Creating first file"
-        )
+        action1 = create_mock_action(ActionType.CREATE_FILE, "test1.js", "content1", "Creating first file")
 
-        with patch('app.tools.file_tools.get_tool') as mock_get_tool:
+        with patch("app.tools.file_tools.get_tool") as mock_get_tool:
             # First action succeeds
             mock_tool = MagicMock()
             mock_tool.execute = AsyncMock(return_value={"success": True})
@@ -345,12 +324,7 @@ class TestErrorHandling:
             # Second action fails
             mock_tool.execute = AsyncMock(return_value={"success": False, "error": "Disk error"})
 
-            action2 = create_mock_action(
-                ActionType.CREATE_FILE,
-                "test2.js",
-                "content2",
-                "Creating second file"
-            )
+            action2 = create_mock_action(ActionType.CREATE_FILE, "test2.js", "content2", "Creating second file")
 
             result2 = await executor.execute_action(action2)
             assert result2 is False
@@ -364,15 +338,12 @@ class TestErrorHandling:
         ]
 
         for test_string in problematic_strings:
-            response = client.post("/api/chat/stream", json={
-                "project_id": 123,
-                "prompt": test_string
-            })
+            response = client.post("/api/chat/stream", json={"project_id": 123, "prompt": test_string})
 
             # Should handle gracefully without crashing
             assert response.status_code in [200, 400, 422, 500]
 
-    @patch('app.utils.config.settings.projects_dir')
+    @patch("app.utils.config.settings.projects_dir")
     def test_path_traversal_security(self, mock_projects_dir, temp_project_dir):
         """Test security against path traversal attacks"""
         mock_projects_dir.return_value = str(temp_project_dir.parent)
@@ -391,18 +362,21 @@ class TestErrorHandling:
             # Should either block the path or handle the error gracefully
             try:
                 import asyncio
+
                 asyncio.run(fs_service.read_file(dangerous_path))
                 # If it doesn't raise an exception, ensure it's not reading sensitive files
-                assert False, f"Path traversal not blocked for: {dangerous_path}"
+                pytest.fail(f"Path traversal not blocked for: {dangerous_path}")
             except (ValueError, PermissionError, FileNotFoundError, OSError):
                 # Expected - should be blocked
                 pass
 
-    @patch('app.utils.config.settings.projects_dir')
-    @patch.object(LLMService, 'generate_completion')
-    @patch('app.services.fs_service.fs_service')
+    @patch("app.utils.config.settings.projects_dir")
+    @patch.object(LLMService, "generate_completion")
+    @patch("app.services.fs_service.fs_service")
     @pytest.mark.asyncio()
-    async def test_memory_exhaustion_protection(self, mock_fs_service, mock_generate_completion, mock_projects_dir, temp_project_dir):
+    async def test_memory_exhaustion_protection(
+        self, mock_fs_service, mock_generate_completion, mock_projects_dir, temp_project_dir
+    ):
         """Test protection against memory exhaustion"""
         mock_projects_dir.return_value = str(temp_project_dir.parent)
 
@@ -415,10 +389,10 @@ class TestErrorHandling:
                     "action": "createFile",
                     "filePath": "huge.txt",
                     "content": huge_content,
-                    "message": "Creating huge file"
+                    "message": "Creating huge file",
                 }
             ],
-            "reasoning": "Creating huge file"
+            "reasoning": "Creating huge file",
         }
 
         mock_generate_completion.return_value = json.dumps(mock_response_data)

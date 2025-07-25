@@ -13,11 +13,7 @@ class MockContextService:
 
     def analyze_project(self, project_path: str) -> dict:
         """Mock project analysis"""
-        return {
-            "framework": "react",
-            "language": "javascript",
-            "key_files": ["package.json", "src/index.js"]
-        }
+        return {"framework": "react", "language": "javascript", "key_files": ["package.json", "src/index.js"]}
 
     def get_relevant_files(self, project_path: str, query: str = "") -> list:
         """Mock relevant files getter"""
@@ -25,7 +21,7 @@ class MockContextService:
             {"path": "src/components/Button.tsx", "relevance": 0.9, "type": "component"},
             {"path": "src/utils/helpers.ts", "relevance": 0.7, "type": "utility"},
             {"path": "package.json", "relevance": 0.8, "type": "config"},
-            {"path": "README.md", "relevance": 0.3, "type": "documentation"}
+            {"path": "README.md", "relevance": 0.3, "type": "documentation"},
         ]
 
 
@@ -71,12 +67,12 @@ class TestContextAnalysis:
 
         # Mock for Next.js detection
         mock_service = MockContextService()
-        with patch.object(mock_service, 'analyze_project') as mock_analyze:
+        with patch.object(mock_service, "analyze_project") as mock_analyze:
             mock_analyze.return_value = {
                 "framework": "next.js",
                 "language": "javascript",
                 "key_files": ["package.json", "next.config.js"],
-                "has_app_router": False
+                "has_app_router": False,
             }
 
             result = mock_service.analyze_project(str(temp_project_dir))
@@ -96,12 +92,8 @@ class TestContextAnalysis:
         (temp_project_dir / "package.json").write_text(package_json_content)
 
         mock_service = MockContextService()
-        with patch.object(mock_service, 'analyze_project') as mock_analyze:
-            mock_analyze.return_value = {
-                "framework": "vue",
-                "language": "javascript",
-                "key_files": ["package.json"]
-            }
+        with patch.object(mock_service, "analyze_project") as mock_analyze:
+            mock_analyze.return_value = {"framework": "vue", "language": "javascript", "key_files": ["package.json"]}
 
             result = mock_service.analyze_project(str(temp_project_dir))
 
@@ -114,12 +106,12 @@ class TestContextAnalysis:
         (temp_project_dir / "src" / "index.ts").write_text("const test: string = 'hello';")
 
         mock_service = MockContextService()
-        with patch.object(mock_service, 'analyze_project') as mock_analyze:
+        with patch.object(mock_service, "analyze_project") as mock_analyze:
             mock_analyze.return_value = {
                 "framework": "react",
                 "language": "typescript",
                 "key_files": ["tsconfig.json", "src/index.ts"],
-                "has_typescript": True
+                "has_typescript": True,
             }
 
             result = mock_service.analyze_project(str(temp_project_dir))
@@ -130,15 +122,7 @@ class TestContextAnalysis:
     def test_project_structure_analysis(self, temp_project_dir):
         """Test analysis of project structure"""
         # Create a more complex project structure
-        directories = [
-            "src/components",
-            "src/pages",
-            "src/hooks",
-            "src/utils",
-            "public",
-            "styles",
-            "__tests__"
-        ]
+        directories = ["src/components", "src/pages", "src/hooks", "src/utils", "public", "styles", "__tests__"]
 
         for directory in directories:
             (temp_project_dir / directory).mkdir(parents=True, exist_ok=True)
@@ -150,14 +134,14 @@ class TestContextAnalysis:
             "src/pages/index.tsx",
             "src/hooks/useAuth.ts",
             "src/utils/helpers.ts",
-            "__tests__/Button.test.tsx"
+            "__tests__/Button.test.tsx",
         ]
 
         for file_path in files:
             (temp_project_dir / file_path).write_text("// Test content")
 
         mock_service = MockContextService()
-        with patch.object(mock_service, 'analyze_project') as mock_analyze:
+        with patch.object(mock_service, "analyze_project") as mock_analyze:
             mock_analyze.return_value = {
                 "framework": "react",
                 "language": "typescript",
@@ -167,9 +151,9 @@ class TestContextAnalysis:
                     "has_hooks": True,
                     "has_tests": True,
                     "component_count": 2,
-                    "page_count": 1
+                    "page_count": 1,
                 },
-                "key_files": files[:5]  # Limit to important files
+                "key_files": files[:5],  # Limit to important files
             }
 
             result = mock_service.analyze_project(str(temp_project_dir))
@@ -197,7 +181,7 @@ class TestContextAnalysis:
         (temp_project_dir / "package.json").write_text(package_json_content)
 
         mock_service = MockContextService()
-        with patch.object(mock_service, 'analyze_project') as mock_analyze:
+        with patch.object(mock_service, "analyze_project") as mock_analyze:
             mock_analyze.return_value = {
                 "framework": "react",
                 "dependencies": {
@@ -205,9 +189,9 @@ class TestContextAnalysis:
                     "utility_libraries": ["lodash"],
                     "http_clients": ["axios"],
                     "testing_frameworks": ["jest"],
-                    "type_definitions": ["@types/react"]
+                    "type_definitions": ["@types/react"],
                 },
-                "has_typescript": True
+                "has_typescript": True,
             }
 
             result = mock_service.analyze_project(str(temp_project_dir))
@@ -257,27 +241,27 @@ class TestContextAnalysis:
         (temp_project_dir / "src" / "hooks" / "useApi.ts").write_text(hook_content)
 
         mock_service = MockContextService()
-        with patch.object(mock_service, 'analyze_project') as mock_analyze:
+        with patch.object(mock_service, "analyze_project") as mock_analyze:
             mock_analyze.return_value = {
                 "framework": "react",
                 "patterns": {
                     "uses_hooks": True,
                     "uses_typescript": True,
                     "uses_axios": True,
-                    "common_imports": ["react", "useState", "useEffect", "axios"]
+                    "common_imports": ["react", "useState", "useEffect", "axios"],
                 },
                 "file_analysis": {
                     "src/components/Button.tsx": {
                         "type": "component",
                         "exports": ["Button"],
-                        "imports": ["React", "useState"]
+                        "imports": ["React", "useState"],
                     },
                     "src/hooks/useApi.ts": {
                         "type": "hook",
                         "exports": ["useApi"],
-                        "imports": ["useState", "useEffect", "axios"]
-                    }
-                }
+                        "imports": ["useState", "useEffect", "axios"],
+                    },
+                },
             }
 
             result = mock_service.analyze_project(str(temp_project_dir))
@@ -294,23 +278,18 @@ class TestContextAnalysis:
             "vite.config.js": "export default {};",
             ".eslintrc.json": '{"extends": ["next"]}',
             "tailwind.config.js": "module.exports = {};",
-            "jest.config.js": "module.exports = {};"
+            "jest.config.js": "module.exports = {};",
         }
 
         for config_file, content in configs.items():
             (temp_project_dir / config_file).write_text(content)
 
         mock_service = MockContextService()
-        with patch.object(mock_service, 'analyze_project') as mock_analyze:
+        with patch.object(mock_service, "analyze_project") as mock_analyze:
             mock_analyze.return_value = {
                 "framework": "react",
-                "build_tools": {
-                    "bundler": "webpack",
-                    "has_eslint": True,
-                    "has_tailwind": True,
-                    "has_jest": True
-                },
-                "config_files": list(configs.keys())
+                "build_tools": {"bundler": "webpack", "has_eslint": True, "has_tailwind": True, "has_jest": True},
+                "config_files": list(configs.keys()),
             }
 
             result = mock_service.analyze_project(str(temp_project_dir))
@@ -327,7 +306,7 @@ class TestContextAnalysis:
             "app/about/page.tsx",
             "app/blog/[slug]/page.tsx",
             "app/api/users/route.ts",
-            "app/layout.tsx"
+            "app/layout.tsx",
         ]
 
         for route in app_routes:
@@ -336,7 +315,7 @@ class TestContextAnalysis:
             route_path.write_text("// Route content")
 
         mock_service = MockContextService()
-        with patch.object(mock_service, 'analyze_project') as mock_analyze:
+        with patch.object(mock_service, "analyze_project") as mock_analyze:
             mock_analyze.return_value = {
                 "framework": "next.js",
                 "routing": {
@@ -344,13 +323,11 @@ class TestContextAnalysis:
                     "routes": [
                         {"path": "/", "file": "app/page.tsx"},
                         {"path": "/about", "file": "app/about/page.tsx"},
-                        {"path": "/blog/[slug]", "file": "app/blog/[slug]/page.tsx"}
+                        {"path": "/blog/[slug]", "file": "app/blog/[slug]/page.tsx"},
                     ],
-                    "api_routes": [
-                        {"path": "/api/users", "file": "app/api/users/route.ts"}
-                    ],
-                    "has_layout": True
-                }
+                    "api_routes": [{"path": "/api/users", "file": "app/api/users/route.ts"}],
+                    "has_layout": True,
+                },
             }
 
             result = mock_service.analyze_project(str(temp_project_dir))
@@ -366,7 +343,7 @@ class TestContextAnalysis:
             "styles/globals.css": "@tailwind base; @tailwind components;",
             "styles/Home.module.css": ".container { padding: 20px; }",
             "components/Button.module.scss": "$primary: #blue;",
-            "tailwind.config.js": "module.exports = { content: ['./src/**/*.{js,ts,jsx,tsx}'] };"
+            "tailwind.config.js": "module.exports = { content: ['./src/**/*.{js,ts,jsx,tsx}'] };",
         }
 
         for file_path, content in styling_files.items():
@@ -375,15 +352,15 @@ class TestContextAnalysis:
             full_path.write_text(content)
 
         mock_service = MockContextService()
-        with patch.object(mock_service, 'analyze_project') as mock_analyze:
+        with patch.object(mock_service, "analyze_project") as mock_analyze:
             mock_analyze.return_value = {
                 "framework": "next.js",
                 "styling": {
                     "systems": ["tailwind", "css_modules", "scss"],
                     "has_global_styles": True,
                     "has_component_styles": True,
-                    "primary_system": "tailwind"
-                }
+                    "primary_system": "tailwind",
+                },
             }
 
             result = mock_service.analyze_project(str(temp_project_dir))
@@ -402,7 +379,7 @@ class TestContextAnalysis:
             "README.md": "# Test Project",
             "node_modules/react/index.js": "// React source",
             ".git/config": "[core]",
-            "build/static/js/main.js": "// Built file"
+            "build/static/js/main.js": "// Built file",
         }
 
         for file_path, content in files.items():
@@ -427,11 +404,8 @@ class TestContextAnalysis:
         """Test caching of context analysis results"""
         mock_service = MockContextService()
 
-        with patch.object(mock_service, 'analyze_project') as mock_analyze:
-            mock_analyze.return_value = {
-                "framework": "react",
-                "cached": True
-            }
+        with patch.object(mock_service, "analyze_project") as mock_analyze:
+            mock_analyze.return_value = {"framework": "react", "cached": True}
 
             # First call
             result1 = mock_service.analyze_project(str(temp_project_dir))
@@ -456,7 +430,7 @@ class TestContextAnalysis:
             package_json = {
                 "packages/web": '{"name": "@repo/web", "dependencies": {"react": "^18.0.0"}}',
                 "packages/api": '{"name": "@repo/api", "dependencies": {"express": "^4.0.0"}}',
-                "packages/shared": '{"name": "@repo/shared", "dependencies": {"lodash": "^4.0.0"}}'
+                "packages/shared": '{"name": "@repo/shared", "dependencies": {"lodash": "^4.0.0"}}',
             }
 
             (package_dir / "package.json").write_text(package_json[package])
@@ -472,7 +446,7 @@ class TestContextAnalysis:
         (temp_project_dir / "package.json").write_text(root_package)
 
         mock_service = MockContextService()
-        with patch.object(mock_service, 'analyze_project') as mock_analyze:
+        with patch.object(mock_service, "analyze_project") as mock_analyze:
             mock_analyze.return_value = {
                 "framework": "monorepo",
                 "structure": {
@@ -481,9 +455,9 @@ class TestContextAnalysis:
                     "packages": [
                         {"name": "@repo/web", "type": "frontend", "framework": "react"},
                         {"name": "@repo/api", "type": "backend", "framework": "express"},
-                        {"name": "@repo/shared", "type": "library", "framework": "utility"}
-                    ]
-                }
+                        {"name": "@repo/shared", "type": "library", "framework": "utility"},
+                    ],
+                },
             }
 
             result = mock_service.analyze_project(str(temp_project_dir))

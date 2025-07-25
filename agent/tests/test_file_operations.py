@@ -13,7 +13,7 @@ from app.services.fs_service import fs_service
 class TestFileSystemService:
     """Test cases for FileSystemService"""
 
-    @patch('app.utils.config.settings.projects_dir')
+    @patch("app.utils.config.settings.projects_dir")
     def test_fs_service_initialization(self, mock_projects_dir, temp_project_dir):
         """Test FileSystemService initializes correctly"""
         mock_projects_dir.return_value = str(temp_project_dir.parent)
@@ -174,7 +174,7 @@ class TestFileSystemService:
 
         nonexistent_file = temp_project_dir / "does_not_exist.txt"
 
-        with pytest.raises(Exception):  # Should raise FileNotFoundError or similar
+        with pytest.raises(FileNotFoundError):  # Should raise FileNotFoundError or similar
             await test_fs_service.read_file(str(nonexistent_file))
 
     @pytest.mark.asyncio()
@@ -187,18 +187,18 @@ class TestFileSystemService:
             # Skip null character test as it might not work on all systems
         ]
 
+        import contextlib
+
         for invalid_path in invalid_paths:
             # Should handle errors gracefully
-            try:
+            with contextlib.suppress(Exception):
                 await test_fs_service.create_file(invalid_path, "test")
-            except Exception:
-                # Expected to fail
-                pass
 
     @pytest.mark.asyncio()
     async def test_concurrent_file_operations(self, temp_project_dir):
         """Test concurrent file operations"""
         import asyncio
+
         test_fs_service = FileSystemService()
 
         async def create_file(index):
@@ -223,7 +223,7 @@ class TestFileSystemService:
             if file_path.exists():
                 file_path.unlink()
 
-    @patch('app.utils.config.settings.projects_dir')
+    @patch("app.utils.config.settings.projects_dir")
     def test_project_path_generation(self, mock_projects_dir, temp_project_dir):
         """Test project path generation"""
         mock_projects_dir.return_value = str(temp_project_dir.parent)
@@ -269,7 +269,7 @@ class TestFileSystemService:
     @pytest.mark.asyncio()
     async def test_mocked_fs_service_operations(self):
         """Test with mocked fs_service to ensure proper async behavior"""
-        with patch('app.services.fs_service.fs_service') as mock_fs:
+        with patch("app.services.fs_service.fs_service") as mock_fs:
             # Setup mocks
             mock_fs.create_file = AsyncMock()
             mock_fs.read_file = AsyncMock(return_value="mocked content")
@@ -297,12 +297,7 @@ class TestFileSystemService:
         test_fs_service = FileSystemService()
 
         # Create some test files
-        test_files = [
-            "package.json",
-            "src/index.js",
-            "src/components/Button.tsx",
-            "README.md"
-        ]
+        test_files = ["package.json", "src/index.js", "src/components/Button.tsx", "README.md"]
 
         for file_path in test_files:
             full_path = temp_project_dir / file_path
@@ -310,9 +305,9 @@ class TestFileSystemService:
             await test_fs_service.create_file(str(full_path), f"// Content of {file_path}")
 
         # Test scanning functionality if available
-        if hasattr(test_fs_service, 'scan_directory'):
+        if hasattr(test_fs_service, "scan_directory"):
             scan_result = test_fs_service.scan_directory(str(temp_project_dir))
-            assert "files" in scan_result or isinstance(scan_result, (list, dict))
+            assert "files" in scan_result or isinstance(scan_result, list | dict)
 
         # Verify files exist
         for file_path in test_files:

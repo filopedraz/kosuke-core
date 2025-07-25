@@ -20,7 +20,7 @@ from .fixtures import create_mock_action
 class TestAgent:
     """Test cases for Agent class"""
 
-    @patch('app.utils.config.settings.projects_dir')
+    @patch("app.utils.config.settings.projects_dir")
     def test_agent_initialization(self, mock_projects_dir, temp_project_dir):
         """Test agent initializes correctly"""
         mock_projects_dir.return_value = str(temp_project_dir.parent)
@@ -34,11 +34,13 @@ class TestAgent:
         assert agent.total_actions == 0
         assert agent.total_tokens == 0
 
-    @patch('app.utils.config.settings.projects_dir')
-    @patch.object(LLMService, 'generate_completion')
-    @patch('app.services.fs_service.fs_service')
+    @patch("app.utils.config.settings.projects_dir")
+    @patch.object(LLMService, "generate_completion")
+    @patch("app.services.fs_service.fs_service")
     @pytest.mark.asyncio()
-    async def test_agent_run_simple(self, mock_fs_service_global, mock_generate_completion, mock_projects_dir, temp_project_dir):
+    async def test_agent_run_simple(
+        self, mock_fs_service_global, mock_generate_completion, mock_projects_dir, temp_project_dir
+    ):
         """Test agent run method with simple request"""
         mock_projects_dir.return_value = str(temp_project_dir.parent)
 
@@ -52,11 +54,11 @@ class TestAgent:
         agent = Agent(project_id=123)
 
         # Mock the action executor to prevent real file operations
-        with patch.object(agent.action_executor, 'execute_action') as mock_execute:
+        with patch.object(agent.action_executor, "execute_action") as mock_execute:
             mock_execute.return_value = True
 
             # Mock webhook service to prevent real webhook calls
-            with patch.object(agent.webhook_service, 'send_action_update') as mock_webhook:
+            with patch.object(agent.webhook_service, "send_action_update") as mock_webhook:
                 mock_webhook.return_value = None
 
                 # Collect streaming results
@@ -70,11 +72,13 @@ class TestAgent:
                 # LLM service should have been called
                 assert mock_generate_completion.call_count >= 1
 
-    @patch('app.utils.config.settings.projects_dir')
-    @patch.object(LLMService, 'generate_completion')
-    @patch('app.services.fs_service.fs_service')
+    @patch("app.utils.config.settings.projects_dir")
+    @patch.object(LLMService, "generate_completion")
+    @patch("app.services.fs_service.fs_service")
     @pytest.mark.asyncio()
-    async def test_agent_run_with_multiple_actions(self, mock_fs_service_global, mock_generate_completion, mock_projects_dir, temp_project_dir):
+    async def test_agent_run_with_multiple_actions(
+        self, mock_fs_service_global, mock_generate_completion, mock_projects_dir, temp_project_dir
+    ):
         """Test agent run with multiple actions"""
         mock_projects_dir.return_value = str(temp_project_dir.parent)
 
@@ -88,11 +92,11 @@ class TestAgent:
         agent = Agent(project_id=123)
 
         # Mock the action executor to prevent real file operations
-        with patch.object(agent.action_executor, 'execute_action') as mock_execute:
+        with patch.object(agent.action_executor, "execute_action") as mock_execute:
             mock_execute.return_value = True
 
             # Mock webhook service to prevent real webhook calls
-            with patch.object(agent.webhook_service, 'send_action_update') as mock_webhook:
+            with patch.object(agent.webhook_service, "send_action_update") as mock_webhook:
                 mock_webhook.return_value = None
 
                 results = []
@@ -102,11 +106,13 @@ class TestAgent:
                 # Should have called execute_action multiple times for complex response
                 assert mock_execute.call_count >= 2  # At least 2 actions from MOCK_COMPLEX_LLM_RESPONSE
 
-    @patch('app.utils.config.settings.projects_dir')
-    @patch.object(LLMService, 'generate_completion')
-    @patch('app.services.fs_service.fs_service')
+    @patch("app.utils.config.settings.projects_dir")
+    @patch.object(LLMService, "generate_completion")
+    @patch("app.services.fs_service.fs_service")
     @pytest.mark.asyncio()
-    async def test_agent_error_handling(self, mock_fs_service_global, mock_generate_completion, mock_projects_dir, temp_project_dir):
+    async def test_agent_error_handling(
+        self, mock_fs_service_global, mock_generate_completion, mock_projects_dir, temp_project_dir
+    ):
         """Test agent error handling"""
         mock_projects_dir.return_value = str(temp_project_dir.parent)
 
@@ -127,11 +133,13 @@ class TestAgent:
         error_updates = [r for r in results if r.get("status") == "error"]
         assert len(error_updates) > 0
 
-    @patch('app.utils.config.settings.projects_dir')
-    @patch.object(LLMService, 'generate_completion')
-    @patch('app.services.fs_service.fs_service')
+    @patch("app.utils.config.settings.projects_dir")
+    @patch.object(LLMService, "generate_completion")
+    @patch("app.services.fs_service.fs_service")
     @pytest.mark.asyncio()
-    async def test_agent_max_iterations(self, mock_fs_service_global, mock_generate_completion, mock_projects_dir, temp_project_dir):
+    async def test_agent_max_iterations(
+        self, mock_fs_service_global, mock_generate_completion, mock_projects_dir, temp_project_dir
+    ):
         """Test agent respects max iterations limit"""
         mock_projects_dir.return_value = str(temp_project_dir.parent)
 
@@ -147,11 +155,11 @@ class TestAgent:
         agent.max_iterations = 2
 
         # Mock the action executor to prevent real file operations
-        with patch.object(agent.action_executor, 'execute_action') as mock_execute:
+        with patch.object(agent.action_executor, "execute_action") as mock_execute:
             mock_execute.return_value = True
 
             # Mock webhook service to prevent real webhook calls
-            with patch.object(agent.webhook_service, 'send_action_update') as mock_webhook:
+            with patch.object(agent.webhook_service, "send_action_update") as mock_webhook:
                 mock_webhook.return_value = None
 
                 results = []
@@ -168,7 +176,7 @@ class TestAgent:
 class TestActionExecutor:
     """Test cases for ActionExecutor class"""
 
-    @patch('app.utils.config.settings.projects_dir')
+    @patch("app.utils.config.settings.projects_dir")
     def test_action_executor_initialization(self, mock_projects_dir, temp_project_dir):
         """Test ActionExecutor initializes correctly"""
         mock_projects_dir.return_value = str(temp_project_dir.parent)
@@ -176,8 +184,8 @@ class TestActionExecutor:
         executor = ActionExecutor(project_id=123)
         assert executor.project_id == 123
 
-    @patch('app.utils.config.settings.projects_dir')
-    @patch('app.tools.file_tools.get_tool')
+    @patch("app.utils.config.settings.projects_dir")
+    @patch("app.tools.file_tools.get_tool")
     @pytest.mark.asyncio()
     async def test_execute_create_file_action(self, mock_get_tool, mock_projects_dir, temp_project_dir):
         """Test executing create file action"""
@@ -190,7 +198,7 @@ class TestActionExecutor:
             ActionType.CREATE_FILE,
             "src/components/Button.tsx",
             "export const Button = () => <button>Click me</button>;",
-            "Creating button component"
+            "Creating button component",
         )
 
         # Mock the tool
@@ -203,8 +211,8 @@ class TestActionExecutor:
         assert result is True
         mock_tool.execute.assert_called_once()
 
-    @patch('app.utils.config.settings.projects_dir')
-    @patch('app.tools.file_tools.get_tool')
+    @patch("app.utils.config.settings.projects_dir")
+    @patch("app.tools.file_tools.get_tool")
     @pytest.mark.asyncio()
     async def test_execute_edit_file_action(self, mock_get_tool, mock_projects_dir, temp_project_dir):
         """Test executing edit file action"""
@@ -213,12 +221,7 @@ class TestActionExecutor:
         executor = ActionExecutor(project_id=123)
 
         # Create proper Action object
-        action = create_mock_action(
-            ActionType.EDIT_FILE,
-            "src/test.js",
-            "const new = 'updated';",
-            "Updating test file"
-        )
+        action = create_mock_action(ActionType.EDIT_FILE, "src/test.js", "const new = 'updated';", "Updating test file")
         action.match = "const old = 'value';"  # Add match field for edit operations
 
         # Mock the tool
@@ -231,8 +234,8 @@ class TestActionExecutor:
         assert result is True
         mock_tool.execute.assert_called_once()
 
-    @patch('app.utils.config.settings.projects_dir')
-    @patch('app.tools.file_tools.get_tool')
+    @patch("app.utils.config.settings.projects_dir")
+    @patch("app.tools.file_tools.get_tool")
     @pytest.mark.asyncio()
     async def test_execute_unknown_action_type(self, mock_get_tool, mock_projects_dir, temp_project_dir):
         """Test executing when tool is not found"""
@@ -243,7 +246,7 @@ class TestActionExecutor:
         action = create_mock_action(
             ActionType.READ_FILE,  # Valid action type
             "test.txt",
-            message="Testing unknown tool"
+            message="Testing unknown tool",
         )
 
         # Mock get_tool to return None (tool not found)
@@ -253,8 +256,8 @@ class TestActionExecutor:
 
         assert result is False
 
-    @patch('app.utils.config.settings.projects_dir')
-    @patch('app.tools.file_tools.get_tool')
+    @patch("app.utils.config.settings.projects_dir")
+    @patch("app.tools.file_tools.get_tool")
     @pytest.mark.asyncio()
     async def test_execute_action_tool_error(self, mock_get_tool, mock_projects_dir, temp_project_dir):
         """Test executing action when tool raises an error"""
@@ -262,11 +265,7 @@ class TestActionExecutor:
 
         executor = ActionExecutor(project_id=123)
 
-        action = create_mock_action(
-            ActionType.READ_FILE,
-            "nonexistent.js",
-            message="Testing file error"
-        )
+        action = create_mock_action(ActionType.READ_FILE, "nonexistent.js", message="Testing file error")
 
         # Mock tool to return failure
         mock_tool = MagicMock()
@@ -277,8 +276,8 @@ class TestActionExecutor:
 
         assert result is False
 
-    @patch('app.utils.config.settings.projects_dir')
-    @patch('app.tools.file_tools.get_tool')
+    @patch("app.utils.config.settings.projects_dir")
+    @patch("app.tools.file_tools.get_tool")
     @pytest.mark.asyncio()
     async def test_action_executor_success_flow(self, mock_get_tool, mock_projects_dir, temp_project_dir):
         """Test successful action execution flow"""
@@ -286,12 +285,7 @@ class TestActionExecutor:
 
         executor = ActionExecutor(project_id=123)
 
-        action = create_mock_action(
-            ActionType.CREATE_FILE,
-            "src/test.tsx",
-            "test content",
-            "Creating test file"
-        )
+        action = create_mock_action(ActionType.CREATE_FILE, "src/test.tsx", "test content", "Creating test file")
 
         # Mock successful tool execution
         mock_tool = MagicMock()
