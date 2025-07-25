@@ -4,8 +4,8 @@ Provides fixtures and test setup for the Kosuke agent.
 """
 
 import sys
-import os
 from pathlib import Path
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -13,23 +13,26 @@ from fastapi.testclient import TestClient
 agent_dir = Path(__file__).parent
 sys.path.insert(0, str(agent_dir))
 
-# Import after path setup
-from app.main import app
 
-
-@pytest.fixture
-def client():
-    """FastAPI test client"""
+def get_test_client():
+    """Get FastAPI test client with proper imports"""
+    from app.main import app
     return TestClient(app)
 
 
-@pytest.fixture
+@pytest.fixture()
+def client():
+    """FastAPI test client"""
+    return get_test_client()
+
+
+@pytest.fixture()
 def mock_project_id():
     """Standard project ID for testing"""
     return 123
 
 
-@pytest.fixture
+@pytest.fixture()
 def mock_env_vars():
     """Sample environment variables for testing"""
     return {
@@ -38,7 +41,7 @@ def mock_env_vars():
     }
 
 
-@pytest.fixture
+@pytest.fixture()
 def sample_files_structure():
     """Sample project files structure for testing"""
     return {
@@ -46,4 +49,4 @@ def sample_files_structure():
         "src/index.js": "console.log('Hello World');",
         "src/components/Button.tsx": "export const Button = () => <button>Click me</button>;",
         "README.md": "# Test Project\n\nThis is a test project."
-    } 
+    }

@@ -1,1 +1,1 @@
-"""Test package for Kosuke agent microservice""" 
+"""Test package for Kosuke agent microservice"""

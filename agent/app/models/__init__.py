@@ -1,1 +1,1 @@
-# Data models for the agentic coding pipeline 
+# Data models for the agentic coding pipeline

@@ -1,8 +1,10 @@
-from fastapi import APIRouter
-from app.utils.config import settings
-import time
-import psutil
 import platform
+import time
+
+import psutil
+from fastapi import APIRouter
+
+from app.utils.config import settings
 
 router = APIRouter()
 
@@ -10,14 +12,14 @@ router = APIRouter()
 async def health_check():
     """
     Comprehensive health check endpoint
-    
+
     Returns service status, configuration, and system metrics
     """
     try:
         # Get system information
         memory = psutil.virtual_memory()
         disk = psutil.disk_usage('/')
-        
+
         return {
             "status": "healthy",
             "service": "agentic-coding-pipeline",
@@ -45,7 +47,7 @@ async def health_check():
     except Exception as e:
         return {
             "status": "unhealthy",
-            "service": "agentic-coding-pipeline", 
+            "service": "agentic-coding-pipeline",
             "version": "1.0.0",
             "error": str(e),
             "timestamp": time.time()
@@ -78,4 +80,4 @@ async def root():
             "swagger": "/docs",
             "redoc": "/redoc"
         }
-    } 
+    }

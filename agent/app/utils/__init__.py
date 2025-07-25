@@ -1,1 +1,1 @@
-# Utility functions and configuration for the agentic coding pipeline 
+# Utility functions and configuration for the agentic coding pipeline

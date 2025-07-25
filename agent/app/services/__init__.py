@@ -1,1 +1,1 @@
-# Business logic services for the agentic coding pipeline 
+# Business logic services for the agentic coding pipeline

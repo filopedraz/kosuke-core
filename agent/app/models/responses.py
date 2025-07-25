@@ -1,6 +1,10 @@
+from typing import ClassVar
+from typing import Literal
+
 from pydantic import BaseModel
-from typing import Optional, Literal
+
 from .exceptions import AgentErrorType
+
 
 class StreamUpdate(BaseModel):
     """Streaming update model that mirrors the TypeScript update format"""
@@ -8,11 +12,11 @@ class StreamUpdate(BaseModel):
     file_path: str = ""
     message: str
     status: Literal["pending", "completed", "error"]
-    error_type: Optional[AgentErrorType] = None
+    error_type: AgentErrorType | None = None
 
     class Config:
         use_enum_values = True
-        schema_extra = {
+        schema_extra: ClassVar = {
             "examples": [
                 {
                     "type": "thinking",
@@ -27,7 +31,7 @@ class StreamUpdate(BaseModel):
                     "status": "completed"
                 },
                 {
-                    "type": "create", 
+                    "type": "create",
                     "file_path": "components/Button.tsx",
                     "message": "Creating new Button component",
                     "status": "completed"
@@ -46,4 +50,4 @@ class ChatResponse(BaseModel):
     """Simple chat response for non-streaming endpoints"""
     updates: list[StreamUpdate]
     success: bool = True
-    error: Optional[str] = None 
+    error: str | None = None

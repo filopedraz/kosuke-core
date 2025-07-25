@@ -41,10 +41,12 @@ def test_root_endpoint(client: TestClient):
     assert "documentation" in data
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 async def test_health_endpoint_async():
     """Test health endpoint with async test"""
-    from httpx import AsyncClient, ASGITransport
+    from httpx import ASGITransport
+    from httpx import AsyncClient
+
     from app.main import app
 
     transport = ASGITransport(app=app)
@@ -52,4 +54,4 @@ async def test_health_endpoint_async():
         response = await ac.get("/health/simple")
 
     assert response.status_code == 200
-    assert response.json()["status"] == "healthy" 
+    assert response.json()["status"] == "healthy"

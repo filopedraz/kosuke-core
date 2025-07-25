@@ -1,186 +1,208 @@
-from pydantic_ai import Agent
-from pydantic_ai.models.anthropic import AnthropicModel
-from typing import List, Dict, Any, AsyncGenerator
 import json
 import re
-from app.models.requests import ChatMessage
+from typing import Any
+
+from pydantic_ai import Agent
+from pydantic_ai.models.anthropic import AnthropicModel
+
 from app.models.actions import Action
+from app.models.requests import ChatMessage
 from app.utils.config import settings
-from app.utils.token_counter import count_tokens
+
 
 class LLMService:
     """
     LLM service using PydanticAI and Claude 3.5 Sonnet
-    
+
     Mirrors the TypeScript generateAICompletion function from lib/llm/api/ai.ts
     """
-    
+
     def __init__(self):
         self.model = AnthropicModel(
             settings.model_name,
             api_key=settings.anthropic_api_key
         )
-        
+
         # Create PydanticAI agent with system prompt
         self.agent = Agent(
             model=self.model,
             system_prompt=self._get_system_prompt()
         )
-    
+
     async def generate_completion(
-        self, 
-        messages: List[ChatMessage],
-        temperature: float = None,
-        max_tokens: int = None
+        self,
+        messages: list[ChatMessage],
+        temperature: float | None = None,
+        max_tokens: int | None = None
     ) -> str:
         """
         Generate a completion using Claude 3.5 Sonnet
-        
+
         Mirrors the TypeScript generateAICompletion function
         """
-        
+
         temperature = temperature or settings.temperature
         max_tokens = max_tokens or settings.max_tokens
-        
-        print(f"🤖 Using Claude 3.5 Sonnet for completion")
+
+        print("🤖 Using Claude 3.5 Sonnet for completion")
         print(f"📊 Request parameters: temperature={temperature}, maxTokens={max_tokens}")
-        
+
         # Convert messages to the format expected by PydanticAI
         conversation = []
         user_message = ""
-        
+
         for msg in messages:
             if msg.role == 'system':
                 continue  # System message is handled by agent's system_prompt
-            elif msg.role == 'user':
+
+            if msg.role == 'user':
                 user_message = msg.content  # Use the latest user message
             else:
                 conversation.append({'role': msg.role, 'content': msg.content})
-        
+
         try:
             print(f"Formatted message count: {len(conversation) + 1}")
             print(f"User message length: {len(user_message)} characters")
-            
+
             # Start timing the request
             import time
             start_time = time.time()
-            
+
             # Use PydanticAI agent to run the conversation
             result = await self.agent.run(
                 user_message,
                 message_history=conversation if conversation else None
             )
-            
+
             end_time = time.time()
             duration = end_time - start_time
-            
+
             print(f"Claude request completed in {duration:.2f}s")
             print(f"Response text length: {len(result.data)} characters")
             print(f"Response first 100 chars: {result.data[:100]}...")
-            
+
             # If we got an empty response, log a clear error
             if not result.data or result.data.strip() == '':
                 print("❌ WARNING: Empty response received from Claude API")
-            
+
             return result.data
-            
+
         except Exception as error:
             print(f"Error with Claude API: {error}")
-            raise Exception(f"Claude API error: {str(error)}")
-    
-    async def parse_agent_response(self, response: str) -> Dict[str, Any]:
+            raise Exception(f"Claude API error: {error!s}") from error
+
+    async def parse_agent_response(self, response: str) -> dict[str, Any]:
         """
         Parse the agent response into thinking state and actions
-        
+
         Mirrors the TypeScript parseAgentResponse function from agentPromptParser.ts
         """
         try:
             # Handle if response is an object with text property (shouldn't happen with our setup)
             response_text = response if isinstance(response, str) else str(response)
-            
+
             # Clean up the response - remove markdown code blocks if present
             cleaned_response = response_text.strip()
-            cleaned_response = re.sub(r'```(?:json)?[\r\n]?(.*?)[\r\n]?```', r'\1', cleaned_response, flags=re.DOTALL)
+            cleaned_response = re.sub(
+                r'```(?:json)?[\r\n]?(.*?)[\r\n]?```',
+                r'\1',
+                cleaned_response,
+                flags=re.DOTALL
+            )
             cleaned_response = cleaned_response.strip()
-            
-            print(f"📝 Cleaned response (preview): {cleaned_response[:200]}{'...' if len(cleaned_response) > 200 else ''}")
-            
+
+            preview = cleaned_response[:200] + ('...' if len(cleaned_response) > 200 else '')
+            print(f"📝 Cleaned response (preview): {preview}")
+
             # Default values for the result
             result = {
                 "thinking": True,  # Default to thinking mode
                 "actions": []
             }
-            
+
             try:
                 # Parse the response as JSON
                 parsed_response = json.loads(cleaned_response)
-                
-                # Set thinking state if provided
-                if isinstance(parsed_response, dict) and "thinking" in parsed_response:
-                    result["thinking"] = bool(parsed_response["thinking"])
-                
-                # Parse actions if provided
-                if isinstance(parsed_response, dict) and "actions" in parsed_response:
-                    if isinstance(parsed_response["actions"], list):
-                        print(f"✅ Successfully parsed JSON: {len(parsed_response['actions'])} potential actions found")
-                        
-                        # Validate each action and add to result
-                        valid_actions = []
-                        for idx, action_data in enumerate(parsed_response["actions"]):
-                            try:
-                                if isinstance(action_data, dict):
-                                    action = Action(**action_data)
-                                    valid_actions.append(action)
-                                else:
-                                    print(f"⚠️ Invalid action at index {idx}: not a dict")
-                            except Exception as e:
-                                print(f"⚠️ Invalid action at index {idx}: {e}")
-                        
-                        result["actions"] = valid_actions
-                        print(f"✅ Found {len(result['actions'])} valid actions")
-                    else:
-                        print("⚠️ Response parsed as JSON but actions is not an array")
-                else:
-                    print("⚠️ Response parsed as JSON but no actions field found")
-                
-                return result
-                
+                return self._process_parsed_response(parsed_response, result)
+
             except json.JSONDecodeError as json_error:
                 self._log_json_parse_error(json_error, cleaned_response)
-                raise Exception(f"Failed to parse JSON response from LLM: {str(json_error)}")
-                
+                raise Exception(f"Failed to parse JSON response from LLM: {json_error!s}") from json_error
+
         except Exception as error:
             print(f"❌ Error parsing agent response: {error}")
-            raise Exception(f"Error processing agent response: {str(error)}")
-    
+            raise Exception(f"Error processing agent response: {error!s}") from error
+
+    def _process_parsed_response(self, parsed_response: dict, result: dict) -> dict[str, Any]:
+        """Process the parsed JSON response and extract thinking state and actions"""
+        # Set thinking state if provided
+        if isinstance(parsed_response, dict) and "thinking" in parsed_response:
+            result["thinking"] = bool(parsed_response["thinking"])
+
+        # Parse actions if provided
+        if isinstance(parsed_response, dict) and "actions" in parsed_response:
+            if isinstance(parsed_response["actions"], list):
+                action_count = len(parsed_response["actions"])
+                print(f"✅ Successfully parsed JSON: {action_count} potential actions found")
+
+                # Validate each action and add to result
+                valid_actions = self._validate_actions(parsed_response["actions"])
+                result["actions"] = valid_actions
+                print(f"✅ Found {len(result['actions'])} valid actions")
+            else:
+                print("⚠️ Response parsed as JSON but actions is not an array")
+        else:
+            print("⚠️ Response parsed as JSON but no actions field found")
+
+        return result
+
+    def _validate_actions(self, actions_data: list) -> list[Action]:
+        """Validate and convert action data to Action objects"""
+        valid_actions = []
+        for idx, action_data in enumerate(actions_data):
+            try:
+                if isinstance(action_data, dict):
+                    action = Action(**action_data)
+                    valid_actions.append(action)
+                else:
+                    print(f"⚠️ Invalid action at index {idx}: not a dict")
+            except Exception as e:
+                print(f"⚠️ Invalid action at index {idx}: {e}")
+        return valid_actions
+
     def _log_json_parse_error(self, json_error: json.JSONDecodeError, cleaned_response: str):
         """Log JSON parsing errors with helpful context"""
         print(f"❌ Error parsing JSON: {json_error}")
-        
+
         # Show context around the error if possible
         if hasattr(json_error, 'pos') and json_error.pos is not None:
             error_pos = json_error.pos
             start = max(0, error_pos - 30)
             end = min(len(cleaned_response), error_pos + 30)
-            
+
+            context = f"...{cleaned_response[start:error_pos]}[ERROR]{cleaned_response[error_pos:end]}..."
             print(f"⚠️ JSON error at position {error_pos}. Context around error:")
-            print(f"Error context: ...{cleaned_response[start:error_pos]}[ERROR]{cleaned_response[error_pos:end]}...")
-    
+            print(f"Error context: {context}")
+
     def _get_system_prompt(self) -> str:
         """
         Get the system prompt for the agent
-        
+
         Mirrors the NAIVE_SYSTEM_PROMPT from lib/llm/core/prompts.ts
         """
-        return """You are an expert senior software engineer specializing in modern web development, with deep expertise in TypeScript, React 19, Next.js 15 (without ./src/ directory and using the App Router), Vercel AI SDK, Shadcn UI, Radix UI, and Tailwind CSS.
+        return """You are an expert senior software engineer specializing in modern web development,
+with deep expertise in TypeScript, React 19, Next.js 15 (without ./src/ directory and using the App Router),
+Vercel AI SDK, Shadcn UI, Radix UI, and Tailwind CSS.
 
 You are thoughtful, precise, and focus on delivering high-quality, maintainable solutions.
 
 Your job is to help users modify their project based on the user requirements.
 
 ### Features availability
-- As of now you can only implement frontend/client-side code. No APIs or Database changes. If you can't implement the user request because of this, just say so.
-- You cannot add new dependencies or libraries. As of now you don't have access to the terminal in order to install new dependencies.
+- As of now you can only implement frontend/client-side code. No APIs or Database changes.
+  If you can't implement the user request because of this, just say so.
+- You cannot add new dependencies or libraries. As of now you don't have access to the terminal
+  in order to install new dependencies.
 
 ### HOW YOU SHOULD WORK - CRITICAL INSTRUCTIONS:
 1. FIRST, understand what files you need to see by analyzing the directory structure provided
@@ -234,7 +256,7 @@ Your responses can be in one of two formats:
     {
       "action": "editFile",
       "filePath": "components/Button.tsx",
-      "content": "import React from 'react';\\n\\nconst Button = () => {\\n  return <button>Click me</button>;\\n};\\n\\nexport default Button;",
+      "content": "import React from 'react';\\n\\nexport default () => <button>Click me</button>;",
       "message": "I need to update the Button component to add the onClick prop"
     }
   ]
@@ -251,11 +273,13 @@ Follow these JSON formatting rules:
    - action: "readFile" | "editFile" | "createFile" | "deleteFile" | "createDirectory" | "removeDirectory"
    - filePath: string - path to the file or directory
    - content: string - required for editFile and createFile actions
-   - message: string - IMPORTANT: Write messages in future tense starting with "I need to..." describing what the action will do, NOT what it has already done.
+   - message: string - IMPORTANT: Write messages in future tense starting with "I need to..."
+     describing what the action will do, NOT what it has already done.
 5. For editFile actions, ALWAYS return the COMPLETE file content after your changes.
 6. Verify your JSON is valid before returning it - invalid JSON will cause the entire request to fail.
 
-IMPORTANT: The system can ONLY execute actions from the JSON object. Any instructions or explanations outside the JSON will be ignored."""
+IMPORTANT: The system can ONLY execute actions from the JSON object.
+Any instructions or explanations outside the JSON will be ignored."""
 
 # Global instance
-llm_service = LLMService() 
+llm_service = LLMService()

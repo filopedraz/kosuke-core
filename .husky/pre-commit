@@ -11,7 +11,7 @@ if [ -n "$python_files" ]; then
     cd agent
   
     echo "  → Running ruff linting..."
-    ruff check .
+    ruff check . --fix
     if [ $? -ne 0 ]; then
       echo "❌ Python linting failed. Please fix the errors before committing."
       exit 1
