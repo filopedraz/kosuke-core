@@ -3,4 +3,4 @@ default:
 
 run-backend:
     @echo "Running all services..."
-    @docker compose up -d minio postgres agent
+    @docker compose up --build -d minio postgres agent

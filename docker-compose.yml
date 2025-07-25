@@ -5,22 +5,22 @@ services:
     env_file:
       - .env
     ports:
-      - "54323:5432"
+      - '54323:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      
+
   minio:
     image: minio/minio
     container_name: next_saas_starter_minio
     env_file:
       - .env
     ports:
-      - "9005:9000"
-      - "9006:9001"
+      - '9005:9000'
+      - '9006:9001'
     volumes:
       - minio_data:/data
     command: server /data --console-address ":9001"
-  
+
   nextjs:
     build:
       context: .
@@ -32,7 +32,7 @@ services:
       - AGENT_SERVICE_URL=http://agent:8000
       - WEBHOOK_SECRET=dev-secret-change-in-production
     ports:
-      - "3001:3000"
+      - '3001:3000'
     volumes:
       - next_build_cache:/app/.next/cache
     depends_on:
@@ -42,15 +42,16 @@ services:
     restart: unless-stopped
 
   agent:
-    build: 
+    build:
       context: ./agent
       dockerfile: Dockerfile
     container_name: agentic_coding_pipeline
     ports:
-      - "8001:8000"
+      - '8001:8000'
     volumes:
       - ./agent:/app:cached
       - ./projects:/app/projects:cached
+      - /var/run/docker.sock:/var/run/docker.sock
     env_file:
       - ./agent/.env
     environment:
@@ -64,7 +65,13 @@ services:
       - default
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/api/health/simple')"]
+      test:
+        [
+          'CMD',
+          'python',
+          '-c',
+          "import requests; requests.get('http://localhost:8000/api/health/simple')",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
