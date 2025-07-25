@@ -237,6 +237,10 @@ class TestContextAnalysis:
         };
         """
 
+        # Create directories first
+        (temp_project_dir / "src" / "components").mkdir(parents=True, exist_ok=True)
+        (temp_project_dir / "src" / "hooks").mkdir(parents=True, exist_ok=True)
+
         (temp_project_dir / "src" / "components" / "Button.tsx").write_text(component_content)
         (temp_project_dir / "src" / "hooks" / "useApi.ts").write_text(hook_content)
 
