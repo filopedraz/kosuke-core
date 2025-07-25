@@ -5,7 +5,7 @@ import { chatMessages, actions, Action } from '@/lib/db/schema';
 import { eq, inArray } from 'drizzle-orm';
 
 import ProjectContent from '@/app/(logged-in)/projects/[id]/components/layout/project-content';
-import { getSession } from '@/lib/auth/session';
+import { auth } from '@clerk/nextjs';
 import { getProjectById } from '@/lib/db/projects';
 import { Skeleton } from '@/components/ui/skeleton';
 

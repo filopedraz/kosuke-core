@@ -12,7 +12,7 @@ import ChatMessage, { ChatMessageProps, ErrorType } from './chat-message';
 import ModelBanner from './model-banner';
 import TokenUsage from './token-usage';
 import LimitReachedModal from './limit-reached-modal';
-import { useUser } from '@/lib/auth';
+import { useClerkUser } from '@/hooks/use-clerk-user';
 import { Action } from './assistant-actions-card';
 
 // Extended version of Action that includes messageId
@@ -305,8 +305,7 @@ export default function ChatInterface({
   const [isError, setIsError] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [errorType, setErrorType] = useState<ErrorType>('unknown');
-  const { userPromise } = useUser();
-  const [user, setUser] = useState<User | null>(null);
+  const { authUser, isLoaded } = useClerkUser();
   
   // Track the last message sent for regeneration
   const [lastUserMessage, setLastUserMessage] = useState<string>('');
@@ -319,13 +318,6 @@ export default function ChatInterface({
     tokensReceived: 0,
     contextSize: 0
   });
-  
-  // Fetch user data
-  useEffect(() => {
-    userPromise.then(userData => {
-      setUser(userData);
-    });
-  }, [userPromise]);
   
   // Query for messages
   const { 
@@ -780,10 +772,10 @@ export default function ChatInterface({
                   role={message.role}
                   timestamp={message.timestamp}
                   isLoading={message.isLoading}
-                  user={user ? {
-                    name: user.name || undefined,
-                    email: user.email,
-                    imageUrl: user.imageUrl || undefined
+                  user={authUser ? {
+                    name: (authUser.firstName && authUser.lastName) ? `${authUser.firstName} ${authUser.lastName}` : authUser.firstName || undefined,
+                    email: authUser.email,
+                    imageUrl: authUser.imageUrl || undefined
                   } : undefined}
                   actions={message.actions}
                   showAvatar={message.showAvatar}

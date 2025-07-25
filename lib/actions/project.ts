@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { db } from '@/lib/db';
 import { SortOption } from '@/app/(logged-in)/projects/components/project-filters';
-import { getSession } from '@/lib/auth/session';
+import { auth } from '@clerk/nextjs';
 import { createProject as dbCreateProject, getProjectsByUserId } from '@/lib/db/projects';
 import { chatMessages, Project } from '@/lib/db/schema';
 import { scaffoldProject } from '@/lib/fs/scaffold';
@@ -19,8 +19,8 @@ export async function createProject(prompt: string, name?: string) {
     console.log('🚀 Starting project creation process at', new Date().toISOString());
 
     // Get the session
-    const session = await getSession();
-    if (!session) {
+    const { userId } = auth();
+    if (!userId) {
       throw new Error('Unauthorized');
     }
 
@@ -32,8 +32,8 @@ export async function createProject(prompt: string, name?: string) {
     const project = await dbCreateProject({
       name: name || generateProjectName(prompt),
       description: prompt,
-      userId: session.user.id,
-      createdBy: session.user.id,
+      userId: userId,
+      createdBy: userId,
     });
     console.log(`✅ Project created with ID: ${project.id}, name: ${project.name}`);
 

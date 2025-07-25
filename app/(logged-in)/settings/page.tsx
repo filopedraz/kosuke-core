@@ -1,7 +1,7 @@
 'use client';
 
 import { Check, Loader2, Upload } from 'lucide-react';
-import { useState, use, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { updateAccount, updateProfileImage } from '@/app/(logged-out)/actions';
@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useUser } from '@/lib/auth';
+import { useClerkUser } from '@/hooks/use-clerk-user';
 
 type FormState = {
   error?: string;
@@ -18,8 +18,8 @@ type FormState = {
 } | null;
 
 export default function SettingsPage() {
-  const { userPromise } = useUser();
-  const user = use(userPromise);
+  const { authUser } = useClerkUser();
+  const user = authUser;
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formState, setFormState] = useState<FormState>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);

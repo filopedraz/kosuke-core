@@ -1,6 +1,6 @@
 import { desc, eq } from 'drizzle-orm';
 import { NextRequest, NextResponse } from 'next/server';
-import { getSession } from '@/lib/auth/session';
+import { auth } from "@clerk/nextjs";
 import { db } from '@/lib/db/drizzle';
 import { getProjectById } from '@/lib/db/projects';
 import { chatMessages } from '@/lib/db/schema';
@@ -15,8 +15,8 @@ export async function GET(
 ) {
   try {
     // Get the session
-    const session = await getSession();
-    if (!session) {
+    const { userId } = auth();
+    if (!userId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -43,7 +43,7 @@ export async function GET(
     }
 
     // Check if the user has access to the project
-    if (project.createdBy !== session.user.id) {
+    if (project.createdBy !== userId) {
       return NextResponse.json(
         { error: 'Forbidden' },
         { status: 403 }

@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
 
 import { canUpgradeSubscription } from '@/lib/actions/subscription';
-import { getSession } from '@/lib/auth/session';
+import { auth } from '@clerk/nextjs';
 
 export async function GET() {
   try {
-    const session = await getSession();
+    const { userId } = auth();
 
-    if (!session) {
+    if (!userId) {
       return NextResponse.json({ isUpgradable: false }, { status: 401 });
     }
 

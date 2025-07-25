@@ -1,29 +1,21 @@
-'use client';
+import { auth as clerkAuth, currentUser } from '@clerk/nextjs';
+import { redirect } from 'next/navigation';
 
-import { createContext, useContext, ReactNode } from 'react';
+export { clerkAuth as auth };
 
-import { User } from '@/lib/db/schema';
-
-type UserContextType = {
-  userPromise: Promise<User | null>;
-};
-
-const UserContext = createContext<UserContextType | null>(null);
-
-export function useUser(): UserContextType {
-  const context = useContext(UserContext);
-  if (context === null) {
-    throw new Error('useUser must be used within a UserProvider');
+export async function requireAuth() {
+  const { userId } = clerkAuth();
+  if (!userId) {
+    redirect('/sign-in');
   }
-  return context;
+  return userId;
 }
 
-export function UserProvider({
-  children,
-  userPromise,
-}: {
-  children: ReactNode;
-  userPromise: Promise<User | null>;
-}) {
-  return <UserContext.Provider value={{ userPromise }}>{children}</UserContext.Provider>;
+export async function getCurrentUser() {
+  return await currentUser();
+}
+
+export async function getUserId() {
+  const { userId } = clerkAuth();
+  return userId;
 }

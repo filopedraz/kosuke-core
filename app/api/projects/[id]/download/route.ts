@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSession } from '@/lib/auth/session';
+import { auth } from '@clerk/nextjs';
 import { getProjectById } from '@/lib/db/projects';
 import { join } from 'path';
 import { exec } from 'child_process';
@@ -14,9 +14,9 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await getSession();
+    const { userId } = auth();
     
-    if (!session) {
+    if (!userId) {
       return new NextResponse('Unauthorized', { status: 401 });
     }
     
@@ -28,7 +28,7 @@ export async function GET(
     
     const project = await getProjectById(projectId);
     
-    if (!project || project.createdBy !== session.user.id) {
+    if (!project || project.createdBy !== userId) {
       return new NextResponse('Project not found', { status: 404 });
     }
     

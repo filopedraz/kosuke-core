@@ -1,37 +1,32 @@
 import { desc, and, eq, isNull } from 'drizzle-orm';
-import { cookies } from 'next/headers';
-
-import { verifyToken } from '@/lib/auth/session';
+import { auth, currentUser } from '@clerk/nextjs';
 
 import { db } from '@/lib/db/drizzle';
 import { activityLogs, users } from '@/lib/db/schema';
 
 export async function getUser() {
-  const sessionCookie = (await cookies()).get('session');
-  if (!sessionCookie || !sessionCookie.value) {
+  const { userId } = auth();
+  if (!userId) {
     return null;
   }
 
-  const sessionData = await verifyToken(sessionCookie.value);
-  if (!sessionData || !sessionData.user || typeof sessionData.user.id !== 'number') {
+  const clerkUser = await currentUser();
+  if (!clerkUser) {
     return null;
   }
 
-  if (new Date(sessionData.expires) < new Date()) {
-    return null;
-  }
-
-  const user = await db
-    .select()
-    .from(users)
-    .where(and(eq(users.id, sessionData.user.id), isNull(users.deletedAt)))
-    .limit(1);
-
-  if (user.length === 0) {
-    return null;
-  }
-
-  return user[0];
+  // Return Clerk user data in expected format
+  return {
+    id: clerkUser.id,
+    name: clerkUser.firstName && clerkUser.lastName 
+      ? `${clerkUser.firstName} ${clerkUser.lastName}` 
+      : clerkUser.firstName || null,
+    email: clerkUser.emailAddresses[0]?.emailAddress || '',
+    imageUrl: clerkUser.imageUrl || null,
+    role: 'member', // Default role, can be customized based on Clerk metadata
+    createdAt: new Date(clerkUser.createdAt),
+    updatedAt: new Date(clerkUser.updatedAt || clerkUser.createdAt),
+  };
 }
 
 export async function getActivityLogs() {
@@ -40,17 +35,7 @@ export async function getActivityLogs() {
     throw new Error('User not authenticated');
   }
 
-  return await db
-    .select({
-      id: activityLogs.id,
-      action: activityLogs.action,
-      timestamp: activityLogs.timestamp,
-      ipAddress: activityLogs.ipAddress,
-      userName: users.name,
-    })
-    .from(activityLogs)
-    .leftJoin(users, eq(activityLogs.userId, users.id))
-    .where(eq(activityLogs.userId, user.id))
-    .orderBy(desc(activityLogs.timestamp))
-    .limit(10);
+  // Note: This will need to be updated when activity logs are implemented with Clerk user IDs
+  // For now, returning empty array since the current activity logs table uses numeric user IDs
+  return [];
 }

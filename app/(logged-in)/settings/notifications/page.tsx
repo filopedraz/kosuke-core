@@ -1,14 +1,14 @@
 'use client';
 
 import { Check } from 'lucide-react';
-import { useState, use, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { updateNotificationPreferences } from '@/app/(logged-out)/actions';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { useUser } from '@/lib/auth';
+import { useClerkUser } from '@/hooks/use-clerk-user';
 
 type FormState = {
   error?: string;
@@ -16,8 +16,8 @@ type FormState = {
 } | null;
 
 export default function NotificationsPage() {
-  const { userPromise } = useUser();
-  const user = use(userPromise);
+  const { authUser } = useClerkUser();
+  const user = authUser;
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formState, setFormState] = useState<FormState>(null);
   const router = useRouter();
