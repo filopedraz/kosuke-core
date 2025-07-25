@@ -50,6 +50,17 @@ class DockerService:
             **env_vars,
         }
 
+    async def _check_container_health(self, url: str) -> bool:
+        """Check if container is responding to HTTP requests"""
+        try:
+            import aiohttp
+
+            timeout = aiohttp.ClientTimeout(total=5)
+            async with aiohttp.ClientSession(timeout=timeout) as session, session.get(url) as response:
+                return response.status == 200
+        except (aiohttp.ClientError, asyncio.TimeoutError):
+            return False
+
     async def _ensure_project_database(self, project_id: int) -> None:
         """Ensure project has its own database in postgres"""
         try:
@@ -70,7 +81,7 @@ class DockerService:
 
         except asyncpg.exceptions.DuplicateDatabaseError:
             # Database already exists, that's fine
-            pass
+            await conn.close()
         except Exception as e:
             logger.error(f"Error creating database for project {project_id}: {e}")
             # Don't fail the container start if database creation fails
@@ -195,14 +206,7 @@ class DockerService:
         container_info = self.containers[project_id]
 
         # Check if container is responding
-        is_responding = False
-        try:
-            import aiohttp
-
-            async with aiohttp.ClientSession() as session, session.get(container_info.url, timeout=5) as response:
-                is_responding = response.status == 200
-        except (aiohttp.ClientError, asyncio.TimeoutError):
-            is_responding = False
+        is_responding = await self._check_container_health(container_info.url)
 
         return PreviewStatus(
             running=True,

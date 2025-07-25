@@ -161,11 +161,7 @@ class TestDockerService:
         )
         docker_service.containers[123] = container_info
 
-        with patch("aiohttp.ClientSession") as mock_session:
-            mock_response = AsyncMock()
-            mock_response.status = 200
-            mock_session.return_value.__aenter__.return_value.get.return_value.__aenter__.return_value = mock_response
-
+        with patch.object(docker_service, "_check_container_health", return_value=True):
             status = await docker_service.get_preview_status(123)
 
             assert status.running is True
@@ -196,10 +192,7 @@ class TestDockerService:
         )
         docker_service.containers[123] = container_info
 
-        with patch("aiohttp.ClientSession") as mock_session:
-            # Simulate connection error
-            mock_session.return_value.__aenter__.return_value.get.side_effect = Exception("Connection failed")
-
+        with patch.object(docker_service, "_check_container_health", return_value=False):
             status = await docker_service.get_preview_status(123)
 
             assert status.running is True
