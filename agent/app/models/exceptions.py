@@ -3,10 +3,12 @@ from enum import Enum
 
 class AgentErrorType(str, Enum):
     """Agent error types that mirror the TypeScript AgentErrorType"""
+
     TIMEOUT = "timeout"
     PARSING = "parsing"
     PROCESSING = "processing"
     UNKNOWN = "unknown"
+
 
 class AgentError(Exception):
     """Custom AgentError class that mirrors the TypeScript AgentError"""
@@ -16,6 +18,7 @@ class AgentError(Exception):
         self.message = message
         self.details = details
         super().__init__(message)
+
 
 def classify_error(error: Exception) -> AgentErrorType:
     """Classify an error by type, mirrors TypeScript classifyError function"""
@@ -30,6 +33,7 @@ def classify_error(error: Exception) -> AgentErrorType:
         return AgentErrorType.PARSING
 
     return AgentErrorType.UNKNOWN
+
 
 def get_error_message(error: Exception, error_type: AgentErrorType) -> str:
     """Get an appropriate error message based on error type"""

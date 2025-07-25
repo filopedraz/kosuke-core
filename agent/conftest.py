@@ -17,6 +17,7 @@ sys.path.insert(0, str(agent_dir))
 def get_test_client():
     """Get FastAPI test client with proper imports"""
     from app.main import app
+
     return TestClient(app)
 
 
@@ -35,10 +36,7 @@ def mock_project_id():
 @pytest.fixture()
 def mock_env_vars():
     """Sample environment variables for testing"""
-    return {
-        "CLERK_SECRET_KEY": "sk_test_example",
-        "DATABASE_URL": "postgresql://test:test@localhost:5432/test_db"
-    }
+    return {"CLERK_SECRET_KEY": "sk_test_example", "DATABASE_URL": "postgresql://test:test@localhost:5432/test_db"}
 
 
 @pytest.fixture()
@@ -48,5 +46,5 @@ def sample_files_structure():
         "package.json": '{"name": "test-project", "version": "1.0.0"}',
         "src/index.js": "console.log('Hello World');",
         "src/components/Button.tsx": "export const Button = () => <button>Click me</button>;",
-        "README.md": "# Test Project\n\nThis is a test project."
+        "README.md": "# Test Project\n\nThis is a test project.",
     }

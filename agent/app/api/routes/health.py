@@ -8,6 +8,7 @@ from app.utils.config import settings
 
 router = APIRouter()
 
+
 @router.get("/health")
 async def health_check():
     """
@@ -18,7 +19,7 @@ async def health_check():
     try:
         # Get system information
         memory = psutil.virtual_memory()
-        disk = psutil.disk_usage('/')
+        disk = psutil.disk_usage("/")
 
         return {
             "status": "healthy",
@@ -30,7 +31,7 @@ async def health_check():
                 "max_tokens": settings.max_tokens,
                 "model_name": settings.model_name,
                 "projects_dir": settings.projects_dir,
-                "log_level": settings.log_level
+                "log_level": settings.log_level,
             },
             "system": {
                 "platform": platform.system(),
@@ -41,8 +42,8 @@ async def health_check():
                 "memory_percent": memory.percent,
                 "disk_total_gb": round(disk.total / (1024**3), 2),
                 "disk_free_gb": round(disk.free / (1024**3), 2),
-                "disk_percent": round((disk.used / disk.total) * 100, 1)
-            }
+                "disk_percent": round((disk.used / disk.total) * 100, 1),
+            },
         }
     except Exception as e:
         return {
@@ -50,17 +51,15 @@ async def health_check():
             "service": "agentic-coding-pipeline",
             "version": "1.0.0",
             "error": str(e),
-            "timestamp": time.time()
+            "timestamp": time.time(),
         }
+
 
 @router.get("/health/simple")
 async def simple_health_check():
     """Simple health check for basic monitoring"""
-    return {
-        "status": "healthy",
-        "service": "agentic-coding-pipeline",
-        "version": "1.0.0"
-    }
+    return {"status": "healthy", "service": "agentic-coding-pipeline", "version": "1.0.0"}
+
 
 @router.get("/")
 async def root():
@@ -74,10 +73,7 @@ async def root():
             "health": "/api/health",
             "chat_streaming": "/api/chat/stream",
             "chat_simple": "/api/chat",
-            "test": "/api/test"
+            "test": "/api/test",
         },
-        "documentation": {
-            "swagger": "/docs",
-            "redoc": "/redoc"
-        }
+        "documentation": {"swagger": "/docs", "redoc": "/redoc"},
     }

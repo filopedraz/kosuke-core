@@ -1,4 +1,3 @@
-
 from pydantic_settings import BaseSettings
 
 
@@ -44,6 +43,7 @@ class Settings(BaseSettings):
             raise ValueError("MAX_TOKENS must be greater than 0")
 
         return True
+
 
 # Global settings instance
 settings = Settings()

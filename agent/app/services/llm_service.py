@@ -18,22 +18,13 @@ class LLMService:
     """
 
     def __init__(self):
-        self.model = AnthropicModel(
-            settings.model_name,
-            api_key=settings.anthropic_api_key
-        )
+        self.model = AnthropicModel(settings.model_name, api_key=settings.anthropic_api_key)
 
         # Create PydanticAI agent with system prompt
-        self.agent = Agent(
-            model=self.model,
-            system_prompt=self._get_system_prompt()
-        )
+        self.agent = Agent(model=self.model, system_prompt=self._get_system_prompt())
 
     async def generate_completion(
-        self,
-        messages: list[ChatMessage],
-        temperature: float | None = None,
-        max_tokens: int | None = None
+        self, messages: list[ChatMessage], temperature: float | None = None, max_tokens: int | None = None
     ) -> str:
         """
         Generate a completion using Claude 3.5 Sonnet
@@ -52,13 +43,13 @@ class LLMService:
         user_message = ""
 
         for msg in messages:
-            if msg.role == 'system':
+            if msg.role == "system":
                 continue  # System message is handled by agent's system_prompt
 
-            if msg.role == 'user':
+            if msg.role == "user":
                 user_message = msg.content  # Use the latest user message
             else:
-                conversation.append({'role': msg.role, 'content': msg.content})
+                conversation.append({"role": msg.role, "content": msg.content})
 
         try:
             print(f"Formatted message count: {len(conversation) + 1}")
@@ -66,13 +57,11 @@ class LLMService:
 
             # Start timing the request
             import time
+
             start_time = time.time()
 
             # Use PydanticAI agent to run the conversation
-            result = await self.agent.run(
-                user_message,
-                message_history=conversation if conversation else None
-            )
+            result = await self.agent.run(user_message, message_history=conversation if conversation else None)
 
             end_time = time.time()
             duration = end_time - start_time
@@ -82,7 +71,7 @@ class LLMService:
             print(f"Response first 100 chars: {result.data[:100]}...")
 
             # If we got an empty response, log a clear error
-            if not result.data or result.data.strip() == '':
+            if not result.data or result.data.strip() == "":
                 print("❌ WARNING: Empty response received from Claude API")
 
             return result.data
@@ -103,21 +92,16 @@ class LLMService:
 
             # Clean up the response - remove markdown code blocks if present
             cleaned_response = response_text.strip()
-            cleaned_response = re.sub(
-                r'```(?:json)?[\r\n]?(.*?)[\r\n]?```',
-                r'\1',
-                cleaned_response,
-                flags=re.DOTALL
-            )
+            cleaned_response = re.sub(r"```(?:json)?[\r\n]?(.*?)[\r\n]?```", r"\1", cleaned_response, flags=re.DOTALL)
             cleaned_response = cleaned_response.strip()
 
-            preview = cleaned_response[:200] + ('...' if len(cleaned_response) > 200 else '')
+            preview = cleaned_response[:200] + ("..." if len(cleaned_response) > 200 else "")
             print(f"📝 Cleaned response (preview): {preview}")
 
             # Default values for the result
             result = {
                 "thinking": True,  # Default to thinking mode
-                "actions": []
+                "actions": [],
             }
 
             try:
@@ -175,7 +159,7 @@ class LLMService:
         print(f"❌ Error parsing JSON: {json_error}")
 
         # Show context around the error if possible
-        if hasattr(json_error, 'pos') and json_error.pos is not None:
+        if hasattr(json_error, "pos") and json_error.pos is not None:
             error_pos = json_error.pos
             start = max(0, error_pos - 30)
             end = min(len(cleaned_response), error_pos + 30)
@@ -280,6 +264,7 @@ Follow these JSON formatting rules:
 
 IMPORTANT: The system can ONLY execute actions from the JSON object.
 Any instructions or explanations outside the JSON will be ignored."""
+
 
 # Global instance
 llm_service = LLMService()

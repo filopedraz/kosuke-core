@@ -11,6 +11,7 @@ from app.utils.config import settings
 
 logger = logging.getLogger(__name__)
 
+
 class WebhookService:
     """Service for sending webhooks to Next.js endpoints"""
 
@@ -26,9 +27,9 @@ class WebhookService:
         self.session = aiohttp.ClientSession(
             timeout=aiohttp.ClientTimeout(total=30),
             headers={
-                'Authorization': f'Bearer {self.webhook_secret}',
-                'Content-Type': 'application/json',
-            }
+                "Authorization": f"Bearer {self.webhook_secret}",
+                "Content-Type": "application/json",
+            },
         )
         return self
 
@@ -37,11 +38,7 @@ class WebhookService:
         if self.session:
             await self.session.close()
 
-    async def _send_webhook_with_retry(
-        self,
-        endpoint: str,
-        data: dict[str, Any]
-    ) -> bool:
+    async def _send_webhook_with_retry(self, endpoint: str, data: dict[str, Any]) -> bool:
         """Send webhook with exponential backoff retry"""
         for attempt in range(self.retry_attempts):
             try:
@@ -66,7 +63,7 @@ class WebhookService:
 
             # Exponential backoff if not the last attempt
             if attempt < self.retry_attempts - 1:
-                delay = self.retry_delay * (2 ** attempt)
+                delay = self.retry_delay * (2**attempt)
                 logger.info(f"Retrying webhook in {delay}s...")
                 await asyncio.sleep(delay)
 
@@ -81,7 +78,7 @@ class WebhookService:
         model_type: str = "premium",
         tokens_input: int = 0,
         tokens_output: int = 0,
-        context_tokens: int = 0
+        context_tokens: int = 0,
     ) -> bool:
         """Send assistant message to Next.js database"""
         endpoint = f"/api/projects/{project_id}/webhook/message"
@@ -97,12 +94,7 @@ class WebhookService:
         return await self._send_webhook_with_retry(endpoint, data)
 
     async def send_action(
-        self,
-        project_id: int,
-        action_type: str,
-        path: str,
-        status: str = "completed",
-        message_id: int | None = None
+        self, project_id: int, action_type: str, path: str, status: str = "completed", message_id: int | None = None
     ) -> bool:
         """Send file operation to Next.js database"""
         endpoint = f"/api/projects/{project_id}/webhook/action"
@@ -123,7 +115,7 @@ class WebhookService:
         success: bool = True,
         total_actions: int = 0,
         total_tokens: int = 0,
-        duration: float = 0.0
+        duration: float = 0.0,
     ) -> bool:
         """Send session completion to Next.js"""
         endpoint = f"/api/projects/{project_id}/webhook/complete"
@@ -136,11 +128,7 @@ class WebhookService:
 
         return await self._send_webhook_with_retry(endpoint, data)
 
-    async def send_multiple_actions(
-        self,
-        project_id: int,
-        actions: list[dict[str, Any]]
-    ) -> bool:
+    async def send_multiple_actions(self, project_id: int, actions: list[dict[str, Any]]) -> bool:
         """Send multiple actions efficiently"""
         success_count = 0
 
@@ -150,12 +138,13 @@ class WebhookService:
                 action_type=action.get("type"),
                 path=action.get("path"),
                 status=action.get("status", "completed"),
-                message_id=action.get("message_id")
+                message_id=action.get("message_id"),
             ):
                 success_count += 1
 
         logger.info(f"✅ Sent {success_count}/{len(actions)} actions successfully")
         return success_count == len(actions)
+
 
 # Global webhook service instance
 webhook_service = WebhookService()

@@ -1,4 +1,3 @@
-
 import tiktoken
 
 
@@ -18,6 +17,7 @@ def count_tokens(text: str) -> int:
         # Fallback to approximately 4 characters per token (standard approximation)
         return len(text) // 4
 
+
 def format_token_count(count: int) -> str:
     """
     Format a token count for display
@@ -27,6 +27,7 @@ def format_token_count(count: int) -> str:
     if count < 1000:
         return str(count)
     return f"{count / 1000:.1f}k"
+
 
 def estimate_tokens_from_messages(messages: list) -> int:
     """
@@ -43,8 +44,8 @@ def estimate_tokens_from_messages(messages: list) -> int:
     for message in messages:
         content = ""
         if isinstance(message, dict):
-            content = message.get('content', '')
-        elif hasattr(message, 'content'):
+            content = message.get("content", "")
+        elif hasattr(message, "content"):
             content = message.content
         else:
             content = str(message)
@@ -52,6 +53,7 @@ def estimate_tokens_from_messages(messages: list) -> int:
         total_tokens += count_tokens(content)
 
     return total_tokens
+
 
 def truncate_text_to_tokens(text: str, max_tokens: int, preserve_start: bool = True) -> str:
     """
@@ -79,12 +81,12 @@ def truncate_text_to_tokens(text: str, max_tokens: int, preserve_start: bool = T
         if count_tokens(truncated) > max_tokens:
             # If still too long, cut more aggressively
             while count_tokens(truncated) > max_tokens and len(truncated) > 100:
-                truncated = truncated[:int(len(truncated) * 0.9)]
+                truncated = truncated[: int(len(truncated) * 0.9)]
         return truncated
 
     truncated = text[-target_length:]
     if count_tokens(truncated) > max_tokens:
         # If still too long, cut more aggressively
         while count_tokens(truncated) > max_tokens and len(truncated) > 100:
-            truncated = truncated[int(len(truncated) * 0.1):]
+            truncated = truncated[int(len(truncated) * 0.1) :]
     return truncated

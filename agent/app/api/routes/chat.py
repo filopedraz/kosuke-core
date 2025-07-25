@@ -11,6 +11,7 @@ from app.models.responses import ChatResponse
 
 router = APIRouter()
 
+
 @router.post("/chat/stream")
 async def chat_stream(request: ChatRequest) -> StreamingResponse:
     """
@@ -19,6 +20,7 @@ async def chat_stream(request: ChatRequest) -> StreamingResponse:
     This endpoint provides Server-Sent Events streaming for the agentic workflow,
     mirroring the TypeScript streaming functionality.
     """
+
     async def generate_stream() -> AsyncGenerator[str, None]:
         try:
             print(f"🚀 Starting chat stream for project {request.project_id}")
@@ -41,7 +43,7 @@ async def chat_stream(request: ChatRequest) -> StreamingResponse:
                 "file_path": "",
                 "message": f"Internal server error: {e!s}",
                 "status": "error",
-                "error_type": "unknown"
+                "error_type": "unknown",
             }
             yield f"data: {json.dumps(error_data)}\n\n"
 
@@ -57,8 +59,9 @@ async def chat_stream(request: ChatRequest) -> StreamingResponse:
             "Content-Type": "text/event-stream",
             "Access-Control-Allow-Origin": "*",
             "Access-Control-Allow-Headers": "*",
-        }
+        },
     )
+
 
 @router.post("/chat", response_model=ChatResponse)
 async def chat_simple(request: ChatRequest):
@@ -93,15 +96,12 @@ async def chat_simple(request: ChatRequest):
         print(f"❌ Error in simple chat: {e}")
         raise HTTPException(status_code=500, detail=str(e)) from e
 
+
 @router.get("/test")
 async def test_endpoint():
     """Simple test endpoint to verify the API is working"""
     return {
         "message": "Chat API is working!",
         "service": "agentic-coding-pipeline",
-        "endpoints": {
-            "streaming": "/api/chat/stream",
-            "simple": "/api/chat",
-            "test": "/api/test"
-        }
+        "endpoints": {"streaming": "/api/chat/stream", "simple": "/api/chat", "test": "/api/test"},
     }

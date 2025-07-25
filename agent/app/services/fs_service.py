@@ -35,7 +35,7 @@ class FileSystemService:
         Mirrors the TypeScript readFile function from lib/fs/operations.ts
         """
         try:
-            async with aiofiles.open(file_path, 'r', encoding='utf-8') as f:
+            async with aiofiles.open(file_path, "r", encoding="utf-8") as f:
                 return await f.read()
         except Exception as error:
             print(f"Failed to read file {file_path}: {error}")
@@ -52,7 +52,7 @@ class FileSystemService:
             # Ensure the directory exists
             file_path.parent.mkdir(parents=True, exist_ok=True)
 
-            async with aiofiles.open(file_path, 'w', encoding='utf-8') as f:
+            async with aiofiles.open(file_path, "w", encoding="utf-8") as f:
                 await f.write(content)
         except Exception as error:
             print(f"Failed to create file {file_path}: {error}")
@@ -65,7 +65,7 @@ class FileSystemService:
         Mirrors the TypeScript updateFile function from lib/fs/operations.ts
         """
         try:
-            async with aiofiles.open(file_path, 'w', encoding='utf-8') as f:
+            async with aiofiles.open(file_path, "w", encoding="utf-8") as f:
                 await f.write(content)
         except Exception as error:
             print(f"Failed to update file {file_path}: {error}")
@@ -125,7 +125,7 @@ class FileSystemService:
         dir_path = Path(dir_path)
 
         try:
-            for file_path in dir_path.rglob('*'):
+            for file_path in dir_path.rglob("*"):
                 if file_path.is_file():
                     relative_path = file_path.relative_to(dir_path)
                     files.append(str(relative_path))
@@ -210,7 +210,7 @@ class FileSystemService:
         full_path = base_path / relative_path
 
         # Skip excluded directories
-        exclude_dirs = {'.next', 'node_modules', '.git', 'dist', 'build', '__pycache__'}
+        exclude_dirs = {".next", "node_modules", ".git", "dist", "build", "__pycache__"}
 
         try:
             entries = list(full_path.iterdir())
@@ -228,24 +228,17 @@ class FileSystemService:
 
             if entry.is_dir():
                 children = self._read_directory_recursive(base_path, entry_relative_path)
-                nodes.append({
-                    "name": entry.name,
-                    "path": entry_relative_path,
-                    "type": "directory",
-                    "children": children
-                })
+                nodes.append(
+                    {"name": entry.name, "path": entry_relative_path, "type": "directory", "children": children}
+                )
             else:
-                nodes.append({
-                    "name": entry.name,
-                    "path": entry_relative_path,
-                    "type": "file",
-                    "hasChanges": False
-                })
+                nodes.append({"name": entry.name, "path": entry_relative_path, "type": "file", "hasChanges": False})
 
         # Sort directories first, then files, both alphabetically
         nodes.sort(key=lambda x: (x["type"] == "file", x["name"].lower()))
 
         return nodes
+
 
 # Global instance
 fs_service = FileSystemService()

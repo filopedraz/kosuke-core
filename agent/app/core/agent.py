@@ -47,7 +47,7 @@ class Agent:
                 "type": "thinking",
                 "file_path": "",
                 "message": "Analyzing project structure...",
-                "status": "pending"
+                "status": "pending",
             }
 
             # Create a basic context for now
@@ -64,7 +64,7 @@ class Agent:
                 "file_path": "",
                 "message": get_error_message(e, error_type),
                 "status": "error",
-                "error_type": error_type.value
+                "error_type": error_type.value,
             }
 
         processing_end = time.time()
@@ -96,11 +96,7 @@ Files ({len(files)} total):
             print(f"Error getting basic context: {e}")
             return "Error loading project context"
 
-    async def _run_agentic_workflow(
-        self,
-        prompt: str,
-        context: str
-    ) -> AsyncGenerator[dict, None]:
+    async def _run_agentic_workflow(self, prompt: str, context: str) -> AsyncGenerator[dict, None]:
         """
         Run the iterative agentic workflow
 
@@ -121,14 +117,12 @@ Files ({len(files)} total):
                 "type": "thinking",
                 "file_path": "",
                 "message": f"Thinking... (iteration {iteration_count})",
-                "status": "pending"
+                "status": "pending",
             }
 
             try:
                 # Update context with tracking info
-                current_context = self._update_context_with_tracking(
-                    current_context, read_files, iteration_count
-                )
+                current_context = self._update_context_with_tracking(current_context, read_files, iteration_count)
 
                 # Generate AI response
                 messages = self._build_messages(prompt, current_context, [])
@@ -143,7 +137,7 @@ Files ({len(files)} total):
                         "type": "thinking",
                         "file_path": "",
                         "message": "Ready to execute changes",
-                        "status": "completed"
+                        "status": "completed",
                     }
 
                     # Execute actions
@@ -161,7 +155,7 @@ Files ({len(files)} total):
                         "type": "thinking",
                         "file_path": "",
                         "message": "Forcing execution mode",
-                        "status": "pending"
+                        "status": "pending",
                     }
 
                     final_actions = await self._force_execution_mode(prompt, current_context)
@@ -192,7 +186,7 @@ Files ({len(files)} total):
         raise AgentError(
             AgentErrorType.PROCESSING,
             f"Reached maximum iterations ({self.max_iterations})",
-            "The agent was unable to complete the task within the iteration limit"
+            "The agent was unable to complete the task within the iteration limit",
         )
 
     async def _execute_actions(self, actions: list[Action]) -> AsyncGenerator[dict, None]:
@@ -209,12 +203,7 @@ Files ({len(files)} total):
             # Map action type to update type
             update_type = self._map_action_to_update_type(action.action.value)
 
-            yield {
-                "type": update_type,
-                "file_path": action.file_path,
-                "message": action.message,
-                "status": "pending"
-            }
+            yield {"type": update_type, "file_path": action.file_path, "message": action.message, "status": "pending"}
 
             try:
                 action_start = time.time()
@@ -232,7 +221,7 @@ Files ({len(files)} total):
                             project_id=self.project_id,
                             action_type=action.action.value,
                             path=action.file_path,
-                            status="completed"
+                            status="completed",
                         )
 
                     self.total_actions += 1
@@ -241,7 +230,7 @@ Files ({len(files)} total):
                         "type": update_type,
                         "file_path": action.file_path,
                         "message": action.message,
-                        "status": "completed"
+                        "status": "completed",
                     }
                 else:
                     # Send webhook for failed action
@@ -250,14 +239,14 @@ Files ({len(files)} total):
                             project_id=self.project_id,
                             action_type=action.action.value,
                             path=action.file_path,
-                            status="error"
+                            status="error",
                         )
 
                     yield {
                         "type": "error",
                         "file_path": action.file_path,
                         "message": f"Failed to {action.action} on {action.file_path}",
-                        "status": "error"
+                        "status": "error",
                     }
                     return
 
@@ -266,7 +255,7 @@ Files ({len(files)} total):
                     "type": "error",
                     "file_path": action.file_path,
                     "message": f"Error executing {action.action}: {e!s}",
-                    "status": "error"
+                    "status": "error",
                 }
                 return
 
@@ -275,15 +264,11 @@ Files ({len(files)} total):
             "type": "completed",
             "file_path": "",
             "message": "All changes have been implemented successfully!",
-            "status": "completed"
+            "status": "completed",
         }
 
     async def _execute_read_actions(
-        self,
-        actions: list[Action],
-        read_files: set[str],
-        gathered_context: dict[str, str],
-        execution_log: list[str]
+        self, actions: list[Action], read_files: set[str], gathered_context: dict[str, str], execution_log: list[str]
     ) -> AsyncGenerator[dict, None]:
         """
         Execute read actions and gather context
@@ -293,7 +278,7 @@ Files ({len(files)} total):
         read_actions = [a for a in actions if a.action.value == "readFile"]
 
         if not read_actions:
-            print('No read actions to execute')
+            print("No read actions to execute")
             return
 
         print(f"🧠 Agent is still in thinking mode, executing {len(read_actions)} read actions...")
@@ -306,12 +291,7 @@ Files ({len(files)} total):
             read_files.add(action.file_path)
             execution_log.append(f"Read {action.file_path}")
 
-            yield {
-                "type": "read",
-                "file_path": action.file_path,
-                "message": action.message,
-                "status": "pending"
-            }
+            yield {"type": "read", "file_path": action.file_path, "message": action.message, "status": "pending"}
 
             try:
                 project_path = fs_service.get_project_path(self.project_id)
@@ -329,7 +309,7 @@ Files ({len(files)} total):
                     "type": "read",
                     "file_path": action.file_path,
                     "message": f"Read {action.file_path} successfully ({file_tokens} tokens)",
-                    "status": "completed"
+                    "status": "completed",
                 }
 
             except Exception as e:
@@ -338,25 +318,21 @@ Files ({len(files)} total):
                     "type": "error",
                     "file_path": action.file_path,
                     "message": f"Error reading {action.file_path}: {e!s}",
-                    "status": "error"
+                    "status": "error",
                 }
 
     def _should_force_execution(self, actions: list[Action], read_files: set[str], iteration_count: int) -> bool:
         """Determine if we should force execution mode"""
         duplicate_reads = [a for a in actions if a.action.value == "readFile" and a.file_path in read_files]
 
-        return (
-            len(duplicate_reads) >= 3 or
-            iteration_count >= int(self.max_iterations * 0.8)
-        )
+        return len(duplicate_reads) >= 3 or iteration_count >= int(self.max_iterations * 0.8)
 
     async def _force_execution_mode(self, prompt: str, context: str) -> list[Action]:
         """Force the agent into execution mode"""
         print("⚠️ Forcing agent to execution mode due to duplicate reads or high iteration count")
 
         forced_context = (
-            context +
-            "\n\n### SYSTEM NOTICE - FORCING EXECUTION MODE:\n"
+            context + "\n\n### SYSTEM NOTICE - FORCING EXECUTION MODE:\n"
             "You've attempted to reread files multiple times or have used too many iterations. "
             "Based on the files you've already read, proceed to implementation immediately.\n"
         )
@@ -371,10 +347,7 @@ Files ({len(files)} total):
         """Build messages for LLM completion"""
         system_content = context if context else ""
 
-        return [
-            ChatMessage(role="system", content=system_content),
-            ChatMessage(role="user", content=prompt.strip())
-        ]
+        return [ChatMessage(role="system", content=system_content), ChatMessage(role="user", content=prompt.strip())]
 
     def _update_context_with_tracking(self, context: str, read_files: set[str], iteration_count: int) -> str:
         """Update context with tracking information"""
@@ -420,7 +393,7 @@ Files ({len(files)} total):
             "deleteFile": "delete",
             "createDirectory": "create",
             "removeDirectory": "delete",
-            "search": "read"
+            "search": "read",
         }
         return mapping.get(action, "unknown")
 
@@ -435,7 +408,7 @@ Files ({len(files)} total):
                     success=success,
                     total_actions=self.total_actions,
                     total_tokens=self.total_tokens,
-                    duration=duration
+                    duration=duration,
                 )
 
             print(f"✅ Sent completion webhook: {self.total_actions} actions, {duration:.2f}s")

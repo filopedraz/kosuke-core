@@ -5,11 +5,14 @@ from pydantic import BaseModel
 
 class ChatMessage(BaseModel):
     """Chat message model that mirrors the TypeScript ChatMessage interface"""
+
     role: str  # 'system' | 'user' | 'assistant'
     content: str
 
+
 class ChatRequest(BaseModel):
     """Chat request model for the streaming endpoint"""
+
     project_id: int
     prompt: str
     chat_history: list[ChatMessage] | None = []
@@ -21,14 +24,8 @@ class ChatRequest(BaseModel):
                 "project_id": 1,
                 "prompt": "Create a new React component for a button",
                 "chat_history": [
-                    {
-                        "role": "user",
-                        "content": "Previous message"
-                    },
-                    {
-                        "role": "assistant",
-                        "content": "Previous response"
-                    }
-                ]
+                    {"role": "user", "content": "Previous message"},
+                    {"role": "assistant", "content": "Previous response"},
+                ],
             }
         }

@@ -29,6 +29,7 @@ class ReadFileTool(Tool):
             print(f"❌ Error reading file: {file_path}, {e}")
             return {"success": False, "error": str(e)}
 
+
 class CreateFileTool(Tool):
     """
     Tool for creating new files
@@ -52,6 +53,7 @@ class CreateFileTool(Tool):
         except Exception as e:
             print(f"❌ Error creating file: {file_path}, {e}")
             return {"success": False, "error": str(e)}
+
 
 class EditFileTool(Tool):
     """
@@ -77,6 +79,7 @@ class EditFileTool(Tool):
             print(f"❌ Error editing file: {file_path}, {e}")
             return {"success": False, "error": str(e)}
 
+
 class DeleteFileTool(Tool):
     """
     Tool for deleting files
@@ -100,6 +103,7 @@ class DeleteFileTool(Tool):
         except Exception as e:
             print(f"❌ Error deleting file: {file_path}, {e}")
             return {"success": False, "error": str(e)}
+
 
 class CreateDirectoryTool(Tool):
     """
@@ -125,6 +129,7 @@ class CreateDirectoryTool(Tool):
             print(f"❌ Error creating directory: {dir_path}, {e}")
             return {"success": False, "error": str(e)}
 
+
 class RemoveDirectoryTool(Tool):
     """
     Tool for removing directories
@@ -148,6 +153,7 @@ class RemoveDirectoryTool(Tool):
         except Exception as e:
             print(f"❌ Error removing directory: {dir_path}, {e}")
             return {"success": False, "error": str(e)}
+
 
 class SearchTool(Tool):
     """
@@ -182,11 +188,12 @@ class SearchTool(Tool):
                     "components/ui/card.tsx",
                     "app/page.tsx",
                     "lib/utils.ts",
-                ]
+                ],
             }
         except Exception as e:
             print(f"❌ Error searching for files: {search_term}, {e}")
             return {"success": False, "error": str(e)}
+
 
 # Tool registry - mirrors the TypeScript toolMap from lib/llm/tools/index.ts
 TOOLS = {
@@ -199,13 +206,14 @@ TOOLS = {
     "search": SearchTool(),
 }
 
+
 def get_tool(name: str) -> Tool | None:
     """
     Get a tool by name
 
     Mirrors the TypeScript getTool function from lib/llm/tools/index.ts
     """
-    print(f"🔍 Looking for tool with name: \"{name}\"")
+    print(f'🔍 Looking for tool with name: "{name}"')
 
     tool = TOOLS.get(name)
 
@@ -213,9 +221,10 @@ def get_tool(name: str) -> Tool | None:
         print(f"✅ Found tool: {tool.name}")
         return tool
 
-    print(f"❌ No tool found with name: \"{name}\"")
+    print(f'❌ No tool found with name: "{name}"')
     print(f"🧰 Available tools: {list(TOOLS.keys())}")
     return None
+
 
 def get_all_tools() -> dict[str, Tool]:
     """Get all available tools"""
