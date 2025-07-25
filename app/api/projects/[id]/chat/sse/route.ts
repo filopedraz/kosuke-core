@@ -32,8 +32,8 @@ export async function GET(
   context: { params: { id: string } }
 ): Promise<Response> {
   try {
-    const session = await getSession();
-    if (!session) {
+    const { userId } = auth();
+    if (!userId) {
       return new Response('Unauthorized', { status: 401 });
     }
 
@@ -50,7 +50,7 @@ export async function GET(
     }
 
     // Check if the user has access to the project
-    if (project.createdBy !== session.user.id) {
+    if (project.createdBy !== userId) {
       return new Response('Forbidden', { status: 403 });
     }
 

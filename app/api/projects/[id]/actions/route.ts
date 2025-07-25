@@ -27,8 +27,8 @@ export async function GET(
 
   try {
     // Get the session
-    const session = await getSession();
-    if (!session) {
+    const { userId } = auth();
+    if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -41,7 +41,7 @@ export async function GET(
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
-    if (project.userId !== session.user.id) {
+    if (project.userId !== userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
@@ -88,8 +88,8 @@ export async function POST(
 
   try {
     // Get the session
-    const session = await getSession();
-    if (!session) {
+    const { userId } = auth();
+    if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -102,7 +102,7 @@ export async function POST(
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
-    if (project.userId !== session.user.id) {
+    if (project.userId !== userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 

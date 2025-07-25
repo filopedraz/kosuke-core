@@ -42,9 +42,16 @@ global.Response = jest.fn().mockImplementation((body, init) => {
   };
 });
 
-// Mock auth session
-jest.mock('@/lib/auth/session', () => ({
-  getSession: jest.fn(),
+// Mock Clerk auth
+jest.mock('@clerk/nextjs', () => ({
+  auth: jest.fn(),
+  currentUser: jest.fn(),
+  useAuth: jest.fn(),
+  useUser: jest.fn(),
+  ClerkProvider: ({ children }) => children,
+  SignIn: () => 'SignIn',
+  SignUp: () => 'SignUp',
+  UserButton: () => 'UserButton',
 }));
 
 // Mock database functions

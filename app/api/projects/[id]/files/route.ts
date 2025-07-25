@@ -3,7 +3,7 @@ import path from 'path';
 import { promisify } from 'util';
 import { exec as execCallback } from 'child_process';
 
-import { getSession } from '@/lib/auth/session';
+import { auth } from "@clerk/nextjs";
 import { getProjectById } from '@/lib/db/projects';
 import { getProjectFiles, getProjectPath, deleteDir, fileExists } from '@/lib/fs/operations';
 
@@ -19,8 +19,8 @@ export async function GET(
 ) {
   try {
     // Get the session
-    const session = await getSession();
-    if (!session) {
+    const { userId } = auth();
+    if (!userId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -46,7 +46,7 @@ export async function GET(
     }
 
     // Check if the user has access to the project
-    if (project.createdBy !== session.user.id) {
+    if (project.createdBy !== userId) {
       return NextResponse.json(
         { error: 'Forbidden' },
         { status: 403 }
@@ -76,8 +76,8 @@ export async function DELETE(
 ) {
   try {
     // Get the session
-    const session = await getSession();
-    if (!session) {
+    const { userId } = auth();
+    if (!userId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -103,7 +103,7 @@ export async function DELETE(
     }
 
     // Check if the user has access to the project
-    if (project.createdBy !== session.user.id) {
+    if (project.createdBy !== userId) {
       return NextResponse.json(
         { error: 'Forbidden' },
         { status: 403 }

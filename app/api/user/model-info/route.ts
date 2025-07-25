@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getSession } from '@/lib/auth/session';
+import { auth } from '@clerk/nextjs';
 import { getModelForUser, getUserMessageLimit, getPremiumMessageCount } from '@/lib/models';
 
 /**
@@ -9,8 +9,8 @@ import { getModelForUser, getUserMessageLimit, getPremiumMessageCount } from '@/
  */
 export async function GET() {
   try {
-    const session = await getSession();
-    if (!session) {
+    const { userId } = auth();
+    if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -19,7 +19,7 @@ export async function GET() {
 
     // Get message limit and current count
     const messageLimit = await getUserMessageLimit();
-    const messageCount = await getPremiumMessageCount(session.user.id);
+    const messageCount = await getPremiumMessageCount(userId);
 
     return NextResponse.json({
       ...modelInfo,

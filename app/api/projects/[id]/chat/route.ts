@@ -99,8 +99,8 @@ export async function GET(
 ) {
   try {
     // Get the session
-    const session = await getSession();
-    if (!session) {
+    const { userId } = auth();
+    if (!userId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -127,7 +127,7 @@ export async function GET(
     }
 
     // Get the user has access to the project
-    if (project.createdBy !== session.user.id) {
+    if (project.createdBy !== userId) {
       return NextResponse.json(
         { error: 'Forbidden' },
         { status: 403 }
@@ -207,8 +207,8 @@ export async function POST(
 ): Promise<NextResponse> {
   try {
     // Get the session
-    const session = await getSession();
-    if (!session) {
+    const { userId } = auth();
+    if (!userId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -221,7 +221,7 @@ export async function POST(
 
     // Check if the user has reached their message limit
     try {
-      const limitReached = await hasReachedMessageLimit(session.user.id);
+      const limitReached = await hasReachedMessageLimit(userId);
       if (limitReached) {
         throw new Error('PREMIUM_LIMIT_REACHED');
       }
@@ -317,7 +317,7 @@ export async function POST(
     // Current message tokens added to tokensInput for this message
     await db.insert(chatMessages).values({
       projectId,
-      userId: session.user.id,
+      userId: userId,
       content: messageContent,
       role: 'user',
       modelType: 'premium',

@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-import { getSession } from '@/lib/auth/session';
+import { auth, currentUser } from '@clerk/nextjs';
 import { createCheckoutSession } from '@/lib/stripe';
 import { getUser } from '@/lib/db/queries';
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getSession();
-    if (!session) {
+    const { userId } = auth();
+    if (!userId) {
       return NextResponse.redirect('/sign-in');
     }
 
