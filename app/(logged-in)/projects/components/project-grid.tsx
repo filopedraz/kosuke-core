@@ -1,7 +1,7 @@
 'use client';
 
 import { Project, useProjectStore } from '@/lib/stores/projectStore';
-import { useProjects } from '@/lib/hooks/useProjects';
+import { useProjects } from '@/hooks/use-projects';
 import ProjectCard from './project-card';
 import { ProjectCardSkeleton } from './project-card-skeleton';
 
