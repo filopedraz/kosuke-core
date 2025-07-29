@@ -25,7 +25,7 @@ export const LLM = {
   // Message limits by subscription tier
   MESSAGE_LIMITS: {
     free: 25, // Free tier - limited to 25 messages
-    premium: 100, // Pro plan
+    premium: 500, // Pro plan
     business: 1000, // Business plan
     enterprise: 5000, // Enterprise plan
   },

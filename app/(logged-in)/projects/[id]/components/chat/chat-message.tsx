@@ -1,7 +1,7 @@
 'use client';
 
 import { formatDistanceToNow } from 'date-fns';
-import { User, CircleIcon, AlertCircle, RefreshCcw } from 'lucide-react';
+import { AlertCircle, CircleIcon, RefreshCcw, User } from 'lucide-react';
 import Image from 'next/image';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -49,8 +49,6 @@ export default function ChatMessage({
   onRegenerate,
 }: ChatMessageProps) {
   const isUser = role === 'user';
-  // Animate all "Thinking..." messages from assistant (whether loading or not)
-  const isThinking = role === 'assistant' && content === 'Thinking...';
 
   // Get appropriate error message based on error type
   const getErrorMessage = (type: ErrorType): string => {
@@ -71,12 +69,12 @@ export default function ChatMessage({
   const getFileName = (url: string): string => {
     const urlParts = url.split('/');
     let fileName = urlParts[urlParts.length - 1];
-    
+
     // Remove query parameters
     if (fileName.includes('?')) {
       fileName = fileName.split('?')[0];
     }
-    
+
     // Try to decode URI component to handle encoded characters
     try {
       fileName = decodeURIComponent(fileName);
@@ -84,7 +82,7 @@ export default function ChatMessage({
       console.error('Error decoding file name');
       // If decoding fails, use the original
     }
-    
+
     // Return the name or a default
     return fileName || 'image.png';
   };
@@ -93,10 +91,10 @@ export default function ChatMessage({
   const processContent = (content: string) => {
     const imageRegex = /\[Attached Image\]\(([^)]+)\)/g;
     const parts: Array<{ type: 'text' | 'image'; content: string }> = [];
-    
+
     let lastIndex = 0;
     let match;
-    
+
     // Find all image matches and process text between them
     while ((match = imageRegex.exec(content)) !== null) {
       // Add text before this image if there is any
@@ -104,30 +102,30 @@ export default function ChatMessage({
       if (textBefore) {
         parts.push({ type: 'text', content: textBefore });
       }
-      
+
       // Add the image
       parts.push({ type: 'image', content: match[1] });
-      
+
       // Update last index
       lastIndex = match.index + match[0].length;
     }
-    
+
     // Add any remaining text after the last image
     const textAfter = content.substring(lastIndex).trim();
     if (textAfter) {
       parts.push({ type: 'text', content: textAfter });
     }
-    
+
     // If no parts were found, treat the entire content as text
     if (parts.length === 0) {
       parts.push({ type: 'text', content });
     }
-    
+
     return parts;
   };
-  
+
   const contentParts = processContent(content);
-  
+
   return (
     <div
       className={cn(
@@ -164,9 +162,9 @@ export default function ChatMessage({
           )}
         </Avatar>
       ) : (
-        <div className="w-8" /> 
+        <div className="w-8" />
       )}
-      
+
       <div className="flex-1 space-y-2">
         {showAvatar && ( // Only show header for first message in a sequence
           <div className="flex items-center justify-between">
@@ -178,16 +176,13 @@ export default function ChatMessage({
             </time>
           </div>
         )}
-        
+
         <div className={cn(
           "prose prose-xs dark:prose-invert max-w-none text-sm [overflow-wrap:anywhere]",
           !showAvatar && "mt-0", // Remove top margin for consecutive messages
           hasError && !isUser && "text-muted-foreground" // Muted text for error messages
         )}>
-          {isThinking ? (
-            <p className="text-muted-foreground animate-pulse">Thinking...</p>
-          ) : (
-            contentParts.map((part, i) => (
+          {contentParts.map((part, i) => (
               part.type === 'text' ? (
                 // Render text content with line breaks
                 part.content.split('\n').map((line, j) => (
@@ -200,13 +195,13 @@ export default function ChatMessage({
                 <div key={i} className="my-2 inline-block max-w-[400px]">
                   <div className="flex items-center gap-3 bg-card rounded-md p-2 px-3 border border-border">
                     <div className="relative w-12 h-12 rounded-sm bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
-                      <div 
+                      <div
                         className="relative w-full h-full cursor-pointer"
                         onClick={() => window.open(part.content, '_blank')}
                       >
-                        <Image 
-                          src={part.content} 
-                          alt="Attached Image" 
+                        <Image
+                          src={part.content}
+                          alt="Attached Image"
                           fill
                           className="object-cover"
                           sizes="(max-width: 48px) 100vw, 48px"
@@ -224,15 +219,23 @@ export default function ChatMessage({
                   </div>
                 </div>
               )
-            ))
-          )}
-          
-          {/* Display file operations card inside assistant messages if operations exist */}
-          {!isUser && actions && actions.length > 0 && (
-            <div className="w-full">
-              <AssistantActionsCard operations={actions} />
-            </div>
-          )}
+            ))}
+
+
+                    {/* Display file operations card inside assistant messages if operations exist */}
+          {!isUser && (() => {
+            console.log('🎯 [ChatMessage] Rendering assistant message:', {
+              hasActions: actions && actions.length > 0,
+              actionsCount: actions?.length || 0,
+              actions: actions
+            });
+
+            return actions && actions.length > 0 && (
+              <div className="w-full">
+                <AssistantActionsCard operations={actions} />
+              </div>
+            );
+          })()}
 
           {/* Display error message if there's an error */}
           {!isUser && hasError && (
@@ -255,4 +258,4 @@ export default function ChatMessage({
       </div>
     </div>
   );
-} 
+}

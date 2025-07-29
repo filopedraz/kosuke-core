@@ -14,7 +14,7 @@ class ReadFileTool(Tool):
 
     @property
     def name(self) -> str:
-        return "readFile"
+        return "read"
 
     @property
     def description(self) -> str:
@@ -39,7 +39,7 @@ class CreateFileTool(Tool):
 
     @property
     def name(self) -> str:
-        return "createFile"
+        return "create"
 
     @property
     def description(self) -> str:
@@ -64,7 +64,7 @@ class EditFileTool(Tool):
 
     @property
     def name(self) -> str:
-        return "editFile"
+        return "edit"
 
     @property
     def description(self) -> str:
@@ -89,7 +89,7 @@ class DeleteFileTool(Tool):
 
     @property
     def name(self) -> str:
-        return "deleteFile"
+        return "delete"
 
     @property
     def description(self) -> str:
@@ -114,7 +114,7 @@ class CreateDirectoryTool(Tool):
 
     @property
     def name(self) -> str:
-        return "createDirectory"
+        return "createDir"
 
     @property
     def description(self) -> str:
@@ -139,7 +139,7 @@ class RemoveDirectoryTool(Tool):
 
     @property
     def name(self) -> str:
-        return "removeDirectory"
+        return "removeDir"
 
     @property
     def description(self) -> str:
@@ -197,12 +197,12 @@ class SearchTool(Tool):
 
 # Tool registry - mirrors the TypeScript toolMap from lib/llm/tools/index.ts
 TOOLS = {
-    "readFile": ReadFileTool(),
-    "createFile": CreateFileTool(),
-    "editFile": EditFileTool(),
-    "deleteFile": DeleteFileTool(),
-    "createDirectory": CreateDirectoryTool(),
-    "removeDirectory": RemoveDirectoryTool(),
+    "read": ReadFileTool(),
+    "create": CreateFileTool(),
+    "edit": EditFileTool(),
+    "delete": DeleteFileTool(),
+    "createDir": CreateDirectoryTool(),
+    "removeDir": RemoveDirectoryTool(),
     "search": SearchTool(),
 }
 

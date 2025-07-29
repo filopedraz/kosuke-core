@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect } from 'react';
-import { Loader2, FileIcon, Check, Search, FolderIcon, FolderPlusIcon, FolderMinusIcon, EyeIcon, PencilIcon } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
+import { Check, EyeIcon, FileIcon, FolderIcon, FolderMinusIcon, FolderPlusIcon, Loader2, PencilIcon, Search } from 'lucide-react';
+import { useEffect } from 'react';
 
 export interface Action {
   path: string;
@@ -20,16 +20,35 @@ interface AssistantActionsCardProps {
   className?: string;
 }
 
-export default function AssistantActionsCard({ 
+export default function AssistantActionsCard({
   operations = [],
-  className 
+  className
 }: AssistantActionsCardProps) {
   // Filter out operations with empty paths - these are summary operations, not actual file operations
   const validOperations = operations.filter(op => op.path.trim() !== '');
-  
+
   // Enhanced logging
   useEffect(() => {
-    console.log('[COMPONENT] AssistantActionsCard rendered with operations:', validOperations);
+    console.log('🎯 [AssistantActionsCard] Received operations prop:', operations);
+    console.log('🎯 [AssistantActionsCard] Raw operations count:', operations.length);
+    console.log('🎯 [AssistantActionsCard] Valid operations (after filtering):', validOperations);
+    console.log('🎯 [AssistantActionsCard] Valid operations count:', validOperations.length);
+
+    if (operations.length > 0) {
+      operations.forEach((op, index) => {
+        console.log(`🎯 [AssistantActionsCard] Raw operation ${index + 1}:`, {
+          type: op.type,
+          path: op.path,
+          timestamp: op.timestamp,
+          status: op.status,
+          messageId: op.messageId,
+          pathTrimmed: op.path.trim(),
+          pathLength: op.path.length,
+          pathEmpty: op.path.trim() === ''
+        });
+      });
+    }
+
     if (validOperations.length > 0) {
       const types = validOperations.map(op => op.type);
       const typeCounts = {
@@ -41,19 +60,21 @@ export default function AssistantActionsCard({
         createDir: types.filter(t => t === 'createDir').length,
         removeDir: types.filter(t => t === 'removeDir').length,
       };
-      console.log('[COMPONENT] Operation type counts:', typeCounts);
-      
+      console.log('🎯 [AssistantActionsCard] Operation type counts:', typeCounts);
+
       if (operations.length !== validOperations.length) {
-        console.log(`[COMPONENT] Filtered out ${operations.length - validOperations.length} operations with empty paths`);
+        console.log(`🎯 [AssistantActionsCard] Filtered out ${operations.length - validOperations.length} operations with empty paths`);
       }
+    } else {
+      console.log('🎯 [AssistantActionsCard] No valid operations to display');
     }
   }, [operations, validOperations]);
-  
+
   // Group operations by file path to avoid duplicates
   const uniqueOperations = validOperations.reduce<Record<string, Action>>((acc, operation) => {
     try {
       // If we already have this file operation and it's more recent, replace it
-      if (!acc[operation.path] || 
+      if (!acc[operation.path] ||
           new Date(operation.timestamp) > new Date(acc[operation.path].timestamp)) {
         acc[operation.path] = operation;
       }
@@ -63,7 +84,7 @@ export default function AssistantActionsCard({
       return acc;
     }
   }, {});
-  
+
   // Convert back to array and sort by time (newest first)
   const sortedOperations = Object.values(uniqueOperations)
     .sort((a, b) => {
@@ -74,21 +95,21 @@ export default function AssistantActionsCard({
         return 0;
       }
     });
-  
+
   const totalCount = sortedOperations.length;
   console.log('[COMPONENT] Total deduplicated operations:', totalCount);
-  
+
   if (totalCount === 0) {
     console.log('[COMPONENT] No operations to show, returning null');
     return null;
   }
-  
+
   return (
     <div className={cn("w-full mt-3 space-y-1 rounded-md", className)}>
       <div className="max-h-[210px] overflow-y-auto">
         {sortedOperations.map((op, index) => (
-          <Card 
-            key={`${op.path}-${index}`} 
+          <Card
+            key={`${op.path}-${index}`}
             className="bg-muted/50 border-muted-foreground/50 mb-1"
           >
             <CardContent className="p-2.5 flex items-center justify-between text-xs">
@@ -117,9 +138,9 @@ export default function AssistantActionsCard({
               <div className="text-muted-foreground text-xs flex-shrink-0 ml-2">
                 {op.type === 'createDir' ? 'Created Directory' :
                   op.type === 'removeDir' ? 'Removed Directory' :
-                  op.type === 'create' && op.path.indexOf('.') === -1 ? 'Created Directory' : 
-                  op.type === 'create' ? 'Generated' : 
-                  op.type === 'edit' ? 'Edited' : 
+                  op.type === 'create' && op.path.indexOf('.') === -1 ? 'Created Directory' :
+                  op.type === 'create' ? 'Generated' :
+                  op.type === 'edit' ? 'Edited' :
                   op.type === 'delete' ? 'Deleted' :
                   op.type === 'read' ? 'Read' :
                   op.type === 'search' ? 'Searched' : 'Unknown Action'}
@@ -131,4 +152,4 @@ export default function AssistantActionsCard({
       </div>
     </div>
   );
-} 
+}

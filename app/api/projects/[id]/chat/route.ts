@@ -1,13 +1,13 @@
-import { eq, desc, inArray, sql } from 'drizzle-orm';
+import { desc, eq, inArray, sql } from 'drizzle-orm';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { getSession } from '@/lib/auth/session';
 import { db } from '@/lib/db/drizzle';
 import { getProjectById } from '@/lib/db/projects';
-import { chatMessages, actions, Action } from '@/lib/db/schema';
-import { uploadFile } from '@/lib/storage';
+import { Action, actions, chatMessages } from '@/lib/db/schema';
 import { hasReachedMessageLimit } from '@/lib/models';
+import { uploadFile } from '@/lib/storage';
 
 // Schema for sending a message - support both formats
 const sendMessageSchema = z.union([
@@ -28,13 +28,13 @@ type ErrorType = 'timeout' | 'parsing' | 'processing' | 'unknown';
  * Get chat history for a project
  */
 async function getChatHistoryByProjectId(projectId: number, options: { limit?: number; oldest?: boolean } = {}) {
-  const { oldest = false } = options;  
+  const { oldest = false } = options;
   const history = await db
     .select()
     .from(chatMessages)
     .where(eq(chatMessages.projectId, projectId))
     .orderBy(oldest ? chatMessages.timestamp : desc(chatMessages.timestamp));
-  
+
   return oldest ? history : history.reverse();
 }
 
@@ -44,7 +44,7 @@ async function getChatHistoryByProjectId(projectId: number, options: { limit?: n
 async function saveUploadedImage(file: File, projectId: number): Promise<string> {
   // Create a prefix to organize images by project
   const prefix = `chat-images/project-${projectId}`;
-  
+
   try {
     // Upload the file to Minio using the generic uploadFile function
     const imageUrl = await uploadFile(file, prefix);
@@ -59,26 +59,26 @@ async function saveUploadedImage(file: File, projectId: number): Promise<string>
 /**
  * Process a FormData request and extract the content and image
  */
-async function processFormDataRequest(req: NextRequest, projectId: number): Promise<{ 
-  content: string; 
-  includeContext: boolean; 
+async function processFormDataRequest(req: NextRequest, projectId: number): Promise<{
+  content: string;
+  includeContext: boolean;
   contextFiles: Array<{ name: string; content: string; }>;
-  imageUrl?: string; 
+  imageUrl?: string;
 }> {
   const formData = await req.formData();
   const content = formData.get('content') as string || '';
   const includeContext = formData.get('includeContext') === 'true';
   const contextFilesStr = formData.get('contextFiles') as string || '[]';
   const contextFiles = JSON.parse(contextFilesStr);
-  
+
   // Process image if present
   const imageFile = formData.get('image') as File | null;
   let imageUrl: string | undefined;
-  
+
   if (imageFile) {
     imageUrl = await saveUploadedImage(imageFile, projectId);
   }
-  
+
   return {
     content,
     includeContext,
@@ -139,10 +139,14 @@ export async function GET(
       oldest: true,
     });
 
+    console.log(`📊 Chat history for project ${projectId}: ${chatHistory.length} messages`);
+
     // Extract message IDs from assistant messages (since operations are linked to messages)
     const messageIds = chatHistory
       .filter(msg => msg.role === 'assistant')
       .map(msg => msg.id);
+
+    console.log(`📊 Assistant messages found: ${messageIds.length} (IDs: ${messageIds.join(', ')})`);
 
     // Fetch file operations for these messages if there are any
     let operations: Action[] = [];
@@ -151,6 +155,13 @@ export async function GET(
         .select()
         .from(actions)
         .where(inArray(actions.messageId, messageIds));
+
+      console.log(`📊 Actions found in database: ${operations.length}`);
+
+      // Log each action for debugging
+      operations.forEach((op, index) => {
+        console.log(`📊 Action ${index + 1}: {id: ${op.id}, type: "${op.type}", path: "${op.path}", messageId: ${op.messageId}, status: "${op.status}", timestamp: ${op.timestamp}}`);
+      });
     }
 
     // Group operations by message ID
@@ -162,7 +173,7 @@ export async function GET(
       status: string;
       messageId: number;
     };
-    
+
     const operationsByMessageId = operations.reduce<Record<number, FormattedOperation[]>>((acc, op) => {
       if (!acc[op.messageId]) {
         acc[op.messageId] = [];
@@ -178,14 +189,27 @@ export async function GET(
       return acc;
     }, {});
 
+    console.log(`📊 Operations grouped by message ID:`, JSON.stringify(operationsByMessageId, null, 2));
+
     // Attach operations to their respective messages
     const messagesWithOperations = chatHistory.map(msg => ({
       ...msg,
       actions: operationsByMessageId[msg.id] || []
     }));
 
+    // Log final result for debugging
+    const messagesWithActionsCount = messagesWithOperations.filter(msg => msg.actions && msg.actions.length > 0).length;
+    console.log(`📊 Final result: ${messagesWithOperations.length} total messages, ${messagesWithActionsCount} messages have actions`);
+
+    messagesWithOperations.forEach((msg, index) => {
+      if (msg.actions && msg.actions.length > 0) {
+        console.log(`📊 Message ${index + 1} (ID: ${msg.id}, role: ${msg.role}) has ${msg.actions.length} actions:`,
+          msg.actions.map(a => `${a.type}:${a.path}`).join(', '));
+      }
+    });
+
     // Return messages with nested operations
-    return NextResponse.json({ 
+    return NextResponse.json({
       messages: messagesWithOperations
     });
   } catch (error) {
@@ -241,14 +265,14 @@ export async function POST(
     const contentType = req.headers.get('content-type') || '';
     let messageContent: string;
     let imageUrl: string | undefined;
-    
+
     if (contentType.includes('multipart/form-data')) {
       // Process FormData request
       console.log('Processing multipart/form-data request');
       const formData = await processFormDataRequest(req, projectId);
       messageContent = formData.content;
       imageUrl = formData.imageUrl;
-      
+
       if (imageUrl) {
         console.log(`Image URL received: ${imageUrl}`);
         // Add image URL to message content as markdown link
@@ -259,9 +283,9 @@ export async function POST(
       console.log('Processing JSON request');
       const body = await req.json();
       console.log('Request body:', JSON.stringify(body));
-      
+
       const parseResult = sendMessageSchema.safeParse(body);
-      
+
       if (!parseResult.success) {
         console.error('Invalid request format:', parseResult.error);
         return NextResponse.json(
@@ -269,7 +293,7 @@ export async function POST(
           { status: 400 }
         );
       }
-      
+
       // Extract content based on the format received
       if ('message' in parseResult.data) {
         // Format: { message: { content } }
@@ -291,7 +315,7 @@ export async function POST(
     // Count tokens for input message using tiktoken
     const { countTokens } = await import('@/lib/llm/utils');
     const messageTokens = countTokens(messageContent);
-    
+
     // Calculate cumulative token totals
     // Get the sum of all tokens sent and received for this project
     const tokenTotals = await db
@@ -301,18 +325,18 @@ export async function POST(
       })
       .from(chatMessages)
       .where(eq(chatMessages.projectId, projectId));
-    
+
     // Use the totals or default to 0 if null
     const totalTokensInput = Number(tokenTotals[0]?.totalInput || 0) + messageTokens;
     const totalTokensOutput = Number(tokenTotals[0]?.totalOutput || 0);
-    
+
     console.log(`📊 Message tokens: ${messageTokens}`);
     console.log(`📊 Total tokens input (including this message): ${totalTokensInput}`);
     console.log(`📊 Total tokens output: ${totalTokensOutput}`);
-    
+
     // Reset context size to just this message when starting a new interaction
     const contextTokens = messageTokens;
-    
+
     // Save the user message to the database with the current message tokens
     // Current message tokens added to tokensInput for this message
     await db.insert(chatMessages).values({
@@ -327,10 +351,10 @@ export async function POST(
     });
 
     console.log(`✅ User message saved. Python agent will process via streaming and send webhooks.`);
-    
+
     // Return success immediately - Python agent will handle processing via webhooks
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       message: "Message received. Processing will be handled via streaming endpoint.",
       totalTokensInput,
       totalTokensOutput,
@@ -338,11 +362,11 @@ export async function POST(
     });
   } catch (error) {
     console.error('Error processing chat:', error);
-    
+
     // Determine error type for better client handling
     let errorType: ErrorType = 'unknown';
     let errorMessage = 'Error processing request';
-    
+
     if (error instanceof Error) {
       errorMessage = error.message;
       // Try to determine error type
@@ -356,10 +380,10 @@ export async function POST(
         errorType = 'processing';
       }
     }
-    
+
     return NextResponse.json(
-      { 
-        success: false, 
+      {
+        success: false,
         error: errorMessage,
         errorType
       },

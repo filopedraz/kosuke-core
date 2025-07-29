@@ -1,13 +1,13 @@
+import { db } from '@/lib/db/drizzle';
+import { Action, actions, chatMessages } from '@/lib/db/schema';
+import { eq, inArray } from 'drizzle-orm';
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
-import { db } from '@/lib/db/drizzle';
-import { chatMessages, actions, Action } from '@/lib/db/schema';
-import { eq, inArray } from 'drizzle-orm';
 
 import ProjectContent from '@/app/(logged-in)/projects/[id]/components/layout/project-content';
+import { Skeleton } from '@/components/ui/skeleton';
 import { getSession } from '@/lib/auth/session';
 import { getProjectById } from '@/lib/db/projects';
-import { Skeleton } from '@/components/ui/skeleton';
 
 function ProjectLoadingSkeleton() {
   return (
@@ -28,7 +28,7 @@ function ProjectLoadingSkeleton() {
             ))}
           </div>
         </div>
-        
+
         {/* Right Panel Skeleton - Preview/Code Explorer */}
         <div className="hidden md:flex md:w-2/3 lg:w-3/4 h-full flex-col overflow-hidden border border-border rounded-md">
           <div className="flex items-center justify-between p-4 border-b">
@@ -71,7 +71,7 @@ interface ProjectPageProps {
 // Rewritten function to fetch messages and actions
 async function fetchChatHistoryForProject(projectId: number): Promise<FetchedChatMessage[]> {
   console.log(`Fetching chat history with actions for project ${projectId}`);
-  
+
   // 1. Fetch chat history, oldest first
   const history = await db
     .select()
@@ -107,7 +107,7 @@ async function fetchChatHistoryForProject(projectId: number): Promise<FetchedCha
   const messagesWithActions = history.map(msg => ({
     ...msg,
     // Ensure timestamp is a Date object if needed downstream, though initial fetch might be string
-    timestamp: msg.timestamp, 
+    timestamp: msg.timestamp,
     // Attach actions, default to empty array if none
     actions: actionsByMessageId[msg.id] || [],
   }));
@@ -121,7 +121,7 @@ async function fetchChatHistoryForProject(projectId: number): Promise<FetchedCha
     timestamp: msg.timestamp,
     actions: msg.actions,
     // Add other fields from FetchedChatMessage if they exist in chatMessages table
-    // tokensInput: msg.tokensInput, 
+    // tokensInput: msg.tokensInput,
     // tokensOutput: msg.tokensOutput,
     // contextTokens: msg.contextTokens,
     // metadata: msg.metadata,
@@ -130,57 +130,61 @@ async function fetchChatHistoryForProject(projectId: number): Promise<FetchedCha
 
 export default async function ProjectPage({ params, searchParams }: ProjectPageProps) {
   const session = await getSession();
-  
+
   if (!session) {
     // Session check might be redundant if layout handles it, but keep for safety
-    notFound(); 
+    notFound();
   }
-  
+
   const { id } = await params;
   const projectId = Number(id);
   if (isNaN(projectId)) {
     notFound();
   }
-  
+
   // Fetch project details and initial chat messages (now with actions)
   const [project, initialMessagesResult] = await Promise.all([
     getProjectById(projectId),
     fetchChatHistoryForProject(projectId) // This now fetches actions too
   ]);
-  
+
   if (!project || project.createdBy !== session.user.id) {
     notFound();
   }
-  
+
   // Process fetched messages (adjust id/timestamp types if needed)
   const initialMessages = initialMessagesResult.map(msg => ({
     id: typeof msg.id === 'string' ? parseInt(msg.id, 10) : msg.id, // Ensure ID is number
     content: msg.content || '',
     role: msg.role || 'user',
     timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date(), // Ensure timestamp is Date
-    actions: msg.actions?.map(action => ({ // Ensure action timestamps are Dates
-      ...action,
+    actions: msg.actions?.map(action => ({
+      // Transform database action to component action format
+      path: action.path,
+      type: action.type as 'create' | 'update' | 'delete' | 'edit' | 'read' | 'search' | 'createDir' | 'removeDir',
       timestamp: action.timestamp ? new Date(action.timestamp) : new Date(),
+      status: action.status as 'pending' | 'completed' | 'error',
+      messageId: action.messageId,
     })) || [],
   }));
 
   // Removed user details fetching and mapping
-  
+
   // Check if this is a new project (via query param)
   const searchParamsData = await searchParams;
   const isNewProject = searchParamsData.new === 'true';
-  
+
   // Format dates for the project
   const formattedProject = {
     ...project,
     createdAt: new Date(project.createdAt),
     updatedAt: new Date(project.updatedAt),
   };
-  
+
   return (
     <Suspense fallback={<ProjectLoadingSkeleton />}>
       {/* Removed wrapper div, layout handles the main structure */}
-      <ProjectContent 
+      <ProjectContent
         projectId={projectId}
         project={formattedProject}
         // Removed user prop
@@ -189,4 +193,4 @@ export default async function ProjectPage({ params, searchParams }: ProjectPageP
       />
     </Suspense>
   );
-} 
+}

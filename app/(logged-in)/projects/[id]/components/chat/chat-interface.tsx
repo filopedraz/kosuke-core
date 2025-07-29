@@ -1,19 +1,20 @@
 'use client';
 
-import { Loader2, AlertTriangle, RefreshCcw } from 'lucide-react';
-import { useState, useEffect, useRef } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { AlertTriangle, CircleIcon, Loader2, RefreshCcw } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 
-import ChatInput from './chat-input';
-import ChatMessage, { ChatMessageProps, ErrorType } from './chat-message';
-import ModelBanner from './model-banner';
-import TokenUsage from './token-usage';
-import LimitReachedModal from './limit-reached-modal';
 import { useUser } from '@/lib/auth';
 import { Action } from './assistant-actions-card';
+import ChatInput from './chat-input';
+import ChatMessage, { ChatMessageProps, ErrorType } from './chat-message';
+import LimitReachedModal from './limit-reached-modal';
+import ModelBanner from './model-banner';
+import TokenUsage from './token-usage';
 
 // Extended version of Action that includes messageId
 interface ExtendedAction extends Action {
@@ -85,21 +86,35 @@ const fetchMessages = async (projectId: number): Promise<ChatMessageProps[]> => 
   if (!response.ok) {
     throw new Error(`Failed to fetch chat history: ${response.statusText}`);
   }
-  
+
   const data = await response.json();
   const apiMessages: ApiChatMessage[] = data.messages || [];
 
-  // Debug to verify operations are in the response
-  console.log('Debug API response:', data.messages?.map((m: ApiChatMessage) => ({
-    id: m.id,
-    role: m.role,
-    hasOperations: m.actions && m.actions.length > 0,
-    operationsCount: m.actions?.length || 0,
-    tokensInput: m.tokensInput,
-    tokensOutput: m.tokensOutput,
-    contextTokens: m.contextTokens,
-    metadata: m.metadata
-  })));
+  // Enhanced debug logging to verify operations are in the response
+  console.log('🔍 Full API response data:', data);
+  console.log('🔍 Messages in response:', data.messages?.length || 0);
+
+  if (data.messages && Array.isArray(data.messages)) {
+    data.messages.forEach((m: ApiChatMessage, index: number) => {
+      console.log(`🔍 Message ${index + 1} (ID: ${m.id}, role: ${m.role}):`);
+      console.log(`  - Content preview: "${m.content.substring(0, 50)}..."`);
+      console.log(`  - Has actions: ${m.actions && m.actions.length > 0}`);
+      console.log(`  - Actions count: ${m.actions?.length || 0}`);
+      console.log(`  - Tokens - Input: ${m.tokensInput}, Output: ${m.tokensOutput}, Context: ${m.contextTokens}`);
+      console.log(`  - Metadata: ${m.metadata || 'none'}`);
+
+      if (m.actions && m.actions.length > 0) {
+        console.log(`  - Actions details:`, m.actions.map((a, i) => ({
+          index: i + 1,
+          type: a.type,
+          path: a.path,
+          timestamp: a.timestamp,
+          status: a.status,
+          messageId: a.messageId
+        })));
+      }
+    });
+  }
 
   return apiMessages
     .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
@@ -107,7 +122,7 @@ const fetchMessages = async (projectId: number): Promise<ChatMessageProps[]> => 
       // Parse metadata for error information
       let hasError = false;
       let errorType: ErrorType = 'unknown';
-      
+
       if (msg.metadata) {
         try {
           const metadata = JSON.parse(msg.metadata);
@@ -119,7 +134,7 @@ const fetchMessages = async (projectId: number): Promise<ChatMessageProps[]> => 
           console.error('Error parsing message metadata:', e);
         }
       }
-      
+
       return {
         id: msg.id,
         content: msg.content,
@@ -148,10 +163,11 @@ const fetchMessages = async (projectId: number): Promise<ChatMessageProps[]> => 
 const sendMessage = async (
   projectId: number,
   content: string,
-  options?: { includeContext?: boolean; contextFiles?: string[]; imageFile?: File }
-): Promise<{ 
-  message: ApiChatMessage; 
-  success: boolean; 
+  options?: { includeContext?: boolean; contextFiles?: string[]; imageFile?: File },
+  streamingCallback?: (content: string) => void
+): Promise<{
+  message: ApiChatMessage;
+  success: boolean;
   fileUpdated?: boolean;
   totalTokensInput?: number;
   totalTokensOutput?: number;
@@ -164,33 +180,33 @@ const sendMessage = async (
     const formData = new FormData();
     formData.append('content', content);
     formData.append('includeContext', options.includeContext ? 'true' : 'false');
-    
+
     if (options.contextFiles && options.contextFiles.length) {
       formData.append('contextFiles', JSON.stringify(options.contextFiles));
     }
-    
+
     formData.append('image', options.imageFile);
-    
+
     const response = await fetch(`/api/projects/${projectId}/chat`, {
       method: 'POST',
       body: formData,
     });
-    
+
     if (!response.ok) {
       if (response.status === 403) {
         throw new Error('LIMIT_REACHED');
       }
       throw new Error(`Failed to send message: ${response.statusText}`);
     }
-    
+
     return await response.json();
   }
-  
+
   // For text messages, save to database and return success
   // Actual processing will happen via streaming endpoint
   try {
     console.log('💾 Saving user message to database');
-    
+
     const saveResponse = await fetch(`/api/projects/${projectId}/chat`, {
       method: 'POST',
       headers: {
@@ -202,96 +218,42 @@ const sendMessage = async (
         contextFiles: options?.contextFiles || [],
       }),
     });
-    
+
     if (!saveResponse.ok) {
       if (saveResponse.status === 403) {
         throw new Error('LIMIT_REACHED');
       }
-      
+
       const errorData = await saveResponse.json().catch(() => ({}));
       if (errorData && typeof errorData === 'object' && 'errorType' in errorData) {
         const error = new Error(errorData.error || 'Failed to send message');
         Object.assign(error, { errorType: errorData.errorType });
         throw error;
       }
-      
+
       throw new Error(`Failed to send message: ${saveResponse.statusText}`);
     }
-    
+
     const saveResult = await saveResponse.json();
-    
+
     // Start streaming processing in background
-    setTimeout(() => {
-      startStreamingProcessing(projectId, content);
-    }, 100);
-    
+    if (streamingCallback) {
+      setTimeout(() => {
+        streamingCallback(content);
+      }, 100);
+    }
+
     return saveResult;
-    
+
   } catch (error) {
     console.error('Error in sendMessage:', error);
     throw error;
   }
 };
 
-// Streaming processing function
-const startStreamingProcessing = async (projectId: number, content: string) => {
-  try {
-    console.log('🚀 Starting streaming processing via Python agent');
-    
-    const response = await fetch(`/api/projects/${projectId}/chat/stream`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ content }),
-    });
 
-    if (!response.ok) {
-      console.error('Streaming failed:', response.statusText);
-      return;
-    }
 
-    const reader = response.body?.getReader();
-    if (!reader) {
-      console.error('No reader available for streaming');
-      return;
-    }
 
-    const decoder = new TextDecoder();
-    let buffer = '';
-
-    while (true) {
-      const { done, value } = await reader.read();
-      
-      if (done) {
-        console.log('✅ Streaming completed');
-        break;
-      }
-
-      buffer += decoder.decode(value, { stream: true });
-      
-      // Process complete SSE messages
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || '';
-      
-      for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          try {
-            const data = JSON.parse(line.substring(6));
-            console.log('📡 Streaming update:', data);
-            
-            // Streaming updates will trigger database updates via webhooks
-            // The SSE connection will pick up those updates automatically
-          } catch {
-            console.warn('Failed to parse streaming data:', line);
-          }
-        }
-      }
-    }
-  } catch (error) {
-    console.error('Streaming processing error:', error);
-  }
-};
 
 export default function ChatInterface({
   projectId,
@@ -299,6 +261,26 @@ export default function ChatInterface({
   className,
   isLoading: initialIsLoading = false,
 }: ChatInterfaceProps) {
+
+  // Debug initial state
+  console.log('🚀 [ChatInterface] Component mounted/updated:', {
+    projectId,
+    initialMessagesCount: initialMessages.length,
+    initialIsLoading,
+    hasInitialMessagesWithActions: initialMessages.some(msg => msg.actions && msg.actions.length > 0)
+  });
+
+  if (initialMessages.length > 0) {
+    console.log('🚀 [ChatInterface] Initial messages sample:',
+      initialMessages.slice(0, 2).map(msg => ({
+        id: msg.id,
+        role: msg.role,
+        content: msg.content.substring(0, 50) + '...',
+        hasActions: msg.actions && msg.actions.length > 0,
+        actionsCount: msg.actions?.length || 0
+      }))
+    );
+  }
   // TanStack Query setup
   const queryClient = useQueryClient();
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -307,111 +289,247 @@ export default function ChatInterface({
   const [errorType, setErrorType] = useState<ErrorType>('unknown');
   const { userPromise } = useUser();
   const [user, setUser] = useState<User | null>(null);
-  
+
   // Track the last message sent for regeneration
   const [lastUserMessage, setLastUserMessage] = useState<string>('');
   const [lastMessageOptions, setLastMessageOptions] = useState<MessageOptions | null>(null);
   const [isRegenerating, setIsRegenerating] = useState(false);
-  
+
   // Token usage state
   const [tokenUsage, setTokenUsage] = useState<TokenUsageMetrics>({
     tokensSent: 0,
     tokensReceived: 0,
     contextSize: 0
   });
-  
+
+  // Streaming state for real-time updates
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [streamingMessages, setStreamingMessages] = useState<ChatMessageProps[]>([]);
+  const [streamingError, setStreamingError] = useState<string | null>(null);
+
+  // Function to update streaming messages in real-time
+  const updateStreamingMessage = (data: {
+    type: string;
+    message: string;
+    file_path?: string;
+    status?: string;
+  }) => {
+    if (!data.message || data.message.trim() === '') return;
+
+    // Format the message based on type
+    let content = data.message;
+    if (data.type === 'read') {
+      content = `📖 Reading ${data.file_path}: ${data.message}`;
+    } else if (data.type === 'thinking') {
+      content = `🤔 ${data.message}`;
+    } else if (data.type === 'write') {
+      content = `✏️ Writing ${data.file_path}: ${data.message}`;
+    } else if (data.type === 'completed') {
+      // Final message - stop streaming and let database handle it
+      setIsStreaming(false);
+      setStreamingMessages([]);
+
+      // Refetch messages to show the persisted assistant response
+      queryClient.invalidateQueries({ queryKey: ['messages', projectId] });
+      return;
+    }
+
+    const newMessage: ChatMessageProps = {
+      content,
+      role: 'assistant',
+      timestamp: new Date(),
+      isLoading: data.status === 'pending',
+    };
+
+    setStreamingMessages(prev => {
+      // Replace previous message of same type or add new one
+      const messageKey = `${data.type}-${data.file_path || 'general'}`;
+      const filtered = prev.filter(msg => {
+        // Keep messages that aren't the same type/file combination
+        const msgKey = msg.content.startsWith('📖') ? `read-${msg.content.split(': ')[0].replace('📖 Reading ', '')}` :
+                       msg.content.startsWith('🤔') ? 'thinking-general' :
+                       msg.content.startsWith('✏️') ? `write-${msg.content.split(': ')[0].replace('✏️ Writing ', '')}` :
+                       'other-general';
+        return msgKey !== messageKey;
+      });
+      return [...filtered, newMessage];
+    });
+  };
+
+  // Streaming processing function
+  const startStreamingProcessing = async (content: string) => {
+    try {
+      console.log('🚀 Starting streaming processing via Python agent');
+      setIsStreaming(true);
+      setStreamingMessages([]);
+      setStreamingError(null);
+
+      const response = await fetch(`/api/projects/${projectId}/chat/stream`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ content }),
+      });
+
+      if (!response.ok) {
+        console.error('Streaming failed:', response.statusText);
+        setStreamingError(`Streaming failed: ${response.statusText}`);
+        setIsStreaming(false);
+        return;
+      }
+
+      const reader = response.body?.getReader();
+      if (!reader) {
+        console.error('No reader available for streaming');
+        setStreamingError('No reader available for streaming');
+        setIsStreaming(false);
+        return;
+      }
+
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+
+        if (done) {
+          console.log('✅ Streaming completed');
+          setIsStreaming(false);
+          break;
+        }
+
+        buffer += decoder.decode(value, { stream: true });
+
+        // Process complete SSE messages
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.substring(6));
+              console.log('📡 Streaming update:', data);
+
+              // Update streaming messages in real-time UI
+              updateStreamingMessage(data);
+            } catch {
+              console.warn('Failed to parse streaming data:', line);
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Streaming processing error:', error);
+      setStreamingError(`Streaming error: ${error}`);
+      setIsStreaming(false);
+    }
+  };
+
   // Fetch user data
   useEffect(() => {
     userPromise.then(userData => {
       setUser(userData);
     });
   }, [userPromise]);
-  
+
   // Query for messages
-  const { 
-    data: messages = [], 
+  const {
+    data: messages = [],
     isLoading: isLoadingMessages,
     refetch
   } = useQuery({
     queryKey: ['messages', projectId],
     queryFn: async () => {
+      console.log('🚀 [ChatInterface] TanStack Query: Fetching messages from API endpoint');
       const messages = await fetchMessages(projectId);
-      
+
       // Calculate total token usage
       // Now we're getting token totals from aggregated query in the API
       // and the current context size from the most recent message
-      
+
       // The API should have already calculated this for us, but let's ensure
       // we use the most recent context size and total token sums
       let totalTokensInput = 0;
       let totalTokensOutput = 0;
       let currentContextSize = 0;
-      
+
       // If we have messages, get the values from the most recent ones
       if (messages.length > 0) {
         // Sort messages to get the newest one
-        const sortedMessages = [...messages].sort((a, b) => 
+        const sortedMessages = [...messages].sort((a, b) =>
           new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
         );
-        
+
         // Get the current context size from most recent message
         if (sortedMessages[0].contextTokens) {
           currentContextSize = sortedMessages[0].contextTokens;
         }
-        
+
         // Calculate total tokens by summing all messages
         messages.forEach(msg => {
           if (msg.tokensInput) totalTokensInput += msg.tokensInput;
           if (msg.tokensOutput) totalTokensOutput += msg.tokensOutput;
         });
       }
-      
+
       // Update token usage state
       setTokenUsage({
         tokensSent: totalTokensInput,
         tokensReceived: totalTokensOutput,
         contextSize: currentContextSize
       });
-      
+
       return messages;
     },
-    initialData: initialMessages.length > 0 
-      ? initialMessages.map(msg => ({ ...msg, isLoading: false, className: '' }))
-      : undefined,
+    initialData: (() => {
+      const hasInitialData = initialMessages.length > 0;
+      console.log('🚀 [ChatInterface] TanStack Query config:', {
+        hasInitialData,
+        enabled: !initialIsLoading,
+        initialIsLoading,
+        willUseInitialData: hasInitialData
+      });
+
+      return hasInitialData
+        ? initialMessages.map(msg => ({ ...msg, isLoading: false, className: '' }))
+        : undefined;
+    })(),
     enabled: !initialIsLoading,
-    refetchInterval: 60000, // Reduced polling: every 60 seconds (was 30 seconds)
-    staleTime: 30000, // Consider data fresh for 30 seconds (was 15 seconds)
+    // Removed polling since we now have real-time streaming via SSE
+    // refetchInterval: 60000,
+    staleTime: 60000, // Consider data fresh for 60 seconds since we have real-time updates
   });
-  
+
   // Mutation for sending messages
-  const { 
-    mutate, 
+  const {
+    mutate,
     isPending: isSending
   } = useMutation({
-    mutationFn: (args: { 
-      content: string; 
-      options?: { includeContext?: boolean; contextFiles?: string[]; imageFile?: File } 
-    }) => sendMessage(projectId, args.content, args.options),
+    mutationFn: (args: {
+      content: string;
+      options?: { includeContext?: boolean; contextFiles?: string[]; imageFile?: File }
+    }) => sendMessage(projectId, args.content, args.options, startStreamingProcessing),
     onMutate: async (newMessage) => {
       // Cancel any outgoing refetches
       await queryClient.cancelQueries({ queryKey: ['messages', projectId] });
-      
+
       // Save the last message for potential regeneration
       setLastUserMessage(newMessage.content);
       setLastMessageOptions(newMessage.options || null);
-      
+
       // Snapshot the previous value
       const previousMessages = queryClient.getQueryData(['messages', projectId]);
-      
+
       // Create optimistic content that includes image information if present
       const optimisticContent = newMessage.content;
-      
+
       // Reset any previous errors when sending a new message
       setIsError(false);
       setErrorMessage('');
       setErrorType('unknown');
-      
-      // Optimistically update to the new value
+
+      // Optimistically update to the new value (just add user message, no "Thinking...")
       queryClient.setQueryData(['messages', projectId], (old: ChatMessageProps[] = []) => [
         ...old,
         {
@@ -420,28 +538,21 @@ export default function ChatInterface({
           role: 'user',
           timestamp: new Date(),
           isLoading: false,
-        },
-        {
-          id: Date.now() + 1,
-          content: 'Thinking...',
-          role: 'assistant',
-          timestamp: new Date(),
-          isLoading: true,
         }
       ]);
-      
+
       // If there's an image, generate its data URL and update the optimistic message
       if (newMessage.options?.imageFile) {
         const file = newMessage.options.imageFile;
         try {
           const dataUrl = await readFileAsDataURL(file);
           const imageMarkdown = `[Attached Image](${dataUrl})`;
-          
+
           // Update the optimistic content with the image markdown
           const updatedOptimisticContent = newMessage.content.trim()
             ? `${newMessage.content}\n\n${imageMarkdown}`
             : imageMarkdown;
-            
+
           // Update the query data again with the image included
           queryClient.setQueryData(['messages', projectId], (old: ChatMessageProps[] = []) => {
             // Find the optimistic user message we just added (it will be the second to last)
@@ -453,7 +564,7 @@ export default function ChatInterface({
                 content: updatedOptimisticContent,
               };
               return updatedMessages;
-            } 
+            }
             return old; // Should not happen, but return old data as fallback
           });
 
@@ -462,7 +573,7 @@ export default function ChatInterface({
           // Optionally handle error, e.g., revert or show placeholder
         }
       }
-      
+
       // Return a context object with the snapshot
       return { previousMessages };
     },
@@ -471,16 +582,16 @@ export default function ChatInterface({
       if (context?.previousMessages) {
         queryClient.setQueryData(['messages', projectId], context.previousMessages);
       }
-      
+
       // Set error state with type information if available
       setIsError(true);
-      
+
       if (error instanceof Error && error.message === 'LIMIT_REACHED') {
         setErrorMessage('LIMIT_REACHED');
       } else {
         // Try to extract error type
-        const errorType = error instanceof Error && 'errorType' in error 
-          ? (error as Error & { errorType: ErrorType }).errorType 
+        const errorType = error instanceof Error && 'errorType' in error
+          ? (error as Error & { errorType: ErrorType }).errorType
           : 'unknown';
         setErrorType(errorType as ErrorType);
         setErrorMessage(error instanceof Error ? error.message : 'Failed to send message');
@@ -494,7 +605,7 @@ export default function ChatInterface({
         });
         window.dispatchEvent(fileUpdatedEvent);
       }
-      
+
       // Update token usage if available in response
       if (data.totalTokensInput !== undefined || data.contextTokens !== undefined) {
         setTokenUsage({
@@ -503,7 +614,7 @@ export default function ChatInterface({
           contextSize: data.contextTokens || 0
         });
       }
-      
+
       // Invalidate and refetch
       queryClient.invalidateQueries({ queryKey: ['messages', projectId] });
     },
@@ -512,36 +623,36 @@ export default function ChatInterface({
       queryClient.invalidateQueries({ queryKey: ['messages', projectId] });
     }
   });
-  
-  // Scroll to bottom when messages change
+
+  // Scroll to bottom when messages change or streaming updates
   useEffect(() => {
     const scrollTimeout = setTimeout(() => {
       if (messagesEndRef.current) {
-        messagesEndRef.current.scrollIntoView({ 
+        messagesEndRef.current.scrollIntoView({
           behavior: 'smooth',
           block: 'end'
         });
       }
     }, 100);
-    
+
     return () => clearTimeout(scrollTimeout);
-  }, [messages]);
-  
+  }, [messages, streamingMessages, isStreaming]);
+
   // Handle sending messages
   const handleSendMessage = async (
     content: string,
     options?: { includeContext?: boolean; contextFiles?: string[]; imageFile?: File }
   ) => {
     if (!content.trim() && !options?.imageFile) return;
-    
+
     // Reset error state
     setIsError(false);
     setErrorMessage('');
     setErrorType('unknown');
-    
+
     // Check if the message contains keywords for preview refresh or if it has an image
-    if (content.toLowerCase().includes('update') || 
-        content.toLowerCase().includes('change') || 
+    if (content.toLowerCase().includes('update') ||
+        content.toLowerCase().includes('change') ||
         content.toLowerCase().includes('modify') ||
         options?.imageFile) {
         const fileUpdatedEvent = new CustomEvent('file-updated', {
@@ -549,12 +660,12 @@ export default function ChatInterface({
         });
         window.dispatchEvent(fileUpdatedEvent);
       }
-      
+
     // Log if we're sending an image
     if (options?.imageFile) {
       console.log(`Sending message with attached image: ${options.imageFile.name} (${(options.imageFile.size / 1024).toFixed(1)}KB)`);
     }
-    
+
     // Send the message
     await mutate({ content, options });
   };
@@ -566,28 +677,28 @@ export default function ChatInterface({
       console.warn('Cannot regenerate: No previous message to resend');
       return;
     }
-    
+
     setIsRegenerating(true);
-    
+
     try {
       // Find and remove all messages after the last user message
       const lastUserMessageIndex = [...messages].reverse().findIndex(msg => msg.role === 'user');
-      
+
       if (lastUserMessageIndex >= 0) {
         const userMessageIndex = messages.length - 1 - lastUserMessageIndex;
         const updatedMessages = messages.slice(0, userMessageIndex + 1);
-        
+
         // Optimistically update messages to remove any failed assistant responses
         queryClient.setQueryData(['messages', projectId], updatedMessages);
-        
+
         // Clear error state
         setIsError(false);
         setErrorMessage('');
-        
+
         // Re-send the last user message with proper type handling
-        await mutate({ 
-          content: lastUserMessage, 
-          options: lastMessageOptions || undefined 
+        await mutate({
+          content: lastUserMessage,
+          options: lastMessageOptions || undefined
         });
       }
     } catch (error) {
@@ -598,44 +709,29 @@ export default function ChatInterface({
       setIsRegenerating(false);
     }
   };
-  
+
   // Filter messages to only remove welcome message when there are user messages
   const filteredMessages = messages.filter(message => {
     // If there are user messages, filter out the system welcome message
     const hasUserMessages = messages.some(m => m.role === 'user');
-    if (hasUserMessages && 
-        message.role === 'system' && 
+    if (hasUserMessages &&
+        message.role === 'system' &&
         message.content.includes('Project created successfully')) {
       return false;
     }
-    
+
     // Show ALL messages from the assistant, including file operation messages
     return true;
   });
 
-  // Filter out "Thinking..." messages that are followed by another assistant message
-  const messagesWithoutThinking = filteredMessages.filter((message, index) => {
-    // Keep the message if it's not a "Thinking..." message from the assistant
-    if (message.role !== 'assistant' || message.content !== 'Thinking...') {
-      return true;
-    }
-    
-    // Check if this "Thinking..." message is followed by another assistant message
-    // If so, don't include it in the rendered messages
-    const nextMessage = filteredMessages[index + 1];
-    if (nextMessage && nextMessage.role === 'assistant') {
-      return false;
-    }
-    
-    // Keep "Thinking..." message if it's not followed by another assistant message
-    return true;
-  });
+  // No more filtering needed since we removed "Thinking..." messages
+  const messagesWithoutThinking = filteredMessages;
 
   // Enhance filtered messages with showAvatar property
   const enhancedMessages = messagesWithoutThinking.map((message, index) => {
     // Determine if we should show avatar based on the previous message
     let showAvatar = true;
-    
+
     if (index > 0) {
       const prevMessage = messagesWithoutThinking[index - 1];
       // Hide avatar if current message is from the same entity as previous message
@@ -643,7 +739,7 @@ export default function ChatInterface({
         showAvatar = false;
       }
     }
-    
+
     return {
       ...message,
       showAvatar,
@@ -657,34 +753,34 @@ export default function ChatInterface({
     let eventSource: EventSource | null = null;
     let reconnectTimer: NodeJS.Timeout | null = null;
     let lastEventTime = Date.now();
-    
+
     const setupSSE = () => {
       if (eventSource) return; // Prevent duplicate connections
-      
+
       eventSource = new EventSource(`/api/projects/${projectId}/chat/sse`);
       console.log('📡 SSE connection established for project:', projectId);
-      
+
       eventSource.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          
+
           // Skip heartbeat messages silently
           if (data.type === 'heartbeat') return;
-          
+
           // Prevent too frequent refetches
           const now = Date.now();
           const timeSinceLastEvent = now - lastEventTime;
-          
-          // Only process events if it's been at least 2 seconds since the last one
-          if (timeSinceLastEvent > 2000) {
+
+          // Process events immediately for real-time updates
+          if (timeSinceLastEvent > 100) { // Minimal throttling to prevent spam
             lastEventTime = now;
-            
+
             // Process message
             if (data.type === 'new_message') {
               console.log('📨 New message received');
               // Invalidate and refetch messages when a new message arrives
               queryClient.invalidateQueries({ queryKey: ['messages', projectId] });
-              
+
               // Dispatch custom event to refresh preview when assistant message is received
               if (data.role === 'assistant') {
                 console.log('🔄 Assistant message received, triggering preview refresh');
@@ -716,7 +812,7 @@ export default function ChatInterface({
               setIsError(true);
               setErrorType(data.errorType || 'unknown');
               setErrorMessage(data.message || 'An error occurred');
-              
+
               // Invalidate messages to show the error
               queryClient.invalidateQueries({ queryKey: ['messages', projectId] });
             }
@@ -725,22 +821,22 @@ export default function ChatInterface({
           console.error('Error parsing SSE message:', error);
         }
       };
-      
+
       eventSource.onerror = () => {
         console.log('⚠️ SSE connection error, will reconnect in 5 seconds');
         if (eventSource) {
           eventSource.close();
           eventSource = null;
         }
-        
+
         // Reconnect after 5 seconds
         if (reconnectTimer) clearTimeout(reconnectTimer);
         reconnectTimer = setTimeout(setupSSE, 5000);
       };
     };
-    
+
     setupSSE();
-    
+
     return () => {
       if (eventSource) {
         eventSource.close();
@@ -754,12 +850,12 @@ export default function ChatInterface({
   return (
     <div className={cn('flex flex-col h-full', className)} data-testid="chat-interface">
       <ModelBanner />
-      <TokenUsage 
+      <TokenUsage
         tokensSent={tokenUsage.tokensSent}
         tokensReceived={tokenUsage.tokensReceived}
         contextSize={tokenUsage.contextSize}
       />
-      
+
       <ScrollArea className="flex-1 overflow-y-auto">
         <div className="flex flex-col">
           {messages.length === 0 && isLoadingMessages ? (
@@ -791,7 +887,68 @@ export default function ChatInterface({
                   errorType={message.errorType}
                   onRegenerate={message.onRegenerate}
                 />
+                            ))}
+
+              {/* Show generating animation when streaming started but no messages yet */}
+              {isStreaming && streamingMessages.length === 0 && (
+                <div className="flex w-full max-w-[95%] mx-auto gap-3 p-4">
+                  <Avatar className="h-8 w-8">
+                    <div className="relative flex items-center justify-center h-full w-full">
+                      <AvatarFallback className="bg-muted border-primary rounded-none">
+                        <CircleIcon className="h-6 w-6 text-primary" />
+                      </AvatarFallback>
+                    </div>
+                  </Avatar>
+                  <div className="flex-1 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <h4>AI Assistant</h4>
+                      <time className="text-xs text-muted-foreground">now</time>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <div className="flex gap-1">
+                        <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                        <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                        <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                      </div>
+                      <span>Generating response...</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Render streaming messages in real-time */}
+              {streamingMessages.map((message, index) => (
+                <ChatMessage
+                  key={`streaming-${index}`}
+                  content={message.content}
+                  role={message.role}
+                  timestamp={message.timestamp}
+                  isLoading={message.isLoading}
+                  user={user ? {
+                    name: user.name || undefined,
+                    email: user.email,
+                    imageUrl: user.imageUrl || undefined
+                  } : undefined}
+                  showAvatar={index === 0} // Only show avatar for first streaming message
+                />
               ))}
+
+              {/* Show streaming error if any */}
+              {streamingError && (
+                <div className="p-4 m-4 text-sm text-center bg-card border border-destructive/30 rounded-md">
+                  <div className="flex items-center justify-center gap-2 text-destructive mb-2">
+                    <AlertTriangle className="h-5 w-5" />
+                    <p className="font-medium">Streaming Error</p>
+                  </div>
+                  <p className="text-muted-foreground">{streamingError}</p>
+                  <button
+                    onClick={handleRegenerate}
+                    className="mt-2 px-3 py-1 text-xs bg-primary hover:bg-primary/80 text-primary-foreground rounded-md transition-colors flex items-center gap-1 mx-auto"
+                  >
+                    <RefreshCcw className="h-3 w-3" /> Retry
+                  </button>
+                </div>
+              )}
             </>
           )}
           {isError && errorMessage !== 'LIMIT_REACHED' && (
@@ -805,19 +962,19 @@ export default function ChatInterface({
                   {errorType === 'unknown' && 'There was an issue with the chat service'}
                 </p>
               </div>
-              <button 
-                onClick={handleRegenerate} 
+              <button
+                onClick={handleRegenerate}
                 disabled={isRegenerating}
                 className="mt-1 px-3 py-1.5 text-xs bg-primary hover:bg-primary/80 text-primary-foreground rounded-md transition-colors flex items-center gap-1 mx-auto"
               >
                 {isRegenerating ? (
                   <>
-                    <Loader2 className="h-3 w-3 animate-spin" /> 
+                    <Loader2 className="h-3 w-3 animate-spin" />
                     Regenerating...
                   </>
                 ) : (
                   <>
-                    <RefreshCcw className="h-3 w-3" /> 
+                    <RefreshCcw className="h-3 w-3" />
                     Regenerate Response
                   </>
                 )}
@@ -830,16 +987,16 @@ export default function ChatInterface({
           <div ref={messagesEndRef} className="pb-6" />
         </div>
       </ScrollArea>
-      
+
       <div className="px-4 pb-0 relative">
         <ChatInput
           onSendMessage={handleSendMessage}
-          isLoading={isSending || isRegenerating}
-          placeholder="Type your message..."
+          isLoading={isSending || isRegenerating || isStreaming}
+          placeholder={isStreaming ? "Agent is working..." : "Type your message..."}
           data-testid="chat-input"
           className="chat-input"
         />
       </div>
     </div>
   );
-} 
+}

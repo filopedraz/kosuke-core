@@ -7,12 +7,12 @@ from pydantic import Field
 class ActionType(str, Enum):
     """Action types that mirror the TypeScript ActionType"""
 
-    READ_FILE = "readFile"
-    EDIT_FILE = "editFile"
-    CREATE_FILE = "createFile"
-    DELETE_FILE = "deleteFile"
-    CREATE_DIRECTORY = "createDirectory"
-    REMOVE_DIRECTORY = "removeDirectory"
+    READ_FILE = "read"
+    EDIT_FILE = "edit"
+    CREATE_FILE = "create"
+    DELETE_FILE = "delete"
+    CREATE_DIRECTORY = "createDir"
+    REMOVE_DIRECTORY = "removeDir"
     SEARCH = "search"
 
 

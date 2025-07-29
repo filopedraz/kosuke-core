@@ -149,6 +149,11 @@ Files ({len(files)} total):
 
                     return
 
+                # Track duplicate read attempts for each file
+                for action in parsed["actions"]:
+                    if action.action == "read" and action.file_path in read_files:
+                        print(f"⚠️ Duplicate read attempt for {action.file_path}")
+
                 # Check for duplicate reads and force execution if needed
                 if self._should_force_execution(parsed["actions"], read_files, iteration_count):
                     yield {
@@ -275,7 +280,7 @@ Files ({len(files)} total):
 
         Mirrors the TypeScript executeReadActionsForContext function
         """
-        read_actions = [a for a in actions if a.action == "readFile"]  # action is already a string
+        read_actions = [a for a in actions if a.action == "read"]  # action is already a string
 
         if not read_actions:
             print("No read actions to execute")
@@ -324,10 +329,12 @@ Files ({len(files)} total):
     def _should_force_execution(self, actions: list[Action], read_files: set[str], iteration_count: int) -> bool:
         """Determine if we should force execution mode"""
         duplicate_reads = [
-            a for a in actions if a.action == "readFile" and a.file_path in read_files
+            a for a in actions if a.action == "read" and a.file_path in read_files
         ]  # action is already a string
 
-        return len(duplicate_reads) >= 3 or iteration_count >= int(self.max_iterations * 0.8)
+        # Force execution after 2 duplicate reads or 15 iterations
+        # Less aggressive now that users can see what the agent is thinking
+        return len(duplicate_reads) >= 2 or iteration_count >= 15
 
     async def _force_execution_mode(self, prompt: str, context: str) -> list[Action]:
         """Force the agent into execution mode"""
@@ -336,7 +343,9 @@ Files ({len(files)} total):
         forced_context = (
             context + "\n\n### SYSTEM NOTICE - FORCING EXECUTION MODE:\n"
             "You've attempted to reread files multiple times or have used too many iterations. "
-            "Based on the files you've already read, proceed to implementation immediately.\n"
+            "Based on the files you've already read and the user's request, proceed to implementation immediately. "
+            "Do not attempt to read any more files. Generate actual file modifications or creations now.\n"
+            "The user's original request was: " + prompt + "\n"
         )
 
         messages = self._build_messages(prompt, forced_context, [])
@@ -389,12 +398,12 @@ Files ({len(files)} total):
     def _map_action_to_update_type(self, action: str) -> str:
         """Map action type to stream update type"""
         mapping = {
-            "readFile": "read",
-            "createFile": "create",
-            "editFile": "edit",
-            "deleteFile": "delete",
-            "createDirectory": "create",
-            "removeDirectory": "delete",
+            "read": "read",
+            "create": "create",
+            "edit": "edit",
+            "delete": "delete",
+            "createDir": "create",
+            "removeDir": "delete",
             "search": "read",
         }
         return mapping.get(action, "unknown")

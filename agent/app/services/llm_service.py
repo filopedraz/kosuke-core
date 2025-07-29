@@ -18,10 +18,20 @@ class LLMService:
     """
 
     def __init__(self):
-        self.model = AnthropicModel(settings.model_name, api_key=settings.anthropic_api_key)
+        # Set the API key as environment variable for PydanticAI
+        import os
 
-        # Create PydanticAI agent with system prompt
-        self.agent = Agent(model=self.model, system_prompt=self._get_system_prompt())
+        if settings.anthropic_api_key:
+            os.environ["ANTHROPIC_API_KEY"] = settings.anthropic_api_key
+
+        self.model = AnthropicModel(settings.model_name)
+
+        # Create PydanticAI agent with system prompt and enable instrumentation
+        self.agent = Agent(
+            model=self.model,
+            system_prompt=self._get_system_prompt(),
+            instrument=True,  # Enable OpenTelemetry instrumentation for Langfuse
+        )
 
     async def generate_completion(
         self, messages: list[ChatMessage], temperature: float | None = None, max_tokens: int | None = None
@@ -53,32 +63,23 @@ class LLMService:
 
         try:
             print(f"Formatted message count: {len(conversation) + 1}")
-            print(f"User message length: {len(user_message)} characters")
 
-            # Start timing the request
-            import time
+            # Use PydanticAI agent to generate completion
+            result = await self.agent.run(user_message)
 
-            start_time = time.time()
+            response_text = result.data if hasattr(result, "data") else str(result)
 
-            # Use PydanticAI agent to run the conversation
-            result = await self.agent.run(user_message, message_history=conversation if conversation else None)
+            # Log token usage if available
+            if hasattr(result, "usage"):
+                usage = result.usage
+                print(f"📊 Token usage: {usage}")
 
-            end_time = time.time()
-            duration = end_time - start_time
+            print(f"✅ Generated completion: {len(response_text)} characters")
+            return response_text
 
-            print(f"Claude request completed in {duration:.2f}s")
-            print(f"Response text length: {len(result.data)} characters")
-            print(f"Response first 100 chars: {result.data[:100]}...")
-
-            # If we got an empty response, log a clear error
-            if not result.data or result.data.strip() == "":
-                print("❌ WARNING: Empty response received from Claude API")
-
-            return result.data
-
-        except Exception as error:
-            print(f"Error with Claude API: {error}")
-            raise Exception(f"Claude API error: {error!s}") from error
+        except Exception as e:
+            print(f"❌ Error generating completion: {e}")
+            raise
 
     async def parse_agent_response(self, response: str) -> dict[str, Any]:
         """
@@ -190,7 +191,7 @@ Your job is to help users modify their project based on the user requirements.
 
 ### HOW YOU SHOULD WORK - CRITICAL INSTRUCTIONS:
 1. FIRST, understand what files you need to see by analyzing the directory structure provided
-2. READ those files using the readFile tool to understand the codebase
+2. READ those files using the read tool to understand the codebase
 3. ONLY AFTER gathering sufficient context, propose and implement changes
 4. When implementing changes, break down complex tasks into smaller actions
 
@@ -210,12 +211,12 @@ Your job is to help users modify their project based on the user requirements.
 
 You have access to the following tools:
 
-- readFile(filePath: string) - Read the contents of a file to understand existing code before making changes
-- editFile(filePath: string, content: string) - Edit a file
-- createFile(filePath: string, content: string) - Create a new file
-- deleteFile(filePath: string) - Delete a file
-- createDirectory(path: string) - Create a new directory
-- removeDirectory(path: string) - Remove a directory and all its contents
+- read(filePath: string) - Read the contents of a file to understand existing code before making changes
+- edit(filePath: string, content: string) - Edit a file
+- create(filePath: string, content: string) - Create a new file
+- delete(filePath: string) - Delete a file
+- createDir(path: string) - Create a new directory
+- removeDir(path: string) - Remove a directory and all its contents
 
 ### ‼️ CRITICAL: RESPONSE FORMAT ‼️
 
@@ -226,7 +227,7 @@ Your responses can be in one of two formats:
   "thinking": true,
   "actions": [
     {
-      "action": "readFile",
+      "action": "read",
       "filePath": "path/to/file.ts",
       "message": "I need to examine this file to understand its structure"
     }
@@ -238,7 +239,7 @@ Your responses can be in one of two formats:
   "thinking": false,
   "actions": [
     {
-      "action": "editFile",
+      "action": "edit",
       "filePath": "components/Button.tsx",
       "content": "import React from 'react';\\n\\nexport default () => <button>Click me</button>;",
       "message": "I need to update the Button component to add the onClick prop"
@@ -254,12 +255,12 @@ Follow these JSON formatting rules:
    - Use \\" for quotes inside strings (not " or \')
    - Use \\\\ for backslashes
 4. Each action MUST have these properties:
-   - action: "readFile" | "editFile" | "createFile" | "deleteFile" | "createDirectory" | "removeDirectory"
+   - action: "read" | "edit" | "create" | "delete" | "createDir" | "removeDir"
    - filePath: string - path to the file or directory
-   - content: string - required for editFile and createFile actions
+   - content: string - required for edit and create actions
    - message: string - IMPORTANT: Write messages in future tense starting with "I need to..."
      describing what the action will do, NOT what it has already done.
-5. For editFile actions, ALWAYS return the COMPLETE file content after your changes.
+5. For edit actions, ALWAYS return the COMPLETE file content after your changes.
 6. Verify your JSON is valid before returning it - invalid JSON will cause the entire request to fail.
 
 IMPORTANT: The system can ONLY execute actions from the JSON object.

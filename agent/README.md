@@ -8,6 +8,7 @@ AI-powered code generation microservice built with FastAPI, PydanticAI, and Clau
 - 🔄 **Real-time Streaming**: Server-Sent Events for live updates
 - 🛠️ **File Operations**: Read, create, edit, delete files and directories
 - 🧠 **Context Analysis**: TypeScript project structure analysis
+- 📊 **Observability**: Langfuse integration for AI tracing and monitoring
 - 🚀 **FastAPI**: High-performance async web framework
 - 🐳 **Docker**: Containerized with hot reload for development
 
@@ -26,6 +27,22 @@ Edit `.env` and set your Anthropic API key:
 ```env
 ANTHROPIC_API_KEY=your_actual_api_key_here
 ```
+
+#### Optional: Configure Langfuse Observability
+
+For AI tracing and monitoring, you can optionally configure Langfuse:
+
+1. Sign up at [https://cloud.langfuse.com](https://cloud.langfuse.com)
+2. Create a project and get your API keys
+3. Add to your `config.env` file:
+
+```env
+LANGFUSE_PUBLIC_KEY=pk-lf-your_public_key_here
+LANGFUSE_SECRET_KEY=sk-lf-your_secret_key_here
+LANGFUSE_HOST=https://cloud.langfuse.com
+```
+
+The integration uses the official [Langfuse Pydantic AI integration](https://langfuse.com/integrations/frameworks/pydantic-ai) which automatically instruments all AI agent interactions with OpenTelemetry tracing. Simply leave the keys empty to disable observability.
 
 ### 2. Development Setup
 
@@ -120,6 +137,9 @@ The Next.js application should proxy requests to:
 All configuration is handled through environment variables:
 
 - `ANTHROPIC_API_KEY`: Your Anthropic API key for Claude access
+- `LANGFUSE_PUBLIC_KEY`: Langfuse public key for observability (optional)
+- `LANGFUSE_SECRET_KEY`: Langfuse secret key for observability (optional)
+- `LANGFUSE_HOST`: Langfuse host URL (default: https://cloud.langfuse.com)
 - `LOG_LEVEL`: Logging level (default: INFO)
 - `MAX_ITERATIONS`: Maximum agent iterations (default: 25)
 - `PROCESSING_TIMEOUT`: Request timeout in ms (default: 90000)
