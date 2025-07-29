@@ -167,7 +167,10 @@ const sendMessage = async (
     contextFiles?: string[];
     imageFile?: File;
   },
-  streamingCallback?: (content: string) => void
+  streamingCallback?: (content: string) => void,
+  actionsCallback?: (actions: Action[]) => void,
+  setAssistantIdCallback?: (id: number) => void,
+  abortController?: AbortController
 ): Promise<{
   message: ApiChatMessage;
   success: boolean;
@@ -201,6 +204,7 @@ const sendMessage = async (
       const response = await fetch(`/api/projects/${projectId}/chat`, {
         method: 'POST',
         body: requestBody,
+        signal: abortController?.signal,
       });
 
       if (!response.ok) {
@@ -224,6 +228,7 @@ const sendMessage = async (
         method: 'POST',
         headers: requestHeaders,
         body: requestBody,
+        signal: abortController?.signal,
       });
 
       if (!response.ok) {
@@ -246,14 +251,24 @@ const sendMessage = async (
         throw new Error('No response body');
       }
 
-      // Start streaming and update UI in real-time (like the original implementation)
+      // Extract assistant message ID from response headers for real-time updates
+      const assistantMessageId = parseInt(response.headers.get('X-Assistant-Message-Id') || '0');
+      console.log(`📱 Assistant message ID for streaming updates: ${assistantMessageId}`);
+
+      // Notify callback with assistant message ID
+      if (setAssistantIdCallback) {
+        setAssistantIdCallback(assistantMessageId);
+      }
+
+      // Start streaming and update UI in real-time with action parsing
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
 
-      // Track streaming state
+      // Track streaming state and actions
       let isStreamActive = true;
-      const assistantMessageId: number | null = null;
+      let fullContent = '';
+      const streamingActions: Action[] = [];
 
       while (isStreamActive) {
         const { done, value } = await reader.read();
@@ -278,16 +293,51 @@ const sendMessage = async (
               const data = JSON.parse(rawData);
               console.log('📡 Streaming update:', data);
 
-              // Handle different stream events from Python agent (original format)
+              // Parse Python agent events into Action objects for real-time display
+              if (data.type && data.file_path !== undefined && data.message && data.status) {
+                // Convert Python agent event to Action object
+                const action: Action = {
+                  type: data.type as Action['type'], // type from Python agent (thinking, create, edit, delete, etc.)
+                  path: data.file_path, // file_path from Python agent
+                  status: data.status as Action['status'], // status from Python agent (pending, completed, error)
+                  timestamp: new Date(),
+                  messageId: assistantMessageId, // Link to the assistant message
+                  content: data.message, // message from Python agent
+                };
+
+                // Update actions array for real-time display
+                const existingActionIndex = streamingActions.findIndex(a => a.type === action.type && a.path === action.path);
+                if (existingActionIndex >= 0) {
+                  // Update existing action
+                  streamingActions[existingActionIndex] = action;
+                } else {
+                  // Add new action
+                  streamingActions.push(action);
+                }
+
+                console.log(`🎯 Created Action: ${action.type} on ${action.path} - ${action.status}`);
+
+                // Notify actions callback for real-time UI updates
+                if (actionsCallback) {
+                  actionsCallback([...streamingActions]); // Send copy of actions array
+                }
+
+                // Accumulate content for display
+                if (data.message) {
+                  fullContent += data.message + '\n';
+                }
+              }
+
+              // Handle completion
               if (data.type === 'completed') {
                 isStreamActive = false;
                 console.log('✅ Streaming completed');
                 break;
               }
 
-              // Call streaming callback for UI updates
-              if (streamingCallback && data.message) {
-                streamingCallback(data.message);
+              // Call streaming callback for UI updates with accumulated content
+              if (streamingCallback) {
+                streamingCallback(fullContent);
               }
 
             } catch (parseError) {
@@ -297,13 +347,14 @@ const sendMessage = async (
         }
       }
 
-      // Return success response
+      // Return success response with assistant message ID and final actions
       return {
         message: {
-          id: assistantMessageId || 0,
-          content: '',
+          id: assistantMessageId,
+          content: fullContent,
           role: 'assistant',
           timestamp: new Date(),
+          actions: streamingActions, // Include parsed actions
         } as ApiChatMessage,
         success: true,
       };
@@ -366,12 +417,32 @@ export default function ChatInterface({
     contextSize: 0
   });
 
+  // Real-time streaming state
+  const [streamingActions, setStreamingActions] = useState<Action[]>([]);
+  const [streamingAssistantMessageId, setStreamingAssistantMessageId] = useState<number | null>(null);
+  const [streamingContent, setStreamingContent] = useState<string>('');
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [streamAbortController, setStreamAbortController] = useState<AbortController | null>(null);
+
   // Fetch user data
   useEffect(() => {
     userPromise.then(userData => {
       setUser(userData);
     });
   }, [userPromise]);
+
+  // Function to cancel ongoing stream
+  const cancelStream = () => {
+    if (streamAbortController) {
+      console.log('🛑 Cancelling stream...');
+      streamAbortController.abort();
+      setIsStreaming(false);
+      setStreamingActions([]);
+      setStreamingContent('');
+      setStreamingAssistantMessageId(null);
+      setStreamAbortController(null);
+    }
+  };
 
   // Query for messages
   const {
@@ -449,7 +520,33 @@ export default function ChatInterface({
     mutationFn: (args: {
       content: string;
       options?: { includeContext?: boolean; contextFiles?: string[]; imageFile?: File }
-    }) => sendMessage(projectId, args.content, args.options),
+    }) => {
+      // Set up streaming state and callback
+      setIsStreaming(true);
+      setStreamingActions([]);
+      setStreamingContent('');
+
+      // Create AbortController for stream cancellation
+      const abortController = new AbortController();
+      setStreamAbortController(abortController);
+
+      // Create streaming callback that updates real-time state
+      const streamingCallback = (content: string) => {
+        setStreamingContent(content);
+      };
+
+      // Create actions callback for real-time action updates
+      const actionsCallback = (actions: Action[]) => {
+        setStreamingActions(actions);
+      };
+
+      // Create assistant ID callback
+      const setAssistantIdCallback = (id: number) => {
+        setStreamingAssistantMessageId(id);
+      };
+
+      return sendMessage(projectId, args.content, args.options, streamingCallback, actionsCallback, setAssistantIdCallback, abortController);
+    },
     onMutate: async (newMessage) => {
       // Cancel any outgoing refetches
       await queryClient.cancelQueries({ queryKey: ['messages', projectId] });
@@ -561,6 +658,13 @@ export default function ChatInterface({
     onSettled: () => {
       // Always invalidate when settled (success or error)
       queryClient.invalidateQueries({ queryKey: ['messages', projectId] });
+
+      // Clean up streaming state
+      setIsStreaming(false);
+      setStreamingActions([]);
+      setStreamingContent('');
+      setStreamingAssistantMessageId(null);
+      setStreamAbortController(null); // Clear the controller on settled
     }
   });
 
@@ -729,49 +833,36 @@ export default function ChatInterface({
                 />
                             ))}
 
-              {/* Show generating animation when streaming started but no messages yet */}
-              {/* isStreaming && streamingMessages.length === 0 && ( */}
-              {/*   <div className="flex w-full max-w-[95%] mx-auto gap-3 p-4"> */}
-              {/*     <Avatar className="h-8 w-8"> */}
-              {/*       <div className="relative flex items-center justify-center h-full w-full"> */}
-              {/*         <AvatarFallback className="bg-muted border-primary rounded-none"> */}
-              {/*           <CircleIcon className="h-6 w-6 text-primary" /> */}
-              {/*         </AvatarFallback> */}
-              {/*       </div> */}
-              {/*     </Avatar> */}
-              {/*     <div className="flex-1 space-y-2"> */}
-              {/*       <div className="flex items-center justify-between"> */}
-              {/*         <h4>AI Assistant</h4> */}
-              {/*         <time className="text-xs text-muted-foreground">now</time> */}
-              {/*       </div> */}
-              {/*       <div className="flex items-center gap-2 text-sm text-muted-foreground"> */}
-              {/*         <div className="flex gap-1"> */}
-              {/*           <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div> */}
-              {/*           <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div> */}
-              {/*           <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div> */}
-              {/*         </div> */}
-              {/*         <span>Generating response...</span> */}
-              {/*       </div> */}
-              {/*     </div> */}
-              {/*   </div> */}
-              {/* ) */}
+              {/* Real-time streaming assistant message */}
+              {isStreaming && streamingAssistantMessageId && (
+                <>
+                  <ChatMessage
+                    key={`streaming-${streamingAssistantMessageId}`}
+                    id={streamingAssistantMessageId}
+                    content={streamingContent}
+                    role="assistant"
+                    timestamp={new Date()}
+                    isLoading={true}
+                    user={user ? {
+                      name: user.name || undefined,
+                      email: user.email,
+                      imageUrl: user.imageUrl || undefined
+                    } : undefined}
+                    actions={streamingActions}
+                    showAvatar={true}
+                  />
 
-              {/* Render streaming messages in real-time */}
-              {/* {streamingMessages.map((message, index) => ( */}
-              {/*   <ChatMessage */}
-              {/*     key={`streaming-${index}`} */}
-              {/*     content={message.content} */}
-              {/*     role={message.role} */}
-              {/*     timestamp={message.timestamp} */}
-              {/*     isLoading={message.isLoading} */}
-              {/*     user={user ? { */}
-              {/*       name: user.name || undefined, */}
-              {/*       email: user.email, */}
-              {/*       imageUrl: user.imageUrl || undefined */}
-              {/*     } : undefined} */}
-              {/*     showAvatar={index === 0} // Only show avatar for first streaming message */}
-              {/*   /> */}
-              {/* ))} */}
+                  {/* Cancel stream button */}
+                  <div className="flex justify-center py-2">
+                    <button
+                      onClick={cancelStream}
+                      className="px-3 py-1 text-sm text-muted-foreground hover:text-foreground border border-border rounded-md hover:bg-muted transition-colors"
+                    >
+                      Cancel Generation
+                    </button>
+                  </div>
+                </>
+              )}
 
               {/* Show streaming error if any */}
               {/* {streamingError && ( */}

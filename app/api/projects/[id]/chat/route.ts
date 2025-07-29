@@ -408,7 +408,21 @@ export async function POST(
 
     console.log(`✅ User message saved with ID: ${userMessage.id}`);
 
-    // 2. For text messages, proxy stream directly to Python FastAPI service (like the old approach)
+    // 2. Create placeholder assistant message immediately for real-time updates
+    const [assistantMessage] = await db.insert(chatMessages).values({
+      projectId,
+      userId: session.user.id,
+      content: '', // Empty placeholder content
+      role: 'assistant',
+      modelType: 'premium',
+      tokensInput: 0,
+      tokensOutput: 0,
+      contextTokens: 0,
+    }).returning();
+
+    console.log(`✅ Placeholder assistant message created with ID: ${assistantMessage.id}`);
+
+    // 3. For text messages, proxy stream directly to Python FastAPI service (like the old approach)
     const agentServiceUrl = process.env.AGENT_SERVICE_URL || 'http://localhost:8000';
 
     // Mark unused variables for future use
@@ -451,6 +465,7 @@ export async function POST(
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache, no-transform',
         'Connection': 'keep-alive',
+        'X-Assistant-Message-Id': assistantMessage.id.toString(), // Pass assistant message ID for frontend updates
       },
     });
 
