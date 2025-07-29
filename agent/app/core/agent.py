@@ -1,5 +1,12 @@
+import json
+import os
+import re
 import time
 from collections.abc import AsyncGenerator
+from typing import Any
+
+from pydantic_ai import Agent as PydanticAgent
+from pydantic_ai.models.anthropic import AnthropicModel
 
 from app.core.actions import ActionExecutor
 from app.models.actions import Action
@@ -9,7 +16,6 @@ from app.models.exceptions import classify_error
 from app.models.exceptions import get_error_message
 from app.models.requests import ChatMessage
 from app.services.fs_service import fs_service
-from app.services.llm_service import llm_service
 from app.services.webhook_service import WebhookService
 from app.utils.config import settings
 from app.utils.token_counter import count_tokens
@@ -30,7 +36,357 @@ class Agent:
         self.start_time = time.time()
         self.total_actions = 0
         self.total_tokens = 0
+
+        # Initialize PydanticAI directly with project context
+        self._initialize_llm()
+
         print(f"🚀 Agent initialized for project ID: {project_id}")
+
+    def _initialize_llm(self):
+        """Initialize PydanticAI agent with project-specific context"""
+        try:
+            # Set the API key as environment variable for PydanticAI
+            if settings.anthropic_api_key:
+                os.environ["ANTHROPIC_API_KEY"] = settings.anthropic_api_key
+
+            self.model = AnthropicModel(settings.model_name)
+
+            # Get project context during initialization
+            project_context = self._get_basic_context_sync()
+            print(f"📋 Initialized agent with project context ({len(project_context)} chars)")
+
+            # Create PydanticAI agent with complete system prompt (instructions + project context)
+            system_prompt = self._build_complete_system_prompt(project_context)
+            self.pydantic_agent = PydanticAgent(
+                model=self.model,
+                system_prompt=system_prompt,
+                instrument=True,  # Enable OpenTelemetry instrumentation for Langfuse
+            )
+
+            print("🎯 LLM integration initialized successfully")
+        except Exception as e:
+            print(f"⚠️ Failed to initialize LLM: {e}")
+            raise
+
+    def _build_complete_system_prompt(self, project_context: str) -> str:
+        """Build the complete system prompt with base instructions and project context"""
+        base_prompt = self._get_base_system_prompt()
+
+        if project_context:
+            return f"{base_prompt}\n\n{project_context}"
+        else:
+            return base_prompt
+
+    def _get_base_system_prompt(self) -> str:
+        """
+        Get the base system prompt for the agent (without project context)
+
+        Mirrors the NAIVE_SYSTEM_PROMPT from lib/llm/core/prompts.ts
+        """
+        return """You are an expert senior software engineer specializing in modern web development,
+with deep expertise in TypeScript, React 19, Next.js 15 (without ./src/ directory and using the App Router),
+Vercel AI SDK, Shadcn UI, Radix UI, and Tailwind CSS.
+
+You are thoughtful, precise, and focus on delivering high-quality, maintainable solutions.
+
+Your job is to help users modify their project based on the user requirements.
+
+### Features availability
+- As of now you can only implement frontend/client-side code. No APIs or Database changes.
+  If you can't implement the user request because of this, just say so.
+- You cannot add new dependencies or libraries. As of now you don't have access to the terminal
+  in order to install new dependencies.
+
+### HOW YOU SHOULD WORK - CRITICAL INSTRUCTIONS:
+1. FIRST, understand what files you need to see by analyzing the project structure provided
+2. READ those files using the read tool to understand the codebase
+3. ONLY AFTER gathering sufficient context, propose and implement changes
+4. When implementing changes, break down complex tasks into smaller actions
+
+### FILE READING BEST PRACTICES - EXTREMELY IMPORTANT:
+1. AVOID REREADING FILES you've already examined - maintain awareness of files you've already read
+2. PLAN your file reads upfront - make a list of all potentially relevant files before reading any
+3. Prioritize reading STRUCTURAL files first (layouts, main pages) before component files
+4. READ ALL NECESSARY FILES at once before starting to implement changes
+5. If you read a UI component file (Button, Input, etc.), REMEMBER its API - don't read it again
+6. Include clear REASONS why you need to read each file in your message
+7. Once you've read 5-8 files, ASSESS if you have enough context to implement the changes
+8. TRACK what you've learned from each file to avoid redundant reading
+9. If you find yourself wanting to read the same file again, STOP and move to implementation
+10. Keep track of the files you've already read to prevent infinite read loops
+
+### AVAILABLE TOOLS - READ CAREFULLY
+
+You have access to the following tools:
+
+- read(filePath: string) - Read the contents of a file to understand existing code before making changes
+- edit(filePath: string, content: string) - Edit a file
+- create(filePath: string, content: string) - Create a new file
+- delete(filePath: string) - Delete a file
+- createDir(path: string) - Create a new directory
+- removeDir(path: string) - Remove a directory and all its contents
+
+### ‼️ CRITICAL: RESPONSE FORMAT ‼️
+
+🚨 ABSOLUTELY CRITICAL: Your response must be EXACTLY ONE JSON object. NO EXCEPTIONS. 🚨
+
+NEVER return multiple JSON objects. NEVER return two separate responses.
+Your ENTIRE response must be a single valid JSON object - nothing before, nothing after, no additional content.
+
+Your responses can be in one of two formats:
+
+1. THINKING/READING MODE: When you need to examine files or think through a problem:
+{
+  "thinking": true,
+  "actions": [
+    {
+      "action": "read",
+      "filePath": "path/to/file.ts",
+      "message": "I need to examine this file to understand its structure"
+    }
+  ]
+}
+
+2. EXECUTION MODE: When ready to implement changes:
+{
+  "thinking": false,
+  "actions": [
+    {
+      "action": "edit",
+      "filePath": "components/Button.tsx",
+      "content": "import React from 'react';\\n\\nexport default () => <button>Click me</button>;",
+      "message": "I need to update the Button component to add the onClick prop"
+    }
+  ]
+}
+
+🚨 JSON FORMATTING RULES - FOLLOW EXACTLY: 🚨
+1. Your ENTIRE response must be a single valid JSON object - no other text before or after.
+2. Do NOT wrap your response in backticks or code blocks. Return ONLY the raw JSON.
+3. Do NOT return multiple JSON objects separated by newlines. ONLY ONE JSON object.
+4. Every string MUST have correctly escaped characters:
+   - Use \\n for newlines (not actual newlines)
+   - Use \\" for quotes inside strings (not " or ')
+   - Use \\\\ for backslashes
+5. Each action MUST have these properties:
+   - action: "read" | "edit" | "create" | "delete" | "createDir" | "removeDir"
+   - filePath: string - path to the file or directory
+   - content: string - required for edit and create actions
+   - message: string - IMPORTANT: Write messages in future tense starting with "I need to..."
+     describing what the action will do, NOT what it has already done.
+6. For edit actions, ALWAYS return the COMPLETE file content after your changes.
+7. Verify your JSON is valid before returning it - invalid JSON will cause the entire request to fail.
+
+🚨 EXAMPLES OF WHAT NOT TO DO: 🚨
+❌ WRONG - Multiple JSON objects:
+{"thinking": true, "actions": [...]}
+{"thinking": false, "actions": [...]}
+
+❌ WRONG - Text before JSON:
+I need to read the file first.
+{"thinking": true, "actions": [...]}
+
+❌ WRONG - Code blocks:
+```json
+{"thinking": true, "actions": [...]}
+```
+
+✅ CORRECT - Single JSON object only:
+{"thinking": true, "actions": [...]}
+
+IMPORTANT: The system can ONLY execute actions from the JSON object.
+Any instructions or explanations outside the JSON will be ignored."""
+
+    async def generate_completion(
+        self, messages: list[ChatMessage], temperature: float | None = None, max_tokens: int | None = None
+    ) -> str:
+        """
+        Generate a completion using Claude 3.5 Sonnet
+
+        Mirrors the TypeScript generateAICompletion function
+        """
+
+        temperature = temperature or settings.temperature
+        max_tokens = max_tokens or settings.max_tokens
+
+        print("🤖 Using Claude 3.5 Sonnet for completion")
+        print(f"📊 Request parameters: temperature={temperature}, maxTokens={max_tokens}")
+
+        # Convert messages to user message (no system context needed, it's in the agent's system prompt)
+        user_message = ""
+        conversation = []
+
+        for msg in messages:
+            if msg.role == "system":
+                # System messages are now handled by the agent's system prompt
+                continue
+            elif msg.role == "user":
+                # Combine multiple user messages if present
+                if user_message:
+                    user_message += f"\n\n{msg.content}"
+                else:
+                    user_message = msg.content
+            else:
+                conversation.append({"role": msg.role, "content": msg.content})
+
+        try:
+            print(f"Formatted message count: {len(conversation) + 1}")
+
+            # Use PydanticAI agent to generate completion
+            result = await self.pydantic_agent.run(user_message)
+
+            response_text = result.data if hasattr(result, "data") else str(result)
+
+            # Log token usage if available
+            if hasattr(result, "usage"):
+                usage = result.usage
+                print(f"📊 Token usage: {usage}")
+
+            print(f"✅ Generated completion: {len(response_text)} characters")
+            return response_text
+
+        except Exception as e:
+            print(f"❌ Error generating completion: {e}")
+            raise
+
+    async def parse_agent_response(self, response: str) -> dict[str, Any]:
+        """
+        Parse the agent response into thinking state and actions
+
+        Mirrors the TypeScript parseAgentResponse function from agentPromptParser.ts
+        """
+        try:
+            # Handle if response is an object with text property (shouldn't happen with our setup)
+            response_text = response if isinstance(response, str) else str(response)
+
+            # Clean up the response - remove markdown code blocks if present
+            cleaned_response = response_text.strip()
+            cleaned_response = re.sub(r"```(?:json)?[\r\n]?(.*?)[\r\n]?```", r"\1", cleaned_response, flags=re.DOTALL)
+            cleaned_response = cleaned_response.strip()
+
+            preview = cleaned_response[:200] + ("..." if len(cleaned_response) > 200 else "")
+            print(f"📝 Cleaned response (preview): {preview}")
+
+            # Default values for the result
+            result = {
+                "thinking": True,  # Default to thinking mode
+                "actions": [],
+            }
+
+            try:
+                # Parse the response as JSON
+                parsed_response = json.loads(cleaned_response)
+                return self._process_parsed_response(parsed_response, result)
+
+            except json.JSONDecodeError as json_error:
+                self._log_json_parse_error(json_error, cleaned_response)
+                raise Exception(f"Failed to parse JSON response from LLM: {json_error!s}") from json_error
+
+        except Exception as error:
+            print(f"❌ Error parsing agent response: {error}")
+            raise Exception(f"Error processing agent response: {error!s}") from error
+
+    def _process_parsed_response(self, parsed_response: dict, result: dict) -> dict[str, Any]:
+        """Process the parsed JSON response and extract thinking state and actions"""
+        # Set thinking state if provided
+        if isinstance(parsed_response, dict) and "thinking" in parsed_response:
+            result["thinking"] = bool(parsed_response["thinking"])
+
+        # Parse actions if provided
+        if isinstance(parsed_response, dict) and "actions" in parsed_response:
+            if isinstance(parsed_response["actions"], list):
+                action_count = len(parsed_response["actions"])
+                print(f"✅ Successfully parsed JSON: {action_count} potential actions found")
+
+                # Validate each action and add to result
+                valid_actions = self._validate_actions(parsed_response["actions"])
+                result["actions"] = valid_actions
+                print(f"✅ Found {len(result['actions'])} valid actions")
+            else:
+                print("⚠️ Response parsed as JSON but actions is not an array")
+        else:
+            print("⚠️ Response parsed as JSON but no actions field found")
+
+        return result
+
+    def _validate_actions(self, actions_data: list) -> list[Action]:
+        """Validate and convert action data to Action objects"""
+        valid_actions = []
+        for idx, action_data in enumerate(actions_data):
+            try:
+                if isinstance(action_data, dict):
+                    action = Action(**action_data)
+                    valid_actions.append(action)
+                else:
+                    print(f"⚠️ Invalid action at index {idx}: not a dict")
+            except Exception as e:
+                print(f"⚠️ Invalid action at index {idx}: {e}")
+        return valid_actions
+
+    def _log_json_parse_error(self, json_error: json.JSONDecodeError, cleaned_response: str):
+        """Log JSON parsing errors with helpful context"""
+        print(f"❌ Error parsing JSON: {json_error}")
+
+        # Show context around the error if possible
+        if hasattr(json_error, "pos") and json_error.pos is not None:
+            error_pos = json_error.pos
+            start = max(0, error_pos - 30)
+            end = min(len(cleaned_response), error_pos + 30)
+
+            context = f"...{cleaned_response[start:error_pos]}[ERROR]{cleaned_response[error_pos:end]}..."
+            print(f"⚠️ JSON error at position {error_pos}. Context around error:")
+            print(f"Error context: {context}")
+
+    def _get_basic_context_sync(self) -> str:
+        """Get basic project context synchronously for initialization"""
+        try:
+            project_path = fs_service.get_project_path(self.project_id)
+            if not project_path.exists():
+                return "Project directory not found."
+
+            # Get directory structure (already synchronous)
+            directory_structure = fs_service.get_project_files_sync(self.project_id)
+
+            # Helper function to format directory structure as a tree
+            def format_structure(nodes, prefix="", is_last=True):
+                lines = []
+                for i, node in enumerate(nodes):
+                    is_last_item = i == len(nodes) - 1
+
+                    # Choose the right tree symbols
+                    if prefix == "":  # Root level
+                        current_prefix = ""
+                        next_prefix = ""
+                    else:
+                        current_prefix = prefix + ("└── " if is_last_item else "├── ")
+                        next_prefix = prefix + ("    " if is_last_item else "│   ")
+
+                    if node["type"] == "directory":
+                        lines.append(f"{current_prefix}{node['name']}/")
+                        if "children" in node and node["children"]:
+                            lines.extend(format_structure(node["children"], next_prefix, is_last_item))
+                    else:
+                        lines.append(f"{current_prefix}{node['name']}")
+
+                return lines
+
+            structure_lines = format_structure(directory_structure)
+            structure_text = "\n".join(structure_lines) if structure_lines else "No files found"
+
+            return f"""
+================================================================
+Project Context
+================================================================
+Project ID: {self.project_id}
+Project Path: {project_path}
+
+Project Structure:
+{structure_text}
+================================================================
+"""
+        except Exception as e:
+            print(f"Error getting basic context: {e}")
+            return "Error loading project context"
 
     async def run(self, prompt: str) -> AsyncGenerator[dict, None]:
         """
@@ -42,19 +398,16 @@ class Agent:
         processing_start = time.time()
 
         try:
-            # Get basic project context (simplified for now - will add full context service later)
+            # Agent already has project context in its system prompt
             yield {
                 "type": "thinking",
                 "file_path": "",
-                "message": "Analyzing project structure...",
+                "message": "Agent ready with project context...",
                 "status": "pending",
             }
 
-            # Create a basic context for now
-            context = await self._get_basic_context()
-
-            # Run agentic workflow
-            async for update in self._run_agentic_workflow(prompt, context):
+            # Run agentic workflow (no need to pass context)
+            async for update in self._run_agentic_workflow(prompt):
                 yield update
 
         except Exception as e:
@@ -72,52 +425,11 @@ class Agent:
 
     async def _get_basic_context(self) -> str:
         """Get basic project context with directory structure and file listing"""
-        try:
-            project_path = fs_service.get_project_path(self.project_id)
-            if not project_path.exists():
-                return "Project directory not found."
+        # This method is now only used for legacy compatibility
+        # The context is already included in the LLM service's system prompt
+        return f"Project context already loaded for project ID: {self.project_id}"
 
-            # Get file listing (now excludes node_modules, .git, etc.)
-            files = await fs_service.list_files_recursively(str(project_path))
-
-            # Get directory structure (already excludes build directories)
-            directory_structure = fs_service.get_project_files_sync(self.project_id)
-
-            # Helper function to format directory structure
-            def format_structure(nodes, depth=0):
-                lines = []
-                for node in nodes:
-                    indent = "  " * depth
-                    if node["type"] == "directory":
-                        lines.append(f"{indent}{node['name']}/")
-                        if "children" in node and node["children"]:
-                            lines.extend(format_structure(node["children"], depth + 1))
-                    else:
-                        lines.append(f"{indent}{node['name']}")
-                return lines
-
-            structure_lines = format_structure(directory_structure)
-            structure_text = "\n".join(structure_lines) if structure_lines else "No files found"
-
-            return f"""
-================================================================
-Project Context
-================================================================
-Project ID: {self.project_id}
-Project Path: {project_path}
-
-Directory Structure:
-{structure_text}
-
-Files ({len(files)} total):
-{chr(10).join(files)}
-================================================================
-"""
-        except Exception as e:
-            print(f"Error getting basic context: {e}")
-            return "Error loading project context"
-
-    async def _run_agentic_workflow(self, prompt: str, context: str) -> AsyncGenerator[dict, None]:
+    async def _run_agentic_workflow(self, prompt: str) -> AsyncGenerator[dict, None]:
         """
         Run the iterative agentic workflow
 
@@ -127,7 +439,6 @@ Files ({len(files)} total):
 
         iteration_count = 0
         read_files: set[str] = set()
-        current_context = context
         execution_log: list[str] = []
         gathered_context: dict[str, str] = {}
 
@@ -142,15 +453,17 @@ Files ({len(files)} total):
             }
 
             try:
-                # Update context with tracking info
-                current_context = self._update_context_with_tracking(current_context, read_files, iteration_count)
+                # Build context with tracking info (no project context needed, it's in system prompt)
+                current_context = self._build_iteration_context(
+                    read_files, iteration_count, gathered_context, execution_log
+                )
 
                 # Generate AI response
-                messages = self._build_messages(prompt, current_context, [])
-                response = await llm_service.generate_completion(messages)
+                messages = self._build_messages(prompt, current_context)
+                response = await self.generate_completion(messages)
 
                 # Parse response
-                parsed = await llm_service.parse_agent_response(response)
+                parsed = await self.parse_agent_response(response)
 
                 if not parsed["thinking"]:
                     # Agent is ready to execute
@@ -198,9 +511,6 @@ Files ({len(files)} total):
                     parsed["actions"], read_files, gathered_context, execution_log
                 ):
                     yield update
-
-                # Update context
-                current_context = self._update_context(current_context, gathered_context, execution_log)
 
             except Exception as e:
                 print(f"Error in iteration {iteration_count}: {e}")
@@ -369,52 +679,55 @@ Files ({len(files)} total):
             "The user's original request was: " + prompt + "\n"
         )
 
-        messages = self._build_messages(prompt, forced_context, [])
-        response = await llm_service.generate_completion(messages)
-        parsed = await llm_service.parse_agent_response(response)
+        messages = self._build_messages(prompt, forced_context)
+        response = await self.generate_completion(messages)
+        parsed = await self.parse_agent_response(response)
 
         return parsed["actions"]
 
-    def _build_messages(self, prompt: str, context: str, chat_history: list) -> list[ChatMessage]:
+    def _build_messages(self, prompt: str, iteration_context: str = "") -> list[ChatMessage]:
         """Build messages for LLM completion"""
-        system_content = context if context else ""
+        messages = []
 
-        return [ChatMessage(role="system", content=system_content), ChatMessage(role="user", content=prompt.strip())]
+        # Add iteration context as user message if present
+        if iteration_context:
+            messages.append(ChatMessage(role="user", content=f"ITERATION CONTEXT:\n{iteration_context}"))
 
-    def _update_context_with_tracking(self, context: str, read_files: set[str], iteration_count: int) -> str:
-        """Update context with tracking information"""
-        updated_context = context
+        # Add main user prompt
+        messages.append(ChatMessage(role="user", content=prompt.strip()))
+
+        return messages
+
+    def _build_iteration_context(
+        self, read_files: set[str], iteration_count: int, gathered_context: dict[str, str], execution_log: list[str]
+    ) -> str:
+        """Build context for current iteration with tracking information"""
+        context_parts = []
 
         if read_files:
-            files_section = "\n\n### Already Read Files - DO NOT READ THESE AGAIN:\n"
+            files_section = "\n### Already Read Files - DO NOT READ THESE AGAIN:\n"
             files_section += "\n".join(f"{i+1}. {file}" for i, file in enumerate(read_files))
-            updated_context += files_section
+            context_parts.append(files_section)
 
         if iteration_count >= int(self.max_iterations * 0.6):
             warning = (
-                f"\n\n### WARNING - APPROACHING ITERATION LIMIT:\n"
+                f"\n### WARNING - APPROACHING ITERATION LIMIT:\n"
                 f"You have used {iteration_count} of {self.max_iterations} available iterations. "
                 f"Move to implementation phase soon to avoid termination.\n"
             )
-            updated_context += warning
-
-        return updated_context
-
-    def _update_context(self, context: str, gathered_context: dict[str, str], execution_log: list[str]) -> str:
-        """Update context with gathered information"""
-        updated_context = context
+            context_parts.append(warning)
 
         if gathered_context:
-            updated_context += "\n\n### File Contents:\n\n"
+            context_parts.append("\n### File Contents:\n")
             for file_path, content in gathered_context.items():
-                updated_context += f"--- File: {file_path} ---\n{content}\n\n"
+                context_parts.append(f"--- File: {file_path} ---\n{content}\n")
 
         if execution_log:
-            updated_context += "\n\n### Execution Log:\n\n"
+            context_parts.append("\n### Execution Log:\n")
             for i, log in enumerate(execution_log):
-                updated_context += f"{i+1}. {log}\n"
+                context_parts.append(f"{i+1}. {log}")
 
-        return updated_context
+        return "\n".join(context_parts)
 
     def _map_action_to_update_type(self, action: str) -> str:
         """Map action type to stream update type"""

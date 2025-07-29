@@ -146,6 +146,37 @@ class FileSystemService:
             print(f"Failed to list files recursively in directory {dir_path}: {error}")
             raise error
 
+    def list_files_recursively_sync(self, dir_path: str) -> list[str]:
+        """
+        Synchronous version of list_files_recursively for initialization use
+
+        List files in a directory recursively, excluding common build/dependency directories
+        """
+        files = []
+        dir_path = Path(dir_path)
+
+        # Directories to exclude from recursive search
+        exclude_dirs = {".next", "node_modules", ".git", "dist", "build", "__pycache__", "venv", ".venv", "coverage"}
+
+        try:
+            for file_path in dir_path.rglob("*"):
+                if file_path.is_file():
+                    # Check if any parent directory is in the exclude list
+                    should_exclude = False
+                    for parent in file_path.parents:
+                        if parent.name in exclude_dirs:
+                            should_exclude = True
+                            break
+
+                    if not should_exclude:
+                        relative_path = file_path.relative_to(dir_path)
+                        files.append(str(relative_path))
+
+            return files
+        except Exception as error:
+            print(f"Failed to list files recursively in directory {dir_path}: {error}")
+            raise error
+
     async def copy_file(self, source_path: str, destination_path: str) -> None:
         """
         Copy a file
