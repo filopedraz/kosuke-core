@@ -1,6 +1,6 @@
-import { NextRequest } from 'next/server';
 import { getSession } from '@/lib/auth/session';
 import { getProjectById } from '@/lib/db/projects';
+import { NextRequest } from 'next/server';
 
 /**
  * POST - Stream chat response from Python FastAPI service
@@ -42,7 +42,7 @@ export async function POST(
 
     // Proxy to Python FastAPI service for streaming
     const agentServiceUrl = process.env.AGENT_SERVICE_URL || 'http://localhost:8000';
-    
+
     const response = await fetch(`${agentServiceUrl}/api/chat/stream`, {
       method: 'POST',
       headers: {
@@ -50,14 +50,26 @@ export async function POST(
       },
       body: JSON.stringify({
         project_id: projectId,
-        content: content,
+        prompt: content,  // Changed from 'content' to 'prompt' to match FastAPI ChatRequest model
       }),
     });
 
     if (!response.ok) {
-      console.error('Python agent service error:', response.statusText);
-      return new Response(`Agent service error: ${response.statusText}`, { 
-        status: response.status 
+      // Get detailed error information from FastAPI
+      let errorDetails = response.statusText;
+      try {
+        const errorBody = await response.text();
+        if (errorBody) {
+          console.error('Python agent service error body:', errorBody);
+          errorDetails = errorBody;
+        }
+      } catch (e) {
+        console.error('Failed to read error response body:', e);
+      }
+
+      console.error('Python agent service error:', response.status, response.statusText);
+      return new Response(`Agent service error: ${errorDetails}`, {
+        status: response.status
       });
     }
 
@@ -73,4 +85,4 @@ export async function POST(
     console.error('Error proxying to Python agent service:', error);
     return new Response('Error processing request', { status: 500 });
   }
-} 
+}
