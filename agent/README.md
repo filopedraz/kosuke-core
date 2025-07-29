@@ -42,7 +42,7 @@ LANGFUSE_SECRET_KEY=sk-lf-your_secret_key_here
 LANGFUSE_HOST=https://cloud.langfuse.com
 ```
 
-The integration uses the official [Langfuse Pydantic AI integration](https://langfuse.com/integrations/frameworks/pydantic-ai) which automatically instruments all AI agent interactions with OpenTelemetry tracing. Simply leave the keys empty to disable observability.
+The integration uses the official [Langfuse Pydantic AI integration](https://langfuse.com/integrations/frameworks/pydantic-ai) which automatically instruments all AI agent interactions. The system will verify your credentials and initialize instrumentation automatically. Simply leave the keys empty to disable observability.
 
 ### 2. Development Setup
 

@@ -1,4 +1,5 @@
 import logging
+import os
 
 from pydantic_settings import BaseSettings
 
@@ -9,8 +10,7 @@ def initialize_langfuse(settings_instance) -> bool:
     """
     Initialize Langfuse observability for PydanticAI agents.
 
-    This follows the official Langfuse integration pattern using OpenTelemetry
-    tracing for PydanticAI agents.
+    This uses the official Langfuse PydanticAI integration pattern.
     """
     # Check if Langfuse settings are configured
     public_key = settings_instance.langfuse_public_key
@@ -22,36 +22,34 @@ def initialize_langfuse(settings_instance) -> bool:
         return False
 
     try:
-        # Import required OpenTelemetry components for Langfuse integration
-        from opentelemetry import trace
-        from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
-        from opentelemetry.sdk.resources import Resource
-        from opentelemetry.sdk.trace import TracerProvider
-        from opentelemetry.sdk.trace.export import BatchSpanProcessor
+        # Set environment variables for Langfuse SDK
+        os.environ["LANGFUSE_PUBLIC_KEY"] = public_key
+        os.environ["LANGFUSE_SECRET_KEY"] = secret_key
+        os.environ["LANGFUSE_HOST"] = host
 
-        # Configure OpenTelemetry with Langfuse
-        resource = Resource.create({"service.name": "kosuke-agent"})
+        # Import Langfuse client and PydanticAI Agent
+        from langfuse import get_client
+        from pydantic_ai import Agent
 
-        # Set up OTLP exporter for Langfuse
-        otlp_exporter = OTLPSpanExporter(
-            endpoint=f"{host}/api/public/ingestion/v1/traces",
-            headers={
-                "Authorization": f"Bearer {public_key}:{secret_key}",
-                "Content-Type": "application/json",
-            },
-        )
+        # Initialize Langfuse client
+        langfuse = get_client()
 
-        # Configure tracer provider
-        tracer_provider = TracerProvider(resource=resource)
-        tracer_provider.add_span_processor(BatchSpanProcessor(otlp_exporter))
-        trace.set_tracer_provider(tracer_provider)
+        # Verify connection
+        if langfuse.auth_check():
+            logger.info(f"✅ Langfuse client authenticated - {host}")
 
-        logger.info(f"✅ Langfuse observability enabled - {host}")
-        return True
+            # Initialize Pydantic AI instrumentation
+            Agent.instrument_all()
+            logger.info("🔧 PydanticAI instrumentation enabled")
+
+            return True
+        else:
+            logger.warning("❌ Langfuse authentication failed. Please check your credentials and host.")
+            return False
 
     except ImportError as e:
         logger.warning(f"⚠️ Missing dependencies for Langfuse integration: {e}")
-        logger.warning("💡 Install with: pip install opentelemetry-api opentelemetry-sdk opentelemetry-exporter-otlp")
+        logger.warning("💡 Install with: pip install langfuse")
         return False
     except Exception as e:
         logger.warning(f"⚠️ Failed to initialize Langfuse: {e}")
@@ -89,7 +87,7 @@ class Settings(BaseSettings):
     # Langfuse Observability (Optional)
     langfuse_public_key: str = ""
     langfuse_secret_key: str = ""
-    langfuse_host: str = "https://cloud.langfuse.com"
+    langfuse_host: str = "https://langfuse.joandko.io"
 
     # Processing settings
     processing_timeout: int = 90000

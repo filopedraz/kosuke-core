@@ -15,11 +15,6 @@ docker==7.1.0
 asyncpg==0.29.0
 langfuse==3.0.0b2
 
-# OpenTelemetry dependencies for Langfuse integration (compatible versions)
-opentelemetry-api>=1.33.1
-opentelemetry-sdk>=1.33.1
-opentelemetry-exporter-otlp>=1.33.1
-
 # Testing dependencies
 pytest==7.4.3
 pytest-asyncio==0.21.1

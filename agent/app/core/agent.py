@@ -71,14 +71,33 @@ class Agent:
         print(f"⏱️ Total processing time: {processing_end - processing_start:.2f}s")
 
     async def _get_basic_context(self) -> str:
-        """Get basic project context (placeholder for full context service)"""
+        """Get basic project context with directory structure and file listing"""
         try:
             project_path = fs_service.get_project_path(self.project_id)
             if not project_path.exists():
                 return "Project directory not found."
 
-            # Get basic file listing
+            # Get file listing (now excludes node_modules, .git, etc.)
             files = await fs_service.list_files_recursively(str(project_path))
+
+            # Get directory structure (already excludes build directories)
+            directory_structure = fs_service.get_project_files_sync(self.project_id)
+
+            # Helper function to format directory structure
+            def format_structure(nodes, depth=0):
+                lines = []
+                for node in nodes:
+                    indent = "  " * depth
+                    if node["type"] == "directory":
+                        lines.append(f"{indent}{node['name']}/")
+                        if "children" in node and node["children"]:
+                            lines.extend(format_structure(node["children"], depth + 1))
+                    else:
+                        lines.append(f"{indent}{node['name']}")
+                return lines
+
+            structure_lines = format_structure(directory_structure)
+            structure_text = "\n".join(structure_lines) if structure_lines else "No files found"
 
             return f"""
 ================================================================
@@ -87,9 +106,11 @@ Project Context
 Project ID: {self.project_id}
 Project Path: {project_path}
 
+Directory Structure:
+{structure_text}
+
 Files ({len(files)} total):
-{chr(10).join(files[:20])}  # Show first 20 files
-{'...' if len(files) > 20 else ''}
+{chr(10).join(files)}
 ================================================================
 """
         except Exception as e:
