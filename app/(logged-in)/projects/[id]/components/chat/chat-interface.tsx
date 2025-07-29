@@ -159,11 +159,15 @@ const fetchMessages = async (projectId: number): Promise<ChatMessageProps[]> => 
     });
 };
 
-// Enhanced sendMessage function with streaming support
+// Enhanced sendMessage function with unified streaming support
 const sendMessage = async (
   projectId: number,
   content: string,
-  options?: { includeContext?: boolean; contextFiles?: string[]; imageFile?: File },
+  options?: {
+    includeContext?: boolean;
+    contextFiles?: string[];
+    imageFile?: File;
+  },
   streamingCallback?: (content: string) => void
 ): Promise<{
   message: ApiChatMessage;
@@ -175,75 +179,132 @@ const sendMessage = async (
   error?: string;
   errorType?: ErrorType;
 }> => {
-  // For image uploads, still use the traditional endpoint
-  if (options?.imageFile) {
-    const formData = new FormData();
-    formData.append('content', content);
-    formData.append('includeContext', options.includeContext ? 'true' : 'false');
+  try {
+    console.log('💾 Sending message via unified streaming endpoint');
 
-    if (options.contextFiles && options.contextFiles.length) {
-      formData.append('contextFiles', JSON.stringify(options.contextFiles));
+    // For image uploads, use FormData
+    let requestBody: FormData | string;
+    const requestHeaders: HeadersInit = {};
+
+    if (options?.imageFile) {
+      const formData = new FormData();
+      formData.append('content', content);
+      formData.append('includeContext', options.includeContext ? 'true' : 'false');
+
+      if (options.contextFiles && options.contextFiles.length) {
+        formData.append('contextFiles', JSON.stringify(options.contextFiles));
+      }
+
+      formData.append('image', options.imageFile);
+      requestBody = formData;
+    } else {
+      // For text messages, use JSON
+      requestHeaders['Content-Type'] = 'application/json';
+      requestBody = JSON.stringify({
+        content,
+        includeContext: options?.includeContext || false,
+        contextFiles: options?.contextFiles || [],
+      });
     }
-
-    formData.append('image', options.imageFile);
 
     const response = await fetch(`/api/projects/${projectId}/chat`, {
       method: 'POST',
-      body: formData,
+      headers: requestHeaders,
+      body: requestBody,
     });
 
     if (!response.ok) {
       if (response.status === 403) {
         throw new Error('LIMIT_REACHED');
       }
-      throw new Error(`Failed to send message: ${response.statusText}`);
-    }
 
-    return await response.json();
-  }
-
-  // For text messages, save to database and return success
-  // Actual processing will happen via streaming endpoint
-  try {
-    console.log('💾 Saving user message to database');
-
-    const saveResponse = await fetch(`/api/projects/${projectId}/chat`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        content,
-        includeContext: options?.includeContext || false,
-        contextFiles: options?.contextFiles || [],
-      }),
-    });
-
-    if (!saveResponse.ok) {
-      if (saveResponse.status === 403) {
-        throw new Error('LIMIT_REACHED');
-      }
-
-      const errorData = await saveResponse.json().catch(() => ({}));
+      const errorData = await response.json().catch(() => ({}));
       if (errorData && typeof errorData === 'object' && 'errorType' in errorData) {
         const error = new Error(errorData.error || 'Failed to send message');
         Object.assign(error, { errorType: errorData.errorType });
         throw error;
       }
 
-      throw new Error(`Failed to send message: ${saveResponse.statusText}`);
+      throw new Error(`Failed to send message: ${response.statusText}`);
     }
 
-    const saveResult = await saveResponse.json();
-
-    // Start streaming processing in background
-    if (streamingCallback) {
-      setTimeout(() => {
-        streamingCallback(content);
-      }, 100);
+    // For image uploads, the response is JSON
+    if (options?.imageFile) {
+      return await response.json();
     }
 
-    return saveResult;
+    // For text messages, handle streaming response
+    if (!response.body) {
+      throw new Error('No response body');
+    }
+
+    // Start streaming and update UI in real-time
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    // Track streaming state
+    let isStreamActive = true;
+    let assistantMessageId: number | null = null;
+
+    while (isStreamActive) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          try {
+            const data = JSON.parse(line.substring(6));
+            console.log('📡 Streaming update:', data);
+
+            // Store assistant message ID for tracking
+            if (data.messageId && !assistantMessageId) {
+              assistantMessageId = data.messageId;
+            }
+
+            // Handle different stream events
+            switch (data.type) {
+              case 'action_update':
+                // Update action cards in real-time
+                if (streamingCallback) {
+                  streamingCallback(`Action: ${data.action.type} on ${data.action.path}`);
+                }
+                break;
+
+              case 'stream_complete':
+                // Streaming completed successfully
+                isStreamActive = false;
+                console.log('✅ Streaming completed');
+                break;
+
+              case 'stream_error':
+                // Handle streaming errors
+                isStreamActive = false;
+                console.error('❌ Stream error:', data.error);
+                throw new Error(data.error || 'Streaming failed');
+            }
+
+          } catch (parseError) {
+            console.warn('Failed to parse streaming data:', parseError);
+          }
+        }
+      }
+    }
+
+    // Return success response
+    return {
+      message: {
+        id: assistantMessageId || 0,
+        content: '',
+        role: 'assistant',
+        timestamp: new Date(),
+      } as ApiChatMessage,
+      success: true,
+    };
 
   } catch (error) {
     console.error('Error in sendMessage:', error);
@@ -746,106 +807,6 @@ export default function ChatInterface({
       onRegenerate: message.role === 'assistant' && message.hasError ? handleRegenerate : undefined,
     };
   });
-
-  // Setup SSE event listener for real-time updates
-  useEffect(() => {
-    // Only set up SSE if we don't already have one
-    let eventSource: EventSource | null = null;
-    let reconnectTimer: NodeJS.Timeout | null = null;
-    let lastEventTime = Date.now();
-
-    const setupSSE = () => {
-      if (eventSource) return; // Prevent duplicate connections
-
-      eventSource = new EventSource(`/api/projects/${projectId}/chat/sse`);
-      console.log('📡 SSE connection established for project:', projectId);
-
-      eventSource.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-
-          // Skip heartbeat messages silently
-          if (data.type === 'heartbeat') return;
-
-          // Prevent too frequent refetches
-          const now = Date.now();
-          const timeSinceLastEvent = now - lastEventTime;
-
-          // Process events immediately for real-time updates
-          if (timeSinceLastEvent > 100) { // Minimal throttling to prevent spam
-            lastEventTime = now;
-
-            // Process message
-            if (data.type === 'new_message') {
-              console.log('📨 New message received');
-              // Invalidate and refetch messages when a new message arrives
-              queryClient.invalidateQueries({ queryKey: ['messages', projectId] });
-
-              // Dispatch custom event to refresh preview when assistant message is received
-              if (data.role === 'assistant') {
-                console.log('🔄 Assistant message received, triggering preview refresh');
-                const refreshPreviewEvent = new CustomEvent('refresh-preview', {
-                  detail: { projectId }
-                });
-                window.dispatchEvent(refreshPreviewEvent);
-              }
-            } else if (data.type === 'file_updated') {
-              console.log('📄 File updated event received');
-              // Trigger file update event for UI
-              const fileUpdatedEvent = new CustomEvent('file-updated', {
-                detail: { projectId }
-              });
-              window.dispatchEvent(fileUpdatedEvent);
-              // Invalidate queries to refresh messages with updated file operations
-              queryClient.invalidateQueries({ queryKey: ['messages', projectId] });
-            } else if (data.type === 'token_update' && data.tokens) {
-              console.log('🔢 Token update received', data.tokens);
-              // Update token usage metrics directly from the event
-              setTokenUsage({
-                tokensSent: data.tokens.tokensSent,
-                tokensReceived: data.tokens.tokensReceived,
-                contextSize: data.tokens.contextSize
-              });
-            } else if (data.type === 'error') {
-              console.log('🛑 Error event received', data);
-              // Set error state from SSE
-              setIsError(true);
-              setErrorType(data.errorType || 'unknown');
-              setErrorMessage(data.message || 'An error occurred');
-
-              // Invalidate messages to show the error
-              queryClient.invalidateQueries({ queryKey: ['messages', projectId] });
-            }
-          }
-        } catch (error) {
-          console.error('Error parsing SSE message:', error);
-        }
-      };
-
-      eventSource.onerror = () => {
-        console.log('⚠️ SSE connection error, will reconnect in 5 seconds');
-        if (eventSource) {
-          eventSource.close();
-          eventSource = null;
-        }
-
-        // Reconnect after 5 seconds
-        if (reconnectTimer) clearTimeout(reconnectTimer);
-        reconnectTimer = setTimeout(setupSSE, 5000);
-      };
-    };
-
-    setupSSE();
-
-    return () => {
-      if (eventSource) {
-        eventSource.close();
-      }
-      if (reconnectTimer) {
-        clearTimeout(reconnectTimer);
-      }
-    };
-  }, [projectId, queryClient]);
 
   return (
     <div className={cn('flex flex-col h-full', className)} data-testid="chat-interface">

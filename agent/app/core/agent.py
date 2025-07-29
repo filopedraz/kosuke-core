@@ -265,13 +265,6 @@ class Agent:
         while iteration_count < self.max_iterations:
             iteration_count += 1
 
-            yield {
-                "type": "thinking",
-                "file_path": "",
-                "message": f"Thinking... (iteration {iteration_count})",
-                "status": "pending",
-            }
-
             try:
                 # Build context with tracking info (no project context needed, it's in system prompt)
                 current_context = self._build_iteration_context(
@@ -287,12 +280,6 @@ class Agent:
 
                 if not parsed["thinking"]:
                     # Agent is ready to execute
-                    yield {
-                        "type": "thinking",
-                        "file_path": "",
-                        "message": "Ready to execute changes",
-                        "status": "completed",
-                    }
 
                     # Execute actions
                     async for update in self._execute_actions(parsed["actions"]):
@@ -310,13 +297,6 @@ class Agent:
 
                 # Check for duplicate reads and force execution if needed
                 if self._should_force_execution(parsed["actions"], read_files, iteration_count):
-                    yield {
-                        "type": "thinking",
-                        "file_path": "",
-                        "message": "Forcing execution mode",
-                        "status": "pending",
-                    }
-
                     final_actions = await self._force_execution_mode(prompt, current_context)
                     async for update in self._execute_actions(final_actions):
                         yield update
@@ -326,11 +306,8 @@ class Agent:
 
                     return
 
-                # Execute read actions
-                async for update in self._execute_read_actions(
-                    parsed["actions"], read_files, gathered_context, execution_log
-                ):
-                    yield update
+                # Execute read actions - but don't yield read events
+                await self._execute_read_actions_silent(parsed["actions"], read_files, gathered_context, execution_log)
 
             except Exception as e:
                 print(f"Error in iteration {iteration_count}: {e}")
@@ -359,8 +336,6 @@ class Agent:
             # Map action type to update type (action.action is already a string due to use_enum_values=True)
             update_type = self._map_action_to_update_type(action.action)
 
-            yield {"type": update_type, "file_path": action.file_path, "message": action.message, "status": "pending"}
-
             try:
                 action_start = time.time()
                 success = await self.action_executor.execute_action(action)
@@ -382,6 +357,7 @@ class Agent:
 
                     self.total_actions += 1
 
+                    # ✅ KEEP: Final completion event - this is when files are actually written
                     yield {
                         "type": update_type,
                         "file_path": action.file_path,
@@ -423,13 +399,13 @@ class Agent:
             "status": "completed",
         }
 
-    async def _execute_read_actions(
+    async def _execute_read_actions_silent(
         self, actions: list[Action], read_files: set[str], gathered_context: dict[str, str], execution_log: list[str]
-    ) -> AsyncGenerator[dict, None]:
+    ) -> None:
         """
-        Execute read actions and gather context
+        Execute read actions silently without yielding events
 
-        Mirrors the TypeScript executeReadActionsForContext function
+        The context gathering still happens but no UI updates are sent
         """
         read_actions = [a for a in actions if a.action == "read"]  # action is already a string
 
@@ -447,8 +423,6 @@ class Agent:
             read_files.add(action.file_path)
             execution_log.append(f"Read {action.file_path}")
 
-            yield {"type": "read", "file_path": action.file_path, "message": action.message, "status": "pending"}
-
             try:
                 project_path = fs_service.get_project_path(self.project_id)
                 full_path = project_path / action.file_path
@@ -461,21 +435,9 @@ class Agent:
 
                 gathered_context[action.file_path] = content
 
-                yield {
-                    "type": "read",
-                    "file_path": action.file_path,
-                    "message": f"Read {action.file_path} successfully ({file_tokens} tokens)",
-                    "status": "completed",
-                }
-
             except Exception as e:
                 gathered_context[action.file_path] = f"Error: {e!s}"
-                yield {
-                    "type": "error",
-                    "file_path": action.file_path,
-                    "message": f"Error reading {action.file_path}: {e!s}",
-                    "status": "error",
-                }
+                print(f"❌ Error reading {action.file_path}: {e!s}")
 
     def _should_force_execution(self, actions: list[Action], read_files: set[str], iteration_count: int) -> bool:
         """Determine if we should force execution mode"""

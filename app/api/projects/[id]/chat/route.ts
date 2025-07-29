@@ -228,20 +228,31 @@ export async function GET(
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-): Promise<NextResponse> {
+): Promise<Response> {
   try {
     // Get the session
     const session = await getSession();
     if (!session) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return new Response('Unauthorized', { status: 401 });
     }
 
     // Await params to get the id
     const { id } = await params;
     const projectId = parseInt(id);
+
+    if (isNaN(projectId)) {
+      return new Response('Invalid project ID', { status: 400 });
+    }
+
+    // Get the project and verify access
+    const project = await getProjectById(projectId);
+    if (!project) {
+      return new Response('Project not found', { status: 404 });
+    }
+
+    if (project.createdBy !== session.user.id) {
+      return new Response('Forbidden', { status: 403 });
+    }
 
     // Check if the user has reached their message limit
     try {
@@ -252,31 +263,36 @@ export async function POST(
     } catch (error) {
       if (error instanceof Error && error.message === 'PREMIUM_LIMIT_REACHED') {
         console.log('User has reached premium message limit, returning 403');
-        return NextResponse.json(
-          { error: 'You have reached your message limit for your current plan', code: 'PREMIUM_LIMIT_REACHED' },
-          { status: 403 }
+        return new Response(
+          JSON.stringify({ error: 'You have reached your message limit for your current plan', code: 'PREMIUM_LIMIT_REACHED' }),
+          {
+            status: 403,
+            headers: { 'Content-Type': 'application/json' }
+          }
         );
       }
       // Other errors
       console.error('Error checking message limit:', error);
     }
 
-    // Check if request is FormData or JSON
+    // Parse request body - support both JSON and FormData
     const contentType = req.headers.get('content-type') || '';
     let messageContent: string;
-    let imageUrl: string | undefined;
+    let includeContext = false;
+    let contextFiles: string[] = [];
 
     if (contentType.includes('multipart/form-data')) {
-      // Process FormData request
+      // Process FormData request (for image uploads)
       console.log('Processing multipart/form-data request');
       const formData = await processFormDataRequest(req, projectId);
       messageContent = formData.content;
-      imageUrl = formData.imageUrl;
+      includeContext = formData.includeContext;
+      contextFiles = formData.contextFiles.map(f => f.content);
 
-      if (imageUrl) {
-        console.log(`Image URL received: ${imageUrl}`);
+      if (formData.imageUrl) {
+        console.log(`Image URL received: ${formData.imageUrl}`);
         // Add image URL to message content as markdown link
-        messageContent = `${messageContent}\n\n[Attached Image](${imageUrl})`;
+        messageContent = `${messageContent}\n\n[Attached Image](${formData.imageUrl})`;
       }
     } else {
       // Process JSON request
@@ -288,9 +304,12 @@ export async function POST(
 
       if (!parseResult.success) {
         console.error('Invalid request format:', parseResult.error);
-        return NextResponse.json(
-          { error: 'Invalid request format', details: parseResult.error.format() },
-          { status: 400 }
+        return new Response(
+          JSON.stringify({ error: 'Invalid request format', details: parseResult.error.format() }),
+          {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' }
+          }
         );
       }
 
@@ -302,22 +321,23 @@ export async function POST(
         // Format: { content }
         messageContent = parseResult.data.content;
       }
+
+      // Extract options if present
+      if ('includeContext' in body) {
+        includeContext = body.includeContext || false;
+      }
+      if ('contextFiles' in body) {
+        contextFiles = body.contextFiles || [];
+      }
     }
 
     console.log(`Received message content: "${messageContent.substring(0, 50)}${messageContent.length > 50 ? '...' : ''}"`);
-
-    // Check if the message contains image references
-    const hasImages = messageContent.includes('[Attached Image]');
-    if (hasImages) {
-      console.log('Detected images in the message');
-    }
 
     // Count tokens for input message using tiktoken
     const { countTokens } = await import('@/lib/llm/utils');
     const messageTokens = countTokens(messageContent);
 
     // Calculate cumulative token totals
-    // Get the sum of all tokens sent and received for this project
     const tokenTotals = await db
       .select({
         totalInput: sql`SUM(tokens_input)`,
@@ -326,7 +346,6 @@ export async function POST(
       .from(chatMessages)
       .where(eq(chatMessages.projectId, projectId));
 
-    // Use the totals or default to 0 if null
     const totalTokensInput = Number(tokenTotals[0]?.totalInput || 0) + messageTokens;
     const totalTokensOutput = Number(tokenTotals[0]?.totalOutput || 0);
 
@@ -334,34 +353,74 @@ export async function POST(
     console.log(`📊 Total tokens input (including this message): ${totalTokensInput}`);
     console.log(`📊 Total tokens output: ${totalTokensOutput}`);
 
-    // Reset context size to just this message when starting a new interaction
-    const contextTokens = messageTokens;
-
-    // Save the user message to the database with the current message tokens
-    // Current message tokens added to tokensInput for this message
-    await db.insert(chatMessages).values({
+    // 1. Save user message immediately
+    const [userMessage] = await db.insert(chatMessages).values({
       projectId,
       userId: session.user.id,
       content: messageContent,
       role: 'user',
       modelType: 'premium',
-      tokensInput: messageTokens,      // Tokens in this message
-      tokensOutput: 0,                 // No output tokens for user messages
-      contextTokens,                   // Reset context tokens to just this message
+      tokensInput: messageTokens,
+      tokensOutput: 0,
+      contextTokens: messageTokens,
+    }).returning();
+
+    console.log(`✅ User message saved with ID: ${userMessage.id}`);
+
+    // 2. Create placeholder assistant message
+    const [assistantMessage] = await db.insert(chatMessages).values({
+      projectId,
+      userId: null, // Assistant messages don't have a userId
+      content: '', // Empty content, will be updated during streaming
+      role: 'assistant',
+      modelType: 'premium',
+      tokensInput: 0,
+      tokensOutput: 0,
+      contextTokens: 0,
+    }).returning();
+
+    console.log(`✅ Assistant placeholder message created with ID: ${assistantMessage.id}`);
+
+    // 3. Setup streaming response
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      async start(controller) {
+        try {
+          // Start streaming to AI and processing
+          await processStreamingChat({
+            projectId,
+            userMessage: messageContent,
+            assistantMessageId: assistantMessage.id,
+            controller,
+            encoder,
+            includeContext,
+            contextFiles,
+          });
+        } catch (error) {
+          // Send error and close stream
+          const errorData = JSON.stringify({
+            type: 'stream_error',
+            messageId: assistantMessage.id,
+            error: error instanceof Error ? error.message : 'Unknown error occurred',
+          });
+          controller.enqueue(encoder.encode(`data: ${errorData}\n\n`));
+          controller.close();
+        }
+      },
     });
 
-    console.log(`✅ User message saved. Python agent will process via streaming and send webhooks.`);
-
-    // Return success immediately - Python agent will handle processing via webhooks
-    return NextResponse.json({
-      success: true,
-      message: "Message received. Processing will be handled via streaming endpoint.",
-      totalTokensInput,
-      totalTokensOutput,
-      contextTokens: messageTokens
+    return new Response(stream, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': '*',
+      },
     });
+
   } catch (error) {
-    console.error('Error processing chat:', error);
+    console.error('Error in unified chat endpoint:', error);
 
     // Determine error type for better client handling
     let errorType: ErrorType = 'unknown';
@@ -381,13 +440,16 @@ export async function POST(
       }
     }
 
-    return NextResponse.json(
-      {
+    return new Response(
+      JSON.stringify({
         success: false,
         error: errorMessage,
         errorType
-      },
-      { status: 500 }
+      }),
+      {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      }
     );
   }
 }
