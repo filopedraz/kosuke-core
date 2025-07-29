@@ -1,10 +1,9 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, CircleIcon, Loader2, RefreshCcw } from 'lucide-react';
+import { AlertTriangle, Loader2, RefreshCcw } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 
@@ -180,7 +179,7 @@ const sendMessage = async (
   errorType?: ErrorType;
 }> => {
   try {
-    console.log('💾 Sending message via unified streaming endpoint');
+    console.log('💾 Sending message via unified endpoint');
 
     // For image uploads, use FormData
     let requestBody: FormData | string;
@@ -197,114 +196,118 @@ const sendMessage = async (
 
       formData.append('image', options.imageFile);
       requestBody = formData;
+
+      // For image uploads, expect JSON response
+      const response = await fetch(`/api/projects/${projectId}/chat`, {
+        method: 'POST',
+        body: requestBody,
+      });
+
+      if (!response.ok) {
+        if (response.status === 403) {
+          throw new Error('LIMIT_REACHED');
+        }
+        throw new Error(`Failed to send message: ${response.statusText}`);
+      }
+
+      return await response.json();
     } else {
-      // For text messages, use JSON
+      // For text messages, use JSON and expect streaming response
       requestHeaders['Content-Type'] = 'application/json';
       requestBody = JSON.stringify({
         content,
         includeContext: options?.includeContext || false,
         contextFiles: options?.contextFiles || [],
       });
-    }
 
-    const response = await fetch(`/api/projects/${projectId}/chat`, {
-      method: 'POST',
-      headers: requestHeaders,
-      body: requestBody,
-    });
+      const response = await fetch(`/api/projects/${projectId}/chat`, {
+        method: 'POST',
+        headers: requestHeaders,
+        body: requestBody,
+      });
 
-    if (!response.ok) {
-      if (response.status === 403) {
-        throw new Error('LIMIT_REACHED');
+      if (!response.ok) {
+        if (response.status === 403) {
+          throw new Error('LIMIT_REACHED');
+        }
+
+        const errorData = await response.json().catch(() => ({}));
+        if (errorData && typeof errorData === 'object' && 'errorType' in errorData) {
+          const error = new Error(errorData.error || 'Failed to send message');
+          Object.assign(error, { errorType: errorData.errorType });
+          throw error;
+        }
+
+        throw new Error(`Failed to send message: ${response.statusText}`);
       }
 
-      const errorData = await response.json().catch(() => ({}));
-      if (errorData && typeof errorData === 'object' && 'errorType' in errorData) {
-        const error = new Error(errorData.error || 'Failed to send message');
-        Object.assign(error, { errorType: errorData.errorType });
-        throw error;
+      // For text messages, handle streaming response (restored original behavior)
+      if (!response.body) {
+        throw new Error('No response body');
       }
 
-      throw new Error(`Failed to send message: ${response.statusText}`);
-    }
+      // Start streaming and update UI in real-time (like the original implementation)
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
 
-    // For image uploads, the response is JSON
-    if (options?.imageFile) {
-      return await response.json();
-    }
+      // Track streaming state
+      let isStreamActive = true;
+      const assistantMessageId: number | null = null;
 
-    // For text messages, handle streaming response
-    if (!response.body) {
-      throw new Error('No response body');
-    }
+      while (isStreamActive) {
+        const { done, value } = await reader.read();
+        if (done) break;
 
-    // Start streaming and update UI in real-time
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
 
-    // Track streaming state
-    let isStreamActive = true;
-    let assistantMessageId: number | null = null;
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const rawData = line.substring(6);
 
-    while (isStreamActive) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || '';
-
-      for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          try {
-            const data = JSON.parse(line.substring(6));
-            console.log('📡 Streaming update:', data);
-
-            // Store assistant message ID for tracking
-            if (data.messageId && !assistantMessageId) {
-              assistantMessageId = data.messageId;
-            }
-
-            // Handle different stream events
-            switch (data.type) {
-              case 'action_update':
-                // Update action cards in real-time
-                if (streamingCallback) {
-                  streamingCallback(`Action: ${data.action.type} on ${data.action.path}`);
-                }
-                break;
-
-              case 'stream_complete':
-                // Streaming completed successfully
+              // Handle [DONE] marker
+              if (rawData === '[DONE]') {
                 isStreamActive = false;
                 console.log('✅ Streaming completed');
                 break;
+              }
 
-              case 'stream_error':
-                // Handle streaming errors
+              const data = JSON.parse(rawData);
+              console.log('📡 Streaming update:', data);
+
+              // Handle different stream events from Python agent (original format)
+              if (data.type === 'completed') {
                 isStreamActive = false;
-                console.error('❌ Stream error:', data.error);
-                throw new Error(data.error || 'Streaming failed');
-            }
+                console.log('✅ Streaming completed');
+                break;
+              }
 
-          } catch (parseError) {
-            console.warn('Failed to parse streaming data:', parseError);
+              // Call streaming callback for UI updates
+              if (streamingCallback && data.message) {
+                streamingCallback(data.message);
+              }
+
+            } catch (parseError) {
+              console.warn('Failed to parse streaming data:', parseError);
+            }
           }
         }
       }
-    }
 
-    // Return success response
-    return {
-      message: {
-        id: assistantMessageId || 0,
-        content: '',
-        role: 'assistant',
-        timestamp: new Date(),
-      } as ApiChatMessage,
-      success: true,
-    };
+      // Return success response
+      return {
+        message: {
+          id: assistantMessageId || 0,
+          content: '',
+          role: 'assistant',
+          timestamp: new Date(),
+        } as ApiChatMessage,
+        success: true,
+      };
+    }
 
   } catch (error) {
     console.error('Error in sendMessage:', error);
@@ -362,130 +365,6 @@ export default function ChatInterface({
     tokensReceived: 0,
     contextSize: 0
   });
-
-  // Streaming state for real-time updates
-  const [isStreaming, setIsStreaming] = useState(false);
-  const [streamingMessages, setStreamingMessages] = useState<ChatMessageProps[]>([]);
-  const [streamingError, setStreamingError] = useState<string | null>(null);
-
-  // Function to update streaming messages in real-time
-  const updateStreamingMessage = (data: {
-    type: string;
-    message: string;
-    file_path?: string;
-    status?: string;
-  }) => {
-    if (!data.message || data.message.trim() === '') return;
-
-    // Format the message based on type
-    let content = data.message;
-    if (data.type === 'read') {
-      content = `📖 Reading ${data.file_path}: ${data.message}`;
-    } else if (data.type === 'thinking') {
-      content = `🤔 ${data.message}`;
-    } else if (data.type === 'write') {
-      content = `✏️ Writing ${data.file_path}: ${data.message}`;
-    } else if (data.type === 'completed') {
-      // Final message - stop streaming and let database handle it
-      setIsStreaming(false);
-      setStreamingMessages([]);
-
-      // Refetch messages to show the persisted assistant response
-      queryClient.invalidateQueries({ queryKey: ['messages', projectId] });
-      return;
-    }
-
-    const newMessage: ChatMessageProps = {
-      content,
-      role: 'assistant',
-      timestamp: new Date(),
-      isLoading: data.status === 'pending',
-    };
-
-    setStreamingMessages(prev => {
-      // Replace previous message of same type or add new one
-      const messageKey = `${data.type}-${data.file_path || 'general'}`;
-      const filtered = prev.filter(msg => {
-        // Keep messages that aren't the same type/file combination
-        const msgKey = msg.content.startsWith('📖') ? `read-${msg.content.split(': ')[0].replace('📖 Reading ', '')}` :
-                       msg.content.startsWith('🤔') ? 'thinking-general' :
-                       msg.content.startsWith('✏️') ? `write-${msg.content.split(': ')[0].replace('✏️ Writing ', '')}` :
-                       'other-general';
-        return msgKey !== messageKey;
-      });
-      return [...filtered, newMessage];
-    });
-  };
-
-  // Streaming processing function
-  const startStreamingProcessing = async (content: string) => {
-    try {
-      console.log('🚀 Starting streaming processing via Python agent');
-      setIsStreaming(true);
-      setStreamingMessages([]);
-      setStreamingError(null);
-
-      const response = await fetch(`/api/projects/${projectId}/chat/stream`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ content }),
-      });
-
-      if (!response.ok) {
-        console.error('Streaming failed:', response.statusText);
-        setStreamingError(`Streaming failed: ${response.statusText}`);
-        setIsStreaming(false);
-        return;
-      }
-
-      const reader = response.body?.getReader();
-      if (!reader) {
-        console.error('No reader available for streaming');
-        setStreamingError('No reader available for streaming');
-        setIsStreaming(false);
-        return;
-      }
-
-      const decoder = new TextDecoder();
-      let buffer = '';
-
-      while (true) {
-        const { done, value } = await reader.read();
-
-        if (done) {
-          console.log('✅ Streaming completed');
-          setIsStreaming(false);
-          break;
-        }
-
-        buffer += decoder.decode(value, { stream: true });
-
-        // Process complete SSE messages
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            try {
-              const data = JSON.parse(line.substring(6));
-              console.log('📡 Streaming update:', data);
-
-              // Update streaming messages in real-time UI
-              updateStreamingMessage(data);
-            } catch {
-              console.warn('Failed to parse streaming data:', line);
-            }
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Streaming processing error:', error);
-      setStreamingError(`Streaming error: ${error}`);
-      setIsStreaming(false);
-    }
-  };
 
   // Fetch user data
   useEffect(() => {
@@ -570,7 +449,7 @@ export default function ChatInterface({
     mutationFn: (args: {
       content: string;
       options?: { includeContext?: boolean; contextFiles?: string[]; imageFile?: File }
-    }) => sendMessage(projectId, args.content, args.options, startStreamingProcessing),
+    }) => sendMessage(projectId, args.content, args.options),
     onMutate: async (newMessage) => {
       // Cancel any outgoing refetches
       await queryClient.cancelQueries({ queryKey: ['messages', projectId] });
@@ -697,7 +576,7 @@ export default function ChatInterface({
     }, 100);
 
     return () => clearTimeout(scrollTimeout);
-  }, [messages, streamingMessages, isStreaming]);
+  }, [messages, isLoadingMessages]);
 
   // Handle sending messages
   const handleSendMessage = async (
@@ -851,65 +730,65 @@ export default function ChatInterface({
                             ))}
 
               {/* Show generating animation when streaming started but no messages yet */}
-              {isStreaming && streamingMessages.length === 0 && (
-                <div className="flex w-full max-w-[95%] mx-auto gap-3 p-4">
-                  <Avatar className="h-8 w-8">
-                    <div className="relative flex items-center justify-center h-full w-full">
-                      <AvatarFallback className="bg-muted border-primary rounded-none">
-                        <CircleIcon className="h-6 w-6 text-primary" />
-                      </AvatarFallback>
-                    </div>
-                  </Avatar>
-                  <div className="flex-1 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <h4>AI Assistant</h4>
-                      <time className="text-xs text-muted-foreground">now</time>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <div className="flex gap-1">
-                        <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                        <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                        <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
-                      </div>
-                      <span>Generating response...</span>
-                    </div>
-                  </div>
-                </div>
-              )}
+              {/* isStreaming && streamingMessages.length === 0 && ( */}
+              {/*   <div className="flex w-full max-w-[95%] mx-auto gap-3 p-4"> */}
+              {/*     <Avatar className="h-8 w-8"> */}
+              {/*       <div className="relative flex items-center justify-center h-full w-full"> */}
+              {/*         <AvatarFallback className="bg-muted border-primary rounded-none"> */}
+              {/*           <CircleIcon className="h-6 w-6 text-primary" /> */}
+              {/*         </AvatarFallback> */}
+              {/*       </div> */}
+              {/*     </Avatar> */}
+              {/*     <div className="flex-1 space-y-2"> */}
+              {/*       <div className="flex items-center justify-between"> */}
+              {/*         <h4>AI Assistant</h4> */}
+              {/*         <time className="text-xs text-muted-foreground">now</time> */}
+              {/*       </div> */}
+              {/*       <div className="flex items-center gap-2 text-sm text-muted-foreground"> */}
+              {/*         <div className="flex gap-1"> */}
+              {/*           <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div> */}
+              {/*           <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div> */}
+              {/*           <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div> */}
+              {/*         </div> */}
+              {/*         <span>Generating response...</span> */}
+              {/*       </div> */}
+              {/*     </div> */}
+              {/*   </div> */}
+              {/* ) */}
 
               {/* Render streaming messages in real-time */}
-              {streamingMessages.map((message, index) => (
-                <ChatMessage
-                  key={`streaming-${index}`}
-                  content={message.content}
-                  role={message.role}
-                  timestamp={message.timestamp}
-                  isLoading={message.isLoading}
-                  user={user ? {
-                    name: user.name || undefined,
-                    email: user.email,
-                    imageUrl: user.imageUrl || undefined
-                  } : undefined}
-                  showAvatar={index === 0} // Only show avatar for first streaming message
-                />
-              ))}
+              {/* {streamingMessages.map((message, index) => ( */}
+              {/*   <ChatMessage */}
+              {/*     key={`streaming-${index}`} */}
+              {/*     content={message.content} */}
+              {/*     role={message.role} */}
+              {/*     timestamp={message.timestamp} */}
+              {/*     isLoading={message.isLoading} */}
+              {/*     user={user ? { */}
+              {/*       name: user.name || undefined, */}
+              {/*       email: user.email, */}
+              {/*       imageUrl: user.imageUrl || undefined */}
+              {/*     } : undefined} */}
+              {/*     showAvatar={index === 0} // Only show avatar for first streaming message */}
+              {/*   /> */}
+              {/* ))} */}
 
               {/* Show streaming error if any */}
-              {streamingError && (
-                <div className="p-4 m-4 text-sm text-center bg-card border border-destructive/30 rounded-md">
-                  <div className="flex items-center justify-center gap-2 text-destructive mb-2">
-                    <AlertTriangle className="h-5 w-5" />
-                    <p className="font-medium">Streaming Error</p>
-                  </div>
-                  <p className="text-muted-foreground">{streamingError}</p>
-                  <button
-                    onClick={handleRegenerate}
-                    className="mt-2 px-3 py-1 text-xs bg-primary hover:bg-primary/80 text-primary-foreground rounded-md transition-colors flex items-center gap-1 mx-auto"
-                  >
-                    <RefreshCcw className="h-3 w-3" /> Retry
-                  </button>
-                </div>
-              )}
+              {/* {streamingError && ( */}
+              {/*   <div className="p-4 m-4 text-sm text-center bg-card border border-destructive/30 rounded-md"> */}
+              {/*     <div className="flex items-center justify-center gap-2 text-destructive mb-2"> */}
+              {/*       <AlertTriangle className="h-5 w-5" /> */}
+              {/*       <p className="font-medium">Streaming Error</p> */}
+              {/*     </div> */}
+              {/*     <p className="text-muted-foreground">{streamingError}</p> */}
+              {/*     <button */}
+              {/*       onClick={handleRegenerate} */}
+              {/*       className="mt-2 px-3 py-1 text-xs bg-primary hover:bg-primary/80 text-primary-foreground rounded-md transition-colors flex items-center gap-1 mx-auto" */}
+              {/*     > */}
+              {/*       <RefreshCcw className="h-3 w-3" /> Retry */}
+              {/*     </button> */}
+              {/*   </div> */}
+              {/* )} */}
             </>
           )}
           {isError && errorMessage !== 'LIMIT_REACHED' && (
@@ -952,8 +831,8 @@ export default function ChatInterface({
       <div className="px-4 pb-0 relative">
         <ChatInput
           onSendMessage={handleSendMessage}
-          isLoading={isSending || isRegenerating || isStreaming}
-          placeholder={isStreaming ? "Agent is working..." : "Type your message..."}
+          isLoading={isSending || isRegenerating}
+          placeholder="Type your message..."
           data-testid="chat-input"
           className="chat-input"
         />

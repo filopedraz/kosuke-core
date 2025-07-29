@@ -282,7 +282,7 @@ export async function POST(
     let contextFiles: string[] = [];
 
     if (contentType.includes('multipart/form-data')) {
-      // Process FormData request (for image uploads)
+      // Process FormData request (for image uploads) - return JSON response like before
       console.log('Processing multipart/form-data request');
       const formData = await processFormDataRequest(req, projectId);
       messageContent = formData.content;
@@ -294,9 +294,50 @@ export async function POST(
         // Add image URL to message content as markdown link
         messageContent = `${messageContent}\n\n[Attached Image](${formData.imageUrl})`;
       }
+
+      // For image uploads, process traditionally and return JSON
+      const { countTokens } = await import('@/lib/llm/utils');
+      const messageTokens = countTokens(messageContent);
+
+      // Calculate cumulative token totals
+      const tokenTotals = await db
+        .select({
+          totalInput: sql`SUM(tokens_input)`,
+          totalOutput: sql`SUM(tokens_output)`
+        })
+        .from(chatMessages)
+        .where(eq(chatMessages.projectId, projectId));
+
+      const totalTokensInput = Number(tokenTotals[0]?.totalInput || 0) + messageTokens;
+      const totalTokensOutput = Number(tokenTotals[0]?.totalOutput || 0);
+
+      // Save the user message to the database
+      await db.insert(chatMessages).values({
+        projectId,
+        userId: session.user.id,
+        content: messageContent,
+        role: 'user',
+        modelType: 'premium',
+        tokensInput: messageTokens,
+        tokensOutput: 0,
+        contextTokens: messageTokens,
+      });
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: "Image message saved. Processing will be handled via webhooks.",
+          totalTokensInput,
+          totalTokensOutput,
+          contextTokens: messageTokens
+        }),
+        {
+          headers: { 'Content-Type': 'application/json' }
+        }
+      );
     } else {
-      // Process JSON request
-      console.log('Processing JSON request');
+      // Process JSON request for text messages - use streaming proxy
+      console.log('Processing JSON request for streaming');
       const body = await req.json();
       console.log('Request body:', JSON.stringify(body));
 
@@ -367,55 +408,49 @@ export async function POST(
 
     console.log(`✅ User message saved with ID: ${userMessage.id}`);
 
-    // 2. Create placeholder assistant message
-    const [assistantMessage] = await db.insert(chatMessages).values({
-      projectId,
-      userId: null, // Assistant messages don't have a userId
-      content: '', // Empty content, will be updated during streaming
-      role: 'assistant',
-      modelType: 'premium',
-      tokensInput: 0,
-      tokensOutput: 0,
-      contextTokens: 0,
-    }).returning();
+    // 2. For text messages, proxy stream directly to Python FastAPI service (like the old approach)
+    const agentServiceUrl = process.env.AGENT_SERVICE_URL || 'http://localhost:8000';
 
-    console.log(`✅ Assistant placeholder message created with ID: ${assistantMessage.id}`);
+    // Mark unused variables for future use
+    void includeContext;
+    void contextFiles;
 
-    // 3. Setup streaming response
-    const encoder = new TextEncoder();
-    const stream = new ReadableStream({
-      async start(controller) {
-        try {
-          // Start streaming to AI and processing
-          await processStreamingChat({
-            projectId,
-            userMessage: messageContent,
-            assistantMessageId: assistantMessage.id,
-            controller,
-            encoder,
-            includeContext,
-            contextFiles,
-          });
-        } catch (error) {
-          // Send error and close stream
-          const errorData = JSON.stringify({
-            type: 'stream_error',
-            messageId: assistantMessage.id,
-            error: error instanceof Error ? error.message : 'Unknown error occurred',
-          });
-          controller.enqueue(encoder.encode(`data: ${errorData}\n\n`));
-          controller.close();
-        }
+    const response = await fetch(`${agentServiceUrl}/api/chat/stream`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
       },
+      body: JSON.stringify({
+        project_id: projectId,
+        prompt: messageContent,
+      }),
     });
 
-    return new Response(stream, {
+    if (!response.ok) {
+      // Get detailed error information from FastAPI
+      let errorDetails = response.statusText;
+      try {
+        const errorBody = await response.text();
+        if (errorBody) {
+          console.error('Python agent service error body:', errorBody);
+          errorDetails = errorBody;
+        }
+      } catch (e) {
+        console.error('Failed to read error response body:', e);
+      }
+
+      console.error('Python agent service error:', response.status, response.statusText);
+      return new Response(`Agent service error: ${errorDetails}`, {
+        status: response.status
+      });
+    }
+
+    // Stream the response from Python service directly to client (like the old approach)
+    return new Response(response.body, {
       headers: {
         'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
+        'Cache-Control': 'no-cache, no-transform',
         'Connection': 'keep-alive',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': '*',
       },
     });
 
