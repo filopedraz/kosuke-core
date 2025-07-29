@@ -1,12 +1,11 @@
 'use server';
 
-import { revalidatePath } from 'next/cache';
-import { db } from '@/lib/db';
 import { SortOption } from '@/app/(logged-in)/projects/components/project-filters';
 import { getSession } from '@/lib/auth/session';
+import { db } from '@/lib/db';
 import { createProject as dbCreateProject, getProjectsByUserId } from '@/lib/db/projects';
 import { chatMessages, Project } from '@/lib/db/schema';
-import { scaffoldProject } from '@/lib/fs/scaffold';
+import { revalidatePath } from 'next/cache';
 
 /**
  * Create a new project
@@ -37,13 +36,6 @@ export async function createProject(prompt: string, name?: string) {
     });
     console.log(`✅ Project created with ID: ${project.id}, name: ${project.name}`);
 
-    // Scaffold the project files
-    console.log(`🛠️ Scaffolding project files for project ID: ${project.id}`);
-    await scaffoldProject(project.id, project.name, {
-      additionalDependencies: {},
-    });
-    console.log(`✅ Project scaffolding completed`);
-
     // Create initial placeholder message in chat to indicate analysis will happen later
     console.log(`💬 Creating initial placeholder message in chat`);
     await db.insert(chatMessages).values({
@@ -56,6 +48,7 @@ export async function createProject(prompt: string, name?: string) {
     console.log(`✅ Placeholder message created`);
 
     // Start the preview app asynchronously by calling the Python agent
+    // The Docker container will automatically initialize template files when empty
     console.log(`🚀 Starting preview for project ID: ${project.id}`);
 
     try {

@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     webhook_secret: str = "dev-secret-change-in-production"
 
     # Preview Configuration
-    preview_default_image: str = os.getenv("PREVIEW_DEFAULT_IMAGE", "ghcr.io/filopedraz/kosuke-template:v0.0.73")
+    preview_default_image: str = os.getenv("PREVIEW_DEFAULT_IMAGE", "ghcr.io/filopedraz/kosuke-template:v0.0.76")
 
     class Config:
         env_file = ".env"

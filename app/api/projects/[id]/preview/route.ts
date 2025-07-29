@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth/session';
 import { getProjectById } from '@/lib/db/projects';
+import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * GET /api/projects/[id]/preview
@@ -69,20 +69,27 @@ export async function GET(
     }
 
     const result = await response.json();
-    console.log(`[Preview API] Returning preview status for project ${projectId}`);
-    return NextResponse.json(result);
+    console.log(`[Preview API] Returning preview status for project ${projectId}`, result);
+
+    // Transform the response to match frontend expectations
+    const transformedResult = {
+      ...result,
+      previewUrl: result.url || null, // Map 'url' to 'previewUrl' for frontend compatibility
+    };
+
+    return NextResponse.json(transformedResult);
   } catch (error: unknown) {
     console.error('[Preview API] Error getting preview URL:', error);
-    
+
     // Return a more detailed error message
-    const errorMessage = error instanceof Error ? 
-      `${error.message}\n${error.stack}` : 
+    const errorMessage = error instanceof Error ?
+      `${error.message}\n${error.stack}` :
       String(error);
-      
+
     return NextResponse.json(
-      { 
-        error: 'Internal Server Error', 
-        details: errorMessage 
+      {
+        error: 'Internal Server Error',
+        details: errorMessage
       },
       { status: 500 }
     );
@@ -238,4 +245,4 @@ export async function DELETE(
       { status: 500 }
     );
   }
-} 
+}

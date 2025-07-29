@@ -4,8 +4,6 @@
 
 // File System
 export const PROJECTS_DIR = process.env.PROJECTS_DIR || 'projects';
-export const TEMPLATE_DIR =
-  process.env.TEMPLATE_DIR || '/Users/filippopedrazzini/Documents/Work.nosync/kosuke-template';
 
 // Storage
 export const STORAGE_BUCKET_NAME = process.env.MINIO_BUCKET_NAME || 'uploads';
