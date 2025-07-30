@@ -274,15 +274,26 @@ class Agent:
             messages.append({"role": "user", "content": tool_results})
 
     def _event_to_dict(self, event) -> dict | None:
+        print(event)
         """Convert Anthropic event to dict for streaming"""
         if not hasattr(event, "type"):
             return None
 
         event_dict = {"type": event.type}
 
-        # Add text content for streaming
-        if hasattr(event, "delta") and hasattr(event.delta, "text"):
-            event_dict["text"] = event.delta.text
+        # Add delta content for streaming
+        if hasattr(event, "delta"):
+            # Add text content
+            if hasattr(event.delta, "text"):
+                event_dict["text"] = event.delta.text
+
+            # Add thinking content
+            if hasattr(event.delta, "thinking"):
+                event_dict["thinking"] = event.delta.thinking
+
+            # Add delta type if available
+            if hasattr(event.delta, "type"):
+                event_dict["delta_type"] = event.delta.type
 
         # Add index if present
         if hasattr(event, "index"):
