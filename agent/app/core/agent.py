@@ -54,8 +54,6 @@ class Agent:
         processing_start = time.time()
 
         try:
-            yield {"type": "message_start", "message": "VAMOSS VAMOSS VAMOSS"}
-
             messages = [{"role": "user", "content": prompt}]
 
             conversation_turn = 0
@@ -94,6 +92,7 @@ class Agent:
                 # Stream events and yield them (using async for loop)
                 async for event in stream:
                     # Process event with proper data extraction
+                    print(event)
                     event_dict = self._event_to_dict(event)
                     if event_dict:
                         yield event_dict
@@ -149,14 +148,11 @@ class Agent:
                 # Check if we have tool calls to execute
                 tool_calls = [block for block in content_blocks if getattr(block, "type", None) == "tool_use"]
 
-                if not tool_calls:
-                    # No tool calls, we're done
-                    yield {"type": "message_complete"}
-                    await self._send_completion_webhook(success=True)
-                    break
-
                 # Execute tools sequentially
                 tool_results = []
+                task_completed_called = False
+                task_summary = None
+
                 for tool_call in tool_calls:
                     yield {"type": "tool_start", "tool_name": tool_call.name}
 
@@ -164,6 +160,12 @@ class Agent:
                         result = await execute_tool(tool_call.name, tool_call.input, self.project_id)
                         tool_results.append({"type": "tool_result", "tool_use_id": tool_call.id, "content": result})
                         yield {"type": "tool_complete", "tool_name": tool_call.name, "result": result}
+
+                        # Check if task_completed was called
+                        if tool_call.name == "task_completed":
+                            task_completed_called = True
+                            # Extract the summary from the tool input
+                            task_summary = tool_call.input.get("summary", "Task completed")
 
                     except Exception as e:
                         error_result = f"Tool {tool_call.name} failed: {e}"
@@ -184,6 +186,14 @@ class Agent:
                 # Add tool results
                 if tool_results:
                     messages.append({"role": "user", "content": tool_results})
+
+                # Check if task was completed
+                if task_completed_called:
+                    # Yield the task summary before completing
+                    yield {"type": "task_summary", "summary": task_summary}
+                    yield {"type": "message_complete"}
+                    await self._send_completion_webhook(success=True)
+                    break
 
                 # Continue the conversation loop
 
