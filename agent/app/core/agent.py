@@ -47,180 +47,34 @@ class Agent:
             raise
 
     async def run(self, prompt: str) -> AsyncGenerator[dict, None]:
-        """
-        Stream native Anthropic events with tool execution loop
-        """
+        """Stream native Anthropic events with tool execution loop"""
         print(f"🤖 Processing request for project ID: {self.project_id}")
         processing_start = time.time()
 
         try:
             messages = [{"role": "user", "content": prompt}]
 
-            # Enable thinking for all conversation turns
-            thinking_config = {
-                "type": "enabled",
-                "budget_tokens": 2048,
-            }
-
-            # Stream response from Claude
-            stream_params = {
-                "model": "claude-3-7-sonnet-20250219",
-                "max_tokens": 8192,
-                "system": self.system_prompt,
-                "messages": messages,
-                "tools": get_anthropic_tools(self.project_id),
-            }
-
-            conversation_turn = 0
             while True:
-                conversation_turn += 1
+                # Stream events to client
+                async for event in self._stream_events(messages):
+                    yield event
 
-                if thinking_config:
-                    stream_params["thinking"] = thinking_config
+                # Process conversation turn and get content blocks
+                content_blocks, task_completed, task_summary = await self._process_conversation_turn(messages)
 
-                stream = await self.client.messages.create(**stream_params, stream=True)
+                # Execute any tool calls and yield results
+                async for result in self._execute_tools(content_blocks):
+                    yield result
 
-                # Collect content blocks as we stream
-                content_blocks = []
-                current_text = ""
-                current_tool_calls = []
-                current_thinking = ""
-                current_thinking_signature = ""
-
-                # Stream events and yield them (using async for loop)
-                async for event in stream:
-                    # Process event with proper data extraction
-                    event_dict = self._event_to_dict(event)
-                    if event_dict:
-                        yield event_dict
-
-                    # Collect content for conversation history
-                    event_type = event.type if hasattr(event, "type") else None
-
-                    if event_type == "content_block_start":
-                        if hasattr(event, "content_block") and hasattr(event.content_block, "type"):
-                            if event.content_block.type == "text":
-                                current_text = ""
-                            elif event.content_block.type == "thinking":
-                                current_thinking = ""
-                                current_thinking_signature = ""
-                            elif event.content_block.type == "tool_use":
-                                current_tool_calls.append(
-                                    {
-                                        "type": "tool_use",
-                                        "id": getattr(event.content_block, "id", ""),
-                                        "name": getattr(event.content_block, "name", ""),
-                                        "input": {},
-                                    }
-                                )
-
-                    elif event_type == "content_block_delta":
-                        if hasattr(event, "delta"):
-                            if hasattr(event.delta, "text"):
-                                current_text += event.delta.text
-                            elif hasattr(event.delta, "thinking"):
-                                current_thinking += event.delta.thinking
-                            elif hasattr(event.delta, "signature"):
-                                current_thinking_signature += event.delta.signature
-                            elif hasattr(event.delta, "partial_json") and current_tool_calls:
-                                # Accumulate tool input (we'll parse JSON at the end)
-                                if "_input_json" not in current_tool_calls[-1]:
-                                    current_tool_calls[-1]["_input_json"] = ""
-                                current_tool_calls[-1]["_input_json"] += event.delta.partial_json
-
-                    elif event_type == "content_block_stop":
-                        if current_text:
-                            content_blocks.append({"type": "text", "text": current_text})
-                            current_text = ""
-                        if current_thinking:
-                            content_blocks.append(
-                                {
-                                    "type": "thinking",
-                                    "thinking": current_thinking,
-                                    "signature": current_thinking_signature,
-                                }
-                            )
-                            current_thinking = ""
-                            current_thinking_signature = ""
-                        if current_tool_calls and "_input_json" in current_tool_calls[-1]:
-                            try:
-                                import json
-
-                                current_tool_calls[-1]["input"] = json.loads(current_tool_calls[-1]["_input_json"])
-                                del current_tool_calls[-1]["_input_json"]
-                            except json.JSONDecodeError:
-                                pass  # Keep empty input if JSON is invalid
-
-                # Add any remaining content
-                if current_text:
-                    content_blocks.append({"type": "text", "text": current_text})
-                if current_thinking:
-                    content_blocks.append(
-                        {"type": "thinking", "thinking": current_thinking, "signature": current_thinking_signature}
-                    )
-                content_blocks.extend(current_tool_calls)
-
-                # Debug: Log content block collection
-                print(f"🔍 Collected {len(content_blocks)} content blocks for conversation history")
-
-                # Check if we have tool calls to execute
-                tool_calls = [block for block in content_blocks if block.get("type") == "tool_use"]
-
-                # Execute tools sequentially
-                tool_results = []
-                task_completed_called = False
-                task_summary = None
-
-                for tool_call in tool_calls:
-                    yield {"type": "tool_start", "tool_name": tool_call["name"]}
-
-                    try:
-                        result = await execute_tool(tool_call["name"], tool_call["input"], self.project_id)
-                        tool_results.append({"type": "tool_result", "tool_use_id": tool_call["id"], "content": result})
-                        yield {"type": "tool_complete", "tool_name": tool_call["name"], "result": result}
-
-                        # Check if task_completed was called
-                        if tool_call["name"] == "task_completed":
-                            task_completed_called = True
-                            # Extract the summary from the tool input
-                            task_summary = tool_call["input"].get("summary", "Task completed")
-
-                    except Exception as e:
-                        error_result = f"Tool {tool_call['name']} failed: {e}"
-                        tool_results.append(
-                            {
-                                "type": "tool_result",
-                                "tool_use_id": tool_call["id"],
-                                "content": error_result,
-                                "is_error": True,
-                            }
-                        )
-                        yield {"type": "tool_error", "tool_name": tool_call["name"], "error": str(e)}
-
-                # Add assistant message with proper block ordering (thinking blocks first, as required by Anthropic)
-                if content_blocks:
-                    # Separate different block types
-                    thinking_blocks = [block for block in content_blocks if block.get("type") == "thinking"]
-                    text_blocks = [block for block in content_blocks if block.get("type") == "text"]
-                    tool_blocks = [block for block in content_blocks if block.get("type") == "tool_use"]
-
-                    # Reorder: thinking blocks first, then text, then tool_use (as required by Anthropic)
-                    ordered_content = thinking_blocks + text_blocks + tool_blocks
-                    messages.append({"role": "assistant", "content": ordered_content})
-
-                # Add tool results
-                if tool_results:
-                    messages.append({"role": "user", "content": tool_results})
+                # Update conversation history
+                self._update_conversation_history(messages, content_blocks)
 
                 # Check if task was completed
-                if task_completed_called:
-                    # Yield the task summary before completing
+                if task_completed:
                     yield {"type": "task_summary", "summary": task_summary}
                     yield {"type": "message_complete"}
                     await self._send_completion_webhook(success=True)
                     break
-
-                # Continue the conversation loop
 
         except Exception as e:
             error_msg = f"Error in agent: {e}"
@@ -231,51 +85,201 @@ class Agent:
         processing_end = time.time()
         print(f"⏱️ Total processing time: {processing_end - processing_start:.2f}s")
 
+    async def _process_conversation_turn(self, messages: list) -> tuple[list, bool, str | None]:
+        """Process one conversation turn and return content blocks and completion status"""
+        stream_params = {
+            "model": "claude-3-7-sonnet-20250219",
+            "max_tokens": 8192,
+            "system": self.system_prompt,
+            "messages": messages,
+            "tools": get_anthropic_tools(self.project_id),
+            "thinking": {"type": "enabled", "budget_tokens": 2048},
+        }
+
+        stream = await self.client.messages.create(**stream_params, stream=True)
+        content_blocks = []
+
+        # Stream events and collect content blocks
+        async for event in stream:
+            # Collect content for conversation history
+            self._collect_content_from_event(event, content_blocks)
+
+        print(f"🔍 Collected {len(content_blocks)} content blocks")
+
+        # Check for task completion
+        task_completed = any(
+            block.get("name") == "task_completed" for block in content_blocks if block.get("type") == "tool_use"
+        )
+        task_summary = None
+        if task_completed:
+            for block in content_blocks:
+                if block.get("type") == "tool_use" and block.get("name") == "task_completed":
+                    task_summary = block.get("input", {}).get("summary", "Task completed")
+                    break
+
+        return content_blocks, task_completed, task_summary
+
+    async def _stream_events(self, messages: list) -> AsyncGenerator[dict, None]:
+        """Stream events from Anthropic API"""
+        stream_params = {
+            "model": "claude-3-7-sonnet-20250219",
+            "max_tokens": 8192,
+            "system": self.system_prompt,
+            "messages": messages,
+            "tools": get_anthropic_tools(self.project_id),
+            "thinking": {"type": "enabled", "budget_tokens": 2048},
+        }
+
+        stream = await self.client.messages.create(**stream_params, stream=True)
+
+        async for event in stream:
+            event_dict = self._event_to_dict(event)
+            if event_dict:
+                yield event_dict
+
+    def _collect_content_from_event(self, event, content_blocks: list):
+        """Collect content blocks from streaming events"""
+        if not hasattr(event, "type"):
+            return
+
+        self._ensure_content_tracking()
+
+        if event.type == "content_block_start":
+            self._handle_block_start(event)
+        elif event.type == "content_block_delta":
+            self._handle_block_delta(event)
+        elif event.type == "content_block_stop":
+            self._handle_block_stop(content_blocks)
+
+    def _ensure_content_tracking(self):
+        """Initialize content tracking if needed"""
+        if not hasattr(self, "_current_content"):
+            self._current_content = {"text": "", "thinking": "", "thinking_signature": "", "tool_calls": []}
+
+    def _handle_block_start(self, event):
+        """Handle content block start events"""
+        if not (hasattr(event, "content_block") and hasattr(event.content_block, "type")):
+            return
+
+        if event.content_block.type == "tool_use":
+            self._current_content["tool_calls"].append(
+                {
+                    "type": "tool_use",
+                    "id": getattr(event.content_block, "id", ""),
+                    "name": getattr(event.content_block, "name", ""),
+                    "input": {},
+                    "_input_json": "",
+                }
+            )
+
+    def _handle_block_delta(self, event):
+        """Handle content block delta events"""
+        if not hasattr(event, "delta"):
+            return
+
+        delta = event.delta
+        if hasattr(delta, "text"):
+            self._current_content["text"] += delta.text
+        elif hasattr(delta, "thinking"):
+            self._current_content["thinking"] += delta.thinking
+        elif hasattr(delta, "signature"):
+            self._current_content["thinking_signature"] += delta.signature
+        elif hasattr(delta, "partial_json") and self._current_content["tool_calls"]:
+            self._current_content["tool_calls"][-1]["_input_json"] += delta.partial_json
+
+    def _handle_block_stop(self, content_blocks: list):
+        """Handle content block stop events"""
+        # Finalize text content
+        if self._current_content["text"]:
+            content_blocks.append({"type": "text", "text": self._current_content["text"]})
+            self._current_content["text"] = ""
+
+        # Finalize thinking content
+        if self._current_content["thinking"]:
+            content_blocks.append(
+                {
+                    "type": "thinking",
+                    "thinking": self._current_content["thinking"],
+                    "signature": self._current_content["thinking_signature"],
+                }
+            )
+            self._current_content["thinking"] = ""
+            self._current_content["thinking_signature"] = ""
+
+        # Finalize tool calls
+        for tool_call in self._current_content["tool_calls"]:
+            if "_input_json" in tool_call:
+                try:
+                    import json
+
+                    tool_call["input"] = json.loads(tool_call["_input_json"])
+                    del tool_call["_input_json"]
+                except json.JSONDecodeError:
+                    del tool_call["_input_json"]  # Remove invalid JSON
+                content_blocks.append(tool_call)
+        self._current_content["tool_calls"] = []
+
+    async def _execute_tools(self, content_blocks: list) -> AsyncGenerator[dict, None]:
+        """Execute tool calls and yield results"""
+        tool_calls = [block for block in content_blocks if block.get("type") == "tool_use"]
+
+        for tool_call in tool_calls:
+            yield {"type": "tool_start", "tool_name": tool_call["name"]}
+
+            try:
+                result = await execute_tool(tool_call["name"], tool_call["input"], self.project_id)
+                yield {"type": "tool_complete", "tool_name": tool_call["name"], "result": result}
+            except Exception as e:
+                yield {"type": "tool_error", "tool_name": tool_call["name"], "error": str(e)}
+
+    def _update_conversation_history(self, messages: list, content_blocks: list):
+        """Update conversation history with proper block ordering"""
+        if not content_blocks:
+            return
+
+        # Separate and reorder blocks (thinking first, as required by Anthropic)
+        thinking_blocks = [b for b in content_blocks if b.get("type") == "thinking"]
+        text_blocks = [b for b in content_blocks if b.get("type") == "text"]
+        tool_blocks = [b for b in content_blocks if b.get("type") == "tool_use"]
+
+        ordered_content = thinking_blocks + text_blocks + tool_blocks
+        messages.append({"role": "assistant", "content": ordered_content})
+
+        # Add tool results for next turn
+        tool_results = []
+        for tool_call in tool_blocks:
+            try:
+                result = f"Tool {tool_call['name']} executed successfully"
+                tool_results.append({"type": "tool_result", "tool_use_id": tool_call["id"], "content": result})
+            except Exception as e:
+                tool_results.append(
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": tool_call["id"],
+                        "content": f"Tool {tool_call['name']} failed: {e}",
+                        "is_error": True,
+                    }
+                )
+
+        if tool_results:
+            messages.append({"role": "user", "content": tool_results})
+
     def _event_to_dict(self, event) -> dict | None:
-        """Convert Anthropic event to dict with proper streaming support"""
-        try:
-            # Handle different event types from Anthropic SDK
-            if not hasattr(event, "type"):
-                return None
+        """Convert Anthropic event to dict for streaming"""
+        if not hasattr(event, "type"):
+            return None
 
-            event_dict = {"type": event.type}
+        event_dict = {"type": event.type}
 
-            # Handle text deltas for streaming
-            if hasattr(event, "delta") and event.delta:
-                if hasattr(event.delta, "text"):
-                    event_dict["text"] = event.delta.text
-                if hasattr(event.delta, "type"):
-                    event_dict["delta_type"] = event.delta.type
+        # Add text content for streaming
+        if hasattr(event, "delta") and hasattr(event.delta, "text"):
+            event_dict["text"] = event.delta.text
 
-            # Handle content block information
-            if hasattr(event, "content_block"):
-                block = event.content_block
-                if hasattr(block, "type"):
-                    event_dict["content_type"] = block.type
+        # Add index if present
+        if hasattr(event, "index"):
+            event_dict["index"] = event.index
 
-                    # For thinking blocks, add thinking content
-                    if block.type == "thinking" and hasattr(block, "thinking"):
-                        event_dict["thinking"] = block.thinking
-
-                    # For text blocks, add text content
-                    if block.type == "text" and hasattr(block, "text"):
-                        event_dict["content"] = block.text
-
-                    # For tool use blocks, add tool info
-                    if block.type == "tool_use" and hasattr(block, "name"):
-                        event_dict["tool_name"] = block.name
-                        if hasattr(block, "input"):
-                            event_dict["tool_input"] = block.input
-
-            # Add index for multiple content blocks
-            if hasattr(event, "index"):
-                event_dict["index"] = event.index
-
-            return event_dict
-
-        except Exception as e:
-            print(f"⚠️ Error converting event: {e}")
-            return {"type": "error", "message": f"Event conversion error: {e}"}
+        return event_dict
 
     async def _send_completion_webhook(self, success: bool = True):
         """Send completion webhook to Next.js"""
