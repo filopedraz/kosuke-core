@@ -133,6 +133,9 @@ export function useChatMessages(
         enabled: !initialIsLoading,
         initialIsLoading,
         willUseInitialData: hasInitialData,
+        note: hasInitialData
+          ? 'Using initial data - API might not be called'
+          : 'No initial data - will fetch from API',
       });
 
       if (hasInitialData) {
@@ -169,6 +172,7 @@ export function useChatMessages(
       return undefined;
     })(),
     enabled: !initialIsLoading,
-    staleTime: 60000, // Consider data fresh for 60 seconds since we have real-time updates
+    staleTime: 0, // Always refetch for debugging - change back to 60000 later
+    refetchOnMount: true, // Always refetch when component mounts
   });
 }

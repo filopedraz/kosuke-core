@@ -56,7 +56,16 @@ export default function ChatInterface({
   const {
     data: messagesData,
     isLoading: isLoadingMessages,
+    refetch: refetchMessages,
   } = messagesQuery;
+
+  // Debug: Add global access to refetch for manual testing
+  if (typeof window !== 'undefined') {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (window as any).refetchChatMessages = refetchMessages;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (window as any).currentMessagesData = messagesData;
+  }
 
   const messages = useMemo(() => messagesData?.messages || [], [messagesData?.messages]);
   const tokenUsage = messagesData?.tokenUsage || { tokensSent: 0, tokensReceived: 0, contextSize: 0 };

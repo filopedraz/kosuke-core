@@ -156,6 +156,7 @@ export default function ChatMessage({
               timestamp: new Date(timestamp),
               status: 'completed',
             }}
+            showTimestamp={false} // Don't show avatar/header since ChatMessage already handles it
           />
         ) : (
           /* Render regular content for user messages or simple assistant messages */
