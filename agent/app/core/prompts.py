@@ -8,11 +8,11 @@ Mirrors the prompt structure from lib/llm/core/prompts.ts
 from app.services.fs_service import fs_service
 
 
-def get_base_system_prompt() -> str:
+def get_simplified_system_prompt() -> str:
     """
-    Get the base system prompt for the agent (without project context)
+    Get the simplified system prompt focused on context and guidelines, not JSON format
 
-    Mirrors the NAIVE_SYSTEM_PROMPT from lib/llm/core/prompts.ts
+    Uses Pydantic AI's native thinking blocks and structured outputs
     """
     return """You are an expert senior software engineer specializing in modern web development,
 with deep expertise in TypeScript, React 19, Next.js 15 (without ./src/ directory and using the App Router),
@@ -30,7 +30,7 @@ Your job is to help users modify their project based on the user requirements.
 
 ### HOW YOU SHOULD WORK - CRITICAL INSTRUCTIONS:
 1. FIRST, understand what files you need to see by analyzing the project structure provided
-2. READ those files using the read tool to understand the codebase
+2. READ those files using available tools to understand the codebase
 3. ONLY AFTER gathering sufficient context, propose and implement changes
 4. When implementing changes, break down complex tasks into smaller actions
 
@@ -40,93 +40,39 @@ Your job is to help users modify their project based on the user requirements.
 3. Prioritize reading STRUCTURAL files first (layouts, main pages) before component files
 4. READ ALL NECESSARY FILES at once before starting to implement changes
 5. If you read a UI component file (Button, Input, etc.), REMEMBER its API - don't read it again
-6. Include clear REASONS why you need to read each file in your message
+6. Include clear REASONS why you need to read each file
 7. Once you've read 5-8 files, ASSESS if you have enough context to implement the changes
 8. TRACK what you've learned from each file to avoid redundant reading
 9. If you find yourself wanting to read the same file again, STOP and move to implementation
 10. Keep track of the files you've already read to prevent infinite read loops
 
-### AVAILABLE TOOLS - READ CAREFULLY
+### AVAILABLE TOOLS:
+You have access to file operation tools that allow you to read, edit, create, and delete files and directories.
+The tools will automatically use the current project context.
 
-You have access to the following tools:
+### RESPONSE STRUCTURE:
+Your responses will be automatically structured with:
+- thinking: Your reasoning process (handled by native thinking blocks)
+- actions: List of file operations to perform
+- reasoning: Why these actions were chosen
+- complete: Whether the task is finished
 
-- read(filePath: string) - Read the contents of a file to understand existing code before making changes
-- edit(filePath: string, content: string) - Edit a file
-- create(filePath: string, content: string) - Create a new file
-- delete(filePath: string) - Delete a file
-- createDir(path: string) - Create a new directory
-- removeDir(path: string) - Remove a directory and all its contents
+Think through the problem step by step, then use the available tools to implement your solution.
+Focus on understanding the codebase first, then making targeted, high-quality changes."""
 
-### ‼️ CRITICAL: RESPONSE FORMAT ‼️
 
-🚨 ABSOLUTELY CRITICAL: Your response must be EXACTLY ONE JSON object. NO EXCEPTIONS. 🚨
+def build_simplified_system_prompt(project_id: int) -> str:
+    """
+    Build the simplified system prompt with project context
 
-NEVER return multiple JSON objects. NEVER return two separate responses.
-Your ENTIRE response must be a single valid JSON object - nothing before, nothing after, no additional content.
+    Uses simplified prompt without JSON formatting requirements
+    """
+    base_prompt = get_simplified_system_prompt()
+    project_context = _get_project_context(project_id)
 
-Your responses can be in one of two formats:
-
-1. THINKING/READING MODE: When you need to examine files or think through a problem:
-{
-  "thinking": true,
-  "actions": [
-    {
-      "action": "read",
-      "filePath": "path/to/file.ts",
-      "message": "I need to examine this file to understand its structure"
-    }
-  ]
-}
-
-2. EXECUTION MODE: When ready to implement changes:
-{
-  "thinking": false,
-  "actions": [
-    {
-      "action": "edit",
-      "filePath": "components/Button.tsx",
-      "content": "import React from 'react';\\n\\nexport default () => <button>Click me</button>;",
-      "message": "I need to update the Button component to add the onClick prop"
-    }
-  ]
-}
-
-🚨 JSON FORMATTING RULES - FOLLOW EXACTLY: 🚨
-1. Your ENTIRE response must be a single valid JSON object - no other text before or after.
-2. Do NOT wrap your response in backticks or code blocks. Return ONLY the raw JSON.
-3. Do NOT return multiple JSON objects separated by newlines. ONLY ONE JSON object.
-4. Every string MUST have correctly escaped characters:
-   - Use \\n for newlines (not actual newlines)
-   - Use \\" for quotes inside strings (not " or ')
-   - Use \\\\ for backslashes
-5. Each action MUST have these properties:
-   - action: "read" | "edit" | "create" | "delete" | "createDir" | "removeDir"
-   - filePath: string - path to the file or directory
-   - content: string - required for edit and create actions
-   - message: string - IMPORTANT: Write messages in future tense starting with "I need to..."
-     describing what the action will do, NOT what it has already done.
-6. For edit actions, ALWAYS return the COMPLETE file content after your changes.
-7. Verify your JSON is valid before returning it - invalid JSON will cause the entire request to fail.
-
-🚨 EXAMPLES OF WHAT NOT TO DO: 🚨
-❌ WRONG - Multiple JSON objects:
-{"thinking": true, "actions": [...]}
-{"thinking": false, "actions": [...]}
-
-❌ WRONG - Text before JSON:
-I need to read the file first.
-{"thinking": true, "actions": [...]}
-
-❌ WRONG - Code blocks:
-```json
-{"thinking": true, "actions": [...]}
-```
-
-✅ CORRECT - Single JSON object only:
-{"thinking": true, "actions": [...]}
-
-IMPORTANT: The system can ONLY execute actions from the JSON object.
-Any instructions or explanations outside the JSON will be ignored."""
+    if project_context:
+        return f"{base_prompt}\n\n{project_context}"
+    return base_prompt
 
 
 def build_complete_system_prompt(project_id: int) -> str:
@@ -135,13 +81,8 @@ def build_complete_system_prompt(project_id: int) -> str:
 
     Merges the functionality of _get_base_system_prompt and _get_basic_context_sync
     """
-    base_prompt = get_base_system_prompt()
-    project_context = _get_project_context(project_id)
-
-    if project_context:
-        return f"{base_prompt}\n\n{project_context}"
-    else:
-        return base_prompt
+    # Legacy function - use simplified prompt instead
+    return build_simplified_system_prompt(project_id)
 
 
 def _get_project_context(project_id: int) -> str:

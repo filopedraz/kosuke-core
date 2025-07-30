@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import Literal
 
 from pydantic import BaseModel
 from pydantic import Field
@@ -38,6 +39,35 @@ class ActionExecutionResult(BaseModel):
     error_type: str | None = None
     error_details: str | None = None
     actions: list[Action] | None = None
+
+
+# New Structured Response Types for Pydantic AI
+class FileOperation(BaseModel):
+    """Structured file operation for Pydantic AI tools"""
+
+    operation: Literal["read", "edit", "create", "delete", "createDir", "removeDir"]
+    file_path: str
+    content: str | None = None
+    reasoning: str
+
+
+class AgentResponse(BaseModel):
+    """Structured agent response with thinking and actions"""
+
+    thinking: str | None = None  # Extracted from thinking blocks
+    actions: list[FileOperation] = []
+    reasoning: str | None = None  # Why these actions were chosen
+    complete: bool = False  # Whether the task is complete
+
+
+class StreamChunk(BaseModel):
+    """Structured streaming chunk"""
+
+    type: Literal["thinking", "text", "action", "complete", "error"]
+    content: str | None = None
+    file_path: str | None = None
+    operation: str | None = None
+    status: Literal["pending", "completed", "error"] | None = None
 
 
 def normalize_action(action: Action) -> Action:
