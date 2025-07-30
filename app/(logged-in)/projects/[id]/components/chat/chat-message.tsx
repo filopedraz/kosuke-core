@@ -8,12 +8,14 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 
 // Import types and utilities
-import type { ChatMessageProps, ErrorType } from '@/lib/types';
+import type { AssistantBlock, ChatMessageProps, ContentBlock, ErrorType } from '@/lib/types';
 import { getFileName, processMessageContent } from '@/lib/utils/message-content';
+import AssistantResponse from './assistant-response';
 
 
 export default function ChatMessage({
   content,
+  blocks,
   role,
   timestamp,
   isLoading = false,
@@ -25,6 +27,8 @@ export default function ChatMessage({
   onRegenerate,
 }: ChatMessageProps) {
   const isUser = role === 'user';
+
+
 
   // Get appropriate error message based on error type
   const getErrorMessage = (type: ErrorType): string => {
@@ -41,8 +45,56 @@ export default function ChatMessage({
     }
   };
 
+  // Convert AssistantBlock[] to ContentBlock[] for display
+  const convertBlocksToContentBlocks = (assistantBlocks: AssistantBlock[]): ContentBlock[] => {
+    return assistantBlocks.map((block, index) => {
+      const baseBlock = {
+        id: `block-${Date.now()}-${index}`,
+        index,
+        status: 'completed' as const,
+        timestamp: new Date(),
+      };
+
+      if (block.type === 'text') {
+        return {
+          ...baseBlock,
+          type: 'text' as const,
+          content: block.content,
+        };
+      } else if (block.type === 'thinking') {
+        return {
+          ...baseBlock,
+          type: 'thinking' as const,
+          content: block.content,
+          isCollapsed: true, // Auto-collapse thinking blocks in chat history
+        };
+      } else if (block.type === 'tool') {
+        return {
+          ...baseBlock,
+          type: 'tool' as const,
+          content: `Executed ${block.name}`,
+          toolName: block.name,
+          toolResult: block.result || 'Tool completed successfully',
+        };
+      }
+
+      // Fallback for unknown block types
+      return {
+        ...baseBlock,
+        type: 'text' as const,
+        content: 'content' in block ? (block as { content: string }).content : 'Unknown block type',
+      };
+    });
+  };
+
   // Process content using utility function
   const contentParts = processMessageContent(content || '');
+
+  // Check if this is an assistant message with blocks
+  const hasBlocks = !isUser && blocks && blocks.length > 0;
+  const contentBlocks = hasBlocks ? convertBlocksToContentBlocks(blocks) : null;
+
+
 
   return (
     <div
@@ -95,28 +147,40 @@ export default function ChatMessage({
           </div>
         )}
 
-        <div className={cn(
-          "prose prose-xs dark:prose-invert max-w-none text-sm [overflow-wrap:anywhere]",
-          !showAvatar && "mt-0", // Remove top margin for consecutive messages
-          hasError && !isUser && "text-muted-foreground" // Muted text for error messages
-        )}>
-          {contentParts.map((part, i) => (
-              part.type === 'text' ? (
-                // Render regular text content with line breaks
-                part.content.split('\n').map((line, j) => (
-                  <p key={`${i}-${j}`} className={line.trim() === '' ? 'h-4' : '[word-break:normal] [overflow-wrap:anywhere]'}>
-                    {line}
-                  </p>
-                ))
-              ) : part.type === 'thinking' ? (
-                // Render thinking content with different styling
-                <div key={i} className="my-3 relative">
-                  <div className="border-l-2 border-muted-foreground/30 pl-4 py-2 bg-muted/20 rounded-r-md">
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="w-3 h-3 bg-muted-foreground/50 rounded-full animate-pulse"></div>
-                      <span className="text-xs font-medium text-muted-foreground/80 uppercase tracking-wide">
-                        Thinking
-                      </span>
+        {/* Render assistant blocks using AssistantResponse component */}
+        {hasBlocks && contentBlocks ? (
+          <AssistantResponse
+            response={{
+              id: Date.now(), // Temporary ID for display
+              contentBlocks,
+              timestamp: new Date(timestamp),
+              status: 'completed',
+            }}
+          />
+        ) : (
+          /* Render regular content for user messages or simple assistant messages */
+          <div className={cn(
+              "prose prose-xs dark:prose-invert max-w-none text-sm [overflow-wrap:anywhere]",
+              !showAvatar && "mt-0", // Remove top margin for consecutive messages
+              hasError && !isUser && "text-muted-foreground" // Muted text for error messages
+            )}>
+              {contentParts.map((part, i) => (
+                part.type === 'text' ? (
+                  // Render regular text content with line breaks
+                  part.content.split('\n').map((line, j) => (
+                    <p key={`${i}-${j}`} className={line.trim() === '' ? 'h-4' : '[word-break:normal] [overflow-wrap:anywhere]'}>
+                      {line}
+                    </p>
+                  ))
+                ) : part.type === 'thinking' ? (
+                  // Render thinking content with different styling
+                  <div key={i} className="my-3 relative">
+                    <div className="border-l-2 border-muted-foreground/30 pl-4 py-2 bg-muted/20 rounded-r-md">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="w-3 h-3 bg-muted-foreground/50 rounded-full animate-pulse"></div>
+                        <span className="text-xs font-medium text-muted-foreground/80 uppercase tracking-wide">
+                          Thinking
+                        </span>
                     </div>
                     <div className="text-muted-foreground/70 text-xs leading-relaxed italic">
                       {part.content.split('\n').map((line, j) => (
@@ -157,24 +221,25 @@ export default function ChatMessage({
                 </div>
               )
             ))}
+          </div>
+        )}
 
-          {/* Display error message if there's an error */}
-          {!isUser && hasError && (
-            <div className="mt-3 p-2 rounded-md bg-destructive/10 border border-destructive/20 text-sm">
-              <div className="flex items-center gap-2 text-destructive">
-                <span>{getErrorMessage(errorType)}</span>
-              </div>
-              {onRegenerate && (
-                <button
-                  onClick={onRegenerate}
-                  className="mt-2 px-2 py-1 text-xs bg-primary hover:bg-primary/80 text-primary-foreground rounded-md transition-colors flex items-center gap-1 w-fit"
-                >
-                  <RefreshCcw className="h-3 w-3" /> Regenerate response
-                </button>
-              )}
+        {/* Display error message if there's an error */}
+        {!isUser && hasError && (
+          <div className="mt-3 p-2 rounded-md bg-destructive/10 border border-destructive/20 text-sm">
+            <div className="flex items-center gap-2 text-destructive">
+              <span>{getErrorMessage(errorType)}</span>
             </div>
-          )}
-        </div>
+            {onRegenerate && (
+              <button
+                onClick={onRegenerate}
+                className="mt-2 px-2 py-1 text-xs bg-primary hover:bg-primary/80 text-primary-foreground rounded-md transition-colors flex items-center gap-1 w-fit"
+              >
+                <RefreshCcw className="h-3 w-3" /> Regenerate response
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

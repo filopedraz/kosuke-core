@@ -1,7 +1,7 @@
 'use client';
 
 import { Loader2, RefreshCcw } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useUser } from '@/lib/auth';
@@ -56,10 +56,9 @@ export default function ChatInterface({
   const {
     data: messagesData,
     isLoading: isLoadingMessages,
-    refetch
   } = messagesQuery;
 
-  const messages = messagesData?.messages || [];
+  const messages = useMemo(() => messagesData?.messages || [], [messagesData?.messages]);
   const tokenUsage = messagesData?.tokenUsage || { tokensSent: 0, tokensReceived: 0, contextSize: 0 };
 
   const {
@@ -217,11 +216,12 @@ export default function ChatInterface({
             </div>
           ) : (
             <>
-              {messages.map(message => (
+              {enhancedMessages.map(message => (
                 <ChatMessage
                   key={message.id}
                   id={message.id}
                   content={message.content || ''}
+                  blocks={message.blocks}
                   role={message.role}
                   timestamp={message.timestamp}
                   isLoading={message.isLoading}

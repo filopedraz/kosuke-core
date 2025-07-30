@@ -17,18 +17,16 @@ const fetchMessages = async (projectId: number): Promise<FetchMessagesResult> =>
   const apiMessages: ApiChatMessage[] = data.messages || [];
 
   // Enhanced debug logging
-  console.log('🔍 Full API response data:', data);
   console.log('🔍 Messages in response:', data.messages?.length || 0);
 
+  // Log assistant messages with blocks for debugging
   if (data.messages && Array.isArray(data.messages)) {
-    data.messages.forEach((m: ApiChatMessage, index: number) => {
-      console.log(`🔍 Message ${index + 1} (ID: ${m.id}, role: ${m.role}):`);
-      console.log(`  - Content preview: "${m.content.substring(0, 50)}..."`);
-
-      console.log(
-        `  - Tokens - Input: ${m.tokensInput}, Output: ${m.tokensOutput}, Context: ${m.contextTokens}`
-      );
-    });
+    const messagesWithBlocks = data.messages.filter(
+      (m: ApiChatMessage) => m.role === 'assistant' && m.blocks && m.blocks.length > 0
+    );
+    if (messagesWithBlocks.length > 0) {
+      console.log(`✅ Found ${messagesWithBlocks.length} assistant messages with blocks`);
+    }
   }
 
   // Convert API messages to ChatMessageProps
@@ -51,9 +49,10 @@ const fetchMessages = async (projectId: number): Promise<FetchMessagesResult> =>
         }
       }
 
-      return {
+      const transformedMessage = {
         id: msg.id,
         content: msg.content,
+        blocks: msg.blocks, // Add the missing blocks field!
         role: msg.role as 'user' | 'assistant' | 'system',
         timestamp: new Date(msg.timestamp),
         isLoading: false,
@@ -66,6 +65,15 @@ const fetchMessages = async (projectId: number): Promise<FetchMessagesResult> =>
         hasError,
         errorType,
       };
+
+      // Debug log to confirm blocks are being passed through
+      if (msg.blocks && msg.blocks.length > 0) {
+        console.log(
+          `✅ [fetchMessages] Transformed message ${msg.id} with ${msg.blocks.length} blocks`
+        );
+      }
+
+      return transformedMessage;
     });
 
   // Calculate token usage
