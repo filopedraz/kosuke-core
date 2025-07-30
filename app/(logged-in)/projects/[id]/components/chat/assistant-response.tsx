@@ -36,13 +36,13 @@ export default function AssistantResponse({
   };
 
   return (
-    <div className={cn('w-full space-y-1', className)} role="listitem">
+    <div className={cn('w-full space-y-0', className)} role="listitem">
       {/* Header with avatar and timestamp - only show for first block */}
       {showTimestamp && response.contentBlocks.length > 0 && (
         <div className="flex w-full max-w-[95%] mx-auto gap-3 px-4">
           {/* AI Avatar */}
           <div className="relative flex items-center justify-center h-8 w-8 flex-shrink-0">
-            <div className="bg-muted border-primary rounded-none flex items-center justify-center h-full w-full">
+            <div className="bg-muted border-primary rounded-md flex items-center justify-center h-full w-full">
               <CircleIcon className="h-6 w-6 text-primary" />
             </div>
           </div>
@@ -83,9 +83,6 @@ export default function AssistantResponse({
           <div className="w-8" /> {/* Avatar space */}
           <div className="flex-1 ml-3">
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <span className="italic">
-                {response.contentBlocks.length === 0 ? 'Generating response' : 'Continuing'}
-              </span>
               <div className="flex space-x-1">
                 <div className="w-1 h-1 bg-muted-foreground/60 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
                 <div className="w-1 h-1 bg-muted-foreground/60 rounded-full animate-bounce [animation-delay:-0.15s]"></div>

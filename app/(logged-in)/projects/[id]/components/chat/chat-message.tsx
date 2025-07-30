@@ -1,7 +1,7 @@
 'use client';
 
 import { formatDistanceToNow } from 'date-fns';
-import { AlertCircle, CircleIcon, RefreshCcw, User } from 'lucide-react';
+import { CircleIcon, RefreshCcw, User } from 'lucide-react';
 import Image from 'next/image';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -74,7 +74,7 @@ export default function ChatMessage({
             </>
           ) : (
             <div className="relative flex items-center justify-center h-full w-full">
-              <AvatarFallback className="bg-muted border-primary rounded-none">
+              <AvatarFallback className="bg-muted border-primary">
                 <CircleIcon className="h-6 w-6 text-primary" />
               </AvatarFallback>
             </div>
@@ -179,7 +179,6 @@ export default function ChatMessage({
           {!isUser && hasError && (
             <div className="mt-3 p-2 rounded-md bg-destructive/10 border border-destructive/20 text-sm">
               <div className="flex items-center gap-2 text-destructive">
-                <AlertCircle className="h-4 w-4" />
                 <span>{getErrorMessage(errorType)}</span>
               </div>
               {onRegenerate && (

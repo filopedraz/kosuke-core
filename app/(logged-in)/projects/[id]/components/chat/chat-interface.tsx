@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertTriangle, Loader2, RefreshCcw } from 'lucide-react';
+import { Loader2, RefreshCcw } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -292,9 +292,6 @@ export default function ChatInterface({
             <div className="w-full max-w-[95%] mx-auto p-4">
               <div className="bg-destructive/5 border border-destructive/20 rounded-lg p-4 shadow-sm">
                 <div className="flex items-start gap-3">
-                  <div className="p-1 bg-destructive/10 rounded-full">
-                    <AlertTriangle className="h-4 w-4 text-destructive" />
-                  </div>
                   <div className="flex-1 space-y-3">
                     <div>
                       <h4 className="text-sm font-medium text-destructive mb-1">

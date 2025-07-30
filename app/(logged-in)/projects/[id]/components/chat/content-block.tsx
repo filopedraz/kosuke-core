@@ -93,7 +93,7 @@ export default function ContentBlock({
           </div>
 
           {!isCollapsed && (
-            <div className="border-l-2 border-muted-foreground/30 pl-4 py-2 bg-muted/20 rounded-r-md">
+            <div className="pl-4 py-2 bg-muted/20 rounded-md">
               <div className="text-muted-foreground/70 text-xs leading-relaxed italic">
                 {contentBlock.content.split('\n').map((line, j) => (
                   <p key={j} className={line.trim() === '' ? 'h-3' : '[word-break:normal] [overflow-wrap:anywhere]'}>
@@ -134,11 +134,21 @@ export default function ContentBlock({
               </div>
               <div className="flex-shrink-0 ml-2 text-right">
                 <div className={cn(
-                  "text-[10px] font-medium",
-                  contentBlock.status === 'streaming' && "text-blue-600 dark:text-blue-400",
-                  contentBlock.status === 'completed' && "text-green-600 dark:text-green-400"
+                  "text-[10px] font-medium text-muted-foreground"
                 )}>
-                  {contentBlock.status === 'streaming' ? 'Executing' : 'Completed'}
+                  {/* Extract filename from tool result or show tool action */}
+                  {(() => {
+                    if (contentBlock.toolResult) {
+                      // Try to extract filename from tool result
+                      const filenameMatch = contentBlock.toolResult.match(/(?:file|path)[:=]\s*["']?([^"'\s]+)["']?/i);
+                      if (filenameMatch) {
+                        return filenameMatch[1].split('/').pop(); // Get just the filename
+                      }
+                    }
+                    // Fallback to tool name processing
+                    const toolAction = contentBlock.toolName?.replace(/_/g, ' ') || 'Tool';
+                    return toolAction;
+                  })()}
                 </div>
               </div>
             </div>
@@ -146,7 +156,7 @@ export default function ContentBlock({
             {/* Progress bar for streaming tools */}
             {contentBlock.status === 'streaming' && (
               <div className="mt-2 w-full bg-muted-foreground/20 rounded-full h-1">
-                <div className="bg-blue-500 h-1 rounded-full animate-pulse" style={{ width: '60%' }}></div>
+                <div className="bg-muted-foreground/60 h-1 rounded-full animate-pulse" style={{ width: '60%' }}></div>
               </div>
             )}
 
