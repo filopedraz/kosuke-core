@@ -13,7 +13,6 @@ from app.core.tools import delete_file
 from app.core.tools import edit_file
 from app.core.tools import read_file
 from app.core.tools import remove_directory
-from app.models.actions import AgentResponse
 from app.models.actions import FileOperation
 from app.services.webhook_service import WebhookService
 from app.utils.config import settings
@@ -53,10 +52,10 @@ class Agent:
             system_prompt = build_simplified_system_prompt(self.project_id)
             print(f"📋 Initialized with simplified system prompt ({len(system_prompt)} chars)")
 
-            # Create agent with structured output and tools
+            # Create agent with tools but NO structured output to allow thinking blocks
             self.agent = PydanticAgent(
                 model=self.model,
-                result_type=AgentResponse,  # Structured output guaranteed
+                # NO result_type - this allows thinking blocks without tool_choice conflicts
                 system_prompt=system_prompt,
                 deps_type=int,  # project_id dependency
                 tools=[
@@ -94,13 +93,17 @@ class Agent:
 
             # Use PydanticAI's streaming capability to capture thinking blocks
             model_settings = {
-                "anthropic_thinking": True,  # Enable thinking blocks
+                "anthropic_thinking": {
+                    "type": "enabled",
+                    "budget_tokens": 2048,  # Allocate tokens for thinking
+                },
                 "max_tokens": 4096,
-                "temperature": 0.1,
+                "temperature": 1.0,  # Required to be 1.0 when thinking is enabled
             }
             async with self.agent.run_stream(prompt, deps=self.project_id, model_settings=model_settings) as stream:
                 thinking_content = ""
-                final_result = None
+                text_content = ""
+                tool_calls_made = False
 
                 async for chunk in stream:
                     # Handle thinking blocks from PydanticAI
@@ -115,6 +118,7 @@ class Agent:
 
                     # Handle text content
                     if hasattr(chunk, "text") and chunk.text:
+                        text_content += chunk.text
                         yield {
                             "type": "text",
                             "file_path": "",
@@ -122,35 +126,27 @@ class Agent:
                             "status": "pending",
                         }
 
-                # Get the final result from the stream
-                final_result = await stream.get_output()
+                    # Handle tool calls (PydanticAI automatically executes them)
+                    if hasattr(chunk, "tool_call"):
+                        tool_calls_made = True
+                        # Note: Tool execution events will be handled by the tools themselves
 
-            # Extract reasoning from the final result
-            if final_result and hasattr(final_result, "reasoning") and final_result.reasoning:
-                yield {
-                    "type": "reasoning_start",
-                    "file_path": "",
-                    "message": "Reasoning through the approach...",
-                    "status": "pending",
-                }
+                # Stream completed
+                await stream.get_output()  # Ensure stream is fully consumed
 
-                yield {
-                    "type": "reasoning_content",
-                    "file_path": "",
-                    "message": final_result.reasoning,
-                    "status": "pending",
-                }
-
-            # Execute actions from structured response
-            if final_result and hasattr(final_result, "actions") and final_result.actions:
-                async for update in self._execute_structured_actions(final_result.actions):
-                    yield update
+            # Show completion message
+            completion_msg = "Response completed"
+            if thinking_content:
+                completion_msg += " with thinking analysis"
+            if tool_calls_made:
+                completion_msg += " and file operations"
+            completion_msg += "!"
 
             # Send completion
             yield {
                 "type": "completed",
                 "file_path": "",
-                "message": "All changes have been implemented successfully!",
+                "message": completion_msg,
                 "status": "completed",
             }
 
@@ -164,39 +160,28 @@ class Agent:
             # Try fallback to non-streaming approach
             try:
                 model_settings = {
-                    "anthropic_thinking": True,  # Enable thinking blocks
+                    "anthropic_thinking": {
+                        "type": "enabled",
+                        "budget_tokens": 2048,  # Allocate tokens for thinking
+                    },
                     "max_tokens": 4096,
-                    "temperature": 0.1,
+                    "temperature": 1.0,  # Required to be 1.0 when thinking is enabled
                 }
                 result = await self.agent.run(prompt, deps=self.project_id, model_settings=model_settings)
 
-                # Extract thinking and reasoning from non-streaming result
-                if result.data:
-                    if result.data.thinking:
-                        yield {
-                            "type": "thinking_content",
-                            "file_path": "",
-                            "message": result.data.thinking,
-                            "status": "pending",
-                        }
-
-                    if result.data.reasoning:
-                        yield {
-                            "type": "reasoning_content",
-                            "file_path": "",
-                            "message": result.data.reasoning,
-                            "status": "pending",
-                        }
-
-                    # Execute actions
-                    if result.data.actions:
-                        async for update in self._execute_structured_actions(result.data.actions):
-                            yield update
+                # Handle fallback result (simple text response, not structured)
+                if result and hasattr(result, "data") and result.data:
+                    yield {
+                        "type": "text",
+                        "file_path": "",
+                        "message": str(result.data),
+                        "status": "pending",
+                    }
 
                 yield {
                     "type": "completed",
                     "file_path": "",
-                    "message": "All changes have been implemented successfully!",
+                    "message": "Response completed via fallback method!",
                     "status": "completed",
                 }
             except Exception as fallback_error:

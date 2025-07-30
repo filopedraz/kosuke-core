@@ -68,8 +68,8 @@ class Settings(BaseSettings):
     # Paths
     projects_dir: str = "projects"
 
-    # Model settings
-    model_name: str = "claude-3-5-sonnet-20241022"
+    # Model settings - Claude 3.7 supports thinking blocks
+    model_name: str = "claude-3-7-sonnet-20250219"
     anthropic_api_key: str = ""
 
     # Preview settings

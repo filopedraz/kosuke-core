@@ -50,15 +50,14 @@ Your job is to help users modify their project based on the user requirements.
 You have access to file operation tools that allow you to read, edit, create, and delete files and directories.
 The tools will automatically use the current project context.
 
-### RESPONSE STRUCTURE:
-Your responses will be automatically structured with:
-- thinking: Your reasoning process (handled by native thinking blocks)
-- actions: List of file operations to perform
-- reasoning: Why these actions were chosen
-- complete: Whether the task is finished
+### THINKING AND TOOL USE:
+- Think through problems step-by-step using thinking blocks
+- Use the available tools to read files, understand the codebase, and make changes
+- Provide clear explanations of your reasoning and approach
+- Tools will be executed automatically as you call them
 
-Think through the problem step by step, then use the available tools to implement your solution.
-Focus on understanding the codebase first, then making targeted, high-quality changes."""
+Focus on understanding the codebase first, then making targeted, high-quality changes.
+Explain your thinking process and use tools strategically to achieve the best results."""
 
 
 def build_simplified_system_prompt(project_id: int) -> str:
