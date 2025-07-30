@@ -14,6 +14,7 @@ import { useSendMessage } from '@/hooks/use-send-message';
 import type { ChatInterfaceProps, ChatUser } from '@/lib/types';
 
 // Import components
+import AssistantResponse from './assistant-response';
 import ChatInput from './chat-input';
 import ChatMessage from './chat-message';
 import LimitReachedModal from './limit-reached-modal';
@@ -67,7 +68,7 @@ export default function ChatInterface({
     error: sendError,
     isStreaming,
     streamingActions,
-    streamingContent,
+    streamingContentBlocks,
     streamingAssistantMessageId,
     cancelStream,
   } = sendMessageMutation;
@@ -104,10 +105,10 @@ export default function ChatInterface({
 
   // Clear generating state when streaming starts
   useEffect(() => {
-    if (isStreaming || streamingContent || streamingAssistantMessageId) {
+    if (isStreaming || streamingContentBlocks.length > 0 || streamingAssistantMessageId) {
       setIsGenerating(false);
     }
-  }, [isStreaming, streamingContent, streamingAssistantMessageId]);
+  }, [isStreaming, streamingContentBlocks, streamingAssistantMessageId]);
 
   // Scroll to bottom when messages change or streaming updates
   useEffect(() => {
@@ -121,7 +122,7 @@ export default function ChatInterface({
     }, 100);
 
     return () => clearTimeout(scrollTimeout);
-  }, [messages, isLoadingMessages, streamingContent]);
+  }, [messages, isLoadingMessages, streamingContentBlocks]);
 
   // Handle sending messages
   const handleSendMessage = async (
@@ -239,7 +240,7 @@ export default function ChatInterface({
               ))}
 
               {/* Immediate loading state - shows before streaming starts */}
-              {isGenerating && !isStreaming && !streamingContent && (
+              {isGenerating && !isStreaming && streamingContentBlocks.length === 0 && (
                 <div className="flex w-full max-w-[95%] mx-auto gap-3 p-4 animate-in fade-in-0 duration-200">
                   {/* Avatar */}
                   <div className="relative flex items-center justify-center h-8 w-8">
@@ -270,34 +271,17 @@ export default function ChatInterface({
                 </div>
               )}
 
-              {/* Real-time streaming assistant message */}
-              {isStreaming && streamingAssistantMessageId && (
+              {/* Real-time streaming assistant response */}
+              {isStreaming && streamingAssistantMessageId && streamingContentBlocks.length > 0 && (
                 <div className="animate-in fade-in-0 duration-300">
-                  <ChatMessage
-                    key={`streaming-${streamingAssistantMessageId}`}
-                    id={streamingAssistantMessageId}
-                    content={streamingContent}
-                    role="assistant"
-                    timestamp={new Date()}
-                    isLoading={true}
-                    user={user ? {
-                      name: user.name || undefined,
-                      email: user.email,
-                      imageUrl: user.imageUrl || undefined
-                    } : undefined}
-                    actions={streamingActions}
-                    showAvatar={true}
+                  <AssistantResponse
+                    response={{
+                      id: streamingAssistantMessageId,
+                      contentBlocks: streamingContentBlocks,
+                      timestamp: new Date(),
+                      status: 'streaming',
+                    }}
                   />
-
-                  {/* Cancel stream button */}
-                  <div className="flex justify-center py-2">
-                    <button
-                      onClick={cancelStream}
-                      className="px-3 py-1 text-sm text-muted-foreground hover:text-foreground border border-border rounded-md hover:bg-muted transition-colors"
-                    >
-                      Cancel Generation
-                    </button>
-                  </div>
                 </div>
               )}
             </>
@@ -355,6 +339,8 @@ export default function ChatInterface({
         <ChatInput
           onSendMessage={handleSendMessage}
           isLoading={isSending || isRegenerating}
+          isStreaming={isStreaming}
+          onStop={cancelStream}
           placeholder="Type your message..."
           data-testid="chat-input"
           className="chat-input"

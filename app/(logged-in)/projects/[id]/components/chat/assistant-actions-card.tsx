@@ -121,7 +121,7 @@ export default function AssistantActionsCard({
                     </div>
                   ) : op.type === 'search' ? (
                     <Search className="h-3.5 w-3.5 text-muted-foreground" />
-                  ) : op.type === 'createDir' || op.type === 'operation_start' ? (
+                  ) : op.type === 'createDir' ? (
                     <FolderPlusIcon className="h-3.5 w-3.5 text-muted-foreground" />
                   ) : op.type === 'removeDir' ? (
                     <FolderMinusIcon className="h-3.5 w-3.5 text-muted-foreground" />
@@ -129,7 +129,7 @@ export default function AssistantActionsCard({
                     <FolderIcon className="h-3.5 w-3.5 text-muted-foreground" />
                   ) : op.type === 'read' ? (
                     <EyeIcon className="h-3.5 w-3.5 text-muted-foreground" />
-                  ) : op.type === 'edit' || op.type === 'operation_complete' ? (
+                  ) : op.type === 'edit' ? (
                     <PencilIcon className="h-3.5 w-3.5 text-muted-foreground" />
                   ) : (
                     <FileIcon className="h-3.5 w-3.5 text-muted-foreground" />
@@ -138,7 +138,11 @@ export default function AssistantActionsCard({
 
                 <div className="truncate">
                   <div className="font-medium text-foreground truncate">
-                    {op.path.split('/').pop() || op.path}
+                    {/* Handle tool names vs file paths */}
+                    {op.path.includes('/') ?
+                      (op.path.split('/').pop() || op.path) :
+                      (op.path.replace(/_/g, ' ').replace(/([A-Z])/g, ' $1').trim())
+                    }
                   </div>
                   {op.path.includes('/') && (
                     <div className="text-[10px] text-muted-foreground/80 truncate">
@@ -156,14 +160,14 @@ export default function AssistantActionsCard({
                   op.status === 'error' && "text-red-600 dark:text-red-400",
                   !op.status && "text-muted-foreground"
                 )}>
-                  {op.status === 'pending' ? 'In Progress' :
-                   op.status === 'completed' ? 'Completed' :
+                  {op.status === 'pending' ? 'Executing' :
+                   op.status === 'completed' ? (op.path === 'task_completed' ? 'Task Complete' : 'Completed') :
                    op.status === 'error' ? 'Failed' :
                    op.type === 'createDir' ? 'Created Dir' :
                    op.type === 'removeDir' ? 'Removed Dir' :
                    op.type === 'create' && op.path.indexOf('.') === -1 ? 'Created Dir' :
                    op.type === 'create' ? 'Generated' :
-                   op.type === 'edit' ? 'Edited' :
+                   op.type === 'edit' ? (op.path.includes('/') ? 'Edited' : 'Executed') :
                    op.type === 'delete' ? 'Deleted' :
                    op.type === 'read' ? 'Read' :
                    op.type === 'search' ? 'Searched' : 'Unknown'}
@@ -175,6 +179,18 @@ export default function AssistantActionsCard({
             {op.status === 'pending' && (
               <div className="mt-2 w-full bg-muted-foreground/20 rounded-full h-1">
                 <div className="bg-blue-500 h-1 rounded-full animate-pulse" style={{ width: '60%' }}></div>
+              </div>
+            )}
+
+            {/* Task summary for completed task_completed */}
+            {op.path === 'task_completed' && op.status === 'completed' && op.content && (
+              <div className="mt-2 p-2 bg-green-50/50 border border-green-200/50 dark:bg-green-950/20 dark:border-green-800/30 rounded-md">
+                <div className="text-xs text-green-700 dark:text-green-300 font-medium mb-1">
+                  Task Summary:
+                </div>
+                <div className="text-xs text-green-600 dark:text-green-400 leading-relaxed">
+                  {op.content.replace(/^Task completed successfully! Summary: /, '')}
+                </div>
               </div>
             )}
           </div>

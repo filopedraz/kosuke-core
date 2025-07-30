@@ -96,6 +96,8 @@ export interface ChatMessageProps {
 export interface ChatInputProps {
   onSendMessage: (message: string, options?: MessageOptions) => Promise<void>;
   isLoading?: boolean;
+  isStreaming?: boolean;
+  onStop?: () => void;
   placeholder?: string;
   className?: string;
 }
@@ -112,11 +114,32 @@ export interface AssistantActionsCardProps {
   className?: string;
 }
 
+// Content Block Types
+export interface ContentBlock {
+  id: string;
+  index: number;
+  type: 'thinking' | 'text' | 'tool';
+  content: string;
+  status: 'streaming' | 'completed';
+  isCollapsed?: boolean; // For thinking blocks
+  timestamp: Date;
+  toolName?: string; // For tool blocks
+  toolResult?: string; // For tool blocks
+}
+
+// Assistant Response Types
+export interface AssistantResponse {
+  id: number;
+  contentBlocks: ContentBlock[];
+  timestamp: Date;
+  status: 'streaming' | 'completed';
+}
+
 // Streaming Types
 export interface StreamingState {
   isStreaming: boolean;
   streamingActions: Action[];
-  streamingContent: string;
+  streamingContentBlocks: ContentBlock[];
   streamingAssistantMessageId: number | null;
   streamAbortController: AbortController | null;
 }
@@ -147,8 +170,38 @@ export interface ChatApiError {
 
 // Streaming Event Types (from Python agent)
 export interface StreamingEvent {
-  type: string;
-  file_path: string;
-  message: string;
-  status: 'pending' | 'completed' | 'error';
+  // Event type from Anthropic API
+  type:
+    | 'message_start'
+    | 'content_block_start'
+    | 'content_block_delta'
+    | 'content_block_stop'
+    | 'message_delta'
+    | 'message_stop'
+    | 'tool_start'
+    | 'tool_complete'
+    | 'task_summary'
+    | 'message_complete'
+    | 'error'
+    | 'text'
+    | 'operation_start'
+    | 'operation_complete'
+    | 'completed';
+
+  // Content delta fields
+  text?: string; // For text content deltas
+  thinking?: string; // For thinking content deltas
+  delta_type?: 'text_delta' | 'thinking_delta' | 'input_json_delta' | 'signature_delta';
+  index?: number; // Content block index
+
+  // Tool-related fields
+  tool_name?: string; // Name of the tool being executed
+  result?: string; // Tool execution result
+  summary?: string; // Task completion summary
+
+  // Legacy fields (for backward compatibility)
+  file_path?: string;
+  message?: string;
+  status?: 'pending' | 'completed' | 'error';
+  operation?: string;
 }

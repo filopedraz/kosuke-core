@@ -2,6 +2,7 @@ import type {
   Action,
   ApiChatMessage,
   ChatMessageProps,
+  ContentBlock,
   ErrorType,
   MessageOptions,
   StreamingEvent,
@@ -24,7 +25,7 @@ const sendMessage = async (
   projectId: number,
   content: string,
   options?: MessageOptions,
-  streamingCallback?: (content: string) => void,
+  contentBlockCallback?: (contentBlocks: ContentBlock[]) => void,
   actionsCallback?: (actions: Action[]) => void,
   setAssistantIdCallback?: (id: number) => void,
   abortController?: AbortController
@@ -122,9 +123,9 @@ const sendMessage = async (
       const decoder = new TextDecoder();
       let buffer = '';
 
-      // Track streaming state and actions
+      // Track streaming state and content blocks
       let isStreamActive = true;
-      let fullContent = '';
+      const contentBlocks: ContentBlock[] = [];
       const streamingActions: Action[] = [];
 
       while (isStreamActive) {
@@ -150,21 +151,231 @@ const sendMessage = async (
               const data: StreamingEvent = JSON.parse(rawData);
               console.log('📡 Streaming update:', data);
 
-              // Handle different event types appropriately
-              if (data.type === 'text') {
-                // Text content (including thinking) - accumulate for streaming display
+              // Handle content block lifecycle events
+              if (data.type === 'content_block_start') {
+                // Create new sequential content block
+                const newBlock: ContentBlock = {
+                  id: `block-${assistantMessageId}-${Date.now()}-${contentBlocks.length}`,
+                  index: contentBlocks.length,
+                  type: 'text', // Default, will be updated based on deltas
+                  content: '',
+                  status: 'streaming',
+                  timestamp: new Date(),
+                };
+
+                // Always append sequentially
+                contentBlocks.push(newBlock);
+                console.log(`📝 Created content block ${contentBlocks.length - 1}`);
+
+                // Notify callback
+                if (contentBlockCallback) {
+                  contentBlockCallback([...contentBlocks]);
+                }
+              } else if (data.type === 'content_block_delta') {
+                // Find the last streaming block that matches the content type
+                let targetBlock: ContentBlock | null = null;
+
+                if (data.delta_type === 'thinking_delta') {
+                  // Find last streaming thinking block or create new one
+                  for (let i = contentBlocks.length - 1; i >= 0; i--) {
+                    if (
+                      contentBlocks[i].type === 'thinking' &&
+                      contentBlocks[i].status === 'streaming'
+                    ) {
+                      targetBlock = contentBlocks[i];
+                      break;
+                    }
+                  }
+
+                  if (!targetBlock) {
+                    // Create new thinking block if none exists
+                    targetBlock = {
+                      id: `thinking-${assistantMessageId}-${Date.now()}`,
+                      index: contentBlocks.length,
+                      type: 'thinking',
+                      content: '',
+                      status: 'streaming',
+                      timestamp: new Date(),
+                    };
+                    contentBlocks.push(targetBlock);
+                  }
+
+                  if (data.thinking) {
+                    targetBlock.content += data.thinking;
+                  }
+                } else if (data.delta_type === 'text_delta') {
+                  // Find last streaming text block or create new one
+                  for (let i = contentBlocks.length - 1; i >= 0; i--) {
+                    if (
+                      contentBlocks[i].type === 'text' &&
+                      contentBlocks[i].status === 'streaming'
+                    ) {
+                      targetBlock = contentBlocks[i];
+                      break;
+                    }
+                  }
+
+                  if (!targetBlock) {
+                    // Create new text block if none exists
+                    targetBlock = {
+                      id: `text-${assistantMessageId}-${Date.now()}`,
+                      index: contentBlocks.length,
+                      type: 'text',
+                      content: '',
+                      status: 'streaming',
+                      timestamp: new Date(),
+                    };
+                    contentBlocks.push(targetBlock);
+                  }
+
+                  if (data.text) {
+                    targetBlock.content += data.text;
+                  }
+                }
+
+                console.log(`📝 Updated content block: ${data.delta_type}`);
+
+                // Notify callback
+                if (contentBlockCallback) {
+                  contentBlockCallback([...contentBlocks]);
+                }
+              } else if (data.type === 'content_block_stop') {
+                // Find and finalize the last streaming block
+                let lastStreamingBlock: ContentBlock | null = null;
+                for (let i = contentBlocks.length - 1; i >= 0; i--) {
+                  if (contentBlocks[i].status === 'streaming') {
+                    lastStreamingBlock = contentBlocks[i];
+                    break;
+                  }
+                }
+
+                if (lastStreamingBlock) {
+                  // Finalize content block
+                  lastStreamingBlock.status = 'completed';
+
+                  // Auto-collapse thinking blocks immediately
+                  if (lastStreamingBlock.type === 'thinking') {
+                    lastStreamingBlock.isCollapsed = true;
+                  }
+
+                  console.log(`✅ Completed content block: ${lastStreamingBlock.type}`);
+
+                  // Notify callback
+                  if (contentBlockCallback) {
+                    contentBlockCallback([...contentBlocks]);
+                  }
+                }
+              } else if (data.type === 'tool_start') {
+                // Create tool content block inline
+                if (data.tool_name) {
+                  const toolBlock: ContentBlock = {
+                    id: `tool-${assistantMessageId}-${data.tool_name}-${Date.now()}`,
+                    index: contentBlocks.length,
+                    type: 'tool',
+                    content: `Executing ${data.tool_name}...`,
+                    status: 'streaming',
+                    timestamp: new Date(),
+                    toolName: data.tool_name,
+                  };
+
+                  contentBlocks.push(toolBlock);
+                  console.log(`🔧 Tool Started: ${data.tool_name}`);
+
+                  // Notify callback
+                  if (contentBlockCallback) {
+                    contentBlockCallback([...contentBlocks]);
+                  }
+                }
+              } else if (data.type === 'tool_complete') {
+                // Find and finalize the last streaming tool with matching name
+                if (data.tool_name) {
+                  let toolBlock: ContentBlock | null = null;
+                  for (let i = contentBlocks.length - 1; i >= 0; i--) {
+                    if (
+                      contentBlocks[i].type === 'tool' &&
+                      contentBlocks[i].toolName === data.tool_name &&
+                      contentBlocks[i].status === 'streaming'
+                    ) {
+                      toolBlock = contentBlocks[i];
+                      break;
+                    }
+                  }
+
+                  if (toolBlock) {
+                    toolBlock.status = 'completed';
+                    toolBlock.toolResult = data.result || 'Tool completed successfully';
+
+                    console.log(`✅ Tool Completed: ${data.tool_name}`);
+
+                    // Notify callback
+                    if (contentBlockCallback) {
+                      contentBlockCallback([...contentBlocks]);
+                    }
+                  }
+
+                  // Special handling for task_completed is handled by the tool result
+                }
+              } else if (data.type === 'task_summary') {
+                // Add task summary as final content block
+                if (data.summary) {
+                  const summaryBlock: ContentBlock = {
+                    id: `summary-${assistantMessageId}`,
+                    index: contentBlocks.length,
+                    type: 'text',
+                    content: `**Task Summary:**\n${data.summary}`,
+                    status: 'completed',
+                    timestamp: new Date(),
+                  };
+
+                  contentBlocks.push(summaryBlock);
+
+                  // Notify callback
+                  if (contentBlockCallback) {
+                    contentBlockCallback([...contentBlocks]);
+                  }
+                }
+              } else if (data.type === 'message_complete') {
+                // Handle message completion
+                isStreamActive = false;
+                console.log('✅ Message streaming completed');
+                break;
+              } else if (data.type === 'error') {
+                // Handle errors
+                console.error('❌ Streaming error:', data.message);
+                isStreamActive = false;
+                throw new Error(data.message || 'Streaming error');
+              } else if (data.type === 'text') {
+                // Legacy text handling for backward compatibility
                 if (data.message) {
-                  fullContent += data.message;
-                  // Call streaming callback for real-time content updates
-                  if (streamingCallback) {
-                    streamingCallback(fullContent);
+                  // Add as text block if no blocks exist
+                  if (contentBlocks.length === 0) {
+                    const textBlock: ContentBlock = {
+                      id: `legacy-text-${assistantMessageId}`,
+                      index: 0,
+                      type: 'text',
+                      content: data.message,
+                      status: 'streaming',
+                      timestamp: new Date(),
+                    };
+                    contentBlocks.push(textBlock);
+                  } else {
+                    // Append to last text block
+                    const lastBlock = contentBlocks[contentBlocks.length - 1];
+                    if (lastBlock.type === 'text') {
+                      lastBlock.content += data.message;
+                    }
+                  }
+
+                  // Notify callback
+                  if (contentBlockCallback) {
+                    contentBlockCallback([...contentBlocks]);
                   }
                 }
               } else if (data.type === 'operation_start' || data.type === 'operation_complete') {
-                // File operation events - convert to Action objects
+                // Legacy file operation events - convert to Action objects
                 if (data.file_path !== undefined && data.message && data.status) {
                   const action: Action = {
-                    type: data.operation || data.type, // Use operation name if available, fallback to type
+                    type: (data.operation as Action['type']) || 'edit',
                     path: data.file_path,
                     status: data.status as Action['status'],
                     timestamp: new Date(),
@@ -177,13 +388,11 @@ const sendMessage = async (
                     a => a.path === action.path && a.type === action.type
                   );
                   if (existingActionIndex >= 0) {
-                    // Update existing action status
                     streamingActions[existingActionIndex] = {
                       ...streamingActions[existingActionIndex],
                       ...action,
                     };
                   } else {
-                    // Add new action
                     streamingActions.push(action);
                   }
 
@@ -191,21 +400,15 @@ const sendMessage = async (
                     `🎯 File Operation: ${action.type} on ${action.path} - ${action.status}`
                   );
 
-                  // Notify actions callback for real-time UI updates
                   if (actionsCallback) {
                     actionsCallback([...streamingActions]);
                   }
                 }
               } else if (data.type === 'completed') {
-                // Handle completion
+                // Legacy completion handling
                 isStreamActive = false;
                 console.log('✅ Streaming completed');
                 break;
-              } else if (data.type === 'error') {
-                // Handle errors
-                console.error('❌ Streaming error:', data.message);
-                isStreamActive = false;
-                throw new Error(data.message || 'Streaming error');
               }
             } catch (parseError) {
               console.warn('Failed to parse streaming data:', parseError);
@@ -214,11 +417,24 @@ const sendMessage = async (
         }
       }
 
+      // Combine all content blocks for final message storage
+      let finalContent = '';
+      for (const block of contentBlocks) {
+        if (block.type === 'thinking') {
+          finalContent += `<thinking>\n${block.content}\n</thinking>\n\n`;
+        } else if (block.type === 'text') {
+          finalContent += block.content + '\n\n';
+        } else if (block.type === 'tool' && block.toolResult) {
+          // Include tool results in final content for context
+          finalContent += `[Tool: ${block.toolName}]\n${block.toolResult}\n\n`;
+        }
+      }
+
       // Return success response with assistant message ID and final actions
       return {
         message: {
           id: assistantMessageId,
-          content: fullContent,
+          content: finalContent.trim(),
           role: 'assistant',
           timestamp: new Date(),
           actions: streamingActions,
@@ -240,7 +456,7 @@ export function useSendMessage(projectId: number) {
   const [streamingState, setStreamingState] = useState({
     isStreaming: false,
     streamingActions: [] as Action[],
-    streamingContent: '',
+    streamingContentBlocks: [] as ContentBlock[],
     streamingAssistantMessageId: null as number | null,
     streamAbortController: null as AbortController | null,
   });
@@ -253,7 +469,7 @@ export function useSendMessage(projectId: number) {
       setStreamingState({
         isStreaming: false,
         streamingActions: [],
-        streamingContent: '',
+        streamingContentBlocks: [],
         streamingAssistantMessageId: null,
         streamAbortController: null,
       });
@@ -269,15 +485,15 @@ export function useSendMessage(projectId: number) {
         ...prev,
         isStreaming: true,
         streamingActions: [],
-        streamingContent: '',
+        streamingContentBlocks: [],
         streamAbortController: abortController,
       }));
 
-      // Create streaming callback that updates real-time state
-      const streamingCallback = (content: string) => {
+      // Create content block callback for real-time updates
+      const contentBlockCallback = (contentBlocks: ContentBlock[]) => {
         setStreamingState(prev => ({
           ...prev,
-          streamingContent: content,
+          streamingContentBlocks: contentBlocks,
         }));
       };
 
@@ -301,7 +517,7 @@ export function useSendMessage(projectId: number) {
         projectId,
         args.content,
         args.options,
-        streamingCallback,
+        contentBlockCallback,
         actionsCallback,
         setAssistantIdCallback,
         abortController
@@ -318,8 +534,9 @@ export function useSendMessage(projectId: number) {
       const optimisticContent = newMessage.content;
 
       // Optimistically update to the new value (just add user message)
-      queryClient.setQueryData(['messages', projectId], (old: any) => {
-        if (!old) return old;
+      queryClient.setQueryData(['messages', projectId], (old: unknown) => {
+        if (!old || typeof old !== 'object' || !('messages' in old)) return old;
+        const typedOld = old as { messages: ChatMessageProps[] };
 
         const newUserMessage: ChatMessageProps = {
           id: Date.now(),
@@ -330,8 +547,8 @@ export function useSendMessage(projectId: number) {
         };
 
         return {
-          ...old,
-          messages: [...old.messages, newUserMessage],
+          ...typedOld,
+          messages: [...typedOld.messages, newUserMessage],
         };
       });
 
@@ -348,10 +565,11 @@ export function useSendMessage(projectId: number) {
             : imageMarkdown;
 
           // Update the query data again with the image included
-          queryClient.setQueryData(['messages', projectId], (old: any) => {
-            if (!old) return old;
+          queryClient.setQueryData(['messages', projectId], (old: unknown) => {
+            if (!old || typeof old !== 'object' || !('messages' in old)) return old;
+            const typedOld = old as { messages: ChatMessageProps[] };
 
-            const updatedMessages = [...old.messages];
+            const updatedMessages = [...typedOld.messages];
             const lastMessageIndex = updatedMessages.length - 1;
 
             if (lastMessageIndex >= 0 && updatedMessages[lastMessageIndex].role === 'user') {
@@ -362,7 +580,7 @@ export function useSendMessage(projectId: number) {
             }
 
             return {
-              ...old,
+              ...typedOld,
               messages: updatedMessages,
             };
           });
@@ -400,7 +618,7 @@ export function useSendMessage(projectId: number) {
       setStreamingState({
         isStreaming: false,
         streamingActions: [],
-        streamingContent: '',
+        streamingContentBlocks: [],
         streamingAssistantMessageId: null,
         streamAbortController: null,
       });

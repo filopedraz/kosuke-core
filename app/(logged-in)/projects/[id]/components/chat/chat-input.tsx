@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowUp, Image as ImageIcon, Loader2, Paperclip, X } from 'lucide-react';
+import { ArrowUp, Image as ImageIcon, Loader2, Paperclip, Square, X } from 'lucide-react';
 import Image from 'next/image';
 import { useEffect, useRef, useState } from 'react';
 
@@ -15,6 +15,8 @@ import type { ChatInputProps } from '@/lib/types';
 export default function ChatInput({
   onSendMessage,
   isLoading = false,
+  isStreaming = false,
+  onStop,
   placeholder = 'Type a message...',
   className,
 }: ChatInputProps) {
@@ -53,6 +55,12 @@ export default function ChatInput({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // If streaming, stop the stream instead of sending
+    if (isStreaming && onStop) {
+      onStop();
+      return;
+    }
 
     if ((!message.trim() && !hasAttachment) || isLoading) return;
 
@@ -172,16 +180,20 @@ export default function ChatInput({
             <Button
               type="submit"
               size="icon"
-              variant={!message.trim() && !hasAttachment ? "outline" : "default"}
+              variant={isStreaming ? "outline" : (!message.trim() && !hasAttachment ? "outline" : "default")}
               className="h-8 w-8"
-              disabled={(!message.trim() && !hasAttachment) || isLoading}
+              disabled={!isStreaming && ((!message.trim() && !hasAttachment) || isLoading)}
             >
-              {isLoading ? (
+              {isLoading && !isStreaming ? (
                 <Loader2 className="h-5 w-5 animate-spin" />
+              ) : isStreaming ? (
+                <Square className="h-4 w-4 fill-current" />
               ) : (
                 <ArrowUp className="h-5 w-5" />
               )}
-              <span className="sr-only">Send message</span>
+              <span className="sr-only">
+                {isStreaming ? 'Stop generation' : 'Send message'}
+              </span>
             </Button>
           </div>
         </div>
