@@ -75,106 +75,38 @@ class Agent:
             print(f"⚠️ Failed to initialize agent: {e}")
             raise
 
-    async def run(self, prompt: str) -> AsyncGenerator[dict, None]:
+    async def run(self, prompt: str) -> AsyncGenerator[str, None]:
         """
-        Main agent workflow with iterative task completion
-
-        Continues working until the task is genuinely completed, not just after one iteration
+        Simplified agent workflow - just stream raw chunks from PydanticAI
         """
         print(f"🤖 Processing request for project ID: {self.project_id}")
         processing_start = time.time()
 
         try:
-            # Use PydanticAI's streaming capability
+            # Use PydanticAI's streaming capability with reasoning tokens enabled
             model_settings = {
                 "anthropic_thinking": {
                     "type": "enabled",
-                    "budget_tokens": 2048,
+                    "budget_tokens": 2048,  # Reserve tokens for reasoning
                 },
-                "max_tokens": 4096,
+                "max_tokens": 6144,  # Must be greater than thinking budget
                 "temperature": 1.0,
             }
 
-            print("🔄 Starting simplified agent run...")
-            task_completed_called = False
-
             async with self.agent.run_stream(prompt, deps=self.project_id, model_settings=model_settings) as result:
-                # Stream text content
+                # Use proven delta tracking with thinking tokens enabled
+                last_length = 0
                 async for text_chunk in result.stream(debounce_by=0.01):
-                    yield {
-                        "type": "text",
-                        "file_path": "",
-                        "message": text_chunk,
-                        "status": "pending",
-                    }
-
-                # Check for tool calls (specifically task_completed)
-                for message in result.new_messages():
-                    for part in message.parts:
-                        if hasattr(part, "tool_name"):
-                            print(f"🔧 Tool detected: {part.tool_name}")
-
-                            # Extract file_path if available
-                            file_path = ""
-                            if hasattr(part, "args") and isinstance(part.args, dict):
-                                file_path = part.args.get("file_path", "")
-
-                            if part.tool_name == "task_completed":
-                                task_completed_called = True
-                                summary = ""
-                                if hasattr(part, "args") and isinstance(part.args, dict):
-                                    summary = part.args.get("summary", "Task completed")
-
-                                yield {
-                                    "type": "completed",
-                                    "file_path": "",
-                                    "message": summary,
-                                    "status": "completed",
-                                }
-                                break
-                            else:
-                                # Regular tool - show operation events
-                                self.total_actions += 1
-                                yield {
-                                    "type": "operation_start",
-                                    "file_path": file_path,
-                                    "message": f"Executing {part.tool_name}...",
-                                    "operation": part.tool_name,
-                                    "status": "pending",
-                                }
-                                yield {
-                                    "type": "operation_completed",
-                                    "file_path": file_path,
-                                    "message": f"Completed {part.tool_name}",
-                                    "operation": part.tool_name,
-                                    "status": "completed",
-                                }
-
-                    if task_completed_called:
-                        break
-
-            # Send webhook
-            if task_completed_called:
-                await self._send_completion_webhook(success=True)
-            else:
-                yield {
-                    "type": "text",
-                    "file_path": "",
-                    "message": "\n⚠️ Agent finished without calling task_completed.",
-                    "status": "pending",
-                }
-                await self._send_completion_webhook(success=False)
+                    if len(text_chunk) > last_length:
+                        new_content = text_chunk[last_length:]
+                        last_length = len(text_chunk)
+                        yield new_content
 
         except Exception as e:
-            error_msg = f"Error in modern agent: {e}"
+            error_msg = f"Error in agent: {e}"
             print(f"❌ {error_msg}")
-            yield {
-                "type": "error",
-                "file_path": "",
-                "message": f"Agent error: {error_msg}",
-                "status": "error",
-                "error_type": "processing",
-            }
+            yield f"\n❌ Agent error: {error_msg}"
+            await self._send_completion_webhook(success=False)
 
         processing_end = time.time()
         print(f"⏱️ Total processing time: {processing_end - processing_start:.2f}s")
@@ -189,8 +121,6 @@ class Agent:
                 self.deps = project_id
 
         return SimpleContext(self.project_id)
-
-    # Simplified approach - removed complex operation history tracking
 
     async def _send_completion_webhook(self, success: bool = True):
         """Send completion webhook to Next.js"""
