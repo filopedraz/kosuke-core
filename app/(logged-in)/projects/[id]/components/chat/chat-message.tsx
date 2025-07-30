@@ -103,12 +103,31 @@ export default function ChatMessage({
         )}>
           {contentParts.map((part, i) => (
               part.type === 'text' ? (
-                // Render text content with line breaks
+                // Render regular text content with line breaks
                 part.content.split('\n').map((line, j) => (
                   <p key={`${i}-${j}`} className={line.trim() === '' ? 'h-4' : '[word-break:normal] [overflow-wrap:anywhere]'}>
                     {line}
                   </p>
                 ))
+              ) : part.type === 'thinking' ? (
+                // Render thinking content with different styling
+                <div key={i} className="my-3 relative">
+                  <div className="border-l-2 border-muted-foreground/30 pl-4 py-2 bg-muted/20 rounded-r-md">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-3 h-3 bg-muted-foreground/50 rounded-full animate-pulse"></div>
+                      <span className="text-xs font-medium text-muted-foreground/80 uppercase tracking-wide">
+                        Thinking
+                      </span>
+                    </div>
+                    <div className="text-muted-foreground/70 text-xs leading-relaxed italic">
+                      {part.content.split('\n').map((line, j) => (
+                        <p key={`thinking-${i}-${j}`} className={line.trim() === '' ? 'h-3' : '[word-break:normal] [overflow-wrap:anywhere]'}>
+                          {line}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               ) : (
                 // Render image
                 <div key={i} className="my-2 inline-block max-w-[400px]">

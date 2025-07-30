@@ -13,7 +13,7 @@ from app.core.tools import delete_file
 from app.core.tools import edit_file
 from app.core.tools import read_file
 from app.core.tools import remove_directory
-from app.models.actions import FileOperation
+from app.core.tools import task_completed
 from app.services.webhook_service import WebhookService
 from app.utils.config import settings
 
@@ -55,7 +55,7 @@ class Agent:
             # Create agent with tools but NO structured output to allow thinking blocks
             self.agent = PydanticAgent(
                 model=self.model,
-                # NO result_type - this allows thinking blocks without tool_choice conflicts
+                # NO result_type - this allows thinking blocks and tool execution
                 system_prompt=system_prompt,
                 deps_type=int,  # project_id dependency
                 tools=[
@@ -65,6 +65,7 @@ class Agent:
                     delete_file,
                     create_directory,
                     remove_directory,
+                    task_completed,
                 ],
                 instrument=True,  # Langfuse instrumentation
             )
@@ -74,7 +75,7 @@ class Agent:
             print(f"⚠️ Failed to initialize agent: {e}")
             raise
 
-    async def run(self, prompt: str) -> AsyncGenerator[dict, None]:
+    async def run(self, prompt: str, chat_history: list | None = None) -> AsyncGenerator[dict, None]:
         """
         Main agent workflow with iterative task completion
 
@@ -82,84 +83,85 @@ class Agent:
         """
         print(f"🤖 Processing request for project ID: {self.project_id}")
         processing_start = time.time()
-        
-        max_iterations = 5  # Prevent infinite loops
-        iteration = 0
-        original_prompt = prompt
-        
+
         try:
-            yield {
-                "type": "thinking_start",
-                "file_path": "",
-                "message": "Starting to think about your request...",
-                "status": "pending",
+            # Use PydanticAI's streaming capability to capture thinking blocks
+            model_settings = {
+                "anthropic_thinking": {
+                    "type": "enabled",
+                    "budget_tokens": 2048,  # Allocate tokens for thinking
+                },
+                "max_tokens": 4096,
+                "temperature": 1.0,  # Required to be 1.0 when thinking is enabled
             }
 
-            # Main workflow loop - continue until task is completed or max iterations reached
-            while iteration < max_iterations:
-                iteration += 1
-                print(f"🔄 Agent iteration {iteration}/{max_iterations}")
-                
-                yield {
-                    "type": "text",
-                    "file_path": "",
-                    "message": f"\n🔄 Working on this task (iteration {iteration})...\n",
-                    "status": "pending",
-                }
+            print("🔄 Starting agent conversation...")
+            task_completed_called = False
 
-                # Use PydanticAI's streaming capability to capture thinking blocks
-                model_settings = {
-                    "anthropic_thinking": {
-                        "type": "enabled",
-                        "budget_tokens": 2048,  # Allocate tokens for thinking
-                    },
-                    "max_tokens": 4096,
-                    "temperature": 1.0,  # Required to be 1.0 when thinking is enabled
-                }
-                
-                # On first iteration, use original prompt. On subsequent iterations, check completion
-                if iteration == 1:
-                    current_prompt = original_prompt
-                else:
-                    current_prompt = f"""Continue working on this task: {original_prompt}
+            # Try single-turn approach first - let the agent continue naturally
+            async with self.agent.run_stream(prompt, deps=self.project_id, model_settings=model_settings) as result:
+                # Stream text content (includes thinking blocks when enabled)
+                async for text_chunk in result.stream(debounce_by=0.01):
+                    yield {
+                        "type": "text",
+                        "file_path": "",
+                        "message": text_chunk,
+                        "status": "pending",
+                    }
 
-Previous iterations have been completed. Please check if the task is fully completed.
-If not, continue working on it. If it is completed, provide a final summary.
+                # Debug: Check what messages and parts we're getting
+                print(f"🔍 Debug: Found {len(result.new_messages())} new messages")
 
-Focus on:
-1. Verifying the task requirements are met
-2. Making any remaining necessary changes
-3. Confirming everything is working as expected"""
+                # Check if tools were used by looking at new messages
+                for message_idx, message in enumerate(result.new_messages()):
+                    print(
+                        f"🔍 Message {message_idx}: role={getattr(message, 'role', 'unknown')}, "
+                        f"parts count={len(message.parts)}"
+                    )
 
-                async with self.agent.run_stream(current_prompt, deps=self.project_id, model_settings=model_settings) as result:
-                    text_content = ""
-                    tool_calls_made = False
+                    for part_idx, part in enumerate(message.parts):
+                        print(f"🔍 Part {part_idx}: type={type(part).__name__}")
 
-                    # Stream text content (includes thinking blocks when enabled)
-                    async for text_chunk in result.stream(debounce_by=0.01):
-                        text_content += text_chunk
-                        yield {
-                            "type": "text",
-                            "file_path": "",
-                            "message": text_chunk,
-                            "status": "pending",
-                        }
+                        # Check if this is a tool call
+                        if hasattr(part, "tool_name"):  # Tool call detected
+                            print(f"🔧 Tool call detected: {part.tool_name}")
 
-                    # Check if tools were used by looking at new messages
-                    for message in result.new_messages():
-                        for part in message.parts:
-                            if hasattr(part, "tool_name"):  # Tool call detected
-                                tool_calls_made = True
-                                # Safely extract file_path from args
-                                file_path = ""
+                            # Safely extract file_path from args
+                            file_path = ""
+                            if hasattr(part, "args") and isinstance(part.args, dict):
+                                file_path = part.args.get("file_path", "")
+                            elif hasattr(part, "args_as_dict"):
+                                try:
+                                    args_dict = part.args_as_dict()
+                                    file_path = args_dict.get("file_path", "")
+                                except Exception as e:
+                                    print(f"Warning: Could not extract file_path from tool args: {e}")
+
+                            # Check if this is the task_completed tool
+                            if part.tool_name == "task_completed":
+                                task_completed_called = True
+                                print("✅ Task completion detected via tool call")
+                                # Extract summary from tool args
+                                summary = ""
                                 if hasattr(part, "args") and isinstance(part.args, dict):
-                                    file_path = part.args.get("file_path", "")
+                                    summary = part.args.get("summary", "Task completed")
                                 elif hasattr(part, "args_as_dict"):
                                     try:
                                         args_dict = part.args_as_dict()
-                                        file_path = args_dict.get("file_path", "")
-                                    except Exception as e:
-                                        print(f"Warning: Could not extract file_path from tool args: {e}")
+                                        summary = args_dict.get("summary", "Task completed")
+                                    except Exception:
+                                        summary = "Task completed"
+
+                                yield {
+                                    "type": "completed",
+                                    "file_path": "",
+                                    "message": summary,
+                                    "status": "completed",
+                                }
+                            else:
+                                # Regular tool call - tools execute automatically in PydanticAI
+                                self.total_actions += 1  # Track total actions
+
                                 yield {
                                     "type": "operation_start",
                                     "file_path": file_path,
@@ -168,93 +170,36 @@ Focus on:
                                     "status": "pending",
                                 }
 
-                                # Also yield operation complete for this tool
+                                # Tool has already been executed by PydanticAI at this point
                                 yield {
-                                    "type": "operation_complete",
+                                    "type": "operation_completed",
                                     "file_path": file_path,
                                     "message": f"Completed {part.tool_name}",
                                     "operation": part.tool_name,
                                     "status": "completed",
                                 }
 
-                # Check if this iteration suggests the task is complete
-                # If no tools were used and the response indicates completion, we can stop
-                if not tool_calls_made and iteration > 1:
-                    # Check if the response indicates task completion
-                    completion_indicators = ["completed", "finished", "done", "task is complete", "successfully implemented"]
-                    if any(indicator in text_content.lower() for indicator in completion_indicators):
-                        print(f"✅ Task appears completed after iteration {iteration}")
-                        break
-                
-                # Continue to next iteration if we used tools or this is the first iteration
-                if tool_calls_made or iteration == 1:
-                    yield {
-                        "type": "text",
-                        "file_path": "",
-                        "message": f"\n✅ Iteration {iteration} completed. Checking if more work is needed...\n",
-                        "status": "pending",
-                    }
-                    continue
-                else:
-                    # No tools used and not first iteration - likely done
-                    break
+                        # Check if this is a tool return (result of tool execution)
+                        elif hasattr(part, "content") and hasattr(part, "tool_call_id"):
+                            print(f"🔧 Tool result detected for call_id: {getattr(part, 'tool_call_id', 'unknown')}")
+                            # This is the result of a tool call - already processed above
 
-            # Show completion message
-            completion_msg = f"Task completed after {iteration} iteration(s)"
-            if iteration >= max_iterations:
-                completion_msg += f" (reached maximum iterations)"
-            completion_msg += "!"
-
-            # Send completion
-            yield {
-                "type": "completed",
-                "file_path": "",
-                "message": completion_msg,
-                "status": "completed",
-            }
-
-            # Send completion webhook
-            await self._send_completion_webhook(success=True)
+            # Send completion webhook if task was completed
+            if task_completed_called:
+                await self._send_completion_webhook(success=True)
+            else:
+                print("⚠️ Agent finished without calling task_completed")
 
         except Exception as e:
             error_msg = f"Error in modern agent: {e}"
             print(f"❌ {error_msg}")
-
-            # Try fallback to non-streaming approach
-            try:
-                model_settings = {
-                    "anthropic_thinking": {
-                        "type": "enabled",
-                        "budget_tokens": 2048,  # Allocate tokens for thinking
-                    },
-                    "max_tokens": 4096,
-                    "temperature": 1.0,  # Required to be 1.0 when thinking is enabled
-                }
-                result = await self.agent.run(prompt, deps=self.project_id, model_settings=model_settings)
-
-                # Handle fallback result - just get the text response
-                if result and result.data:
-                    yield {
-                        "type": "text",
-                        "file_path": "",
-                        "message": str(result.data),
-                        "status": "pending",
-                    }
-
-                yield {
-                    "type": "completed",
-                    "file_path": "",
-                    "message": "Response completed via fallback method!",
-                    "status": "completed",
-                }
-            except Exception as fallback_error:
-                yield {
-                    "type": "error",
-                    "file_path": "",
-                    "message": f"Agent error: {fallback_error}",
-                    "status": "error",
-                    "error_type": "processing",
-                }
+            yield {
+                "type": "error",
+                "file_path": "",
+                "message": f"Agent error: {error_msg}",
+                "status": "error",
+                "error_type": "processing",
+            }
 
         processing_end = time.time()
         print(f"⏱️ Total processing time: {processing_end - processing_start:.2f}s")
@@ -269,78 +214,6 @@ Focus on:
                 self.deps = project_id
 
         return SimpleContext(self.project_id)
-
-    async def _execute_structured_actions(self, actions: list[FileOperation]) -> AsyncGenerator[dict, None]:
-        """Execute structured actions from Pydantic AI response with operation events"""
-        print(f"🔄 Executing {len(actions)} structured actions")
-
-        for i, action in enumerate(actions):
-            print(f"⏳ Executing action {i+1}/{len(actions)}: {action.operation} on {action.file_path}")
-
-            # Send operation start event
-            yield {
-                "type": "operation_start",
-                "file_path": action.file_path,
-                "message": f"Starting {action.operation} operation",
-                "status": "pending",
-                "operation": action.operation,
-            }
-
-            try:
-                success = False
-                ctx = self._create_context()
-
-                # Execute based on operation type
-                if action.operation == "read":
-                    await read_file(ctx, action.file_path)
-                    success = True
-                elif action.operation == "edit":
-                    await edit_file(ctx, action.file_path, action.content or "")
-                    success = True
-                elif action.operation == "create":
-                    await create_file(ctx, action.file_path, action.content or "")
-                    success = True
-                elif action.operation == "delete":
-                    await delete_file(ctx, action.file_path)
-                    success = True
-                elif action.operation == "createDir":
-                    await create_directory(ctx, action.file_path)
-                    success = True
-                elif action.operation == "removeDir":
-                    await remove_directory(ctx, action.file_path)
-                    success = True
-
-                if success:
-                    # Send webhook for successful action
-                    async with self.webhook_service as webhook:
-                        await webhook.send_action(
-                            project_id=self.project_id,
-                            action_type=action.operation,
-                            path=action.file_path,
-                            status="completed",
-                        )
-
-                    self.total_actions += 1
-
-                    # Send operation completion event
-                    yield {
-                        "type": "operation_complete",
-                        "file_path": action.file_path,
-                        "message": action.reasoning,
-                        "status": "completed",
-                        "operation": action.operation,
-                    }
-                else:
-                    raise Exception(f"Unknown operation: {action.operation}")
-
-            except Exception as e:
-                yield {
-                    "type": "error",
-                    "file_path": action.file_path,
-                    "message": f"Failed to {action.operation}: {e}",
-                    "status": "error",
-                }
-                return
 
     async def _send_completion_webhook(self, success: bool = True):
         """Send completion webhook to Next.js"""

@@ -87,6 +87,26 @@ async def remove_directory(ctx: RunContext[int], dir_path: str) -> str:
         raise Exception(f"Failed to remove directory {dir_path}: {e}") from e
 
 
+async def task_completed(ctx: RunContext[int], summary: str, files_modified: list[str] | None = None) -> str:
+    """
+    Call this tool when the task is completely finished.
+
+    Args:
+        summary: A detailed summary of what was accomplished and changes made
+        files_modified: List of files that were created, edited, or deleted (optional)
+    """
+    try:
+        print(f"✅ Task completed! Summary: {summary}")
+        if files_modified:
+            print(f"📁 Files modified: {', '.join(files_modified)}")
+
+        # This tool call signals completion to the agent
+        return f"Task completed successfully! Summary: {summary}"
+    except Exception as e:
+        print(f"❌ Error in task_completed: {e}")
+        return f"Task completion recorded with error: {e}"
+
+
 # Export all tools for easy importing
 __all__ = [
     "read_file",
@@ -95,4 +115,5 @@ __all__ = [
     "delete_file",
     "create_directory",
     "remove_directory",
+    "task_completed",
 ]

@@ -429,6 +429,17 @@ export async function POST(
     void includeContext;
     void contextFiles;
 
+    // Get chat history for this project to send to agent
+    const chatHistory = await getChatHistoryByProjectId(projectId, { oldest: true });
+
+    // Convert chat history to format expected by agent
+    const formattedChatHistory = chatHistory.map(msg => ({
+      role: msg.role,
+      content: msg.content || '',
+    }));
+
+    console.log(`📝 Sending ${formattedChatHistory.length} previous messages to agent as context`);
+
     const response = await fetch(`${agentServiceUrl}/api/chat/stream`, {
       method: 'POST',
       headers: {
@@ -437,6 +448,7 @@ export async function POST(
       body: JSON.stringify({
         project_id: projectId,
         prompt: messageContent,
+        chat_history: formattedChatHistory,
       }),
     });
 

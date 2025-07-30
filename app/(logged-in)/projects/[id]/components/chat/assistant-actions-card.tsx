@@ -1,6 +1,5 @@
 'use client';
 
-import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { Check, EyeIcon, FileIcon, FolderIcon, FolderMinusIcon, FolderPlusIcon, Loader2, PencilIcon, Search } from 'lucide-react';
 import { useEffect } from 'react';
@@ -94,48 +93,91 @@ export default function AssistantActionsCard({
 
   return (
     <div className={cn("w-full mt-3 space-y-1 rounded-md", className)}>
-      <div className="max-h-[210px] overflow-y-auto">
+      <div className="max-h-[210px] overflow-y-auto space-y-1">
         {sortedOperations.map((op, index) => (
-          <Card
+          <div
             key={`${op.path}-${index}`}
-            className="bg-muted/50 border-muted-foreground/50 mb-1"
+            className={cn(
+              "bg-muted/30 border border-border/50 rounded-md p-2.5 transition-all duration-200",
+              op.status === 'pending' && "bg-blue-50/50 border-blue-200/50 dark:bg-blue-950/20 dark:border-blue-800/30",
+              op.status === 'completed' && "bg-green-50/50 border-green-200/50 dark:bg-green-950/20 dark:border-green-800/30",
+              op.status === 'error' && "bg-red-50/50 border-red-200/50 dark:bg-red-950/20 dark:border-red-800/30"
+            )}
           >
-            <CardContent className="p-2.5 flex items-center justify-between text-xs">
-              <div className="flex items-center gap-1.5 truncate max-w-[70%]">
-                {op.status === 'pending' ? (
-                  <Loader2 className="h-3.5 w-3.5 text-foreground animate-spin flex-shrink-0" />
-                ) : op.status === 'error' ? (
-                  <FileIcon className="h-3.5 w-3.5 text-foreground flex-shrink-0" />
-                ) : op.type === 'search' ? (
-                  <Search className="h-3.5 w-3.5 text-foreground flex-shrink-0" />
-                ) : op.type === 'createDir' ? (
-                  <FolderPlusIcon className="h-3.5 w-3.5 text-foreground flex-shrink-0" />
-                ) : op.type === 'removeDir' ? (
-                  <FolderMinusIcon className="h-3.5 w-3.5 text-foreground flex-shrink-0" />
-                ) : op.type === 'create' && op.path.indexOf('.') === -1 ? (
-                  <FolderIcon className="h-3.5 w-3.5 text-foreground flex-shrink-0" />
-                ) : op.type === 'read' ? (
-                  <EyeIcon className="h-3.5 w-3.5 text-foreground flex-shrink-0" />
-                ) : op.type === 'edit' ? (
-                  <PencilIcon className="h-3.5 w-3.5 text-foreground flex-shrink-0" />
-                ) : (
-                  <Check className="h-3.5 w-3.5 text-foreground flex-shrink-0" />
-                )}
-                <span className="truncate text-foreground break-words">{op.path}</span>
+            <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center gap-2 truncate max-w-[75%]">
+                <div className="flex-shrink-0">
+                  {op.status === 'pending' ? (
+                    <div className="relative">
+                      <Loader2 className="h-3.5 w-3.5 text-blue-500 animate-spin" />
+                    </div>
+                  ) : op.status === 'error' ? (
+                    <div className="h-3.5 w-3.5 bg-red-500 rounded-full flex items-center justify-center">
+                      <span className="text-white text-[8px] font-bold">✗</span>
+                    </div>
+                  ) : op.status === 'completed' ? (
+                    <div className="h-3.5 w-3.5 bg-green-500 rounded-full flex items-center justify-center">
+                      <Check className="h-2 w-2 text-white" />
+                    </div>
+                  ) : op.type === 'search' ? (
+                    <Search className="h-3.5 w-3.5 text-muted-foreground" />
+                  ) : op.type === 'createDir' || op.type === 'operation_start' ? (
+                    <FolderPlusIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                  ) : op.type === 'removeDir' ? (
+                    <FolderMinusIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                  ) : op.type === 'create' && op.path.indexOf('.') === -1 ? (
+                    <FolderIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                  ) : op.type === 'read' ? (
+                    <EyeIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                  ) : op.type === 'edit' || op.type === 'operation_complete' ? (
+                    <PencilIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                  ) : (
+                    <FileIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                  )}
+                </div>
+
+                <div className="truncate">
+                  <div className="font-medium text-foreground truncate">
+                    {op.path.split('/').pop() || op.path}
+                  </div>
+                  {op.path.includes('/') && (
+                    <div className="text-[10px] text-muted-foreground/80 truncate">
+                      {op.path.split('/').slice(0, -1).join('/')}
+                    </div>
+                  )}
+                </div>
               </div>
-              <div className="text-muted-foreground text-xs flex-shrink-0 ml-2">
-                {op.type === 'createDir' ? 'Created Directory' :
-                  op.type === 'removeDir' ? 'Removed Directory' :
-                  op.type === 'create' && op.path.indexOf('.') === -1 ? 'Created Directory' :
-                  op.type === 'create' ? 'Generated' :
-                  op.type === 'edit' ? 'Edited' :
-                  op.type === 'delete' ? 'Deleted' :
-                  op.type === 'read' ? 'Read' :
-                  op.type === 'search' ? 'Searched' : 'Unknown Action'}
-                {op.status === 'pending' && <span className="ml-1 opacity-70">(in progress)</span>}
+
+              <div className="flex-shrink-0 ml-2 text-right">
+                <div className={cn(
+                  "text-[10px] font-medium",
+                  op.status === 'pending' && "text-blue-600 dark:text-blue-400",
+                  op.status === 'completed' && "text-green-600 dark:text-green-400",
+                  op.status === 'error' && "text-red-600 dark:text-red-400",
+                  !op.status && "text-muted-foreground"
+                )}>
+                  {op.status === 'pending' ? 'In Progress' :
+                   op.status === 'completed' ? 'Completed' :
+                   op.status === 'error' ? 'Failed' :
+                   op.type === 'createDir' ? 'Created Dir' :
+                   op.type === 'removeDir' ? 'Removed Dir' :
+                   op.type === 'create' && op.path.indexOf('.') === -1 ? 'Created Dir' :
+                   op.type === 'create' ? 'Generated' :
+                   op.type === 'edit' ? 'Edited' :
+                   op.type === 'delete' ? 'Deleted' :
+                   op.type === 'read' ? 'Read' :
+                   op.type === 'search' ? 'Searched' : 'Unknown'}
+                </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+
+            {/* Progress bar for pending operations */}
+            {op.status === 'pending' && (
+              <div className="mt-2 w-full bg-muted-foreground/20 rounded-full h-1">
+                <div className="bg-blue-500 h-1 rounded-full animate-pulse" style={{ width: '60%' }}></div>
+              </div>
+            )}
+          </div>
         ))}
       </div>
     </div>

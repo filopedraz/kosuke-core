@@ -150,55 +150,62 @@ const sendMessage = async (
               const data: StreamingEvent = JSON.parse(rawData);
               console.log('📡 Streaming update:', data);
 
-              // Parse Python agent events into Action objects for real-time display
-              if (data.type && data.file_path !== undefined && data.message && data.status) {
-                // Convert Python agent event to Action object
-                const action: Action = {
-                  type: data.type as Action['type'],
-                  path: data.file_path,
-                  status: data.status as Action['status'],
-                  timestamp: new Date(),
-                  messageId: assistantMessageId,
-                  content: data.message,
-                };
-
-                // Update actions array for real-time display
-                const existingActionIndex = streamingActions.findIndex(
-                  a => a.type === action.type && a.path === action.path
-                );
-                if (existingActionIndex >= 0) {
-                  // Update existing action
-                  streamingActions[existingActionIndex] = action;
-                } else {
-                  // Add new action
-                  streamingActions.push(action);
-                }
-
-                console.log(
-                  `🎯 Created Action: ${action.type} on ${action.path} - ${action.status}`
-                );
-
-                // Notify actions callback for real-time UI updates
-                if (actionsCallback) {
-                  actionsCallback([...streamingActions]);
-                }
-
-                // Accumulate content for display
+              // Handle different event types appropriately
+              if (data.type === 'text') {
+                // Text content (including thinking) - accumulate for streaming display
                 if (data.message) {
-                  fullContent += data.message + '\n';
+                  fullContent += data.message;
+                  // Call streaming callback for real-time content updates
+                  if (streamingCallback) {
+                    streamingCallback(fullContent);
+                  }
                 }
-              }
+              } else if (data.type === 'operation_start' || data.type === 'operation_complete') {
+                // File operation events - convert to Action objects
+                if (data.file_path !== undefined && data.message && data.status) {
+                  const action: Action = {
+                    type: data.operation || data.type, // Use operation name if available, fallback to type
+                    path: data.file_path,
+                    status: data.status as Action['status'],
+                    timestamp: new Date(),
+                    messageId: assistantMessageId,
+                    content: data.message,
+                  };
 
-              // Handle completion
-              if (data.type === 'completed') {
+                  // Update actions array for real-time display
+                  const existingActionIndex = streamingActions.findIndex(
+                    a => a.path === action.path && a.type === action.type
+                  );
+                  if (existingActionIndex >= 0) {
+                    // Update existing action status
+                    streamingActions[existingActionIndex] = {
+                      ...streamingActions[existingActionIndex],
+                      ...action,
+                    };
+                  } else {
+                    // Add new action
+                    streamingActions.push(action);
+                  }
+
+                  console.log(
+                    `🎯 File Operation: ${action.type} on ${action.path} - ${action.status}`
+                  );
+
+                  // Notify actions callback for real-time UI updates
+                  if (actionsCallback) {
+                    actionsCallback([...streamingActions]);
+                  }
+                }
+              } else if (data.type === 'completed') {
+                // Handle completion
                 isStreamActive = false;
                 console.log('✅ Streaming completed');
                 break;
-              }
-
-              // Call streaming callback for UI updates with accumulated content
-              if (streamingCallback) {
-                streamingCallback(fullContent);
+              } else if (data.type === 'error') {
+                // Handle errors
+                console.error('❌ Streaming error:', data.message);
+                isStreamActive = false;
+                throw new Error(data.message || 'Streaming error');
               }
             } catch (parseError) {
               console.warn('Failed to parse streaming data:', parseError);

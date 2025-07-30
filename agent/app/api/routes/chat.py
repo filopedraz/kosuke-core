@@ -30,7 +30,7 @@ async def chat_stream(request: ChatRequest) -> StreamingResponse:
             agent = Agent(request.project_id)
 
             # Stream updates from the agent
-            async for update in agent.run(request.prompt):
+            async for update in agent.run(request.prompt, request.chat_history):
                 # Format as Server-Sent Events
                 data = json.dumps(update, default=str)  # default=str handles any enum values
                 yield f"data: {data}\n\n"

@@ -92,12 +92,22 @@ export default function ChatInterface({
     });
   }, [userPromise]);
 
+  // State for immediate loading feedback
+  const [isGenerating, setIsGenerating] = useState(false);
+
   // Handle send errors
   useEffect(() => {
     if (sendError) {
       handleMutationError(sendError);
     }
   }, [sendError, handleMutationError]);
+
+  // Clear generating state when streaming starts
+  useEffect(() => {
+    if (isStreaming || streamingContent || streamingAssistantMessageId) {
+      setIsGenerating(false);
+    }
+  }, [isStreaming, streamingContent, streamingAssistantMessageId]);
 
   // Scroll to bottom when messages change or streaming updates
   useEffect(() => {
@@ -119,6 +129,9 @@ export default function ChatInterface({
     options?: { includeContext?: boolean; contextFiles?: string[]; imageFile?: File }
   ) => {
     if (!content.trim() && !options?.imageFile) return;
+
+    // Show immediate loading state
+    setIsGenerating(true);
 
     // Clear error state
     clearError();
@@ -225,9 +238,41 @@ export default function ChatInterface({
                 />
               ))}
 
+              {/* Immediate loading state - shows before streaming starts */}
+              {isGenerating && !isStreaming && !streamingContent && (
+                <div className="flex w-full max-w-[95%] mx-auto gap-3 p-4 animate-in fade-in-0 duration-200">
+                  {/* Avatar */}
+                  <div className="relative flex items-center justify-center h-8 w-8">
+                    <div className="bg-muted border-primary rounded-none flex items-center justify-center h-full w-full">
+                      <div className="h-6 w-6 text-primary">
+                        <svg viewBox="0 0 24 24" fill="currentColor" className="animate-spin">
+                          <circle cx="12" cy="12" r="3" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Loading content */}
+                  <div className="flex-1 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <h4>AI Assistant</h4>
+                      <time className="text-xs text-muted-foreground">now</time>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <div className="flex space-x-1">
+                        <div className="w-2 h-2 bg-primary rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                        <div className="w-2 h-2 bg-primary rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                        <div className="w-2 h-2 bg-primary rounded-full animate-bounce"></div>
+                      </div>
+                      <span className="animate-pulse">Generating response...</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Real-time streaming assistant message */}
               {isStreaming && streamingAssistantMessageId && (
-                <>
+                <div className="animate-in fade-in-0 duration-300">
                   <ChatMessage
                     key={`streaming-${streamingAssistantMessageId}`}
                     id={streamingAssistantMessageId}
@@ -253,37 +298,48 @@ export default function ChatInterface({
                       Cancel Generation
                     </button>
                   </div>
-                </>
+                </div>
               )}
             </>
           )}
 
           {/* Error states */}
           {isError && errorMessage !== 'LIMIT_REACHED' && (
-            <div className="p-4 m-4 text-sm text-center bg-card border border-destructive/30 rounded-md">
-              <div className="flex items-center justify-center gap-2 text-destructive mb-2">
-                <AlertTriangle className="h-5 w-5" />
-                <p className="font-medium">
-                  {getErrorMessage(errorType)}
-                </p>
+            <div className="w-full max-w-[95%] mx-auto p-4">
+              <div className="bg-destructive/5 border border-destructive/20 rounded-lg p-4 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <div className="p-1 bg-destructive/10 rounded-full">
+                    <AlertTriangle className="h-4 w-4 text-destructive" />
+                  </div>
+                  <div className="flex-1 space-y-3">
+                    <div>
+                      <h4 className="text-sm font-medium text-destructive mb-1">
+                        Something went wrong
+                      </h4>
+                      <p className="text-sm text-muted-foreground">
+                        {getErrorMessage(errorType)}
+                      </p>
+                    </div>
+                    <button
+                      onClick={handleRegenerate}
+                      disabled={isRegenerating}
+                      className="inline-flex items-center gap-2 px-3 py-1.5 text-xs bg-destructive hover:bg-destructive/90 text-destructive-foreground rounded-md transition-colors disabled:opacity-50"
+                    >
+                      {isRegenerating ? (
+                        <>
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          Regenerating...
+                        </>
+                      ) : (
+                        <>
+                          <RefreshCcw className="h-3 w-3" />
+                          Try Again
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
               </div>
-              <button
-                onClick={handleRegenerate}
-                disabled={isRegenerating}
-                className="mt-1 px-3 py-1.5 text-xs bg-primary hover:bg-primary/80 text-primary-foreground rounded-md transition-colors flex items-center gap-1 mx-auto"
-              >
-                {isRegenerating ? (
-                  <>
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                    Regenerating...
-                  </>
-                ) : (
-                  <>
-                    <RefreshCcw className="h-3 w-3" />
-                    Regenerate Response
-                  </>
-                )}
-              </button>
             </div>
           )}
 
