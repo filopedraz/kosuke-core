@@ -384,7 +384,7 @@ class KosukeCLI:
         return f"{emoji} {message_content}"
 
     async def _handle_chat_response(self, project_id: int, prompt: str):
-        """Handle streaming chat response with enhanced event display"""
+        """Handle streaming chat response with simple message display"""
         self.console.print("\n🤖 [bold blue]Agent Response:[/bold blue]")
 
         async for update in self.client.chat_stream(project_id, prompt):
@@ -401,24 +401,26 @@ class KosukeCLI:
             emoji = self._get_message_emoji(message_type)
             display_message = self._format_display_message(emoji, message_content, file_path, status, message_type)
 
-            # Print each message immediately for real-time streaming
+            # Print all messages immediately as they arrive
             if display_message.strip():
-                # Add extra spacing for thinking/reasoning sections
+                # Add some spacing for better readability
                 if message_type in ["thinking_start", "reasoning_start"]:
-                    self.console.print()  # Extra line before new sections
+                    self.console.print()  # Extra line before sections
 
                 self.console.print(f"  {display_message}")
 
-                # Add extra spacing after thinking/reasoning content
+                # Add extra spacing after long content
                 if message_type in ["thinking_content", "reasoning_content"] and len(message_content) > 100:
-                    self.console.print()  # Extra line after long content
+                    self.console.print()
 
             # Check if completed
             if message_type == "completed":
-                # Show preview status after completion
-                self.console.print()
-                await self._show_preview_status(project_id)
+                self.console.print("\n✅ [green]Response completed![/green]")
                 break
+
+        # Show preview status after completion
+        self.console.print()
+        await self._show_preview_status(project_id)
 
     async def _show_preview_status(self, project_id: int):
         """Show current preview status and URL"""

@@ -76,13 +76,17 @@ class Agent:
 
     async def run(self, prompt: str) -> AsyncGenerator[dict, None]:
         """
-        Main agent workflow with native Pydantic AI streaming and thinking blocks
+        Main agent workflow with iterative task completion
 
-        Uses streaming to capture thinking, reasoning, and actions in real-time
+        Continues working until the task is genuinely completed, not just after one iteration
         """
         print(f"🤖 Processing request for project ID: {self.project_id}")
         processing_start = time.time()
-
+        
+        max_iterations = 5  # Prevent infinite loops
+        iteration = 0
+        original_prompt = prompt
+        
         try:
             yield {
                 "type": "thinking_start",
@@ -91,55 +95,114 @@ class Agent:
                 "status": "pending",
             }
 
-            # Use PydanticAI's streaming capability to capture thinking blocks
-            model_settings = {
-                "anthropic_thinking": {
-                    "type": "enabled",
-                    "budget_tokens": 2048,  # Allocate tokens for thinking
-                },
-                "max_tokens": 4096,
-                "temperature": 1.0,  # Required to be 1.0 when thinking is enabled
-            }
-            async with self.agent.run_stream(prompt, deps=self.project_id, model_settings=model_settings) as stream:
-                thinking_content = ""
-                text_content = ""
-                tool_calls_made = False
+            # Main workflow loop - continue until task is completed or max iterations reached
+            while iteration < max_iterations:
+                iteration += 1
+                print(f"🔄 Agent iteration {iteration}/{max_iterations}")
+                
+                yield {
+                    "type": "text",
+                    "file_path": "",
+                    "message": f"\n🔄 Working on this task (iteration {iteration})...\n",
+                    "status": "pending",
+                }
 
-                async for chunk in stream:
-                    # Handle thinking blocks from PydanticAI
-                    if hasattr(chunk, "thinking") and chunk.thinking:
-                        thinking_content += chunk.thinking
-                        yield {
-                            "type": "thinking_content",
-                            "file_path": "",
-                            "message": chunk.thinking,
-                            "status": "pending",
-                        }
+                # Use PydanticAI's streaming capability to capture thinking blocks
+                model_settings = {
+                    "anthropic_thinking": {
+                        "type": "enabled",
+                        "budget_tokens": 2048,  # Allocate tokens for thinking
+                    },
+                    "max_tokens": 4096,
+                    "temperature": 1.0,  # Required to be 1.0 when thinking is enabled
+                }
+                
+                # On first iteration, use original prompt. On subsequent iterations, check completion
+                if iteration == 1:
+                    current_prompt = original_prompt
+                else:
+                    current_prompt = f"""Continue working on this task: {original_prompt}
 
-                    # Handle text content
-                    if hasattr(chunk, "text") and chunk.text:
-                        text_content += chunk.text
+Previous iterations have been completed. Please check if the task is fully completed.
+If not, continue working on it. If it is completed, provide a final summary.
+
+Focus on:
+1. Verifying the task requirements are met
+2. Making any remaining necessary changes
+3. Confirming everything is working as expected"""
+
+                async with self.agent.run_stream(current_prompt, deps=self.project_id, model_settings=model_settings) as result:
+                    text_content = ""
+                    tool_calls_made = False
+
+                    # Stream text content (includes thinking blocks when enabled)
+                    async for text_chunk in result.stream(debounce_by=0.01):
+                        text_content += text_chunk
                         yield {
                             "type": "text",
                             "file_path": "",
-                            "message": chunk.text,
+                            "message": text_chunk,
                             "status": "pending",
                         }
 
-                    # Handle tool calls (PydanticAI automatically executes them)
-                    if hasattr(chunk, "tool_call"):
-                        tool_calls_made = True
-                        # Note: Tool execution events will be handled by the tools themselves
+                    # Check if tools were used by looking at new messages
+                    for message in result.new_messages():
+                        for part in message.parts:
+                            if hasattr(part, "tool_name"):  # Tool call detected
+                                tool_calls_made = True
+                                # Safely extract file_path from args
+                                file_path = ""
+                                if hasattr(part, "args") and isinstance(part.args, dict):
+                                    file_path = part.args.get("file_path", "")
+                                elif hasattr(part, "args_as_dict"):
+                                    try:
+                                        args_dict = part.args_as_dict()
+                                        file_path = args_dict.get("file_path", "")
+                                    except Exception as e:
+                                        print(f"Warning: Could not extract file_path from tool args: {e}")
+                                yield {
+                                    "type": "operation_start",
+                                    "file_path": file_path,
+                                    "message": f"Executing {part.tool_name}...",
+                                    "operation": part.tool_name,
+                                    "status": "pending",
+                                }
 
-                # Stream completed
-                await stream.get_output()  # Ensure stream is fully consumed
+                                # Also yield operation complete for this tool
+                                yield {
+                                    "type": "operation_complete",
+                                    "file_path": file_path,
+                                    "message": f"Completed {part.tool_name}",
+                                    "operation": part.tool_name,
+                                    "status": "completed",
+                                }
+
+                # Check if this iteration suggests the task is complete
+                # If no tools were used and the response indicates completion, we can stop
+                if not tool_calls_made and iteration > 1:
+                    # Check if the response indicates task completion
+                    completion_indicators = ["completed", "finished", "done", "task is complete", "successfully implemented"]
+                    if any(indicator in text_content.lower() for indicator in completion_indicators):
+                        print(f"✅ Task appears completed after iteration {iteration}")
+                        break
+                
+                # Continue to next iteration if we used tools or this is the first iteration
+                if tool_calls_made or iteration == 1:
+                    yield {
+                        "type": "text",
+                        "file_path": "",
+                        "message": f"\n✅ Iteration {iteration} completed. Checking if more work is needed...\n",
+                        "status": "pending",
+                    }
+                    continue
+                else:
+                    # No tools used and not first iteration - likely done
+                    break
 
             # Show completion message
-            completion_msg = "Response completed"
-            if thinking_content:
-                completion_msg += " with thinking analysis"
-            if tool_calls_made:
-                completion_msg += " and file operations"
+            completion_msg = f"Task completed after {iteration} iteration(s)"
+            if iteration >= max_iterations:
+                completion_msg += f" (reached maximum iterations)"
             completion_msg += "!"
 
             # Send completion
@@ -169,8 +232,8 @@ class Agent:
                 }
                 result = await self.agent.run(prompt, deps=self.project_id, model_settings=model_settings)
 
-                # Handle fallback result (simple text response, not structured)
-                if result and hasattr(result, "data") and result.data:
+                # Handle fallback result - just get the text response
+                if result and result.data:
                     yield {
                         "type": "text",
                         "file_path": "",
