@@ -9,17 +9,8 @@ import ChatInterface from '../chat/chat-interface';
 import CodeExplorer from '../preview/code-explorer';
 import PreviewPanel from '../preview/preview-panel';
 
-// Import the Action type from the component (not schema) for proper typing
-import type { Action } from '../chat/assistant-actions-card';
-
-// Extended ChatMessage type that includes actions for proper typing
-interface ChatMessage {
-  id: number;
-  content: string;
-  role: 'user' | 'assistant' | 'system';
-  timestamp: Date;
-  actions?: Action[]; // Add actions property to match what ChatInterface expects
-}
+// Import types
+import type { ChatMessage } from '@/lib/types';
 
 interface ProjectContentProps {
   projectId: number;

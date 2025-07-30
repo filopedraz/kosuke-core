@@ -6,34 +6,11 @@ import Image from 'next/image';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
-import AssistantActionsCard, { Action } from './assistant-actions-card';
 
-// Error types from the agent
-export type ErrorType = 'timeout' | 'parsing' | 'processing' | 'unknown';
-
-export interface ChatMessageProps {
-  id?: number;
-  content: string;
-  role: 'user' | 'assistant' | 'system';
-  timestamp: Date;
-  isLoading?: boolean;
-  className?: string;
-  user?: {
-    name?: string;
-    email?: string;
-    imageUrl?: string;
-  };
-  actions?: Action[];
-  showAvatar?: boolean;
-  // Error handling properties
-  hasError?: boolean;
-  errorType?: ErrorType;
-  onRegenerate?: () => void;
-  // Token metrics
-  tokensInput?: number;
-  tokensOutput?: number;
-  contextTokens?: number;
-}
+// Import types and utilities
+import type { ChatMessageProps, ErrorType } from '@/lib/types';
+import { getFileName, processMessageContent } from '@/lib/utils/message-content';
+import AssistantActionsCard from './assistant-actions-card';
 
 export default function ChatMessage({
   content,
@@ -65,66 +42,8 @@ export default function ChatMessage({
     }
   };
 
-  // Function to get file name from URL
-  const getFileName = (url: string): string => {
-    const urlParts = url.split('/');
-    let fileName = urlParts[urlParts.length - 1];
-
-    // Remove query parameters
-    if (fileName.includes('?')) {
-      fileName = fileName.split('?')[0];
-    }
-
-    // Try to decode URI component to handle encoded characters
-    try {
-      fileName = decodeURIComponent(fileName);
-    } catch {
-      console.error('Error decoding file name');
-      // If decoding fails, use the original
-    }
-
-    // Return the name or a default
-    return fileName || 'image.png';
-  };
-
-  // Function to process message content and extract image URLs
-  const processContent = (content: string) => {
-    const imageRegex = /\[Attached Image\]\(([^)]+)\)/g;
-    const parts: Array<{ type: 'text' | 'image'; content: string }> = [];
-
-    let lastIndex = 0;
-    let match;
-
-    // Find all image matches and process text between them
-    while ((match = imageRegex.exec(content)) !== null) {
-      // Add text before this image if there is any
-      const textBefore = content.substring(lastIndex, match.index).trim();
-      if (textBefore) {
-        parts.push({ type: 'text', content: textBefore });
-      }
-
-      // Add the image
-      parts.push({ type: 'image', content: match[1] });
-
-      // Update last index
-      lastIndex = match.index + match[0].length;
-    }
-
-    // Add any remaining text after the last image
-    const textAfter = content.substring(lastIndex).trim();
-    if (textAfter) {
-      parts.push({ type: 'text', content: textAfter });
-    }
-
-    // If no parts were found, treat the entire content as text
-    if (parts.length === 0) {
-      parts.push({ type: 'text', content });
-    }
-
-    return parts;
-  };
-
-  const contentParts = processContent(content);
+  // Process content using utility function
+  const contentParts = processMessageContent(content);
 
   return (
     <div

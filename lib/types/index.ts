@@ -1,5 +1,2 @@
-/**
- * Centralized type exports for the application
- */
-
-export * from './streaming';
+// Re-export all types for easy importing
+export * from './chat';

@@ -5,20 +5,8 @@ import { cn } from '@/lib/utils';
 import { Check, EyeIcon, FileIcon, FolderIcon, FolderMinusIcon, FolderPlusIcon, Loader2, PencilIcon, Search } from 'lucide-react';
 import { useEffect } from 'react';
 
-export interface Action {
-  path: string;
-  type: 'create' | 'update' | 'delete' | 'edit' | 'read' | 'search' | 'createDir' | 'removeDir';
-  timestamp: Date;
-  status: 'pending' | 'completed' | 'error';
-  messageId?: number;
-  language?: string;
-  content?: string;
-}
-
-interface AssistantActionsCardProps {
-  operations: Action[];
-  className?: string;
-}
+// Import types
+import type { Action, AssistantActionsCardProps } from '@/lib/types';
 
 export default function AssistantActionsCard({
   operations = [],
@@ -133,7 +121,7 @@ export default function AssistantActionsCard({
                 ) : (
                   <Check className="h-3.5 w-3.5 text-foreground flex-shrink-0" />
                 )}
-                <span className="truncate text-foreground [overflow-wrap:anywhere] break-words">{op.path}</span>
+                <span className="truncate text-foreground break-words">{op.path}</span>
               </div>
               <div className="text-muted-foreground text-xs flex-shrink-0 ml-2">
                 {op.type === 'createDir' ? 'Created Directory' :
