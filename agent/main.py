@@ -42,8 +42,6 @@ from pathlib import Path
 import aiofiles
 import httpx
 from rich.console import Console
-from rich.live import Live
-from rich.panel import Panel
 from rich.progress import Progress
 from rich.progress import SpinnerColumn
 from rich.progress import TextColumn
@@ -178,7 +176,6 @@ class KosukeCLI:
     def __init__(self):
         self.client = KosukeAgentClient()
         self.console = Console()
-        self.current_project_files = {}
 
     async def run(self):
         """Main CLI loop"""
@@ -238,7 +235,6 @@ class KosukeCLI:
             progress.remove_task(task)
 
         if project_id:
-            self.current_project_files = await self.client.get_project_files(project_id)
             await self._chat_interface(project_id)
 
     async def _continue_existing_project(self):
@@ -256,7 +252,6 @@ class KosukeCLI:
         try:
             project_id = int(Prompt.ask("Enter project ID"))
             if project_id in projects:
-                self.current_project_files = await self.client.get_project_files(project_id)
                 await self._chat_interface(project_id)
             else:
                 self.console.print("❌ [red]Invalid project ID[/red]")
@@ -348,72 +343,32 @@ class KosukeCLI:
 
     async def _handle_chat_response(self, project_id: int, prompt: str):
         """Handle streaming chat response"""
-        response_panel = Panel("🤖 Initializing...", title="Agent Response")
+        self.console.print("\n🤖 [bold blue]Agent Response:[/bold blue]")
 
-        with Live(response_panel, console=self.console, refresh_per_second=10) as live:
-            messages = []
+        async for update in self.client.chat_stream(project_id, prompt):
+            if update.get("type") == "error":
+                self.console.print(f"❌ [red]{update.get('message', 'Unknown error')}[/red]")
+                break
 
-            async for update in self.client.chat_stream(project_id, prompt):
-                if update.get("type") == "error":
-                    live.update(Panel(f"❌ [red]{update.get('message', 'Unknown error')}[/red]", title="Error"))
-                    break
+            # Get message details
+            message_type = update.get("type", "unknown")
+            message_content = update.get("message", "")
+            file_path = update.get("file_path", "")
+            status = update.get("status", "")
 
-                # Collect messages for display
-                message_type = update.get("type", "unknown")
-                message_content = update.get("message", "")
-                file_path = update.get("file_path", "")
-                status = update.get("status", "")
+            emoji = self._get_message_emoji(message_type)
+            display_message = self._format_display_message(emoji, message_content, file_path, status)
 
-                emoji = self._get_message_emoji(message_type)
-                display_message = self._format_display_message(emoji, message_content, file_path, status)
+            # Print each message immediately for real-time streaming
+            if display_message.strip():
+                self.console.print(f"  {display_message}")
 
-                if display_message.strip():
-                    messages.append(display_message)
-
-                # Update live display
-                content = "\n".join(messages[-10:])  # Show last 10 messages
-                live.update(Panel(content, title="Agent Response"))
-
-                # Check if completed
-                if message_type == "completed":
-                    await self._show_file_changes(project_id)
-                    break
-
-    async def _show_file_changes(self, project_id: int):
-        """Show summary of file changes"""
-        new_files = await self.client.get_project_files(project_id)
-
-        self.console.print("\n📊 [bold]Summary of changes:[/bold]")
-
-        # Find changes
-        added_files = []
-        modified_files = []
-
-        for file_path, content in new_files.items():
-            if file_path not in self.current_project_files:
-                added_files.append((file_path, len(content.splitlines())))
-            elif self.current_project_files[file_path] != content:
-                old_lines = len(self.current_project_files[file_path].splitlines())
-                new_lines = len(content.splitlines())
-                modified_files.append((file_path, new_lines - old_lines, old_lines))
-
-        if not added_files and not modified_files:
-            self.console.print("  📝 [yellow]No changes detected[/yellow]")
-        else:
-            for file_path, lines in added_files:
-                self.console.print(f"  📝 [green]{file_path}[/green] [dim][+{lines} lines][/dim] - New file")
-
-            for file_path, diff, _ in modified_files:
-                if diff > 0:
-                    self.console.print(f"  ✏️ [blue]{file_path}[/blue] [dim][+{diff}][/dim] - Modified")
-                else:
-                    self.console.print(f"  ✏️ [blue]{file_path}[/blue] [dim][{diff}][/dim] - Modified")
-
-        # Update current state
-        self.current_project_files = new_files
-
-        # Show actual preview URL
-        await self._show_preview_status(project_id)
+            # Check if completed
+            if message_type == "completed":
+                # Show preview status after completion
+                self.console.print()
+                await self._show_preview_status(project_id)
+                break
 
     async def _show_preview_status(self, project_id: int):
         """Show current preview status and URL"""
