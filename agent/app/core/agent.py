@@ -75,7 +75,7 @@ class Agent:
             print(f"⚠️ Failed to initialize agent: {e}")
             raise
 
-    async def run(self, prompt: str, chat_history: list | None = None) -> AsyncGenerator[dict, None]:
+    async def run(self, prompt: str) -> AsyncGenerator[dict, None]:
         """
         Main agent workflow with iterative task completion
 
@@ -85,22 +85,21 @@ class Agent:
         processing_start = time.time()
 
         try:
-            # Use PydanticAI's streaming capability to capture thinking blocks
+            # Use PydanticAI's streaming capability
             model_settings = {
                 "anthropic_thinking": {
                     "type": "enabled",
-                    "budget_tokens": 2048,  # Allocate tokens for thinking
+                    "budget_tokens": 2048,
                 },
                 "max_tokens": 4096,
-                "temperature": 1.0,  # Required to be 1.0 when thinking is enabled
+                "temperature": 1.0,
             }
 
-            print("🔄 Starting agent conversation...")
+            print("🔄 Starting simplified agent run...")
             task_completed_called = False
 
-            # Try single-turn approach first - let the agent continue naturally
             async with self.agent.run_stream(prompt, deps=self.project_id, model_settings=model_settings) as result:
-                # Stream text content (includes thinking blocks when enabled)
+                # Stream text content
                 async for text_chunk in result.stream(debounce_by=0.01):
                     yield {
                         "type": "text",
@@ -109,48 +108,22 @@ class Agent:
                         "status": "pending",
                     }
 
-                # Debug: Check what messages and parts we're getting
-                print(f"🔍 Debug: Found {len(result.new_messages())} new messages")
+                # Check for tool calls (specifically task_completed)
+                for message in result.new_messages():
+                    for part in message.parts:
+                        if hasattr(part, "tool_name"):
+                            print(f"🔧 Tool detected: {part.tool_name}")
 
-                # Check if tools were used by looking at new messages
-                for message_idx, message in enumerate(result.new_messages()):
-                    print(
-                        f"🔍 Message {message_idx}: role={getattr(message, 'role', 'unknown')}, "
-                        f"parts count={len(message.parts)}"
-                    )
-
-                    for part_idx, part in enumerate(message.parts):
-                        print(f"🔍 Part {part_idx}: type={type(part).__name__}")
-
-                        # Check if this is a tool call
-                        if hasattr(part, "tool_name"):  # Tool call detected
-                            print(f"🔧 Tool call detected: {part.tool_name}")
-
-                            # Safely extract file_path from args
+                            # Extract file_path if available
                             file_path = ""
                             if hasattr(part, "args") and isinstance(part.args, dict):
                                 file_path = part.args.get("file_path", "")
-                            elif hasattr(part, "args_as_dict"):
-                                try:
-                                    args_dict = part.args_as_dict()
-                                    file_path = args_dict.get("file_path", "")
-                                except Exception as e:
-                                    print(f"Warning: Could not extract file_path from tool args: {e}")
 
-                            # Check if this is the task_completed tool
                             if part.tool_name == "task_completed":
                                 task_completed_called = True
-                                print("✅ Task completion detected via tool call")
-                                # Extract summary from tool args
                                 summary = ""
                                 if hasattr(part, "args") and isinstance(part.args, dict):
                                     summary = part.args.get("summary", "Task completed")
-                                elif hasattr(part, "args_as_dict"):
-                                    try:
-                                        args_dict = part.args_as_dict()
-                                        summary = args_dict.get("summary", "Task completed")
-                                    except Exception:
-                                        summary = "Task completed"
 
                                 yield {
                                     "type": "completed",
@@ -158,10 +131,10 @@ class Agent:
                                     "message": summary,
                                     "status": "completed",
                                 }
+                                break
                             else:
-                                # Regular tool call - tools execute automatically in PydanticAI
-                                self.total_actions += 1  # Track total actions
-
+                                # Regular tool - show operation events
+                                self.total_actions += 1
                                 yield {
                                     "type": "operation_start",
                                     "file_path": file_path,
@@ -169,8 +142,6 @@ class Agent:
                                     "operation": part.tool_name,
                                     "status": "pending",
                                 }
-
-                                # Tool has already been executed by PydanticAI at this point
                                 yield {
                                     "type": "operation_completed",
                                     "file_path": file_path,
@@ -179,16 +150,20 @@ class Agent:
                                     "status": "completed",
                                 }
 
-                        # Check if this is a tool return (result of tool execution)
-                        elif hasattr(part, "content") and hasattr(part, "tool_call_id"):
-                            print(f"🔧 Tool result detected for call_id: {getattr(part, 'tool_call_id', 'unknown')}")
-                            # This is the result of a tool call - already processed above
+                    if task_completed_called:
+                        break
 
-            # Send completion webhook if task was completed
+            # Send webhook
             if task_completed_called:
                 await self._send_completion_webhook(success=True)
             else:
-                print("⚠️ Agent finished without calling task_completed")
+                yield {
+                    "type": "text",
+                    "file_path": "",
+                    "message": "\n⚠️ Agent finished without calling task_completed.",
+                    "status": "pending",
+                }
+                await self._send_completion_webhook(success=False)
 
         except Exception as e:
             error_msg = f"Error in modern agent: {e}"
@@ -214,6 +189,8 @@ class Agent:
                 self.deps = project_id
 
         return SimpleContext(self.project_id)
+
+    # Simplified approach - removed complex operation history tracking
 
     async def _send_completion_webhook(self, success: bool = True):
         """Send completion webhook to Next.js"""

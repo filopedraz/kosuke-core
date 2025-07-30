@@ -112,13 +112,9 @@ class KosukeAgentClient:
             self.console.print(f"❌ Failed to delete project: {e}")
             return False
 
-    async def chat_stream(
-        self, project_id: int, prompt: str, chat_history: list[dict] | None = None
-    ) -> AsyncGenerator[dict, None]:
+    async def chat_stream(self, project_id: int, prompt: str) -> AsyncGenerator[dict, None]:
         """Stream chat responses from agent"""
-        if chat_history is None:
-            chat_history = []
-        payload = {"project_id": project_id, "prompt": prompt, "chat_history": chat_history}
+        payload = {"project_id": project_id, "prompt": prompt, "chat_history": []}
 
         try:
             async with httpx.AsyncClient(timeout=300.0) as client, client.stream(
@@ -180,8 +176,6 @@ class KosukeCLI:
     def __init__(self):
         self.client = KosukeAgentClient()
         self.console = Console()
-        # Maintain chat history per project
-        self.chat_histories: dict[int, list[dict]] = {}
 
     async def run(self):
         """Main CLI loop"""
@@ -308,21 +302,9 @@ class KosukeCLI:
     async def _chat_interface(self, project_id: int):
         """Interactive chat interface"""
         self.console.print(f"\n💬 [bold blue]Chat with Kosuke Agent[/bold blue] (Project {project_id})")
-
-        # Initialize chat history for this project if not exists
-        if project_id not in self.chat_histories:
-            self.chat_histories[project_id] = []
-
-        # Show conversation history summary
-        history_count = len(self.chat_histories[project_id])
-        if history_count > 0:
-            self.console.print(f"📝 [dim]Continuing conversation ({history_count} previous messages)[/dim]")
-        else:
-            self.console.print("📝 [dim]Starting new conversation[/dim]")
-
         # Show dynamic preview URL
         await self._show_preview_status(project_id)
-        self.console.print("💡 [dim]Type 'exit' to return to main menu, 'clear' to reset conversation[/dim]\n")
+        self.console.print("💡 [dim]Type 'exit' to return to main menu[/dim]\n")
 
         while True:
             try:
@@ -330,11 +312,6 @@ class KosukeCLI:
 
                 if prompt.lower() in ["exit", "quit", "q"]:
                     break
-
-                if prompt.lower() == "clear":
-                    self.chat_histories[project_id] = []
-                    self.console.print("🗑️ [yellow]Conversation history cleared[/yellow]\n")
-                    continue
 
                 if not prompt.strip():
                     continue
@@ -408,15 +385,9 @@ class KosukeCLI:
 
     async def _handle_chat_response(self, project_id: int, prompt: str):
         """Handle streaming chat response with simple message display"""
-        # Add user message to chat history
-        self.chat_histories[project_id].append({"role": "user", "content": prompt})
-
         self.console.print("\n🤖 [bold blue]Agent Response:[/bold blue]")
 
-        # Collect assistant response to add to history
-        assistant_response_parts = []
-
-        async for update in self.client.chat_stream(project_id, prompt, self.chat_histories[project_id]):
+        async for update in self.client.chat_stream(project_id, prompt):
             if update.get("type") == "error":
                 self.console.print(f"❌ [red]{update.get('message', 'Unknown error')}[/red]")
                 break
@@ -426,10 +397,6 @@ class KosukeCLI:
             message_content = update.get("message", "")
             file_path = update.get("file_path", "")
             status = update.get("status", "")
-
-            # Collect text content for history (thinking blocks and regular text)
-            if message_type == "text" and message_content.strip():
-                assistant_response_parts.append(message_content)
 
             emoji = self._get_message_emoji(message_type)
             display_message = self._format_display_message(emoji, message_content, file_path, status, message_type)
@@ -449,10 +416,6 @@ class KosukeCLI:
             # Check if completed
             if message_type == "completed":
                 self.console.print("\n✅ [green]Response completed![/green]")
-                # Add assistant response to chat history
-                if assistant_response_parts:
-                    full_response = "".join(assistant_response_parts)
-                    self.chat_histories[project_id].append({"role": "assistant", "content": full_response})
                 break
 
         # Show preview status after completion
