@@ -66,7 +66,7 @@ class Settings(BaseSettings):
     max_tokens: int = 4000
 
     # Paths
-    projects_dir: str = "/app/projects"
+    projects_dir: str = "projects"
 
     # Model settings
     model_name: str = "claude-3-5-sonnet-20241022"

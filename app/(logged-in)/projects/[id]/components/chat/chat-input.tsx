@@ -2,7 +2,7 @@
 
 import { ArrowUp, Image as ImageIcon, Loader2, Paperclip, X } from 'lucide-react';
 import Image from 'next/image';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -21,6 +21,7 @@ export default function ChatInput({
   const [message, setMessage] = useState('');
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [includeContext, setIncludeContext] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Use the file upload hook for all file-related logic
   const {
@@ -37,7 +38,7 @@ export default function ChatInput({
 
   // Auto-resize textarea based on content
   useEffect(() => {
-    const textarea = document.querySelector('.chat-input-textarea') as HTMLTextAreaElement;
+    const textarea = textareaRef.current;
     if (!textarea) return;
 
     // Only reset height if we're actually changing content
@@ -136,7 +137,7 @@ export default function ChatInput({
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           disabled={isLoading}
-          className="min-h-[100px] max-h-[200px] resize-none border-0 !bg-transparent px-3 py-3 shadow-none focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 text-sm chat-input-textarea"
+          className="min-h-[100px] max-h-[200px] resize-none border-0 !bg-transparent px-3 py-3 shadow-none focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 text-sm"
           rows={3}
           style={{ height: '100px' }}  // Set initial fixed height
           data-gramm="false"
