@@ -56,28 +56,24 @@ class Agent:
         try:
             messages = [{"role": "user", "content": prompt}]
 
+            # Enable thinking for all conversation turns
+            thinking_config = {
+                "type": "enabled",
+                "budget_tokens": 2048,
+            }
+
+            # Stream response from Claude
+            stream_params = {
+                "model": "claude-3-7-sonnet-20250219",
+                "max_tokens": 8192,
+                "system": self.system_prompt,
+                "messages": messages,
+                "tools": get_anthropic_tools(self.project_id),
+            }
+
             conversation_turn = 0
             while True:
                 conversation_turn += 1
-
-                # Only enable thinking for the first turn to avoid conversation history issues
-                thinking_config = (
-                    {
-                        "type": "enabled",
-                        "budget_tokens": 2048,
-                    }
-                    if conversation_turn == 1
-                    else None
-                )
-
-                # Stream response from Claude
-                stream_params = {
-                    "model": "claude-3-7-sonnet-20250219",
-                    "max_tokens": 8192,
-                    "system": self.system_prompt,
-                    "messages": messages,
-                    "tools": get_anthropic_tools(self.project_id),
-                }
 
                 if thinking_config:
                     stream_params["thinking"] = thinking_config
@@ -88,11 +84,12 @@ class Agent:
                 content_blocks = []
                 current_text = ""
                 current_tool_calls = []
+                current_thinking = ""
+                current_thinking_signature = ""
 
                 # Stream events and yield them (using async for loop)
                 async for event in stream:
                     # Process event with proper data extraction
-                    print(event)
                     event_dict = self._event_to_dict(event)
                     if event_dict:
                         yield event_dict
@@ -104,6 +101,9 @@ class Agent:
                         if hasattr(event, "content_block") and hasattr(event.content_block, "type"):
                             if event.content_block.type == "text":
                                 current_text = ""
+                            elif event.content_block.type == "thinking":
+                                current_thinking = ""
+                                current_thinking_signature = ""
                             elif event.content_block.type == "tool_use":
                                 current_tool_calls.append(
                                     {
@@ -118,9 +118,13 @@ class Agent:
                         if hasattr(event, "delta"):
                             if hasattr(event.delta, "text"):
                                 current_text += event.delta.text
+                            elif hasattr(event.delta, "thinking"):
+                                current_thinking += event.delta.thinking
+                            elif hasattr(event.delta, "signature"):
+                                current_thinking_signature += event.delta.signature
                             elif hasattr(event.delta, "partial_json") and current_tool_calls:
                                 # Accumulate tool input (we'll parse JSON at the end)
-                                if not hasattr(current_tool_calls[-1], "_input_json"):
+                                if "_input_json" not in current_tool_calls[-1]:
                                     current_tool_calls[-1]["_input_json"] = ""
                                 current_tool_calls[-1]["_input_json"] += event.delta.partial_json
 
@@ -128,7 +132,17 @@ class Agent:
                         if current_text:
                             content_blocks.append({"type": "text", "text": current_text})
                             current_text = ""
-                        if current_tool_calls and hasattr(current_tool_calls[-1], "_input_json"):
+                        if current_thinking:
+                            content_blocks.append(
+                                {
+                                    "type": "thinking",
+                                    "thinking": current_thinking,
+                                    "signature": current_thinking_signature,
+                                }
+                            )
+                            current_thinking = ""
+                            current_thinking_signature = ""
+                        if current_tool_calls and "_input_json" in current_tool_calls[-1]:
                             try:
                                 import json
 
@@ -140,13 +154,17 @@ class Agent:
                 # Add any remaining content
                 if current_text:
                     content_blocks.append({"type": "text", "text": current_text})
+                if current_thinking:
+                    content_blocks.append(
+                        {"type": "thinking", "thinking": current_thinking, "signature": current_thinking_signature}
+                    )
                 content_blocks.extend(current_tool_calls)
 
                 # Debug: Log content block collection
                 print(f"🔍 Collected {len(content_blocks)} content blocks for conversation history")
 
                 # Check if we have tool calls to execute
-                tool_calls = [block for block in content_blocks if getattr(block, "type", None) == "tool_use"]
+                tool_calls = [block for block in content_blocks if block.get("type") == "tool_use"]
 
                 # Execute tools sequentially
                 tool_results = []
@@ -154,34 +172,41 @@ class Agent:
                 task_summary = None
 
                 for tool_call in tool_calls:
-                    yield {"type": "tool_start", "tool_name": tool_call.name}
+                    yield {"type": "tool_start", "tool_name": tool_call["name"]}
 
                     try:
-                        result = await execute_tool(tool_call.name, tool_call.input, self.project_id)
-                        tool_results.append({"type": "tool_result", "tool_use_id": tool_call.id, "content": result})
-                        yield {"type": "tool_complete", "tool_name": tool_call.name, "result": result}
+                        result = await execute_tool(tool_call["name"], tool_call["input"], self.project_id)
+                        tool_results.append({"type": "tool_result", "tool_use_id": tool_call["id"], "content": result})
+                        yield {"type": "tool_complete", "tool_name": tool_call["name"], "result": result}
 
                         # Check if task_completed was called
-                        if tool_call.name == "task_completed":
+                        if tool_call["name"] == "task_completed":
                             task_completed_called = True
                             # Extract the summary from the tool input
-                            task_summary = tool_call.input.get("summary", "Task completed")
+                            task_summary = tool_call["input"].get("summary", "Task completed")
 
                     except Exception as e:
-                        error_result = f"Tool {tool_call.name} failed: {e}"
+                        error_result = f"Tool {tool_call['name']} failed: {e}"
                         tool_results.append(
                             {
                                 "type": "tool_result",
-                                "tool_use_id": tool_call.id,
+                                "tool_use_id": tool_call["id"],
                                 "content": error_result,
                                 "is_error": True,
                             }
                         )
-                        yield {"type": "tool_error", "tool_name": tool_call.name, "error": str(e)}
+                        yield {"type": "tool_error", "tool_name": tool_call["name"], "error": str(e)}
 
-                # Add assistant message with ONLY text and tool_use blocks (NO thinking blocks)
+                # Add assistant message with proper block ordering (thinking blocks first, as required by Anthropic)
                 if content_blocks:
-                    messages.append({"role": "assistant", "content": content_blocks})
+                    # Separate different block types
+                    thinking_blocks = [block for block in content_blocks if block.get("type") == "thinking"]
+                    text_blocks = [block for block in content_blocks if block.get("type") == "text"]
+                    tool_blocks = [block for block in content_blocks if block.get("type") == "tool_use"]
+
+                    # Reorder: thinking blocks first, then text, then tool_use (as required by Anthropic)
+                    ordered_content = thinking_blocks + text_blocks + tool_blocks
+                    messages.append({"role": "assistant", "content": ordered_content})
 
                 # Add tool results
                 if tool_results:
