@@ -62,6 +62,9 @@ class Agent:
                 # Process conversation turn and get content blocks
                 content_blocks, task_completed, task_summary = await self._process_conversation_turn(messages)
 
+                # Check if there are any tools to execute
+                tool_calls = [block for block in content_blocks if block.get("type") == "tool_use"]
+
                 # Execute any tool calls and yield results
                 async for result in self._execute_tools(content_blocks):
                     yield result
@@ -72,6 +75,12 @@ class Agent:
                 # Check if task was completed
                 if task_completed:
                     yield {"type": "task_summary", "summary": task_summary}
+                    yield {"type": "message_complete"}
+                    await self._send_completion_webhook(success=True)
+                    break
+
+                # Break if no tools to execute (conversation is complete)
+                if not tool_calls:
                     yield {"type": "message_complete"}
                     await self._send_completion_webhook(success=True)
                     break
