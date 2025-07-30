@@ -325,24 +325,66 @@ class KosukeCLI:
     def _get_message_emoji(self, message_type: str) -> str:
         """Get emoji for message type"""
         emoji_map = {
+            # Thinking and reasoning
             "thinking": "🧠",
-            "text": "💭",
+            "thinking_start": "🧠",
+            "thinking_content": "💭",
+            "reasoning": "🤔",
+            "reasoning_start": "🤔",
+            "reasoning_content": "💡",
+            # Text and communication
+            "text": "💬",
+            # File operations - start
+            "operation_start": "⏳",
+            # File operations - specific types
             "read": "🔍",
             "create": "📝",
             "edit": "✏️",
             "delete": "🗑️",
-            "completed": "✅",
+            "createDir": "📁",
+            "removeDir": "🗂️",
+            # Completion states
+            "operation_complete": "✅",
+            "completed": "🎉",
+            "error": "❌",
         }
         return emoji_map.get(message_type, "📝")
 
-    def _format_display_message(self, emoji: str, message_content: str, file_path: str, status: str) -> str:
-        """Format message for display"""
+    def _format_display_message(
+        self, emoji: str, message_content: str, file_path: str, status: str, message_type: str = ""
+    ) -> str:
+        """Format message for display with enhanced formatting"""
+        # Handle thinking and reasoning content
+        if message_type in ["thinking_content", "reasoning_content"]:
+            return f"{emoji} [dim]{message_content}[/dim]"
+
+        # Handle thinking/reasoning start messages
+        if message_type in ["thinking_start", "reasoning_start"]:
+            return f"{emoji} [bold]{message_content}[/bold]"
+
+        # Handle operation events with file context
+        if message_type in ["operation_start", "operation_complete"]:
+            return self._format_operation_message(emoji, message_content, file_path)
+
+        # Handle completion states
         if status == "completed" and file_path:
-            return f"{emoji} {file_path}"
+            return f"{emoji} [green]{file_path}[/green]"
+
+        # Handle errors with file context
+        if status == "error" and file_path:
+            return f"{emoji} [red]{file_path}[/red] - {message_content}"
+
+        # Default formatting
+        return f"{emoji} {message_content}"
+
+    def _format_operation_message(self, emoji: str, message_content: str, file_path: str) -> str:
+        """Format operation messages with file context"""
+        if file_path:
+            return f"{emoji} [cyan]{file_path}[/cyan] - {message_content}"
         return f"{emoji} {message_content}"
 
     async def _handle_chat_response(self, project_id: int, prompt: str):
-        """Handle streaming chat response"""
+        """Handle streaming chat response with enhanced event display"""
         self.console.print("\n🤖 [bold blue]Agent Response:[/bold blue]")
 
         async for update in self.client.chat_stream(project_id, prompt):
@@ -357,11 +399,19 @@ class KosukeCLI:
             status = update.get("status", "")
 
             emoji = self._get_message_emoji(message_type)
-            display_message = self._format_display_message(emoji, message_content, file_path, status)
+            display_message = self._format_display_message(emoji, message_content, file_path, status, message_type)
 
             # Print each message immediately for real-time streaming
             if display_message.strip():
+                # Add extra spacing for thinking/reasoning sections
+                if message_type in ["thinking_start", "reasoning_start"]:
+                    self.console.print()  # Extra line before new sections
+
                 self.console.print(f"  {display_message}")
+
+                # Add extra spacing after thinking/reasoning content
+                if message_type in ["thinking_content", "reasoning_content"] and len(message_content) > 100:
+                    self.console.print()  # Extra line after long content
 
             # Check if completed
             if message_type == "completed":

@@ -63,7 +63,20 @@ class AgentResponse(BaseModel):
 class StreamChunk(BaseModel):
     """Structured streaming chunk"""
 
-    type: Literal["thinking", "text", "action", "complete", "error"]
+    type: Literal[
+        "thinking",
+        "thinking_start",
+        "thinking_content",
+        "reasoning",
+        "reasoning_start",
+        "reasoning_content",
+        "text",
+        "action",
+        "operation_start",
+        "operation_complete",
+        "complete",
+        "error",
+    ]
     content: str | None = None
     file_path: str | None = None
     operation: str | None = None

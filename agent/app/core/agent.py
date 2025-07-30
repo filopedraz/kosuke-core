@@ -43,11 +43,10 @@ class Agent:
             if settings.anthropic_api_key:
                 os.environ["ANTHROPIC_API_KEY"] = settings.anthropic_api_key
 
-            # Enhanced model for PydanticAI 0.4.1
+            # Enhanced model for PydanticAI 0.4.1 with thinking blocks enabled
             self.model = AnthropicModel(
                 settings.model_name,
-                # Modern PydanticAI 0.4.1 API - no settings parameter
-                # Thinking blocks are handled automatically by PydanticAI
+                # Model settings will be applied at runtime
             )
 
             # Simplified system prompt focused on context, not format
@@ -78,39 +77,73 @@ class Agent:
 
     async def run(self, prompt: str) -> AsyncGenerator[dict, None]:
         """
-        Main agent workflow with native Pydantic AI streaming
+        Main agent workflow with native Pydantic AI streaming and thinking blocks
 
-        Uses structured outputs and native thinking blocks
+        Uses streaming to capture thinking, reasoning, and actions in real-time
         """
         print(f"🤖 Processing request for project ID: {self.project_id}")
         processing_start = time.time()
 
         try:
             yield {
-                "type": "thinking",
+                "type": "thinking_start",
                 "file_path": "",
-                "message": "Initializing modern agent with thinking blocks...",
+                "message": "Starting to think about your request...",
                 "status": "pending",
             }
 
-            # For structured outputs, we can't use stream_text()
-            # Instead, run the agent and get the structured result directly
-            result = await self.agent.run(prompt, deps=self.project_id)
-
-            # Simulate streaming with thinking message
-            yield {
-                "type": "text",
-                "file_path": "",
-                "message": f"Processing request: {prompt[:100]}{'...' if len(prompt) > 100 else ''}",
-                "status": "pending",
+            # Use PydanticAI's streaming capability to capture thinking blocks
+            model_settings = {
+                "anthropic_thinking": True,  # Enable thinking blocks
+                "max_tokens": 4096,
+                "temperature": 0.1,
             }
+            async with self.agent.run_stream(prompt, deps=self.project_id, model_settings=model_settings) as stream:
+                thinking_content = ""
+                final_result = None
 
-            # Get the structured result
-            final_result = result
+                async for chunk in stream:
+                    # Handle thinking blocks from PydanticAI
+                    if hasattr(chunk, "thinking") and chunk.thinking:
+                        thinking_content += chunk.thinking
+                        yield {
+                            "type": "thinking_content",
+                            "file_path": "",
+                            "message": chunk.thinking,
+                            "status": "pending",
+                        }
+
+                    # Handle text content
+                    if hasattr(chunk, "text") and chunk.text:
+                        yield {
+                            "type": "text",
+                            "file_path": "",
+                            "message": chunk.text,
+                            "status": "pending",
+                        }
+
+                # Get the final result from the stream
+                final_result = await stream.get_output()
+
+            # Extract reasoning from the final result
+            if final_result and hasattr(final_result, "reasoning") and final_result.reasoning:
+                yield {
+                    "type": "reasoning_start",
+                    "file_path": "",
+                    "message": "Reasoning through the approach...",
+                    "status": "pending",
+                }
+
+                yield {
+                    "type": "reasoning_content",
+                    "file_path": "",
+                    "message": final_result.reasoning,
+                    "status": "pending",
+                }
 
             # Execute actions from structured response
-            if final_result.data and final_result.data.actions:
-                async for update in self._execute_structured_actions(final_result.data.actions):
+            if final_result and hasattr(final_result, "actions") and final_result.actions:
+                async for update in self._execute_structured_actions(final_result.actions):
                     yield update
 
             # Send completion
@@ -128,13 +161,52 @@ class Agent:
             error_msg = f"Error in modern agent: {e}"
             print(f"❌ {error_msg}")
 
-            yield {
-                "type": "error",
-                "file_path": "",
-                "message": error_msg,
-                "status": "error",
-                "error_type": "processing",
-            }
+            # Try fallback to non-streaming approach
+            try:
+                model_settings = {
+                    "anthropic_thinking": True,  # Enable thinking blocks
+                    "max_tokens": 4096,
+                    "temperature": 0.1,
+                }
+                result = await self.agent.run(prompt, deps=self.project_id, model_settings=model_settings)
+
+                # Extract thinking and reasoning from non-streaming result
+                if result.data:
+                    if result.data.thinking:
+                        yield {
+                            "type": "thinking_content",
+                            "file_path": "",
+                            "message": result.data.thinking,
+                            "status": "pending",
+                        }
+
+                    if result.data.reasoning:
+                        yield {
+                            "type": "reasoning_content",
+                            "file_path": "",
+                            "message": result.data.reasoning,
+                            "status": "pending",
+                        }
+
+                    # Execute actions
+                    if result.data.actions:
+                        async for update in self._execute_structured_actions(result.data.actions):
+                            yield update
+
+                yield {
+                    "type": "completed",
+                    "file_path": "",
+                    "message": "All changes have been implemented successfully!",
+                    "status": "completed",
+                }
+            except Exception as fallback_error:
+                yield {
+                    "type": "error",
+                    "file_path": "",
+                    "message": f"Agent error: {fallback_error}",
+                    "status": "error",
+                    "error_type": "processing",
+                }
 
         processing_end = time.time()
         print(f"⏱️ Total processing time: {processing_end - processing_start:.2f}s")
@@ -151,11 +223,20 @@ class Agent:
         return SimpleContext(self.project_id)
 
     async def _execute_structured_actions(self, actions: list[FileOperation]) -> AsyncGenerator[dict, None]:
-        """Execute structured actions from Pydantic AI response"""
+        """Execute structured actions from Pydantic AI response with operation events"""
         print(f"🔄 Executing {len(actions)} structured actions")
 
         for i, action in enumerate(actions):
             print(f"⏳ Executing action {i+1}/{len(actions)}: {action.operation} on {action.file_path}")
+
+            # Send operation start event
+            yield {
+                "type": "operation_start",
+                "file_path": action.file_path,
+                "message": f"Starting {action.operation} operation",
+                "status": "pending",
+                "operation": action.operation,
+            }
 
             try:
                 success = False
@@ -193,12 +274,13 @@ class Agent:
 
                     self.total_actions += 1
 
-                    # Send completion update
+                    # Send operation completion event
                     yield {
-                        "type": action.operation,
+                        "type": "operation_complete",
                         "file_path": action.file_path,
                         "message": action.reasoning,
                         "status": "completed",
+                        "operation": action.operation,
                     }
                 else:
                     raise Exception(f"Unknown operation: {action.operation}")
