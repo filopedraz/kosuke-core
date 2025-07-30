@@ -1,6 +1,6 @@
 import { db } from '@/lib/db/drizzle';
-import { Action, actions, chatMessages } from '@/lib/db/schema';
-import { eq, inArray } from 'drizzle-orm';
+import { chatMessages } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 
@@ -51,14 +51,12 @@ function ProjectLoadingSkeleton() {
   );
 }
 
-// Update FetchedChatMessage type to include actions
+// FetchedChatMessage type
 interface FetchedChatMessage {
   id: number; // Assuming ID is always present after fetch
   content?: string;
   role?: 'user' | 'assistant' | 'system';
   timestamp?: string | Date;
-  // Add actions property (optional)
-  actions?: Action[]; // Use the Action type from schema
 }
 
 interface ProjectPageProps {
@@ -68,63 +66,23 @@ interface ProjectPageProps {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
-// Rewritten function to fetch messages and actions
+// Function to fetch messages
 async function fetchChatHistoryForProject(projectId: number): Promise<FetchedChatMessage[]> {
-  console.log(`Fetching chat history with actions for project ${projectId}`);
+  console.log(`Fetching chat history for project ${projectId}`);
 
-  // 1. Fetch chat history, oldest first
+  // Fetch chat history, oldest first
   const history = await db
     .select()
     .from(chatMessages)
     .where(eq(chatMessages.projectId, projectId))
     .orderBy(chatMessages.timestamp); // Ascending order
 
-  // 2. Extract assistant message IDs
-  const assistantMessageIds = history
-    .filter(msg => msg.role === 'assistant')
-    .map(msg => msg.id);
-
-  // 3. Fetch actions for these messages if any exist
-  let fetchedActions: Action[] = [];
-  if (assistantMessageIds.length > 0) {
-    fetchedActions = await db
-      .select()
-      .from(actions)
-      .where(inArray(actions.messageId, assistantMessageIds));
-    console.log(`Fetched ${fetchedActions.length} actions for ${assistantMessageIds.length} assistant messages.`);
-  }
-
-  // 4. Group actions by message ID
-  const actionsByMessageId = fetchedActions.reduce<Record<number, Action[]>>((acc, action) => {
-    if (!acc[action.messageId]) {
-      acc[action.messageId] = [];
-    }
-    acc[action.messageId].push(action);
-    return acc;
-  }, {});
-
-  // 5. Combine messages with their actions
-  const messagesWithActions = history.map(msg => ({
-    ...msg,
-    // Ensure timestamp is a Date object if needed downstream, though initial fetch might be string
-    timestamp: msg.timestamp,
-    // Attach actions, default to empty array if none
-    actions: actionsByMessageId[msg.id] || [],
-  }));
-
-  // Return the combined data, matching the FetchedChatMessage structure
-  // Note: Ensure the selected fields from `history` match FetchedChatMessage
-  return messagesWithActions.map(msg => ({
+  // Return the data, matching the FetchedChatMessage structure
+  return history.map(msg => ({
     id: msg.id,
     content: msg.content,
-    role: msg.role as 'user' | 'assistant' | 'system', // Type assertion might be needed
+    role: msg.role as 'user' | 'assistant' | 'system',
     timestamp: msg.timestamp,
-    actions: msg.actions,
-    // Add other fields from FetchedChatMessage if they exist in chatMessages table
-    // tokensInput: msg.tokensInput,
-    // tokensOutput: msg.tokensOutput,
-    // contextTokens: msg.contextTokens,
-    // metadata: msg.metadata,
   }));
 }
 
@@ -142,10 +100,10 @@ export default async function ProjectPage({ params, searchParams }: ProjectPageP
     notFound();
   }
 
-  // Fetch project details and initial chat messages (now with actions)
+  // Fetch project details and initial chat messages
   const [project, initialMessagesResult] = await Promise.all([
     getProjectById(projectId),
-    fetchChatHistoryForProject(projectId) // This now fetches actions too
+    fetchChatHistoryForProject(projectId)
   ]);
 
   if (!project || project.createdBy !== session.user.id) {
@@ -158,14 +116,6 @@ export default async function ProjectPage({ params, searchParams }: ProjectPageP
     content: msg.content || '',
     role: msg.role || 'user',
     timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date(), // Ensure timestamp is Date
-    actions: msg.actions?.map(action => ({
-      // Transform database action to component action format
-      path: action.path,
-      type: action.type as 'create' | 'update' | 'delete' | 'edit' | 'read' | 'search' | 'createDir' | 'removeDir',
-      timestamp: action.timestamp ? new Date(action.timestamp) : new Date(),
-      status: action.status as 'pending' | 'completed' | 'error',
-      messageId: action.messageId,
-    })) || [],
   }));
 
   // Removed user details fetching and mapping
@@ -189,7 +139,7 @@ export default async function ProjectPage({ params, searchParams }: ProjectPageP
         project={formattedProject}
         // Removed user prop
         isNewProject={isNewProject}
-        initialMessages={initialMessages} // Pass messages with actions
+        initialMessages={initialMessages}
       />
     </Suspense>
   );

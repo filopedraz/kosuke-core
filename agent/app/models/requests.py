@@ -18,6 +18,7 @@ class ChatRequest(BaseModel):
     project_id: int = Field(..., ge=0, description="Project ID must be non-negative")
     prompt: str = Field(..., min_length=1, description="Prompt cannot be empty")
     chat_history: list[ChatMessage] | None = []
+    assistant_message_id: int | None = Field(None, description="Assistant message ID for webhook updates")
 
     @validator("prompt")
     def validate_prompt(cls, v):  # noqa: N805

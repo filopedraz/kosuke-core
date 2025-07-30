@@ -1,27 +1,31 @@
+// Tool Input Types
+export type ToolInput = Record<string, unknown>;
+
+// Assistant Response Block Types
+export type AssistantBlock =
+  | { type: 'text'; content: string }
+  | { type: 'thinking'; content: string; signature?: string }
+  | {
+      type: 'tool';
+      name: string;
+      input: ToolInput;
+      result?: string;
+      status: 'running' | 'completed' | 'error';
+    };
+
 // Core Chat Types
 export interface ChatMessage {
   id: number;
-  content: string;
+  content?: string; // For user messages (optional for assistant messages)
+  blocks?: AssistantBlock[]; // For assistant response blocks
   role: 'user' | 'assistant' | 'system';
   timestamp: Date;
-  actions?: Action[];
   tokensInput?: number;
   tokensOutput?: number;
   contextTokens?: number;
   hasError?: boolean;
   errorType?: ErrorType;
   metadata?: string;
-}
-
-// Action/Operation Types
-export interface Action {
-  path: string;
-  type: 'create' | 'update' | 'delete' | 'edit' | 'read' | 'search' | 'createDir' | 'removeDir';
-  timestamp: Date;
-  status: 'pending' | 'completed' | 'error';
-  messageId?: number;
-  language?: string;
-  content?: string;
 }
 
 // Error Types
@@ -60,10 +64,10 @@ export interface ApiChatMessage {
   id: number;
   projectId: number;
   userId: number | null;
-  content: string;
+  content?: string; // For user messages
+  blocks?: AssistantBlock[]; // For assistant messages
   role: string;
   timestamp: string | Date;
-  actions?: Action[];
   tokensInput?: number;
   tokensOutput?: number;
   contextTokens?: number;
@@ -73,7 +77,8 @@ export interface ApiChatMessage {
 // Component Props Types
 export interface ChatMessageProps {
   id?: number;
-  content: string;
+  content?: string; // For user messages
+  blocks?: AssistantBlock[]; // For assistant response blocks
   role: 'user' | 'assistant' | 'system';
   timestamp: Date;
   isLoading?: boolean;
@@ -83,7 +88,6 @@ export interface ChatMessageProps {
     email?: string;
     imageUrl?: string;
   };
-  actions?: Action[];
   showAvatar?: boolean;
   hasError?: boolean;
   errorType?: ErrorType;
@@ -109,12 +113,7 @@ export interface ChatInterfaceProps {
   isLoading?: boolean;
 }
 
-export interface AssistantActionsCardProps {
-  operations: Action[];
-  className?: string;
-}
-
-// Content Block Types
+// Content Block Types (for streaming UI state)
 export interface ContentBlock {
   id: string;
   index: number;
@@ -125,6 +124,16 @@ export interface ContentBlock {
   timestamp: Date;
   toolName?: string; // For tool blocks
   toolResult?: string; // For tool blocks
+}
+
+// Webhook Data Types
+export interface WebhookAssistantData {
+  content?: string; // For simple text responses
+  blocks?: AssistantBlock[]; // For complex responses with multiple blocks
+  tokensInput?: number;
+  tokensOutput?: number;
+  contextTokens?: number;
+  assistantMessageId?: number; // ID of assistant message to update
 }
 
 // Assistant Response Types
@@ -138,7 +147,6 @@ export interface AssistantResponse {
 // Streaming Types
 export interface StreamingState {
   isStreaming: boolean;
-  streamingActions: Action[];
   streamingContentBlocks: ContentBlock[];
   streamingAssistantMessageId: number | null;
   streamAbortController: AbortController | null;
@@ -184,8 +192,6 @@ export interface StreamingEvent {
     | 'message_complete'
     | 'error'
     | 'text'
-    | 'operation_start'
-    | 'operation_complete'
     | 'completed';
 
   // Content delta fields
@@ -198,10 +204,4 @@ export interface StreamingEvent {
   tool_name?: string; // Name of the tool being executed
   result?: string; // Tool execution result
   summary?: string; // Task completion summary
-
-  // Legacy fields (for backward compatibility)
-  file_path?: string;
-  message?: string;
-  status?: 'pending' | 'completed' | 'error';
-  operation?: string;
 }

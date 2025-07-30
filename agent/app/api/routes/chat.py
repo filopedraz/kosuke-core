@@ -28,7 +28,7 @@ async def chat_stream(request: ChatRequest) -> StreamingResponse:
             print(f"📝 Prompt: {request.prompt[:100]}{'...' if len(request.prompt) > 100 else ''}")
 
             # Create agent instance for this project
-            agent = Agent(request.project_id)
+            agent = Agent(request.project_id, request.assistant_message_id)
 
             # Stream native Anthropic events directly with forced flushing
             async for event in agent.run(request.prompt):

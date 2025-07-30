@@ -1,13 +1,14 @@
 import { relations } from 'drizzle-orm';
 import {
-  pgTable,
-  serial,
-  varchar,
-  text,
-  timestamp,
+  boolean,
   integer,
   json,
-  boolean,
+  jsonb,
+  pgTable,
+  serial,
+  text,
+  timestamp,
+  varchar,
 } from 'drizzle-orm/pg-core';
 
 export const users = pgTable('users', {
@@ -69,7 +70,8 @@ export const chatMessages = pgTable('chat_messages', {
     .notNull(),
   userId: integer('user_id').references(() => users.id),
   role: varchar('role', { length: 20 }).notNull(), // 'user' or 'assistant'
-  content: text('content').notNull(),
+  content: text('content'), // For user messages (nullable for assistant messages)
+  blocks: jsonb('blocks'), // For assistant message blocks (text, thinking, tools)
   modelType: varchar('model_type', { length: 20 }), // 'default' or 'premium'
   timestamp: timestamp('timestamp').notNull().defaultNow(),
   tokensInput: integer('tokens_input'), // Number of tokens sent to the model
@@ -120,17 +122,6 @@ export const subscriptions = pgTable('subscriptions', {
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
   canceledAt: timestamp('canceled_at'),
-});
-
-export const actions = pgTable('actions', {
-  id: serial('id').primaryKey(),
-  messageId: integer('message_id')
-    .references(() => chatMessages.id)
-    .notNull(),
-  type: varchar('type', { length: 20 }).notNull(), // 'create', 'edit', 'delete', 'read', 'search'
-  path: text('path').notNull(),
-  timestamp: timestamp('timestamp').notNull().defaultNow(),
-  status: varchar('status', { length: 20 }).notNull().default('completed'), // 'pending', 'completed', 'error'
 });
 
 export const userGithubTokens = pgTable('user_github_tokens', {
@@ -207,7 +198,6 @@ export const chatMessagesRelations = relations(chatMessages, ({ one, many }) => 
     references: [users.id],
   }),
   diffs: many(diffs),
-  actions: many(actions),
 }));
 
 export const diffsRelations = relations(diffs, ({ one }) => ({
@@ -233,13 +223,6 @@ export const subscriptionsRelations = relations(subscriptions, ({ one }) => ({
   product: one(subscriptionProducts, {
     fields: [subscriptions.productId],
     references: [subscriptionProducts.id],
-  }),
-}));
-
-export const actionsRelations = relations(actions, ({ one }) => ({
-  message: one(chatMessages, {
-    fields: [actions.messageId],
-    references: [chatMessages.id],
   }),
 }));
 
@@ -290,8 +273,6 @@ export type SubscriptionProduct = typeof subscriptionProducts.$inferSelect;
 export type NewSubscriptionProduct = typeof subscriptionProducts.$inferInsert;
 export type Subscription = typeof subscriptions.$inferSelect;
 export type NewSubscription = typeof subscriptions.$inferInsert;
-export type Action = typeof actions.$inferSelect;
-export type NewAction = typeof actions.$inferInsert;
 
 export type WaitlistEntry = typeof waitlistEntries.$inferSelect;
 export type NewWaitlistEntry = typeof waitlistEntries.$inferInsert;

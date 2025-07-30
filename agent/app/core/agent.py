@@ -18,8 +18,9 @@ class Agent:
     Streams events directly from Anthropic SDK with zero manipulation
     """
 
-    def __init__(self, project_id: int):
+    def __init__(self, project_id: int, assistant_message_id: int | None = None):
         self.project_id = project_id
+        self.assistant_message_id = assistant_message_id
         self.webhook_service = WebhookService()
         self.start_time = time.time()
         self.total_actions = 0
@@ -51,6 +52,9 @@ class Agent:
         print(f"🤖 Processing request for project ID: {self.project_id}")
         processing_start = time.time()
 
+        # Collect all assistant response blocks for final webhook
+        all_assistant_blocks = []
+
         try:
             messages = [{"role": "user", "content": prompt}]
 
@@ -61,6 +65,9 @@ class Agent:
 
                 # Process conversation turn and get content blocks
                 content_blocks, task_completed, task_summary = await self._process_conversation_turn(messages)
+
+                # Collect blocks for final assistant message
+                self._collect_assistant_blocks(content_blocks, all_assistant_blocks)
 
                 # Check if there are any tools to execute
                 tool_calls = [block for block in content_blocks if block.get("type") == "tool_use"]
@@ -76,20 +83,20 @@ class Agent:
                 if task_completed:
                     yield {"type": "task_summary", "summary": task_summary}
                     yield {"type": "message_complete"}
-                    await self._send_completion_webhook(success=True)
+                    await self._send_assistant_message_webhook(all_assistant_blocks, success=True)
                     break
 
                 # Break if no tools to execute (conversation is complete)
                 if not tool_calls:
                     yield {"type": "message_complete"}
-                    await self._send_completion_webhook(success=True)
+                    await self._send_assistant_message_webhook(all_assistant_blocks, success=True)
                     break
 
         except Exception as e:
             error_msg = f"Error in agent: {e}"
             print(f"❌ {error_msg}")
             yield {"type": "error", "message": error_msg}
-            await self._send_completion_webhook(success=False)
+            await self._send_assistant_message_webhook(all_assistant_blocks, success=False)
 
         processing_end = time.time()
         print(f"⏱️ Total processing time: {processing_end - processing_start:.2f}s")
@@ -301,11 +308,45 @@ class Agent:
 
         return event_dict
 
-    async def _send_completion_webhook(self, success: bool = True):
-        """Send completion webhook to Next.js"""
+    def _collect_assistant_blocks(self, content_blocks: list, all_blocks: list):
+        """Collect assistant blocks for final webhook"""
+        for block in content_blocks:
+            if block.get("type") == "text":
+                all_blocks.append({"type": "text", "content": block.get("text", "")})
+            elif block.get("type") == "thinking":
+                all_blocks.append(
+                    {"type": "thinking", "content": block.get("thinking", ""), "signature": block.get("signature", "")}
+                )
+            elif block.get("type") == "tool_use":
+                all_blocks.append(
+                    {
+                        "type": "tool",
+                        "name": block.get("name", ""),
+                        "input": block.get("input", {}),
+                        "result": "Tool executed successfully",  # Will be updated by tool execution
+                        "status": "completed",
+                    }
+                )
+
+    async def _send_assistant_message_webhook(self, assistant_blocks: list, success: bool = True):
+        """Send complete assistant message with all blocks to Next.js"""
         try:
             duration = time.time() - self.start_time
 
+            # Send assistant message with blocks
+            async with self.webhook_service as webhook:
+                await webhook.send_assistant_message(
+                    project_id=self.project_id,
+                    blocks=assistant_blocks,
+                    tokens_input=0,  # Token counting handled by Anthropic
+                    tokens_output=0,
+                    context_tokens=0,
+                    assistant_message_id=self.assistant_message_id,
+                )
+
+            print(f"✅ Sent assistant message webhook: {len(assistant_blocks)} blocks")
+
+            # Send completion webhook
             async with self.webhook_service as webhook:
                 await webhook.send_completion(
                     project_id=self.project_id,
@@ -317,4 +358,4 @@ class Agent:
 
             print(f"✅ Sent completion webhook: {self.total_actions} actions, {duration:.2f}s")
         except Exception as e:
-            print(f"❌ Failed to send completion webhook: {e}")
+            print(f"❌ Failed to send webhooks: {e}")

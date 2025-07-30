@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils';
 // Import types and utilities
 import type { ChatMessageProps, ErrorType } from '@/lib/types';
 import { getFileName, processMessageContent } from '@/lib/utils/message-content';
-import AssistantActionsCard from './assistant-actions-card';
+
 
 export default function ChatMessage({
   content,
@@ -19,7 +19,6 @@ export default function ChatMessage({
   isLoading = false,
   className,
   user,
-  actions,
   showAvatar = true,
   hasError = false,
   errorType = 'unknown',
@@ -43,7 +42,7 @@ export default function ChatMessage({
   };
 
   // Process content using utility function
-  const contentParts = processMessageContent(content);
+  const contentParts = processMessageContent(content || '');
 
   return (
     <div
@@ -158,22 +157,6 @@ export default function ChatMessage({
                 </div>
               )
             ))}
-
-
-                    {/* Display file operations card inside assistant messages if operations exist */}
-          {!isUser && (() => {
-            console.log('🎯 [ChatMessage] Rendering assistant message:', {
-              hasActions: actions && actions.length > 0,
-              actionsCount: actions?.length || 0,
-              actions: actions
-            });
-
-            return actions && actions.length > 0 && (
-              <div className="w-full">
-                <AssistantActionsCard operations={actions} />
-              </div>
-            );
-          })()}
 
           {/* Display error message if there's an error */}
           {!isUser && hasError && (

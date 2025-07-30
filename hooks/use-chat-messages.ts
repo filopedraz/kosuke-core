@@ -24,8 +24,7 @@ const fetchMessages = async (projectId: number): Promise<FetchMessagesResult> =>
     data.messages.forEach((m: ApiChatMessage, index: number) => {
       console.log(`🔍 Message ${index + 1} (ID: ${m.id}, role: ${m.role}):`);
       console.log(`  - Content preview: "${m.content.substring(0, 50)}..."`);
-      console.log(`  - Has actions: ${m.actions && m.actions.length > 0}`);
-      console.log(`  - Actions count: ${m.actions?.length || 0}`);
+
       console.log(
         `  - Tokens - Input: ${m.tokensInput}, Output: ${m.tokensOutput}, Context: ${m.contextTokens}`
       );
@@ -58,14 +57,7 @@ const fetchMessages = async (projectId: number): Promise<FetchMessagesResult> =>
         role: msg.role as 'user' | 'assistant' | 'system',
         timestamp: new Date(msg.timestamp),
         isLoading: false,
-        // Process actions - ensure dates are converted to Date objects
-        actions:
-          msg.actions && msg.actions.length > 0
-            ? msg.actions.map(op => ({
-                ...op,
-                timestamp: new Date(op.timestamp),
-              }))
-            : undefined,
+
         // Include token information
         tokensInput: msg.tokensInput,
         tokensOutput: msg.tokensOutput,
@@ -118,9 +110,6 @@ export function useChatMessages(
     projectId,
     initialMessagesCount: initialMessages.length,
     initialIsLoading,
-    hasInitialMessagesWithActions: initialMessages.some(
-      msg => msg.actions && msg.actions.length > 0
-    ),
   });
 
   return useQuery({

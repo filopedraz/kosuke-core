@@ -1,12 +1,11 @@
-import { desc, eq, inArray, sql } from 'drizzle-orm';
+import { desc, eq } from 'drizzle-orm';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { getSession } from '@/lib/auth/session';
 import { db } from '@/lib/db/drizzle';
 import { getProjectById } from '@/lib/db/projects';
-import { Action, actions, chatMessages } from '@/lib/db/schema';
-import { hasReachedMessageLimit } from '@/lib/models';
+import { chatMessages } from '@/lib/db/schema';
 import { uploadFile } from '@/lib/storage';
 
 // Schema for sending a message - support both formats
@@ -141,76 +140,9 @@ export async function GET(
 
     console.log(`📊 Chat history for project ${projectId}: ${chatHistory.length} messages`);
 
-    // Extract message IDs from assistant messages (since operations are linked to messages)
-    const messageIds = chatHistory
-      .filter(msg => msg.role === 'assistant')
-      .map(msg => msg.id);
-
-    console.log(`📊 Assistant messages found: ${messageIds.length} (IDs: ${messageIds.join(', ')})`);
-
-    // Fetch file operations for these messages if there are any
-    let operations: Action[] = [];
-    if (messageIds.length > 0) {
-      operations = await db
-        .select()
-        .from(actions)
-        .where(inArray(actions.messageId, messageIds));
-
-      console.log(`📊 Actions found in database: ${operations.length}`);
-
-      // Log each action for debugging
-      operations.forEach((op, index) => {
-        console.log(`📊 Action ${index + 1}: {id: ${op.id}, type: "${op.type}", path: "${op.path}", messageId: ${op.messageId}, status: "${op.status}", timestamp: ${op.timestamp}}`);
-      });
-    }
-
-    // Group operations by message ID
-    type FormattedOperation = {
-      id: number;
-      type: string;
-      path: string;
-      timestamp: Date;
-      status: string;
-      messageId: number;
-    };
-
-    const operationsByMessageId = operations.reduce<Record<number, FormattedOperation[]>>((acc, op) => {
-      if (!acc[op.messageId]) {
-        acc[op.messageId] = [];
-      }
-      acc[op.messageId].push({
-        id: op.id,
-        type: op.type,
-        path: op.path,
-        timestamp: op.timestamp,
-        status: op.status,
-        messageId: op.messageId
-      });
-      return acc;
-    }, {});
-
-    console.log(`📊 Operations grouped by message ID:`, JSON.stringify(operationsByMessageId, null, 2));
-
-    // Attach operations to their respective messages
-    const messagesWithOperations = chatHistory.map(msg => ({
-      ...msg,
-      actions: operationsByMessageId[msg.id] || []
-    }));
-
-    // Log final result for debugging
-    const messagesWithActionsCount = messagesWithOperations.filter(msg => msg.actions && msg.actions.length > 0).length;
-    console.log(`📊 Final result: ${messagesWithOperations.length} total messages, ${messagesWithActionsCount} messages have actions`);
-
-    messagesWithOperations.forEach((msg, index) => {
-      if (msg.actions && msg.actions.length > 0) {
-        console.log(`📊 Message ${index + 1} (ID: ${msg.id}, role: ${msg.role}) has ${msg.actions.length} actions:`,
-          msg.actions.map(a => `${a.type}:${a.path}`).join(', '));
-      }
-    });
-
-    // Return messages with nested operations
+    // Return messages directly (no more actions)
     return NextResponse.json({
-      messages: messagesWithOperations
+      messages: chatHistory
     });
   } catch (error) {
     console.error('Error getting chat history:', error);
@@ -254,26 +186,7 @@ export async function POST(
       return new Response('Forbidden', { status: 403 });
     }
 
-    // Check if the user has reached their message limit
-    try {
-      const limitReached = await hasReachedMessageLimit(session.user.id);
-      if (limitReached) {
-        throw new Error('PREMIUM_LIMIT_REACHED');
-      }
-    } catch (error) {
-      if (error instanceof Error && error.message === 'PREMIUM_LIMIT_REACHED') {
-        console.log('User has reached premium message limit, returning 403');
-        return new Response(
-          JSON.stringify({ error: 'You have reached your message limit for your current plan', code: 'PREMIUM_LIMIT_REACHED' }),
-          {
-            status: 403,
-            headers: { 'Content-Type': 'application/json' }
-          }
-        );
-      }
-      // Other errors
-      console.error('Error checking message limit:', error);
-    }
+
 
     // Parse request body - support both JSON and FormData
     const contentType = req.headers.get('content-type') || '';
@@ -295,22 +208,6 @@ export async function POST(
         messageContent = `${messageContent}\n\n[Attached Image](${formData.imageUrl})`;
       }
 
-      // For image uploads, process traditionally and return JSON
-      const { countTokens } = await import('@/lib/llm/utils');
-      const messageTokens = countTokens(messageContent);
-
-      // Calculate cumulative token totals
-      const tokenTotals = await db
-        .select({
-          totalInput: sql`SUM(tokens_input)`,
-          totalOutput: sql`SUM(tokens_output)`
-        })
-        .from(chatMessages)
-        .where(eq(chatMessages.projectId, projectId));
-
-      const totalTokensInput = Number(tokenTotals[0]?.totalInput || 0) + messageTokens;
-      const totalTokensOutput = Number(tokenTotals[0]?.totalOutput || 0);
-
       // Save the user message to the database
       await db.insert(chatMessages).values({
         projectId,
@@ -318,18 +215,15 @@ export async function POST(
         content: messageContent,
         role: 'user',
         modelType: 'premium',
-        tokensInput: messageTokens,
+        tokensInput: 0, // Token counting moved to webhook
         tokensOutput: 0,
-        contextTokens: messageTokens,
+        contextTokens: 0,
       });
 
       return new Response(
         JSON.stringify({
           success: true,
-          message: "Image message saved. Processing will be handled via webhooks.",
-          totalTokensInput,
-          totalTokensOutput,
-          contextTokens: messageTokens
+          message: "Image message saved. Processing will be handled via webhooks."
         }),
         {
           headers: { 'Content-Type': 'application/json' }
@@ -374,55 +268,35 @@ export async function POST(
 
     console.log(`Received message content: "${messageContent.substring(0, 50)}${messageContent.length > 50 ? '...' : ''}"`);
 
-    // Count tokens for input message using tiktoken
-    const { countTokens } = await import('@/lib/llm/utils');
-    const messageTokens = countTokens(messageContent);
-
-    // Calculate cumulative token totals
-    const tokenTotals = await db
-      .select({
-        totalInput: sql`SUM(tokens_input)`,
-        totalOutput: sql`SUM(tokens_output)`
-      })
-      .from(chatMessages)
-      .where(eq(chatMessages.projectId, projectId));
-
-    const totalTokensInput = Number(tokenTotals[0]?.totalInput || 0) + messageTokens;
-    const totalTokensOutput = Number(tokenTotals[0]?.totalOutput || 0);
-
-    console.log(`📊 Message tokens: ${messageTokens}`);
-    console.log(`📊 Total tokens input (including this message): ${totalTokensInput}`);
-    console.log(`📊 Total tokens output: ${totalTokensOutput}`);
-
-    // 1. Save user message immediately
+    // Save user message immediately
     const [userMessage] = await db.insert(chatMessages).values({
       projectId,
       userId: session.user.id,
       content: messageContent,
       role: 'user',
       modelType: 'premium',
-      tokensInput: messageTokens,
-      tokensOutput: 0,
-      contextTokens: messageTokens,
-    }).returning();
-
-    console.log(`✅ User message saved with ID: ${userMessage.id}`);
-
-    // 2. Create placeholder assistant message immediately for real-time updates
-    const [assistantMessage] = await db.insert(chatMessages).values({
-      projectId,
-      userId: session.user.id,
-      content: '', // Empty placeholder content
-      role: 'assistant',
-      modelType: 'premium',
-      tokensInput: 0,
+      tokensInput: 0, // Token counting moved to webhook
       tokensOutput: 0,
       contextTokens: 0,
     }).returning();
 
-    console.log(`✅ Placeholder assistant message created with ID: ${assistantMessage.id}`);
+    console.log(`✅ User message saved with ID: ${userMessage.id}`);
 
-    // 3. For text messages, proxy stream directly to Python FastAPI service (like the old approach)
+    // Create assistant message placeholder for streaming
+    const [assistantMessage] = await db.insert(chatMessages).values({
+      projectId,
+      userId: session.user.id,
+      content: null, // Will be populated by webhook
+      role: 'assistant',
+      modelType: 'premium',
+      tokensInput: 0, // Will be updated by webhook
+      tokensOutput: 0, // Will be updated by webhook
+      contextTokens: 0, // Will be updated by webhook
+    }).returning();
+
+    console.log(`✅ Assistant message placeholder created with ID: ${assistantMessage.id}`);
+
+    // Proxy stream directly to Python FastAPI service
     const agentServiceUrl = process.env.AGENT_SERVICE_URL || 'http://localhost:8000';
 
     // Mark unused variables for future use
@@ -437,6 +311,7 @@ export async function POST(
       body: JSON.stringify({
         project_id: projectId,
         prompt: messageContent,
+        assistant_message_id: assistantMessage.id,
       }),
     });
 
@@ -459,13 +334,13 @@ export async function POST(
       });
     }
 
-    // Stream the response from Python service directly to client (like the old approach)
+    // Stream the response from Python service directly to client
     return new Response(response.body, {
       headers: {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache, no-transform',
         'Connection': 'keep-alive',
-        'X-Assistant-Message-Id': assistantMessage.id.toString(), // Pass assistant message ID for frontend updates
+        'X-Assistant-Message-Id': assistantMessage.id.toString(),
       },
     });
 

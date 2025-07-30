@@ -1,5 +1,4 @@
 import type {
-  Action,
   ApiChatMessage,
   ChatMessageProps,
   ContentBlock,
@@ -26,7 +25,6 @@ const sendMessage = async (
   content: string,
   options?: MessageOptions,
   contentBlockCallback?: (contentBlocks: ContentBlock[]) => void,
-  actionsCallback?: (actions: Action[]) => void,
   setAssistantIdCallback?: (id: number) => void,
   abortController?: AbortController
 ): Promise<{
@@ -126,7 +124,6 @@ const sendMessage = async (
       // Track streaming state and content blocks
       let isStreamActive = true;
       const contentBlocks: ContentBlock[] = [];
-      const streamingActions: Action[] = [];
 
       while (isStreamActive) {
         const { done, value } = await reader.read();
@@ -341,69 +338,9 @@ const sendMessage = async (
                 break;
               } else if (data.type === 'error') {
                 // Handle errors
-                console.error('❌ Streaming error:', data.message);
+                console.error('❌ Streaming error');
                 isStreamActive = false;
-                throw new Error(data.message || 'Streaming error');
-              } else if (data.type === 'text') {
-                // Legacy text handling for backward compatibility
-                if (data.message) {
-                  // Add as text block if no blocks exist
-                  if (contentBlocks.length === 0) {
-                    const textBlock: ContentBlock = {
-                      id: `legacy-text-${assistantMessageId}`,
-                      index: 0,
-                      type: 'text',
-                      content: data.message,
-                      status: 'streaming',
-                      timestamp: new Date(),
-                    };
-                    contentBlocks.push(textBlock);
-                  } else {
-                    // Append to last text block
-                    const lastBlock = contentBlocks[contentBlocks.length - 1];
-                    if (lastBlock.type === 'text') {
-                      lastBlock.content += data.message;
-                    }
-                  }
-
-                  // Notify callback
-                  if (contentBlockCallback) {
-                    contentBlockCallback([...contentBlocks]);
-                  }
-                }
-              } else if (data.type === 'operation_start' || data.type === 'operation_complete') {
-                // Legacy file operation events - convert to Action objects
-                if (data.file_path !== undefined && data.message && data.status) {
-                  const action: Action = {
-                    type: (data.operation as Action['type']) || 'edit',
-                    path: data.file_path,
-                    status: data.status as Action['status'],
-                    timestamp: new Date(),
-                    messageId: assistantMessageId,
-                    content: data.message,
-                  };
-
-                  // Update actions array for real-time display
-                  const existingActionIndex = streamingActions.findIndex(
-                    a => a.path === action.path && a.type === action.type
-                  );
-                  if (existingActionIndex >= 0) {
-                    streamingActions[existingActionIndex] = {
-                      ...streamingActions[existingActionIndex],
-                      ...action,
-                    };
-                  } else {
-                    streamingActions.push(action);
-                  }
-
-                  console.log(
-                    `🎯 File Operation: ${action.type} on ${action.path} - ${action.status}`
-                  );
-
-                  if (actionsCallback) {
-                    actionsCallback([...streamingActions]);
-                  }
-                }
+                throw new Error('Streaming error');
               } else if (data.type === 'completed') {
                 // Legacy completion handling
                 isStreamActive = false;
@@ -430,14 +367,13 @@ const sendMessage = async (
         }
       }
 
-      // Return success response with assistant message ID and final actions
+      // Return success response with assistant message ID
       return {
         message: {
           id: assistantMessageId,
           content: finalContent.trim(),
           role: 'assistant',
           timestamp: new Date(),
-          actions: streamingActions,
         } as ApiChatMessage,
         success: true,
       };
@@ -455,7 +391,7 @@ export function useSendMessage(projectId: number) {
   // Streaming state (minimal React state for real-time updates)
   const [streamingState, setStreamingState] = useState({
     isStreaming: false,
-    streamingActions: [] as Action[],
+
     streamingContentBlocks: [] as ContentBlock[],
     streamingAssistantMessageId: null as number | null,
     streamAbortController: null as AbortController | null,
@@ -468,7 +404,7 @@ export function useSendMessage(projectId: number) {
       streamingState.streamAbortController.abort();
       setStreamingState({
         isStreaming: false,
-        streamingActions: [],
+
         streamingContentBlocks: [],
         streamingAssistantMessageId: null,
         streamAbortController: null,
@@ -484,7 +420,6 @@ export function useSendMessage(projectId: number) {
       setStreamingState(prev => ({
         ...prev,
         isStreaming: true,
-        streamingActions: [],
         streamingContentBlocks: [],
         streamAbortController: abortController,
       }));
@@ -494,14 +429,6 @@ export function useSendMessage(projectId: number) {
         setStreamingState(prev => ({
           ...prev,
           streamingContentBlocks: contentBlocks,
-        }));
-      };
-
-      // Create actions callback for real-time action updates
-      const actionsCallback = (actions: Action[]) => {
-        setStreamingState(prev => ({
-          ...prev,
-          streamingActions: actions,
         }));
       };
 
@@ -518,7 +445,6 @@ export function useSendMessage(projectId: number) {
         args.content,
         args.options,
         contentBlockCallback,
-        actionsCallback,
         setAssistantIdCallback,
         abortController
       );
@@ -617,7 +543,7 @@ export function useSendMessage(projectId: number) {
       // Clean up streaming state
       setStreamingState({
         isStreaming: false,
-        streamingActions: [],
+
         streamingContentBlocks: [],
         streamingAssistantMessageId: null,
         streamAbortController: null,

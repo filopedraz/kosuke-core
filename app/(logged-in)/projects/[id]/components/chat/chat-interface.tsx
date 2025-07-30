@@ -37,7 +37,7 @@ export default function ChatInterface({
     projectId,
     initialMessagesCount: initialMessages.length,
     initialIsLoading,
-    hasInitialMessagesWithActions: initialMessages.some(msg => msg.actions && msg.actions.length > 0)
+    hasInitialMessages: initialMessages.length > 0
   });
 
   // Refs
@@ -67,7 +67,6 @@ export default function ChatInterface({
     isLoading: isSending,
     error: sendError,
     isStreaming,
-    streamingActions,
     streamingContentBlocks,
     streamingAssistantMessageId,
     cancelStream,
@@ -173,7 +172,7 @@ export default function ChatInterface({
     const hasUserMessages = messages.some(m => m.role === 'user');
     if (hasUserMessages &&
         message.role === 'system' &&
-        message.content.includes('Project created successfully')) {
+        message.content?.includes('Project created successfully')) {
       return false;
     }
     return true;
@@ -218,11 +217,11 @@ export default function ChatInterface({
             </div>
           ) : (
             <>
-              {enhancedMessages.map(message => (
+              {messages.map(message => (
                 <ChatMessage
                   key={message.id}
                   id={message.id}
-                  content={message.content}
+                  content={message.content || ''}
                   role={message.role}
                   timestamp={message.timestamp}
                   isLoading={message.isLoading}
@@ -231,7 +230,6 @@ export default function ChatInterface({
                     email: user.email,
                     imageUrl: user.imageUrl || undefined
                   } : undefined}
-                  actions={message.actions}
                   showAvatar={message.showAvatar}
                   hasError={message.hasError}
                   errorType={message.errorType}
@@ -271,8 +269,8 @@ export default function ChatInterface({
                 </div>
               )}
 
-              {/* Real-time streaming assistant response */}
-              {isStreaming && streamingAssistantMessageId && streamingContentBlocks.length > 0 && (
+                            {/* Real-time streaming assistant response */}
+              {isStreaming && streamingAssistantMessageId && streamingContentBlocks && streamingContentBlocks.length > 0 && (
                 <div className="animate-in fade-in-0 duration-300">
                   <AssistantResponse
                     response={{
