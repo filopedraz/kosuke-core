@@ -1,3 +1,4 @@
+import asyncio
 import json
 from collections.abc import AsyncGenerator
 
@@ -29,10 +30,10 @@ async def chat_stream(request: ChatRequest) -> StreamingResponse:
             # Create agent instance for this project
             agent = Agent(request.project_id)
 
-            # Stream updates from the agent
-            async for update in agent.run(request.prompt):
-                # Format as Server-Sent Events
-                data = json.dumps(update, default=str)  # default=str handles any enum values
+            # Stream native Anthropic events directly with forced flushing
+            async for event in agent.run(request.prompt):
+                # Forward event as Server-Sent Event with immediate flush
+                data = json.dumps(event, default=str)
                 yield f"data: {data}\n\n"
 
         except Exception as e:
@@ -40,10 +41,7 @@ async def chat_stream(request: ChatRequest) -> StreamingResponse:
             # Send error as final message
             error_data = {
                 "type": "error",
-                "file_path": "",
                 "message": f"Internal server error: {e!s}",
-                "status": "error",
-                "error_type": "unknown",
             }
             yield f"data: {json.dumps(error_data)}\n\n"
 
@@ -52,13 +50,16 @@ async def chat_stream(request: ChatRequest) -> StreamingResponse:
 
     return StreamingResponse(
         generate_stream(),
-        media_type="text/plain",
+        media_type="text/event-stream",
         headers={
-            "Cache-Control": "no-cache",
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0",
             "Connection": "keep-alive",
-            "Content-Type": "text/event-stream",
+            "Content-Type": "text/event-stream; charset=utf-8",
             "Access-Control-Allow-Origin": "*",
             "Access-Control-Allow-Headers": "*",
+            "X-Accel-Buffering": "no",  # Disable nginx buffering
         },
     )
 

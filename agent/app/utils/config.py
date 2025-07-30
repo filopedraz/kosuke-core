@@ -1,16 +1,15 @@
 import logging
 import os
-
-from pydantic_settings import BaseSettings
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
 def initialize_langfuse(settings_instance) -> bool:
     """
-    Initialize Langfuse observability for PydanticAI agents.
+    Initialize Langfuse observability for native Anthropic SDK.
 
-    This uses the official Langfuse PydanticAI integration pattern.
+    Uses OpenTelemetry instrumentation for Anthropic API calls.
     """
     # Check if Langfuse settings are configured
     public_key = settings_instance.langfuse_public_key
@@ -27,9 +26,9 @@ def initialize_langfuse(settings_instance) -> bool:
         os.environ["LANGFUSE_SECRET_KEY"] = secret_key
         os.environ["LANGFUSE_HOST"] = host
 
-        # Import Langfuse client and PydanticAI Agent
+        # Import required dependencies
         from langfuse import get_client
-        from pydantic_ai import Agent
+        from opentelemetry.instrumentation.anthropic import AnthropicInstrumentor
 
         # Initialize Langfuse client
         langfuse = get_client()
@@ -38,68 +37,66 @@ def initialize_langfuse(settings_instance) -> bool:
         if langfuse.auth_check():
             logger.info(f"✅ Langfuse client authenticated - {host}")
 
-            # Initialize Pydantic AI instrumentation
-            Agent.instrument_all()
-            logger.info("🔧 PydanticAI instrumentation enabled")
+            # Initialize OpenTelemetry instrumentation for Anthropic
+            AnthropicInstrumentor().instrument()
+            logger.info("🔧 Anthropic OpenTelemetry instrumentation enabled")
 
             return True
-        else:
-            logger.warning("❌ Langfuse authentication failed. Please check your credentials and host.")
-            return False
+
+        logger.warning("❌ Langfuse authentication failed. Please check your credentials and host.")
+        return False
 
     except ImportError as e:
         logger.warning(f"⚠️ Missing dependencies for Langfuse integration: {e}")
-        logger.warning("💡 Install with: pip install langfuse")
+        logger.warning("💡 Install with: pip install langfuse opentelemetry-instrumentation-anthropic")
         return False
     except Exception as e:
         logger.warning(f"⚠️ Failed to initialize Langfuse: {e}")
         return False
 
 
-class Settings(BaseSettings):
+class Settings:
     """Application settings loaded from environment variables"""
 
-    # Basic settings
-    log_level: str = "INFO"
-    max_iterations: int = 25
-    temperature: float = 0.7
-    max_tokens: int = 4000
+    def __init__(self):
+        # Basic settings
+        self.log_level: str = os.getenv("LOG_LEVEL", "INFO")
+        self.max_iterations: int = int(os.getenv("MAX_ITERATIONS", "25"))
+        self.temperature: float = float(os.getenv("TEMPERATURE", "0.7"))
+        self.max_tokens: int = int(os.getenv("MAX_TOKENS", "4000"))
 
-    # Paths
-    projects_dir: str = "projects"
+        # Paths
+        self.projects_dir: str = os.getenv("PROJECTS_DIR", "projects")
 
-    # Model settings - Claude 3.7 supports thinking blocks
-    model_name: str = "claude-3-7-sonnet-20250219"
-    anthropic_api_key: str = ""
+        # Model settings - Claude 3.7 supports thinking blocks
+        self.model_name: str = os.getenv("MODEL_NAME", "claude-3-7-sonnet-20250219")
+        self.anthropic_api_key: str = os.getenv("ANTHROPIC_API_KEY", "")
 
-    # Preview settings
-    preview_default_image: str = "ghcr.io/filopedraz/kosuke-template:v0.0.76"
-    preview_port_range_start: int = 3001
-    preview_port_range_end: int = 3100
+        # Preview settings
+        self.preview_default_image: str = os.getenv(
+            "PREVIEW_DEFAULT_IMAGE", "ghcr.io/filopedraz/kosuke-template:v0.0.76"
+        )
+        self.preview_port_range_start: int = int(os.getenv("PREVIEW_PORT_RANGE_START", "3001"))
+        self.preview_port_range_end: int = int(os.getenv("PREVIEW_PORT_RANGE_END", "3100"))
 
-    # Database settings
-    postgres_host: str = "localhost"
-    postgres_port: int = 5432
-    postgres_db: str = "kosuke"
-    postgres_user: str = "postgres"
-    postgres_password: str = "password"
+        # Database settings
+        self.postgres_host: str = os.getenv("POSTGRES_HOST", "localhost")
+        self.postgres_port: int = int(os.getenv("POSTGRES_PORT", "5432"))
+        self.postgres_db: str = os.getenv("POSTGRES_DB", "kosuke")
+        self.postgres_user: str = os.getenv("POSTGRES_USER", "postgres")
+        self.postgres_password: str = os.getenv("POSTGRES_PASSWORD", "password")
 
-    # Langfuse Observability (Optional)
-    langfuse_public_key: str = ""
-    langfuse_secret_key: str = ""
-    langfuse_host: str = "https://langfuse.joandko.io"
+        # Langfuse Observability (Optional)
+        self.langfuse_public_key: str = os.getenv("LANGFUSE_PUBLIC_KEY", "")
+        self.langfuse_secret_key: str = os.getenv("LANGFUSE_SECRET_KEY", "")
+        self.langfuse_host: str = os.getenv("LANGFUSE_HOST", "https://langfuse.joandko.io")
 
-    # Processing settings
-    processing_timeout: int = 90000
+        # Processing settings
+        self.processing_timeout: int = int(os.getenv("PROCESSING_TIMEOUT", "90000"))
 
-    # Webhook settings
-    nextjs_url: str = "http://localhost:3000"
-    webhook_secret: str = "dev-secret-change-in-production"
-
-    class Config:
-        env_file = "config.env"
-        env_file_encoding = "utf-8"
-        extra = "ignore"  # Ignore extra environment variables not defined in the model
+        # Webhook settings
+        self.nextjs_url: str = os.getenv("NEXTJS_URL", "http://localhost:3000")
+        self.webhook_secret: str = os.getenv("WEBHOOK_SECRET", "dev-secret-change-in-production")
 
     def validate_settings(self) -> bool:
         """Validate required settings"""
@@ -110,6 +107,32 @@ class Settings(BaseSettings):
             raise ValueError("MAX_TOKENS must be greater than 0")
 
         return True
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert settings to dictionary for debugging"""
+        return {
+            "log_level": self.log_level,
+            "max_iterations": self.max_iterations,
+            "temperature": self.temperature,
+            "max_tokens": self.max_tokens,
+            "projects_dir": self.projects_dir,
+            "model_name": self.model_name,
+            "anthropic_api_key": "***" if self.anthropic_api_key else "",
+            "preview_default_image": self.preview_default_image,
+            "preview_port_range_start": self.preview_port_range_start,
+            "preview_port_range_end": self.preview_port_range_end,
+            "postgres_host": self.postgres_host,
+            "postgres_port": self.postgres_port,
+            "postgres_db": self.postgres_db,
+            "postgres_user": self.postgres_user,
+            "postgres_password": "***" if self.postgres_password else "",
+            "langfuse_public_key": "***" if self.langfuse_public_key else "",
+            "langfuse_secret_key": "***" if self.langfuse_secret_key else "",
+            "langfuse_host": self.langfuse_host,
+            "processing_timeout": self.processing_timeout,
+            "nextjs_url": self.nextjs_url,
+            "webhook_secret": "***" if self.webhook_secret else "",
+        }
 
 
 # Global settings instance

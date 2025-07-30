@@ -322,101 +322,95 @@ class KosukeCLI:
                 self.console.print("\n💡 [yellow]Type 'exit' to return to main menu[/yellow]")
                 continue
 
-    def _get_message_emoji(self, message_type: str) -> str:
-        """Get emoji for message type"""
+    def _get_message_emoji(self, event_type: str) -> str:
+        """Get emoji for Anthropic event type"""
         emoji_map = {
-            # Thinking and reasoning
-            "thinking": "🧠",
-            "thinking_start": "🧠",
-            "thinking_content": "💭",
-            "reasoning": "🤔",
-            "reasoning_start": "🤔",
-            "reasoning_content": "💡",
-            # Text and communication
-            "text": "💬",
-            # File operations - start
-            "operation_start": "⏳",
-            # File operations - specific types
-            "read": "🔍",
-            "create": "📝",
-            "edit": "✏️",
-            "delete": "🗑️",
-            "createDir": "📁",
-            "removeDir": "🗂️",
-            # Completion states
-            "operation_complete": "✅",
-            "completed": "🎉",
+            # Native Anthropic events
+            "message_start": "🚀",
+            "content_block_start": "📋",
+            "content_block_delta": "💭",
+            "content_block_stop": "⏸️",
+            "message_delta": "📝",
+            "message_stop": "🛑",
+            "message_complete": "✅",
+            # Tool execution events (custom)
+            "tool_start": "⚙️",
+            "tool_complete": "✅",
+            "tool_error": "❌",
+            # Error handling
             "error": "❌",
         }
-        return emoji_map.get(message_type, "📝")
-
-    def _format_display_message(
-        self, emoji: str, message_content: str, file_path: str, status: str, message_type: str = ""
-    ) -> str:
-        """Format message for display with enhanced formatting"""
-        # Handle thinking and reasoning content
-        if message_type in ["thinking_content", "reasoning_content"]:
-            return f"{emoji} [dim]{message_content}[/dim]"
-
-        # Handle thinking/reasoning start messages
-        if message_type in ["thinking_start", "reasoning_start"]:
-            return f"{emoji} [bold]{message_content}[/bold]"
-
-        # Handle operation events with file context
-        if message_type in ["operation_start", "operation_complete"]:
-            return self._format_operation_message(emoji, message_content, file_path)
-
-        # Handle completion states
-        if status == "completed" and file_path:
-            return f"{emoji} [green]{file_path}[/green]"
-
-        # Handle errors with file context
-        if status == "error" and file_path:
-            return f"{emoji} [red]{file_path}[/red] - {message_content}"
-
-        # Default formatting
-        return f"{emoji} {message_content}"
-
-    def _format_operation_message(self, emoji: str, message_content: str, file_path: str) -> str:
-        """Format operation messages with file context"""
-        if file_path:
-            return f"{emoji} [cyan]{file_path}[/cyan] - {message_content}"
-        return f"{emoji} {message_content}"
+        return emoji_map.get(event_type, "📝")
 
     async def _handle_chat_response(self, project_id: int, prompt: str):
-        """Handle streaming chat response with simple message display"""
+        """Handle streaming chat response with native Anthropic events"""
         self.console.print("\n🤖 [bold blue]Agent Response:[/bold blue]")
 
-        async for update in self.client.chat_stream(project_id, prompt):
-            if update.get("type") == "error":
-                self.console.print(f"❌ [red]{update.get('message', 'Unknown error')}[/red]")
+        current_text = ""
+        current_thinking = ""
+        in_thinking_block = False
+
+        async for event in self.client.chat_stream(project_id, prompt):
+            if event.get("type") == "error":
+                self.console.print(f"❌ [red]{event.get('message', 'Unknown error')}[/red]")
                 break
 
-            # Get message details
-            message_type = update.get("type", "unknown")
-            message_content = update.get("message", "")
-            file_path = update.get("file_path", "")
-            status = update.get("status", "")
+            event_type = event.get("type", "unknown")
+            emoji = self._get_message_emoji(event_type)
 
-            emoji = self._get_message_emoji(message_type)
-            display_message = self._format_display_message(emoji, message_content, file_path, status, message_type)
+            # Handle different event types
+            if event_type == "message_start":
+                self.console.print(f"  {emoji} [bold]Starting response...[/bold]")
 
-            # Print all messages immediately as they arrive
-            if display_message.strip():
-                # Add some spacing for better readability
-                if message_type in ["thinking_start", "reasoning_start"]:
-                    self.console.print()  # Extra line before sections
+            elif event_type == "content_block_start":
+                content_type = event.get("content_type", "")
+                if content_type == "thinking":
+                    in_thinking_block = True
+                    self.console.print(f"\n  🧠 [bold blue]Thinking...[/bold blue]")
+                elif content_type == "text":
+                    in_thinking_block = False
+                    self.console.print(f"\n  💬 [bold green]Response:[/bold green]")
 
-                self.console.print(f"  {display_message}")
+            elif event_type == "content_block_delta":
+                text = event.get("text", "")
+                if text:
+                    if in_thinking_block:
+                        current_thinking += text
+                        # Show thinking content in real-time (dimmed)
+                        self.console.print(f"[dim]{text}[/dim]", end="")
+                    else:
+                        current_text += text
+                        # Show response text in real-time
+                        self.console.print(text, end="")
 
-                # Add extra spacing after long content
-                if message_type in ["thinking_content", "reasoning_content"] and len(message_content) > 100:
-                    self.console.print()
+            elif event_type == "content_block_stop":
+                if in_thinking_block:
+                    self.console.print()  # New line after thinking
+                else:
+                    self.console.print()  # New line after text
 
-            # Check if completed
-            if message_type == "completed":
-                self.console.print("\n✅ [green]Response completed![/green]")
+            elif event_type == "tool_start":
+                tool_name = event.get("tool_name", "unknown")
+                self.console.print(f"\n  ⚙️ [yellow]Executing {tool_name}...[/yellow]")
+
+            elif event_type == "tool_complete":
+                tool_name = event.get("tool_name", "unknown")
+                result = event.get("result", "")
+                self.console.print(f"  ✅ [green]{tool_name} completed[/green]")
+                if result and len(result) < 100:  # Show short results
+                    self.console.print(f"     [dim]{result}[/dim]")
+
+            elif event_type == "tool_error":
+                tool_name = event.get("tool_name", "unknown")
+                error = event.get("error", "")
+                self.console.print(f"  ❌ [red]{tool_name} failed: {error}[/red]")
+
+            elif event_type == "message_complete":
+                self.console.print(f"\n  ✅ [green]Response completed![/green]")
                 break
+
+            elif event_type == "message_stop":
+                self.console.print(f"\n  🛑 [yellow]Message stopped[/yellow]")
 
         # Show preview status after completion
         self.console.print()
