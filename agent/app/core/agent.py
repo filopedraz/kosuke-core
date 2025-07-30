@@ -2,7 +2,7 @@ import os
 import time
 from collections.abc import AsyncGenerator
 
-import anthropic
+from anthropic import AsyncAnthropic
 
 from app.core.prompts import build_simplified_system_prompt
 from app.core.tools import execute_tool
@@ -35,7 +35,7 @@ class Agent:
             if not api_key:
                 raise ValueError("ANTHROPIC_API_KEY not found in settings or environment")
 
-            self.client = anthropic.Anthropic(api_key=api_key)
+            self.client = AsyncAnthropic(api_key=api_key)
 
             # Build system prompt
             self.system_prompt = build_simplified_system_prompt(self.project_id)
@@ -54,6 +54,8 @@ class Agent:
         processing_start = time.time()
 
         try:
+            yield {"type": "message_start", "message": "VAMOSS VAMOSS VAMOSS"}
+
             messages = [{"role": "user", "content": prompt}]
 
             conversation_turn = 0
@@ -82,29 +84,64 @@ class Agent:
                 if thinking_config:
                     stream_params["thinking"] = thinking_config
 
-                with self.client.messages.stream(**stream_params) as stream:
-                    # Stream events and yield them (using regular for loop)
-                    for event in stream:
-                        # Process event with proper data extraction
-                        event_dict = self._event_to_dict(event)
-                        if event_dict:
-                            yield event_dict
+                stream = await self.client.messages.create(**stream_params, stream=True)
 
-                    # Get the final message after streaming completes
-                    final_message = stream.get_final_message()
+                # Collect content blocks as we stream
+                content_blocks = []
+                current_text = ""
+                current_tool_calls = []
 
-                    # Extract content blocks from final message
-                    content_blocks = []
+                # Stream events and yield them (using async for loop)
+                async for event in stream:
+                    # Process event with proper data extraction
+                    event_dict = self._event_to_dict(event)
+                    if event_dict:
+                        yield event_dict
 
-                    for block in final_message.content:
-                        block_type = getattr(block, "type", None)
-                        if block_type == "thinking" and conversation_turn == 1:
-                            # For first turn with thinking, create redacted thinking for conversation history
-                            content_blocks.append(
-                                {"type": "redacted_thinking", "thinking": "[Thinking from previous turn]"}
-                            )
-                        elif block_type in ["text", "tool_use"]:
-                            content_blocks.append(block)
+                    # Collect content for conversation history
+                    event_type = event.type if hasattr(event, "type") else None
+
+                    if event_type == "content_block_start":
+                        if hasattr(event, "content_block") and hasattr(event.content_block, "type"):
+                            if event.content_block.type == "text":
+                                current_text = ""
+                            elif event.content_block.type == "tool_use":
+                                current_tool_calls.append(
+                                    {
+                                        "type": "tool_use",
+                                        "id": getattr(event.content_block, "id", ""),
+                                        "name": getattr(event.content_block, "name", ""),
+                                        "input": {},
+                                    }
+                                )
+
+                    elif event_type == "content_block_delta":
+                        if hasattr(event, "delta"):
+                            if hasattr(event.delta, "text"):
+                                current_text += event.delta.text
+                            elif hasattr(event.delta, "partial_json") and current_tool_calls:
+                                # Accumulate tool input (we'll parse JSON at the end)
+                                if not hasattr(current_tool_calls[-1], "_input_json"):
+                                    current_tool_calls[-1]["_input_json"] = ""
+                                current_tool_calls[-1]["_input_json"] += event.delta.partial_json
+
+                    elif event_type == "content_block_stop":
+                        if current_text:
+                            content_blocks.append({"type": "text", "text": current_text})
+                            current_text = ""
+                        if current_tool_calls and hasattr(current_tool_calls[-1], "_input_json"):
+                            try:
+                                import json
+
+                                current_tool_calls[-1]["input"] = json.loads(current_tool_calls[-1]["_input_json"])
+                                del current_tool_calls[-1]["_input_json"]
+                            except json.JSONDecodeError:
+                                pass  # Keep empty input if JSON is invalid
+
+                # Add any remaining content
+                if current_text:
+                    content_blocks.append({"type": "text", "text": current_text})
+                content_blocks.extend(current_tool_calls)
 
                 # Debug: Log content block collection
                 print(f"🔍 Collected {len(content_blocks)} content blocks for conversation history")
