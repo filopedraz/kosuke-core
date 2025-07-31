@@ -4,6 +4,7 @@ import { ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import { cn } from '@/lib/utils';
+import { renderSafeMarkdown } from '@/lib/utils/markdown';
 
 // Import types
 import type { ContentBlock as ContentBlockType } from '@/lib/types';
@@ -21,6 +22,7 @@ export default function ContentBlock({
 }: ContentBlockProps) {
   const [isCollapsed, setIsCollapsed] = useState(contentBlock.isCollapsed ?? false);
   const [thinkingTime, setThinkingTime] = useState(0);
+  const [renderedContent, setRenderedContent] = useState<string>('');
 
   // Sync local state with prop changes
   useEffect(() => {
@@ -55,6 +57,24 @@ export default function ContentBlock({
       }
     }
   }, [contentBlock.type, contentBlock.status, contentBlock.id, isCollapsed, onToggleCollapse]);
+
+  // Render markdown content for text blocks
+  useEffect(() => {
+    if (contentBlock.type === 'text') {
+      const renderContent = async () => {
+        try {
+          const rendered = await renderSafeMarkdown(contentBlock.content);
+          setRenderedContent(rendered);
+        } catch (error) {
+          console.error('Error rendering markdown:', error);
+          // Fallback to plain text with line breaks
+          setRenderedContent(contentBlock.content.replace(/\n/g, '<br>'));
+        }
+      };
+
+      renderContent();
+    }
+  }, [contentBlock.type, contentBlock.content]);
 
   const handleToggleCollapse = () => {
     if (contentBlock.type === 'thinking') {
@@ -167,22 +187,33 @@ export default function ContentBlock({
     );
   }
 
-  // Text block rendering
+  // Text block rendering with markdown support
   return (
     <div className={cn('w-full', className)}>
       {/* Text Content */}
-      <div className="space-y-2">
-        <div className="prose prose-xs dark:prose-invert max-w-none text-sm text-foreground [overflow-wrap:anywhere]">
-          {contentBlock.content.split('\n').map((line, j) => (
-            <p key={j} className={line.trim() === '' ? 'h-4' : '[word-break:normal] [overflow-wrap:anywhere]'}>
-              {line}
-              {contentBlock.status === 'streaming' &&
-               j === contentBlock.content.split('\n').length - 1 &&
-               contentBlock.content.trim() !== '' && (
-                <span className="inline-block w-2 h-4 bg-primary animate-pulse ml-1" />
-              )}
-            </p>
-          ))}
+      <div className="space-y-2 w-full">
+        <div className="w-full max-w-full text-sm text-foreground [overflow-wrap:anywhere] [&>*]:max-w-full [&>pre]:w-full [&>pre]:max-w-full">
+          {renderedContent ? (
+            <div
+              className="w-full max-w-full"
+              dangerouslySetInnerHTML={{
+                __html: renderedContent
+              }}
+            />
+          ) : (
+            // Loading state or fallback for when content is being rendered
+            <div className="w-full max-w-full">
+              {contentBlock.content.split('\n').map((line, j) => (
+                <p key={j} className={line.trim() === '' ? 'h-4' : '[word-break:normal] [overflow-wrap:anywhere]'}>
+                  {line}
+                </p>
+              ))}
+            </div>
+          )}
+          {/* Streaming cursor for text blocks */}
+          {contentBlock.status === 'streaming' && contentBlock.content.trim() !== '' && (
+            <span className="inline-block w-2 h-4 bg-primary animate-pulse ml-1" />
+          )}
         </div>
       </div>
     </div>
