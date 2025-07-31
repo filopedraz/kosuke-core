@@ -2,39 +2,39 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    types: [ opened, synchronize, reopened ]
+    types: [opened, synchronize, reopened]
 
 jobs:
   test-nextjs:
     name: Test and Lint Next.js
     runs-on: ubuntu-latest
-    
+
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
-          
+
       - name: Install dependencies
         run: npm ci
-        
+
       - name: Copy environment variables
         run: cp .env.example .env
-        
+
       - name: Start Docker services
-        run: docker compose up -d postgres minio
-        
+        run: docker compose up -d postgres
+
       - name: Run ESLint
         run: npm run lint
-        
+
       - name: Run tests
         run: npm run test
-        
+
       - name: Build application
         run: npm run build
 

@@ -38,19 +38,19 @@ async function getChatHistoryByProjectId(projectId: number, options: { limit?: n
 }
 
 /**
- * Save an uploaded image to Minio and return the URL
+ * Save an uploaded image to storage and return the URL
  */
 async function saveUploadedImage(file: File, projectId: number): Promise<string> {
   // Create a prefix to organize images by project
   const prefix = `chat-images/project-${projectId}`;
 
   try {
-    // Upload the file to Minio using the generic uploadFile function
+    // Upload the file using the generic uploadFile function
     const imageUrl = await uploadFile(file, prefix);
-    console.log(`✅ Image uploaded to Minio: ${imageUrl}`);
+    console.log(`✅ Image uploaded to storage: ${imageUrl}`);
     return imageUrl;
   } catch (error) {
-    console.error('Error uploading image to Minio:', error);
+    console.error('Error uploading image to storage:', error);
     throw new Error('Failed to upload image');
   }
 }
@@ -215,9 +215,7 @@ export async function POST(
         content: messageContent,
         role: 'user',
         modelType: 'premium',
-        tokensInput: 0, // Token counting moved to webhook
-        tokensOutput: 0,
-        contextTokens: 0,
+        // Token counting removed
       });
 
       return new Response(
@@ -289,9 +287,7 @@ export async function POST(
       content: null, // Will be populated by webhook
       role: 'assistant',
       modelType: 'premium',
-      tokensInput: 0, // Will be updated by webhook
-      tokensOutput: 0, // Will be updated by webhook
-      contextTokens: 0, // Will be updated by webhook
+      // Token counting removed
     }).returning();
 
     console.log(`✅ Assistant message placeholder created with ID: ${assistantMessage.id}`);

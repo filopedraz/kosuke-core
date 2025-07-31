@@ -2,7 +2,6 @@ import { relations } from 'drizzle-orm';
 import {
   boolean,
   integer,
-  json,
   jsonb,
   pgTable,
   serial,
@@ -94,36 +93,6 @@ export const diffs = pgTable('diffs', {
   appliedAt: timestamp('applied_at'),
 });
 
-export const subscriptionProducts = pgTable('subscription_products', {
-  id: serial('id').primaryKey(),
-  stripeProductId: varchar('stripe_product_id', { length: 255 }).notNull().unique(),
-  stripePriceId: varchar('stripe_price_id', { length: 255 }),
-  name: varchar('name', { length: 100 }).notNull(),
-  description: text('description'),
-  tier: varchar('tier', { length: 20 }).notNull(), // 'free', 'premium', 'business', 'enterprise'
-  price: integer('price'), // in cents
-  features: json('features').$type<string[]>(),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-  updatedAt: timestamp('updated_at').notNull().defaultNow(),
-});
-
-export const subscriptions = pgTable('subscriptions', {
-  id: serial('id').primaryKey(),
-  userId: integer('user_id')
-    .notNull()
-    .references(() => users.id),
-  stripeSubscriptionId: varchar('stripe_subscription_id', { length: 255 }),
-  stripePriceId: varchar('stripe_price_id', { length: 255 }),
-  productId: integer('product_id').references(() => subscriptionProducts.id),
-  status: varchar('status', { length: 50 }).notNull(), // 'active', 'canceled', 'past_due', 'unpaid', 'trialing'
-  currentPeriodStart: timestamp('current_period_start'),
-  currentPeriodEnd: timestamp('current_period_end'),
-  cancelAtPeriodEnd: boolean('cancel_at_period_end').default(false),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-  updatedAt: timestamp('updated_at').notNull().defaultNow(),
-  canceledAt: timestamp('canceled_at'),
-});
-
 export const userGithubTokens = pgTable('user_github_tokens', {
   id: serial('id').primaryKey(),
   userId: integer('user_id')
@@ -211,21 +180,6 @@ export const diffsRelations = relations(diffs, ({ one }) => ({
   }),
 }));
 
-export const subscriptionProductsRelations = relations(subscriptionProducts, ({ many }) => ({
-  subscriptions: many(subscriptions),
-}));
-
-export const subscriptionsRelations = relations(subscriptions, ({ one }) => ({
-  user: one(users, {
-    fields: [subscriptions.userId],
-    references: [users.id],
-  }),
-  product: one(subscriptionProducts, {
-    fields: [subscriptions.productId],
-    references: [subscriptionProducts.id],
-  }),
-}));
-
 export const userGithubTokensRelations = relations(userGithubTokens, ({ one }) => ({
   user: one(users, {
     fields: [userGithubTokens.userId],
@@ -269,10 +223,6 @@ export type ChatMessage = typeof chatMessages.$inferSelect;
 export type NewChatMessage = typeof chatMessages.$inferInsert;
 export type Diff = typeof diffs.$inferSelect;
 export type NewDiff = typeof diffs.$inferInsert;
-export type SubscriptionProduct = typeof subscriptionProducts.$inferSelect;
-export type NewSubscriptionProduct = typeof subscriptionProducts.$inferInsert;
-export type Subscription = typeof subscriptions.$inferSelect;
-export type NewSubscription = typeof subscriptions.$inferInsert;
 
 export type WaitlistEntry = typeof waitlistEntries.$inferSelect;
 export type NewWaitlistEntry = typeof waitlistEntries.$inferInsert;

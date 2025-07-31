@@ -17,15 +17,8 @@ import type { ChatInterfaceProps, ChatUser } from '@/lib/types';
 import AssistantResponse from './assistant-response';
 import ChatInput from './chat-input';
 import ChatMessage from './chat-message';
-import LimitReachedModal from './limit-reached-modal';
+
 import ModelBanner from './model-banner';
-import TokenUsage from './token-usage';
-
-
-
-
-
-
 
 export default function ChatInterface({
   projectId,
@@ -68,7 +61,6 @@ export default function ChatInterface({
   }
 
   const messages = useMemo(() => messagesData?.messages || [], [messagesData?.messages]);
-  const tokenUsage = messagesData?.tokenUsage || { tokensSent: 0, tokensReceived: 0, contextSize: 0 };
 
   const {
     sendMessage,
@@ -90,7 +82,6 @@ export default function ChatInterface({
     regenerateMessage,
     getErrorMessage,
     clearError,
-    resetChat,
   } = chatState;
 
   // Fetch user data
@@ -207,11 +198,6 @@ export default function ChatInterface({
   return (
     <div className={cn('flex flex-col h-full', className)} data-testid="chat-interface">
       <ModelBanner />
-      <TokenUsage
-        tokensSent={tokenUsage.tokensSent}
-        tokensReceived={tokenUsage.tokensReceived}
-        contextSize={tokenUsage.contextSize}
-      />
 
       <ScrollArea className="flex-1 overflow-y-auto">
         <div className="flex flex-col">
@@ -351,9 +337,7 @@ export default function ChatInterface({
             </div>
           )}
 
-          {isError && errorMessage === 'LIMIT_REACHED' && (
-            <LimitReachedModal onReset={resetChat} />
-          )}
+
 
           <div ref={messagesEndRef} className="pb-6" />
         </div>
