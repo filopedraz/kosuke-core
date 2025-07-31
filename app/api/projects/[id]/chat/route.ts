@@ -215,9 +215,7 @@ export async function POST(
         content: messageContent,
         role: 'user',
         modelType: 'premium',
-        tokensInput: 0, // Token counting moved to webhook
-        tokensOutput: 0,
-        contextTokens: 0,
+        // Token counting removed
       });
 
       return new Response(
@@ -289,9 +287,7 @@ export async function POST(
       content: null, // Will be populated by webhook
       role: 'assistant',
       modelType: 'premium',
-      tokensInput: 0, // Will be updated by webhook
-      tokensOutput: 0, // Will be updated by webhook
-      contextTokens: 0, // Will be updated by webhook
+      // Token counting removed
     }).returning();
 
     console.log(`✅ Assistant message placeholder created with ID: ${assistantMessage.id}`);

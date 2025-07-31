@@ -94,7 +94,7 @@ export const diffs = pgTable('diffs', {
   appliedAt: timestamp('applied_at'),
 });
 
-export const subscriptionProducts = pgTable('subscription_products', {
+// export const subscriptionProducts = pgTable('subscription_products', {
   id: serial('id').primaryKey(),
   stripeProductId: varchar('stripe_product_id', { length: 255 }).notNull().unique(),
   stripePriceId: varchar('stripe_price_id', { length: 255 }),
@@ -107,7 +107,7 @@ export const subscriptionProducts = pgTable('subscription_products', {
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
 
-export const subscriptions = pgTable('subscriptions', {
+// export const subscriptions = pgTable('subscriptions', {
   id: serial('id').primaryKey(),
   userId: integer('user_id')
     .notNull()

@@ -22,13 +22,7 @@ export const LLM = {
   RETRY_DELAY: 5000, // Base delay between retries in milliseconds (increases exponentially)
   PROCESSING_TIMEOUT: 120000, // Maximum time to wait for processing (120 seconds)
 
-  // Message limits by subscription tier
-  MESSAGE_LIMITS: {
-    free: 25, // Free tier - limited to 25 messages
-    premium: 500, // Pro plan
-    business: 1000, // Business plan
-    enterprise: 5000, // Enterprise plan
-  },
+
 };
 
 // Agent Service
@@ -56,41 +50,4 @@ export const FILE_EXPLORER = {
   EXCLUDE_DIRS: ['node_modules', '.next', 'out', 'build', 'dist', '.git', '.github'],
 };
 
-// Subscriptions
-export const SUBSCRIPTION_TIERS = {
-  FREE: 'free',
-  PREMIUM: 'premium',
-  BUSINESS: 'business',
-  ENTERPRISE: 'enterprise',
-};
-
-export const TIER_PRICING = {
-  free: 0,
-  premium: 20, // $20/mo as shown in UI
-  business: 200, // $200/mo as shown in UI
-  enterprise: null, // Contact us
-};
-
-export const TIER_FEATURES = {
-  free: ['Up to 3 projects', 'Basic AI functionality', 'Community support'],
-  premium: [
-    'Up to 10 projects',
-    'Enhanced AI capabilities',
-    'Priority email support',
-    'Custom project templates',
-  ],
-  business: [
-    'Unlimited projects',
-    'Advanced AI capabilities',
-    'Priority support with 24hr response',
-    'Team collaboration features',
-    'Custom integrations',
-  ],
-  enterprise: [
-    'All Business features',
-    'Dedicated account manager',
-    'Custom SLA',
-    'Enterprise security features',
-    'Advanced reporting and analytics',
-  ],
-};
+// Billing-related constants have been removed
