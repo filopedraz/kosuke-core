@@ -25,7 +25,6 @@ services:
       - next_build_cache:/app/.next/cache
     depends_on:
       - postgres
-      - minio
       - agent
     restart: unless-stopped
 
