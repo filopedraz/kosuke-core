@@ -36,8 +36,7 @@ export const processMessageContent = (content: string): ContentPart[] => {
   const thinkingRegex = /<thinking>([\s\S]*?)<\/thinking>/g;
   const imageRegex = /\[Attached Image\]\(([^)]+)\)/g;
 
-  let processedContent = content;
-  let thinkingMatches: { match: RegExpExecArray; content: string }[] = [];
+  const thinkingMatches: { match: RegExpExecArray; content: string }[] = [];
 
   // Extract thinking blocks first
   let thinkingMatch;

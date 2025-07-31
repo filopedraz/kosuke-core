@@ -342,7 +342,7 @@ class KosukeCLI:
         }
         return emoji_map.get(event_type, "📝")
 
-    async def _handle_chat_response(self, project_id: int, prompt: str):
+    async def _handle_chat_response(self, project_id: int, prompt: str):  # noqa: C901, PLR0912, PLR0915
         """Handle streaming chat response with native Anthropic events"""
         self.console.print("\n🤖 [bold blue]Agent Response:[/bold blue]")
 
@@ -366,10 +366,10 @@ class KosukeCLI:
                 content_type = event.get("content_type", "")
                 if content_type == "thinking":
                     in_thinking_block = True
-                    self.console.print(f"\n  🧠 [bold blue]Thinking...[/bold blue]")
+                    self.console.print("\n  🧠 [bold blue]Thinking...[/bold blue]")
                 elif content_type == "text":
                     in_thinking_block = False
-                    self.console.print(f"\n  💬 [bold green]Response:[/bold green]")
+                    self.console.print("\n  💬 [bold green]Response:[/bold green]")
 
             elif event_type == "content_block_delta":
                 text = event.get("text", "")
@@ -406,11 +406,11 @@ class KosukeCLI:
                 self.console.print(f"  ❌ [red]{tool_name} failed: {error}[/red]")
 
             elif event_type == "message_complete":
-                self.console.print(f"\n  ✅ [green]Response completed![/green]")
+                self.console.print("\n  ✅ [green]Response completed![/green]")
                 break
 
             elif event_type == "message_stop":
-                self.console.print(f"\n  🛑 [yellow]Message stopped[/yellow]")
+                self.console.print("\n  🛑 [yellow]Message stopped[/yellow]")
 
         # Show preview status after completion
         self.console.print()

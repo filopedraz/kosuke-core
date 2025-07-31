@@ -3,7 +3,6 @@ import logging
 import os
 import secrets
 from pathlib import Path
-from typing import Optional
 
 import docker
 from docker.errors import NotFound
@@ -23,7 +22,7 @@ class DockerService:
             self.client.ping()
         except Exception as e:
             logger.error(f"Failed to initialize Docker client: {e}")
-            raise RuntimeError(f"Docker client initialization failed: {e}")
+            raise RuntimeError(f"Docker client initialization failed: {e}") from e
 
         self.containers: dict[int, ContainerInfo] = {}
         self.CONTAINER_NAME_PREFIX = "kosuke-preview-"
@@ -99,9 +98,11 @@ class DockerService:
             health_check_url = url.replace("localhost", "host.docker.internal")
 
             timeout_config = aiohttp.ClientTimeout(total=timeout)
-            async with aiohttp.ClientSession(timeout=timeout_config) as session:
-                async with session.get(health_check_url) as response:
-                    return response.status == 200
+            async with (
+                aiohttp.ClientSession(timeout=timeout_config) as session,
+                session.get(health_check_url) as response,
+            ):
+                return response.status == 200
         except Exception as e:
             logger.debug(f"Health check failed for {url}: {e}")
             return False
@@ -133,7 +134,7 @@ class DockerService:
         except Exception as e:
             logger.error(f"Error creating database for project {project_id}: {e}")
 
-    async def _get_existing_container(self, container_name: str) -> Optional[dict]:
+    async def _get_existing_container(self, container_name: str) -> dict | None:
         """Get existing container info in executor to avoid blocking"""
         try:
             loop = asyncio.get_event_loop()
@@ -158,7 +159,7 @@ class DockerService:
 
         return None
 
-    async def start_preview(self, project_id: int, env_vars: Optional[dict[str, str]] = None) -> str:
+    async def start_preview(self, project_id: int, env_vars: dict[str, str] | None = None) -> str:
         """Start preview container for project (non-blocking)"""
         if env_vars is None:
             env_vars = {}
@@ -185,7 +186,7 @@ class DockerService:
             return existing["url"]
 
         # Ensure project database (don't wait for it to complete)
-        asyncio.create_task(self._ensure_project_database(project_id))
+        _db_task = asyncio.create_task(self._ensure_project_database(project_id))
 
         # Create new container
         host_port = self._get_random_port()
@@ -231,16 +232,16 @@ class DockerService:
             self.containers[project_id] = container_info
 
             # Start compilation monitoring without blocking
-            asyncio.create_task(self._monitor_compilation_async(project_id))
+            _monitor_task = asyncio.create_task(self._monitor_compilation_async(project_id))
 
             return url
 
         except asyncio.TimeoutError:
             logger.error(f"Container creation timeout for project {project_id}")
-            raise Exception("Container creation timeout")
+            raise Exception("Container creation timeout") from None
         except Exception as e:
             logger.error(f"Failed to create container for project {project_id}: {e}")
-            raise Exception(f"Failed to create container: {e}")
+            raise Exception(f"Failed to create container: {e}") from e
 
     async def _monitor_compilation_async(self, project_id: int) -> None:
         """Monitor compilation in a non-blocking way with timeout"""
