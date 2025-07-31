@@ -19,15 +19,22 @@ export default function AssistantResponse({
 }: AssistantResponseProps) {
   // Track user's explicit choices for each block (blockId -> isCollapsed)
   const [userChoices, setUserChoices] = useState<Map<string, boolean>>(new Map());
+  // Track which blocks user has manually interacted with
+  const [userInteractedBlocks, setUserInteractedBlocks] = useState<Set<string>>(new Set());
 
-  const handleToggleCollapse = (blockId: string) => {
+      const handleToggleCollapse = (blockId: string, isUserInitiated: boolean = true) => {
+    // Track user interactions
+    if (isUserInitiated) {
+      setUserInteractedBlocks(prev => new Set(prev).add(blockId));
+    }
+
     setUserChoices(prev => {
       const newMap = new Map(prev);
       const currentBlock = response.contentBlocks.find(block => block.id === blockId);
-      const currentState = newMap.has(blockId) 
-        ? newMap.get(blockId)! 
+      const currentState = newMap.has(blockId)
+        ? newMap.get(blockId)!
         : (currentBlock?.isCollapsed ?? false);
-      
+
       // Toggle the current state
       newMap.set(blockId, !currentState);
       return newMap;
@@ -39,9 +46,11 @@ export default function AssistantResponse({
       {/* Content Blocks */}
       {response.contentBlocks.map((block) => {
         // If user has made an explicit choice, use that. Otherwise use original state.
-        const isCollapsed = userChoices.has(block.id) 
+        const isCollapsed = userChoices.has(block.id)
           ? userChoices.get(block.id)!
           : (block.isCollapsed ?? false);
+
+
 
         return (
           <ContentBlock
@@ -51,6 +60,7 @@ export default function AssistantResponse({
               isCollapsed,
             }}
             onToggleCollapse={handleToggleCollapse}
+            userHasInteracted={userInteractedBlocks.has(block.id)}
             className="w-full"
           />
         );

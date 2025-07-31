@@ -10,22 +10,20 @@ import type { ContentBlock as ContentBlockType } from '@/lib/types';
 
 interface ContentBlockProps {
   contentBlock: ContentBlockType;
-  onToggleCollapse?: (blockId: string) => void;
+  onToggleCollapse?: (blockId: string, isUserInitiated?: boolean) => void;
+  userHasInteracted?: boolean;
   className?: string;
 }
 
 export default function ContentBlock({
   contentBlock,
   onToggleCollapse,
+  userHasInteracted = false,
   className,
 }: ContentBlockProps) {
-  const [isCollapsed, setIsCollapsed] = useState(contentBlock.isCollapsed ?? false);
+  // Remove local state - use prop state directly
+  const isCollapsed = contentBlock.isCollapsed ?? false;
   const [thinkingTime, setThinkingTime] = useState(0);
-
-  // Sync local state with prop changes
-  useEffect(() => {
-    setIsCollapsed(contentBlock.isCollapsed ?? false);
-  }, [contentBlock.isCollapsed]);
 
   // Timer for thinking blocks
   useEffect(() => {
@@ -46,22 +44,19 @@ export default function ContentBlock({
     }
   }, [contentBlock.type, contentBlock.status, contentBlock.timestamp]);
 
-  // Auto-collapse thinking blocks when they finish streaming
+  // Auto-collapse thinking blocks when they finish streaming (only if user hasn't manually interacted)
   useEffect(() => {
-    if (contentBlock.type === 'thinking' && contentBlock.status === 'completed' && !isCollapsed) {
-      setIsCollapsed(true);
+    if (contentBlock.type === 'thinking' && contentBlock.status === 'completed' && !isCollapsed && !userHasInteracted) {
       if (onToggleCollapse) {
-        onToggleCollapse(contentBlock.id);
+        onToggleCollapse(contentBlock.id, false); // false = not user initiated
       }
     }
-  }, [contentBlock.type, contentBlock.status, contentBlock.id, isCollapsed, onToggleCollapse]);
+  }, [contentBlock.type, contentBlock.status, contentBlock.id, userHasInteracted, isCollapsed, onToggleCollapse]);
 
-  const handleToggleCollapse = () => {
+        const handleToggleCollapse = () => {
     if (contentBlock.type === 'thinking') {
-      const newCollapsed = !isCollapsed;
-      setIsCollapsed(newCollapsed);
       if (onToggleCollapse) {
-        onToggleCollapse(contentBlock.id);
+        onToggleCollapse(contentBlock.id, true); // true = user initiated
       }
     }
   };
@@ -73,7 +68,7 @@ export default function ContentBlock({
         {/* Thinking Content */}
         <div className="space-y-2">
           <div
-            className="flex items-center gap-2 cursor-pointer hover:bg-muted/30 rounded-sm p-1 -m-1 transition-colors"
+            className="flex items-center gap-2 cursor-pointer rounded-sm p-1 -m-1"
             onClick={handleToggleCollapse}
           >
             <span className="text-xs font-medium text-muted-foreground/80 tracking-wide">
@@ -93,8 +88,8 @@ export default function ContentBlock({
           </div>
 
           {!isCollapsed && (
-            <div className="pl-4 py-2 bg-muted/20 rounded-md">
-              <div className="text-muted-foreground/70 text-xs leading-relaxed italic">
+            <div className="pl-2 py-2">
+              <div className="text-muted-foreground/70 text-xs leading-relaxed">
                 {contentBlock.content.split('\n').map((line, j) => (
                   <p key={j} className={line.trim() === '' ? 'h-3' : '[word-break:normal] [overflow-wrap:anywhere]'}>
                     {line}
