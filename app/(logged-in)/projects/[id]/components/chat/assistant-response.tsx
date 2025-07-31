@@ -32,7 +32,7 @@ export default function AssistantResponse({
   };
 
   return (
-    <div className={cn('w-full space-y-0.5', className)}>
+    <div className={cn('w-full space-y-3', className)}>
       {/* Content Blocks */}
       {response.contentBlocks.map((block) => (
         <ContentBlock
