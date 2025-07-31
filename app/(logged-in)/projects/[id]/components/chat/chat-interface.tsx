@@ -20,13 +20,6 @@ import ChatMessage from './chat-message';
 
 import ModelBanner from './model-banner';
 
-
-
-
-
-
-
-
 export default function ChatInterface({
   projectId,
   initialMessages = [],
@@ -89,7 +82,6 @@ export default function ChatInterface({
     regenerateMessage,
     getErrorMessage,
     clearError,
-    resetChat,
   } = chatState;
 
   // Fetch user data
@@ -345,9 +337,7 @@ export default function ChatInterface({
             </div>
           )}
 
-          {isError && errorMessage === 'LIMIT_REACHED' && (
-            <LimitReachedModal onReset={resetChat} />
-          )}
+
 
           <div ref={messagesEndRef} className="pb-6" />
         </div>

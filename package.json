@@ -24,13 +24,9 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "test:agent": "npx tsx -r dotenv/config scripts/test-agent.ts",
-    "test:context": "npx tsx -r dotenv/config scripts/test-context.ts",
-    "test:palette": "npx tsx -r dotenv/config scripts/test-color-palette.ts",
     "docker:cleanup": "node scripts/cleanup-docker.js"
   },
   "dependencies": {
-    "@ai-sdk/google": "^1.2.13",
-    "@google/generative-ai": "^0.24.0",
     "@opentelemetry/api-logs": "^0.200.0",
     "@opentelemetry/instrumentation": "^0.200.0",
     "@opentelemetry/sdk-logs": "^0.200.0",
@@ -57,7 +53,6 @@
     "@types/react-dom": "19.1.2",
     "@types/uuid": "^10.0.0",
     "@vercel/otel": "^1.11.0",
-    "ai": "^4.3.10",
     "autoprefixer": "^10.4.20",
     "bcryptjs": "^3.0.2",
     "class-variance-authority": "^0.7.1",

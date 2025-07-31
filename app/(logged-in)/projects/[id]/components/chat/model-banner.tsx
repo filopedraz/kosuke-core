@@ -1,6 +1,5 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 
 interface ModelBannerProps {
@@ -8,35 +7,19 @@ interface ModelBannerProps {
 }
 
 export default function ModelBanner({ className }: ModelBannerProps) {
-  const [modelInfo, setModelInfo] = useState<{
-    provider: string;
-    model: string;
-  } | null>(null);
+  // Get model name from environment variable
+  const model = process.env.NEXT_PUBLIC_DEFAULT_MODEL || 'claude-3-7-sonnet-20250219';
 
-  useEffect(() => {
-    const fetchModelInfo = async () => {
-      try {
-        const response = await fetch('/api/user/model-info');
-        if (response.ok) {
-          const data = await response.json();
-          setModelInfo({
-            provider: data.provider,
-            model: data.model
-          });
-        }
-      } catch (error) {
-        console.error('Error fetching model info:', error);
-      }
-    };
+  // Format model name for display
+  const getModelDisplayName = (modelId: string) => {
+    if (modelId.includes('claude-3-7-sonnet')) return 'Claude 3.7 Sonnet';
+    if (modelId.includes('claude-3-5-sonnet')) return 'Claude 3.5 Sonnet';
+    if (modelId.includes('gemini-2.5-pro')) return 'Gemini 2.5 Pro';
+    if (modelId.includes('gemini-2.0-flash')) return 'Gemini 2.0 Flash';
+    return modelId; // fallback to raw model ID
+  };
 
-    fetchModelInfo();
-  }, []);
-
-  if (!modelInfo) return null;
-
-  const modelName = modelInfo.model === 'gemini-2.5-pro-exp-03-25' 
-    ? 'Gemini 2.5 Pro'
-    : modelInfo.model;
+  const modelName = getModelDisplayName(model);
 
   return (
     <div className={cn('px-4', className)}>
@@ -48,4 +31,4 @@ export default function ModelBanner({ className }: ModelBannerProps) {
       </div>
     </div>
   );
-} 
+}

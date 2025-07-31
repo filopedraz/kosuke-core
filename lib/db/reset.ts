@@ -1,5 +1,5 @@
-import { db } from './drizzle';
 import { sql } from 'drizzle-orm';
+import { db } from './drizzle';
 
 async function resetDatabase() {
   console.log('Dropping all tables...');
@@ -8,12 +8,10 @@ async function resetDatabase() {
     // Drop all tables in the correct order to avoid foreign key constraints
     await db.execute(sql`
       DROP TABLE IF EXISTS team_members CASCADE;
-      DROP TABLE IF EXISTS subscriptions CASCADE;
       DROP TABLE IF EXISTS diffs CASCADE;
       DROP TABLE IF EXISTS chat_messages CASCADE;
       DROP TABLE IF EXISTS projects CASCADE;
       DROP TABLE IF EXISTS activity_logs CASCADE;
-      DROP TABLE IF EXISTS subscription_products CASCADE;
       DROP TABLE IF EXISTS teams CASCADE;
       DROP TABLE IF EXISTS users CASCADE;
     `);
