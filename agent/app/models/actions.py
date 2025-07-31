@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import Literal
 
 from pydantic import BaseModel
 from pydantic import Field
@@ -7,12 +8,12 @@ from pydantic import Field
 class ActionType(str, Enum):
     """Action types that mirror the TypeScript ActionType"""
 
-    READ_FILE = "readFile"
-    EDIT_FILE = "editFile"
-    CREATE_FILE = "createFile"
-    DELETE_FILE = "deleteFile"
-    CREATE_DIRECTORY = "createDirectory"
-    REMOVE_DIRECTORY = "removeDirectory"
+    READ_FILE = "read"
+    EDIT_FILE = "edit"
+    CREATE_FILE = "create"
+    DELETE_FILE = "delete"
+    CREATE_DIRECTORY = "createDir"
+    REMOVE_DIRECTORY = "removeDir"
     SEARCH = "search"
 
 
@@ -38,6 +39,48 @@ class ActionExecutionResult(BaseModel):
     error_type: str | None = None
     error_details: str | None = None
     actions: list[Action] | None = None
+
+
+# New Structured Response Types for Pydantic AI
+class FileOperation(BaseModel):
+    """Structured file operation for Pydantic AI tools"""
+
+    operation: Literal["read", "edit", "create", "delete", "createDir", "removeDir"]
+    file_path: str
+    content: str | None = None
+    reasoning: str
+
+
+class AgentResponse(BaseModel):
+    """Structured agent response with thinking and actions"""
+
+    thinking: str | None = None  # Extracted from thinking blocks
+    actions: list[FileOperation] = []
+    reasoning: str | None = None  # Why these actions were chosen
+    complete: bool = False  # Whether the task is complete
+
+
+class StreamChunk(BaseModel):
+    """Structured streaming chunk"""
+
+    type: Literal[
+        "thinking",
+        "thinking_start",
+        "thinking_content",
+        "reasoning",
+        "reasoning_start",
+        "reasoning_content",
+        "text",
+        "action",
+        "operation_start",
+        "operation_complete",
+        "complete",
+        "error",
+    ]
+    content: str | None = None
+    file_path: str | None = None
+    operation: str | None = None
+    status: Literal["pending", "completed", "error"] | None = None
 
 
 def normalize_action(action: Action) -> Action:

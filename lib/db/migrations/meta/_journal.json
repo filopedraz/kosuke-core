@@ -57,6 +57,20 @@
       "when": 1746350680090,
       "tag": "0007_giant_ultron",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1753911230823,
+      "tag": "0008_gigantic_skaar",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1753912317992,
+      "tag": "0009_gifted_killer_shrike",
+      "breakpoints": true
     }
   ]
 }
