@@ -4,14 +4,15 @@
 
 // File System
 export const PROJECTS_DIR = process.env.PROJECTS_DIR || 'projects';
+export const UPLOADS_DIR = process.env.UPLOADS_DIR || 'public/uploads';
 
-// LLM
-export const LLM = {
-  // Model configurations
-  DEFAULT_MODEL: process.env.DEFAULT_MODEL || 'claude-3-7-sonnet-20250219',
-};
+// Storage
+export const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+export const STORAGE_BASE_URL = IS_PRODUCTION
+  ? process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : 'https://your-app.vercel.app'
+  : 'http://localhost:3000';
 
 // Agent Service
 export const AGENT_SERVICE_URL = process.env.AGENT_SERVICE_URL || 'http://localhost:8000';
-
-// Billing-related constants have been removed

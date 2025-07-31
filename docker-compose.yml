@@ -9,18 +9,6 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
-  minio:
-    image: minio/minio
-    container_name: next_saas_starter_minio
-    env_file:
-      - .env
-    ports:
-      - '9005:9000'
-      - '9006:9001'
-    volumes:
-      - minio_data:/data
-    command: server /data --console-address ":9001"
-
   nextjs:
     build:
       context: .
@@ -80,5 +68,4 @@ services:
 
 volumes:
   postgres_data:
-  minio_data:
   next_build_cache:
