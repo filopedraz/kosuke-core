@@ -4,28 +4,28 @@ import { ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import { cn } from '@/lib/utils';
+import { renderSafeMarkdown } from '@/lib/utils/markdown';
 
 // Import types
 import type { ContentBlock as ContentBlockType } from '@/lib/types';
 
 interface ContentBlockProps {
   contentBlock: ContentBlockType;
-  onToggleCollapse?: (blockId: string) => void;
+  onToggleCollapse?: (blockId: string, isUserInitiated?: boolean) => void;
+  userHasInteracted?: boolean;
   className?: string;
 }
 
 export default function ContentBlock({
   contentBlock,
   onToggleCollapse,
+  userHasInteracted = false,
   className,
 }: ContentBlockProps) {
-  const [isCollapsed, setIsCollapsed] = useState(contentBlock.isCollapsed ?? false);
+  // Remove local state - use prop state directly
+  const isCollapsed = contentBlock.isCollapsed ?? false;
   const [thinkingTime, setThinkingTime] = useState(0);
-
-  // Sync local state with prop changes
-  useEffect(() => {
-    setIsCollapsed(contentBlock.isCollapsed ?? false);
-  }, [contentBlock.isCollapsed]);
+  const [renderedContent, setRenderedContent] = useState<string>('');
 
   // Timer for thinking blocks
   useEffect(() => {
@@ -46,22 +46,37 @@ export default function ContentBlock({
     }
   }, [contentBlock.type, contentBlock.status, contentBlock.timestamp]);
 
-  // Auto-collapse thinking blocks when they finish streaming
+  // Auto-collapse thinking blocks when they finish streaming (only if user hasn't manually interacted)
   useEffect(() => {
-    if (contentBlock.type === 'thinking' && contentBlock.status === 'completed' && !isCollapsed) {
-      setIsCollapsed(true);
+    if (contentBlock.type === 'thinking' && contentBlock.status === 'completed' && !isCollapsed && !userHasInteracted) {
       if (onToggleCollapse) {
-        onToggleCollapse(contentBlock.id);
+        onToggleCollapse(contentBlock.id, false); // false = not user initiated
       }
     }
-  }, [contentBlock.type, contentBlock.status, contentBlock.id, isCollapsed, onToggleCollapse]);
+  }, [contentBlock.type, contentBlock.status, contentBlock.id, userHasInteracted, isCollapsed, onToggleCollapse]);
+
+  // Render markdown content for text blocks
+  useEffect(() => {
+    if (contentBlock.type === 'text') {
+      const renderContent = async () => {
+        try {
+          const rendered = await renderSafeMarkdown(contentBlock.content);
+          setRenderedContent(rendered);
+        } catch (error) {
+          console.error('Error rendering markdown:', error);
+          // Fallback to plain text with line breaks
+          setRenderedContent(contentBlock.content.replace(/\n/g, '<br>'));
+        }
+      };
+
+      renderContent();
+    }
+  }, [contentBlock.type, contentBlock.content]);
 
   const handleToggleCollapse = () => {
     if (contentBlock.type === 'thinking') {
-      const newCollapsed = !isCollapsed;
-      setIsCollapsed(newCollapsed);
       if (onToggleCollapse) {
-        onToggleCollapse(contentBlock.id);
+        onToggleCollapse(contentBlock.id, true); // true = user initiated
       }
     }
   };
@@ -73,7 +88,7 @@ export default function ContentBlock({
         {/* Thinking Content */}
         <div className="space-y-2">
           <div
-            className="flex items-center gap-2 cursor-pointer hover:bg-muted/30 rounded-sm p-1 -m-1 transition-colors"
+            className="flex items-center gap-2 cursor-pointer rounded-sm p-1 -m-1"
             onClick={handleToggleCollapse}
           >
             <span className="text-xs font-medium text-muted-foreground/80 tracking-wide">
@@ -93,8 +108,8 @@ export default function ContentBlock({
           </div>
 
           {!isCollapsed && (
-            <div className="pl-4 py-2 bg-muted/20 rounded-md">
-              <div className="text-muted-foreground/70 text-xs leading-relaxed italic">
+            <div className="pl-2 py-2">
+              <div className="text-muted-foreground/70 text-xs leading-relaxed">
                 {contentBlock.content.split('\n').map((line, j) => (
                   <p key={j} className={line.trim() === '' ? 'h-3' : '[word-break:normal] [overflow-wrap:anywhere]'}>
                     {line}
@@ -167,22 +182,33 @@ export default function ContentBlock({
     );
   }
 
-  // Text block rendering
+  // Text block rendering with markdown support
   return (
     <div className={cn('w-full', className)}>
       {/* Text Content */}
-      <div className="space-y-2">
-        <div className="prose prose-xs dark:prose-invert max-w-none text-sm text-foreground [overflow-wrap:anywhere]">
-          {contentBlock.content.split('\n').map((line, j) => (
-            <p key={j} className={line.trim() === '' ? 'h-4' : '[word-break:normal] [overflow-wrap:anywhere]'}>
-              {line}
-              {contentBlock.status === 'streaming' &&
-               j === contentBlock.content.split('\n').length - 1 &&
-               contentBlock.content.trim() !== '' && (
-                <span className="inline-block w-2 h-4 bg-primary animate-pulse ml-1" />
-              )}
-            </p>
-          ))}
+      <div className="space-y-2 w-full">
+        <div className="w-full max-w-full text-sm text-foreground [overflow-wrap:anywhere] [&>*]:max-w-full [&>pre]:w-full [&>pre]:max-w-full">
+          {renderedContent ? (
+            <div
+              className="w-full max-w-full"
+              dangerouslySetInnerHTML={{
+                __html: renderedContent
+              }}
+            />
+          ) : (
+            // Loading state or fallback for when content is being rendered
+            <div className="w-full max-w-full">
+              {contentBlock.content.split('\n').map((line, j) => (
+                <p key={j} className={line.trim() === '' ? 'h-4' : '[word-break:normal] [overflow-wrap:anywhere]'}>
+                  {line}
+                </p>
+              ))}
+            </div>
+          )}
+          {/* Streaming cursor for text blocks */}
+          {contentBlock.status === 'streaming' && contentBlock.content.trim() !== '' && (
+            <span className="inline-block w-2 h-4 bg-primary animate-pulse ml-1" />
+          )}
         </div>
       </div>
     </div>
