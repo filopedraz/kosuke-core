@@ -172,9 +172,10 @@ export default function ContentBlock({
   return (
     <div className={cn('w-full', className)}>
       {/* Text Content */}
-      <div className="space-y-2">
-        <div className="prose prose-xs dark:prose-invert max-w-none text-sm text-foreground [overflow-wrap:anywhere]">
+      <div className="space-y-2 w-full">
+        <div className="w-full max-w-full text-sm text-foreground [overflow-wrap:anywhere] [&>*]:max-w-full [&>pre]:w-full [&>pre]:max-w-full">
           <div
+            className="w-full max-w-full"
             dangerouslySetInnerHTML={{
               __html: renderSafeMarkdown(contentBlock.content)
             }}
