@@ -2,11 +2,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node server.js",
-    "dev:next": "next dev",
+    "dev": "next dev",
+    "dev:server": "node server.js",
     "build": "NODE_OPTIONS=\"--max-old-space-size=8192\" next build",
     "start": "next start",
-    "prestop": "node scripts/cleanup-docker.js",
     "db:seed": "npx tsx -r dotenv/config lib/db/seed.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
@@ -25,8 +24,7 @@
     "test:coverage": "jest --coverage",
     "test:agent": "npx tsx -r dotenv/config scripts/test-agent.ts",
     "test:context": "npx tsx -r dotenv/config scripts/test-context.ts",
-    "test:palette": "npx tsx -r dotenv/config scripts/test-color-palette.ts",
-    "docker:cleanup": "node scripts/cleanup-docker.js"
+    "test:palette": "npx tsx -r dotenv/config scripts/test-color-palette.ts"
   },
   "dependencies": {
     "@ai-sdk/google": "^1.2.13",
