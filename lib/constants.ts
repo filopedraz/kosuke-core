@@ -16,3 +16,19 @@ export const STORAGE_BASE_URL = IS_PRODUCTION
 
 // Agent Service
 export const AGENT_SERVICE_URL = process.env.AGENT_SERVICE_URL || 'http://localhost:8000';
+
+// Context for file operations
+export const CONTEXT = {
+  EXCLUDE_DIRS: [
+    '.next',
+    'node_modules',
+    '.git',
+    'dist',
+    'build',
+    '__pycache__',
+    'venv',
+    '.venv',
+    'coverage',
+  ],
+  EXCLUDE_FILES: ['.DS_Store', 'Thumbs.db', '*.log', '*.tmp', '*.temp'],
+};
