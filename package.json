@@ -20,10 +20,7 @@
     "prepare": "husky",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage",
-    "test:agent": "npx tsx -r dotenv/config scripts/test-agent.ts",
-    "test:context": "npx tsx -r dotenv/config scripts/test-context.ts",
-    "test:palette": "npx tsx -r dotenv/config scripts/test-color-palette.ts"
+    "test:coverage": "jest --coverage"
   },
   "dependencies": {
     "@ai-sdk/google": "^1.2.13",
