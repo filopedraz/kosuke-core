@@ -69,9 +69,9 @@ export default function ContentBlock({
   // Thinking block rendering
   if (contentBlock.type === 'thinking') {
     return (
-      <div className={cn('flex w-full max-w-[95%] mx-auto gap-3 p-2', className)}>
+      <div className={cn('w-full', className)}>
         {/* Thinking Content */}
-        <div className="flex-1 space-y-2 ml-11">
+        <div className="space-y-2">
           <div
             className="flex items-center gap-2 cursor-pointer hover:bg-muted/30 rounded-sm p-1 -m-1 transition-colors"
             onClick={handleToggleCollapse}
@@ -111,9 +111,9 @@ export default function ContentBlock({
   // Tool block rendering
   if (contentBlock.type === 'tool') {
     return (
-      <div className={cn('flex w-full max-w-[95%] mx-auto gap-3 p-2', className)}>
+      <div className={cn('w-full', className)}>
         {/* Tool Content */}
-        <div className="flex-1 space-y-2 ml-11">
+        <div className="space-y-2">
           <div className="bg-muted/30 border border-border/50 rounded-md p-2.5">
             <div className="flex items-center justify-between text-xs">
               <div className="flex items-center gap-2 truncate">
@@ -169,9 +169,9 @@ export default function ContentBlock({
 
   // Text block rendering
   return (
-    <div className={cn('flex w-full max-w-[95%] mx-auto gap-3 p-2', className)}>
+    <div className={cn('w-full', className)}>
       {/* Text Content */}
-      <div className="flex-1 space-y-2 ml-11">
+      <div className="space-y-2">
         <div className="prose prose-xs dark:prose-invert max-w-none text-sm text-foreground [overflow-wrap:anywhere]">
           {contentBlock.content.split('\n').map((line, j) => (
             <p key={j} className={line.trim() === '' ? 'h-4' : '[word-break:normal] [overflow-wrap:anywhere]'}>

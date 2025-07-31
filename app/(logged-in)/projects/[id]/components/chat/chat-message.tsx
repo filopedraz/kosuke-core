@@ -96,6 +96,9 @@ export default function ChatMessage({
 
 
 
+
+
+  // Regular layout for user messages and simple assistant messages
   return (
     <div
       className={cn(
@@ -147,19 +150,19 @@ export default function ChatMessage({
           </div>
         )}
 
-        {/* Render assistant blocks using AssistantResponse component */}
+        {/* Render content - either regular content or assistant response blocks */}
         {hasBlocks && contentBlocks ? (
+          // Render assistant response content blocks
           <AssistantResponse
             response={{
-              id: Date.now(), // Temporary ID for display
+              id: Date.now(),
               contentBlocks,
               timestamp: new Date(timestamp),
-              status: 'completed',
+              status: isLoading ? 'streaming' : 'completed',
             }}
-            showTimestamp={false} // Don't show avatar/header since ChatMessage already handles it
           />
         ) : (
-          /* Render regular content for user messages or simple assistant messages */
+          // Render regular text/image content
           <div className={cn(
               "prose prose-xs dark:prose-invert max-w-none text-sm [overflow-wrap:anywhere]",
               !showAvatar && "mt-0", // Remove top margin for consecutive messages

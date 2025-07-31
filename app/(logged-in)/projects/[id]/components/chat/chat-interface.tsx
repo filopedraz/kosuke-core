@@ -248,10 +248,10 @@ export default function ChatInterface({
 
               {/* Immediate loading state - shows before streaming starts */}
               {isGenerating && !isStreaming && streamingContentBlocks.length === 0 && (
-                <div className="flex w-full max-w-[95%] mx-auto gap-3 p-4 animate-in fade-in-0 duration-200">
-                  {/* Avatar */}
+                <div className="flex w-full max-w-[95%] mx-auto gap-3 p-4 animate-in fade-in-0 duration-200" role="listitem">
+                  {/* Avatar - same as other messages */}
                   <div className="relative flex items-center justify-center h-8 w-8">
-                    <div className="bg-muted border-primary rounded-none flex items-center justify-center h-full w-full">
+                    <div className="bg-muted border-primary rounded-md flex items-center justify-center h-full w-full">
                       <div className="h-6 w-6 text-primary">
                         <svg viewBox="0 0 24 24" fill="currentColor" className="animate-spin">
                           <circle cx="12" cy="12" r="3" />
@@ -260,7 +260,7 @@ export default function ChatInterface({
                     </div>
                   </div>
 
-                  {/* Loading content */}
+                  {/* Loading content - same flex-1 structure */}
                   <div className="flex-1 space-y-2">
                     <div className="flex items-center justify-between">
                       <h4>AI Assistant</h4>
@@ -278,17 +278,37 @@ export default function ChatInterface({
                 </div>
               )}
 
-                            {/* Real-time streaming assistant response */}
+                            {/* Real-time streaming assistant response - use same layout as stored messages */}
               {isStreaming && streamingAssistantMessageId && streamingContentBlocks && streamingContentBlocks.length > 0 && (
                 <div className="animate-in fade-in-0 duration-300">
-                  <AssistantResponse
-                    response={{
-                      id: streamingAssistantMessageId,
-                      contentBlocks: streamingContentBlocks,
-                      timestamp: new Date(),
-                      status: 'streaming',
-                    }}
-                  />
+                  <div className="flex w-full max-w-[95%] mx-auto gap-3 p-4" role="listitem">
+                    {/* Avatar column - same as ChatMessage */}
+                    <div className="relative flex items-center justify-center h-8 w-8">
+                      <div className="bg-muted border-primary rounded-md flex items-center justify-center h-full w-full">
+                        <svg viewBox="0 0 24 24" fill="currentColor" className="h-6 w-6 text-primary">
+                          <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none"/>
+                        </svg>
+                      </div>
+                    </div>
+
+                    {/* Content column - full available width */}
+                    <div className="flex-1 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <h4>AI Assistant</h4>
+                        <time className="text-xs text-muted-foreground">now</time>
+                      </div>
+
+                      {/* Full-width assistant response */}
+                      <AssistantResponse
+                        response={{
+                          id: streamingAssistantMessageId,
+                          contentBlocks: streamingContentBlocks,
+                          timestamp: new Date(),
+                          status: 'streaming',
+                        }}
+                      />
+                    </div>
+                  </div>
                 </div>
               )}
             </>
