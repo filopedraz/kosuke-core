@@ -4,6 +4,7 @@ import { ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import { cn } from '@/lib/utils';
+import { renderSafeMarkdown } from '@/lib/utils/markdown';
 
 // Import types
 import type { ContentBlock as ContentBlockType } from '@/lib/types';
@@ -167,22 +168,21 @@ export default function ContentBlock({
     );
   }
 
-  // Text block rendering
+  // Text block rendering with markdown support
   return (
     <div className={cn('w-full', className)}>
       {/* Text Content */}
       <div className="space-y-2">
         <div className="prose prose-xs dark:prose-invert max-w-none text-sm text-foreground [overflow-wrap:anywhere]">
-          {contentBlock.content.split('\n').map((line, j) => (
-            <p key={j} className={line.trim() === '' ? 'h-4' : '[word-break:normal] [overflow-wrap:anywhere]'}>
-              {line}
-              {contentBlock.status === 'streaming' &&
-               j === contentBlock.content.split('\n').length - 1 &&
-               contentBlock.content.trim() !== '' && (
-                <span className="inline-block w-2 h-4 bg-primary animate-pulse ml-1" />
-              )}
-            </p>
-          ))}
+          <div
+            dangerouslySetInnerHTML={{
+              __html: renderSafeMarkdown(contentBlock.content)
+            }}
+          />
+          {/* Streaming cursor for text blocks */}
+          {contentBlock.status === 'streaming' && contentBlock.content.trim() !== '' && (
+            <span className="inline-block w-2 h-4 bg-primary animate-pulse ml-1" />
+          )}
         </div>
       </div>
     </div>
