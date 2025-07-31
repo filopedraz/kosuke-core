@@ -17,34 +17,44 @@ export default function AssistantResponse({
   response,
   className,
 }: AssistantResponseProps) {
-  const [collapsedBlocks, setCollapsedBlocks] = useState<Set<string>>(new Set());
+  // Track user's explicit choices for each block (blockId -> isCollapsed)
+  const [userChoices, setUserChoices] = useState<Map<string, boolean>>(new Map());
 
   const handleToggleCollapse = (blockId: string) => {
-    setCollapsedBlocks(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(blockId)) {
-        newSet.delete(blockId);
-      } else {
-        newSet.add(blockId);
-      }
-      return newSet;
+    setUserChoices(prev => {
+      const newMap = new Map(prev);
+      const currentBlock = response.contentBlocks.find(block => block.id === blockId);
+      const currentState = newMap.has(blockId) 
+        ? newMap.get(blockId)! 
+        : (currentBlock?.isCollapsed ?? false);
+      
+      // Toggle the current state
+      newMap.set(blockId, !currentState);
+      return newMap;
     });
   };
 
   return (
     <div className={cn('w-full space-y-3', className)}>
       {/* Content Blocks */}
-      {response.contentBlocks.map((block) => (
-        <ContentBlock
-          key={block.id}
-          contentBlock={{
-            ...block,
-            isCollapsed: collapsedBlocks.has(block.id) || block.isCollapsed,
-          }}
-          onToggleCollapse={handleToggleCollapse}
-          className="w-full"
-        />
-      ))}
+      {response.contentBlocks.map((block) => {
+        // If user has made an explicit choice, use that. Otherwise use original state.
+        const isCollapsed = userChoices.has(block.id) 
+          ? userChoices.get(block.id)!
+          : (block.isCollapsed ?? false);
+
+        return (
+          <ContentBlock
+            key={block.id}
+            contentBlock={{
+              ...block,
+              isCollapsed,
+            }}
+            onToggleCollapse={handleToggleCollapse}
+            className="w-full"
+          />
+        );
+      })}
 
       {/* Streaming indicator */}
       {response.status === 'streaming' && (
