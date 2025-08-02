@@ -4,9 +4,9 @@ import type {
   CssVariable, 
   ColorUpdateRequest, 
   ColorStats,
-  ThemeMode 
+  ThemeMode,
+  ApiSuccess 
 } from '@/lib/types';
-import type { ApiSuccess } from '@/lib/api';
 import { convertToHsl } from '@/app/(logged-in)/projects/[id]/components/brand/utils/color-utils';
 
 interface ColorsResponse {

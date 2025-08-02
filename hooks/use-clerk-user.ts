@@ -1,7 +1,7 @@
 import { useUser } from '@clerk/nextjs';
 import { useQuery } from '@tanstack/react-query';
 import type { UserProfile } from '@/lib/types/auth';
-import type { ApiResponse } from '@/lib/api';
+import type { ApiSuccess } from '@/lib/types';
 
 export function useClerkUser() {
   const { user, isLoaded, isSignedIn } = useUser();
@@ -39,7 +39,7 @@ export function useUserProfile() {
         throw new Error('Failed to fetch user profile');
       }
 
-      const data: ApiResponse<UserProfile> = await response.json();
+      const data: ApiSuccess<UserProfile> = await response.json();
       return data.data;
     },
     enabled: isLoaded && isSignedIn && !!user,

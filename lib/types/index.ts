@@ -5,3 +5,4 @@ export * from './branding';
 export * from './preview';
 export * from './user';
 export * from './project';
+export * from './infrastructure';
