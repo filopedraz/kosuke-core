@@ -1,6 +1,6 @@
 import { and, desc, eq, isNull } from 'drizzle-orm';
 
-import { auth } from '@/lib/auth';
+import { auth } from '@/lib/auth/server';
 import { db } from '@/lib/db/drizzle';
 import { activityLogs, users } from '@/lib/db/schema';
 

@@ -4,8 +4,8 @@ import { Loader2, RefreshCcw } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useUser } from '@/lib/auth';
 import { cn } from '@/lib/utils';
+import { useUser } from '@clerk/nextjs';
 
 // Import types and hooks
 import { useChatMessages } from '@/hooks/use-chat-messages';

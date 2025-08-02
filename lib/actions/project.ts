@@ -1,7 +1,7 @@
 'use server';
 
 import { SortOption } from '@/app/(logged-in)/projects/components/project-filters';
-import { auth } from '@/lib/auth';
+import { auth } from '@/lib/auth/server';
 import { db } from '@/lib/db';
 import { createProject as dbCreateProject, getProjectsByUserId } from '@/lib/db/projects';
 import { chatMessages, Project } from '@/lib/db/schema';
@@ -18,7 +18,7 @@ export async function createProject(prompt: string, name?: string) {
     console.log('🚀 Starting project creation process at', new Date().toISOString());
 
     // Get the authenticated user
-    const { userId } = auth();
+    const { userId } = await auth();
     if (!userId) {
       throw new Error('Unauthorized');
     }

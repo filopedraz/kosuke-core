@@ -1,8 +1,8 @@
-import { ReactNode } from 'react';
-import { notFound } from 'next/navigation';
 import { eq } from 'drizzle-orm';
+import { notFound } from 'next/navigation';
+import { ReactNode } from 'react';
 
-import { getSession } from '@/lib/auth/session';
+import { auth } from '@/lib/auth/server';
 import { db } from '@/lib/db/drizzle';
 import { users } from '@/lib/db/schema';
 import ProjectNavbar from './components/layout/project-navbar';
@@ -16,11 +16,11 @@ type UserForNavbar = {
 } | null;
 
 export default async function ProjectDetailLayout({ children }: { children: ReactNode }) {
-  const session = await getSession();
+  const { userId } = await auth();
 
-  if (!session) {
+  if (!userId) {
     // Or redirect to login, depending on desired behavior for layouts
-    notFound(); 
+    notFound();
   }
 
   // Fetch user details for the navbar
@@ -32,11 +32,11 @@ export default async function ProjectDetailLayout({ children }: { children: Reac
       imageUrl: users.imageUrl
     })
     .from(users)
-    .where(eq(users.id, session.user.id))
+    .where(eq(users.clerkUserId, userId))
     .limit(1);
 
-  const userForNavbar: UserForNavbar = userDetails ? { 
-    ...userDetails, 
+  const userForNavbar: UserForNavbar = userDetails ? {
+    ...userDetails,
     name: userDetails.name ?? undefined, // Ensure name is string | undefined
     imageUrl: userDetails.imageUrl ?? undefined // Ensure imageUrl is string | undefined
   } : null;
@@ -51,8 +51,8 @@ export default async function ProjectDetailLayout({ children }: { children: Reac
     <div className="flex flex-col h-screen w-full">
       <ProjectNavbar user={userForNavbar} />
       <main className="flex-1 overflow-hidden">
-        {children} 
+        {children}
       </main>
     </div>
   );
-} 
+}

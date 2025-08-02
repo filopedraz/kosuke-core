@@ -1,11 +1,11 @@
+import { exec as execCallback } from 'child_process';
 import { NextRequest, NextResponse } from 'next/server';
 import path from 'path';
 import { promisify } from 'util';
-import { exec as execCallback } from 'child_process';
 
-import { getSession } from '@/lib/auth/session';
+import { auth } from '@/lib/auth/server';
 import { getProjectById } from '@/lib/db/projects';
-import { getProjectFiles, getProjectPath, deleteDir, fileExists } from '@/lib/fs/operations';
+import { deleteDir, fileExists, getProjectFiles, getProjectPath } from '@/lib/fs/operations';
 
 const exec = promisify(execCallback);
 
@@ -19,8 +19,8 @@ export async function GET(
 ) {
   try {
     // Get the session
-    const session = await getSession();
-    if (!session) {
+    const { userId } = await auth();
+    if (!userId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -46,7 +46,7 @@ export async function GET(
     }
 
     // Check if the user has access to the project
-    if (project.createdBy !== session.user.id) {
+    if (project.createdBy !== userId) {
       return NextResponse.json(
         { error: 'Forbidden' },
         { status: 403 }
@@ -76,8 +76,8 @@ export async function DELETE(
 ) {
   try {
     // Get the session
-    const session = await getSession();
-    if (!session) {
+    const { userId } = await auth();
+    if (!userId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -103,7 +103,7 @@ export async function DELETE(
     }
 
     // Check if the user has access to the project
-    if (project.createdBy !== session.user.id) {
+    if (project.createdBy !== userId) {
       return NextResponse.json(
         { error: 'Forbidden' },
         { status: 403 }
@@ -119,7 +119,7 @@ export async function DELETE(
       const nodeModulesPath = path.join(projectDir, 'node_modules');
       if (await fileExists(nodeModulesPath)) {
         console.log(`Proactively removing node_modules at ${nodeModulesPath}`);
-        
+
         // On macOS/Linux
         if (process.platform === 'darwin' || process.platform === 'linux') {
           // Make it fully writable
@@ -132,7 +132,7 @@ export async function DELETE(
           await exec(`attrib -R "${nodeModulesPath}\\*.*" /S /D`);
           await exec(`rd /s /q "${nodeModulesPath}"`);
         }
-        
+
         console.log(`Successfully removed node_modules directory`);
       }
     } catch (nodeModulesError) {
@@ -147,7 +147,7 @@ export async function DELETE(
     } catch (dirError) {
       console.error(`Error deleting project directory: ${projectDir}`, dirError);
       warning = "Project deleted but some files could not be removed";
-      
+
       // Try one more time with direct system commands as a last resort
       try {
         console.log("Attempting last resort cleanup...");
@@ -167,16 +167,16 @@ export async function DELETE(
     }
 
     // Always return success so the project can be deleted from the database
-    return NextResponse.json({ 
+    return NextResponse.json({
       success: true,
       warning
     });
   } catch (error) {
     console.error('Error in DELETE project files handler:', error);
     // Even in case of other errors, we want to allow the project deletion to continue
-    return NextResponse.json({ 
+    return NextResponse.json({
       success: true,
       warning: "An error occurred during file deletion, but project will be deleted"
     });
   }
-} 
+}

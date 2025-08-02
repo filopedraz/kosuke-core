@@ -2,7 +2,7 @@ import { desc, eq } from 'drizzle-orm';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
-import { getSession } from '@/lib/auth/session';
+import { auth } from '@/lib/auth/server';
 import { db } from '@/lib/db/drizzle';
 import { getProjectById } from '@/lib/db/projects';
 import { chatMessages } from '@/lib/db/schema';
@@ -98,8 +98,8 @@ export async function GET(
 ) {
   try {
     // Get the session
-    const session = await getSession();
-    if (!session) {
+    const { userId } = await auth();
+    if (!userId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -126,7 +126,7 @@ export async function GET(
     }
 
     // Get the user has access to the project
-    if (project.createdBy !== session.user.id) {
+    if (project.createdBy !== userId) {
       return NextResponse.json(
         { error: 'Forbidden' },
         { status: 403 }
@@ -163,8 +163,8 @@ export async function POST(
 ): Promise<Response> {
   try {
     // Get the session
-    const session = await getSession();
-    if (!session) {
+    const { userId } = await auth();
+    if (!userId) {
       return new Response('Unauthorized', { status: 401 });
     }
 
@@ -182,7 +182,7 @@ export async function POST(
       return new Response('Project not found', { status: 404 });
     }
 
-    if (project.createdBy !== session.user.id) {
+    if (project.createdBy !== userId) {
       return new Response('Forbidden', { status: 403 });
     }
 
@@ -211,7 +211,7 @@ export async function POST(
       // Save the user message to the database
       await db.insert(chatMessages).values({
         projectId,
-        userId: session.user.id,
+        userId: userId,
         content: messageContent,
         role: 'user',
         modelType: 'premium',
@@ -269,7 +269,7 @@ export async function POST(
     // Save user message immediately
     const [userMessage] = await db.insert(chatMessages).values({
       projectId,
-      userId: session.user.id,
+      userId: userId,
       content: messageContent,
       role: 'user',
       modelType: 'premium',
@@ -283,7 +283,7 @@ export async function POST(
     // Create assistant message placeholder for streaming
     const [assistantMessage] = await db.insert(chatMessages).values({
       projectId,
-      userId: session.user.id,
+      userId: userId,
       content: null, // Will be populated by webhook
       role: 'assistant',
       modelType: 'premium',

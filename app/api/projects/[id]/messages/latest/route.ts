@@ -1,9 +1,9 @@
-import { desc, eq } from 'drizzle-orm';
-import { NextRequest, NextResponse } from 'next/server';
-import { getSession } from '@/lib/auth/session';
+import { auth } from '@/lib/auth/server';
 import { db } from '@/lib/db/drizzle';
 import { getProjectById } from '@/lib/db/projects';
 import { chatMessages } from '@/lib/db/schema';
+import { desc, eq } from 'drizzle-orm';
+import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * GET /api/projects/[id]/messages/latest
@@ -15,8 +15,8 @@ export async function GET(
 ) {
   try {
     // Get the session
-    const session = await getSession();
-    if (!session) {
+    const { userId } = await auth();
+    if (!userId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -43,7 +43,7 @@ export async function GET(
     }
 
     // Check if the user has access to the project
-    if (project.createdBy !== session.user.id) {
+    if (project.createdBy !== userId) {
       return NextResponse.json(
         { error: 'Forbidden' },
         { status: 403 }
@@ -59,7 +59,7 @@ export async function GET(
       .limit(1);
 
     if (latestMessages.length === 0) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         message: null,
         timestamp: null
       });
@@ -80,4 +80,4 @@ export async function GET(
       { status: 500 }
     );
   }
-} 
+}

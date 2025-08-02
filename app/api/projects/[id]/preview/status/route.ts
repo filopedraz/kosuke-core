@@ -1,4 +1,4 @@
-import { getSession } from '@/lib/auth/session';
+import { auth } from '@/lib/auth/server';
 import { AGENT_SERVICE_URL } from '@/lib/constants';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -11,8 +11,8 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await getSession();
-    if (!session?.user?.id) {
+    const { userId } = await auth();
+    if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

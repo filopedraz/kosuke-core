@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { auth } from '@/lib/auth/server';
 import { AGENT_SERVICE_URL } from '@/lib/constants';
+import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -19,7 +19,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     //   .select()
     //   .from(projectEnvironmentVariables)
     //   .where(eq(projectEnvironmentVariables.projectId, projectId));
-    
+
     // Convert to key-value object
     // const envVarsObject = envVars.reduce(
     //   (acc, envVar) => {

@@ -3,7 +3,7 @@ import mime from 'mime-types';
 import { NextRequest, NextResponse } from 'next/server';
 import path from 'path';
 
-import { getSession } from '@/lib/auth/session';
+import { auth } from '@/lib/auth/server';
 import { getProjectById } from '@/lib/db/projects';
 
 /**
@@ -16,8 +16,8 @@ export async function GET(
 ) {
   try {
     // Get the session
-    const session = await getSession();
-    if (!session) {
+    const { userId } = await auth();
+    if (!userId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -26,7 +26,7 @@ export async function GET(
 
     const { id, filepath } = await params;
     const projectId = Number(id);
-    
+
     if (isNaN(projectId)) {
       return NextResponse.json(
         { error: 'Invalid project ID' },
@@ -44,7 +44,7 @@ export async function GET(
     }
 
     // Check if the user has access to the project
-    if (project.createdBy !== session.user.id) {
+    if (project.createdBy !== userId) {
       return NextResponse.json(
         { error: 'Forbidden' },
         { status: 403 }
@@ -53,21 +53,21 @@ export async function GET(
 
     // Construct the file path inside the project's public directory
     const filePath = path.join(process.cwd(), 'projects', projectId.toString(), 'public', ...filepath);
-    
+
     // Check if the file exists
     try {
       await fs.access(filePath);
     } catch {
       console.error(`Public file not found: ${filePath}`);
-      
+
       // Also try looking in the root directory as fallback
       const rootFilePath = path.join(process.cwd(), 'projects', projectId.toString(), ...filepath);
-      
+
       try {
         await fs.access(rootFilePath);
         const fileContent = await fs.readFile(rootFilePath);
         const contentType = mime.lookup(rootFilePath) || 'application/octet-stream';
-        
+
         return new NextResponse(fileContent, {
           headers: {
             'Content-Type': contentType,
@@ -81,13 +81,13 @@ export async function GET(
         );
       }
     }
-    
+
     // Read the file
     const fileContent = await fs.readFile(filePath);
-    
+
     // Determine the content type
     const contentType = mime.lookup(filePath) || 'application/octet-stream';
-    
+
     // Return the file content with caching headers for static assets
     return new NextResponse(fileContent, {
       headers: {
@@ -103,4 +103,4 @@ export async function GET(
       { status: 500 }
     );
   }
-} 
+}

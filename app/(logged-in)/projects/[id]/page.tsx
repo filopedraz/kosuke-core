@@ -6,7 +6,7 @@ import { Suspense } from 'react';
 
 import ProjectContent from '@/app/(logged-in)/projects/[id]/components/layout/project-content';
 import { Skeleton } from '@/components/ui/skeleton';
-import { getSession } from '@/lib/auth/session';
+import { auth } from '@/lib/auth/server';
 import { getProjectById } from '@/lib/db/projects';
 
 function ProjectLoadingSkeleton() {
@@ -87,9 +87,9 @@ async function fetchChatHistoryForProject(projectId: number): Promise<FetchedCha
 }
 
 export default async function ProjectPage({ params, searchParams }: ProjectPageProps) {
-  const session = await getSession();
+  const { userId } = await auth();
 
-  if (!session) {
+  if (!userId) {
     // Session check might be redundant if layout handles it, but keep for safety
     notFound();
   }
