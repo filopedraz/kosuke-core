@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import React from 'react';
 
 import { useUserProfileImage } from '@/hooks/use-user-profile-image';
 
@@ -47,24 +47,7 @@ export default function Navbar({ variant = 'standard', projectProps, className }
   const { user, isLoaded, isSignedIn } = useUser();
   const { imageUrl: profileImageUrl } = useUserProfileImage();
   const { signOut } = useClerk();
-  const [isUpgradable, setIsUpgradable] = useState(false);
   const router = useRouter();
-
-  useEffect(() => {
-    const checkSubscription = async () => {
-      try {
-        const response = await fetch('/api/subscription/status');
-        const data = await response.json();
-        setIsUpgradable(data.isUpgradable);
-      } catch (error) {
-        console.error('Error checking subscription status:', error);
-      }
-    };
-
-    if (user) {
-      checkSubscription();
-    }
-  }, [user]);
 
   const handleLogout = async () => {
     try {
@@ -118,17 +101,10 @@ export default function Navbar({ variant = 'standard', projectProps, className }
               <Settings className="mr-2 h-4 w-4" />
               <span>Settings</span>
             </DropdownMenuItem>
-            {isUpgradable ? (
-              <DropdownMenuItem onClick={() => router.push('/billing')} className="cursor-pointer">
-                <Sparkles className="mr-2 h-4 w-4" />
-                <span>Upgrade Plan</span>
-              </DropdownMenuItem>
-            ) : (
-              <DropdownMenuItem onClick={() => router.push('/billing')} className="cursor-pointer">
-                <CreditCard className="mr-2 h-4 w-4" />
-                <span>Billing</span>
-              </DropdownMenuItem>
-            )}
+            <DropdownMenuItem onClick={() => router.push('/billing')} className="cursor-pointer">
+              <CreditCard className="mr-2 h-4 w-4" />
+              <span>Billing</span>
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
               <LogOut className="mr-2 h-4 w-4" />
