@@ -1,6 +1,6 @@
 'use client';
 
-import { HomeLoadingSkeleton } from '@/app/components/home-loading-skeleton';
+import { HomeLoadingSkeleton } from '@/app/(logged-in)/projects/components/home-loading-skeleton';
 import { useCurrentUser } from '@/hooks/use-current-user';
 import { useUser } from '@clerk/nextjs';
 import { redirect } from 'next/navigation';
