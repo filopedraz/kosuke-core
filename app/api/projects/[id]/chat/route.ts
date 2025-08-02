@@ -1,8 +1,9 @@
-import { desc, eq } from 'drizzle-orm';
+
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { auth } from '@/lib/auth/server';
+import { getChatMessagesByProjectId } from '@/lib/db/chat';
 import { db } from '@/lib/db/drizzle';
 import { getProjectById } from '@/lib/db/projects';
 import { chatMessages } from '@/lib/db/schema';
@@ -23,19 +24,7 @@ const sendMessageSchema = z.union([
 // Error types to match the Agent error types
 type ErrorType = 'timeout' | 'parsing' | 'processing' | 'unknown';
 
-/**
- * Get chat history for a project
- */
-async function getChatHistoryByProjectId(projectId: number, options: { limit?: number; oldest?: boolean } = {}) {
-  const { oldest = false } = options;
-  const history = await db
-    .select()
-    .from(chatMessages)
-    .where(eq(chatMessages.projectId, projectId))
-    .orderBy(oldest ? chatMessages.timestamp : desc(chatMessages.timestamp));
 
-  return oldest ? history : history.reverse();
-}
 
 /**
  * Save an uploaded image to storage and return the URL
@@ -134,9 +123,7 @@ export async function GET(
     }
 
     // Get chat history
-    const chatHistory = await getChatHistoryByProjectId(projectId, {
-      oldest: true,
-    });
+    const chatHistory = await getChatMessagesByProjectId(projectId);
 
     console.log(`📊 Chat history for project ${projectId}: ${chatHistory.length} messages`);
 

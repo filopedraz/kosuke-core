@@ -1,16 +1,16 @@
 'use client';
 
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { colorToHex, formatColorName, groupColorsByCategory } from './utils/color-utils';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { useEffect, useRef } from 'react';
+import { colorToHex, formatColorName, groupColorsByCategory } from './utils/color-utils';
 
 // Use the CssVariable type from a new types file
 export interface CssVariable {
@@ -41,7 +41,7 @@ export default function ColorPaletteModal({
   // Add ref for focusing an element other than the close button
   const titleRef = useRef<HTMLHeadingElement>(null);
   const dialogContentRef = useRef<HTMLDivElement>(null);
-  
+
   // Focus management when the modal opens
   useEffect(() => {
     if (isOpen) {
@@ -51,18 +51,18 @@ export default function ColorPaletteModal({
         if (document.activeElement instanceof HTMLElement) {
           document.activeElement.blur();
         }
-        
+
         // Make all focusable elements non-focusable initially
         const focusableElements = dialogContentRef.current?.querySelectorAll(
           'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
         ) as NodeListOf<HTMLElement>;
-        
+
         if (focusableElements) {
           focusableElements.forEach(el => {
             el.setAttribute('data-original-tabindex', el.tabIndex.toString());
             el.tabIndex = -1;
           });
-          
+
           // Restore focusability after a short delay to prevent initial focus
           setTimeout(() => {
             focusableElements.forEach(el => {
@@ -114,7 +114,7 @@ export default function ColorPaletteModal({
               Please wait while we generate your custom color palette.
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="py-8 flex justify-center">
             <svg className="animate-spin h-8 w-8 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -135,17 +135,17 @@ export default function ColorPaletteModal({
             Review the AI-generated color palette. You can apply these colors to your project or generate a new palette.
           </DialogDescription>
         </DialogHeader>
-        
+
         <div className="py-4 max-h-[60vh] overflow-y-auto">
           {palette.length > 0 ? (
             <div className="space-y-6">
               {/* Group colors by category for the preview - using the utility function */}
               {(() => {
                 // Group colors into categories
-                const groupedColors = groupColorsByCategory<CssVariable>(palette);
-                
+                const groupedColors = groupColorsByCategory<CssVariable>(palette || []);
+
                 // Render each category
-                return Object.entries(groupedColors).map(([category, colors]) => (
+                return Object.entries(groupedColors || {}).map(([category, colors]) => (
                   <div key={category} className="space-y-4">
                     <h2 className="text-xl font-medium">
                       {category === 'other' ? 'Other Variables' : `${category.charAt(0).toUpperCase() + category.slice(1)} Colors`}
@@ -155,23 +155,23 @@ export default function ColorPaletteModal({
                         const lightHex = getHexColor(color.lightValue);
                         const darkHex = color.darkValue ? getHexColor(color.darkValue) : null;
                         const formattedName = formatColorName(color.name);
-                        
+
                         return (
                           <div key={color.name} className="flex space-x-2 items-center p-2 border rounded-md">
                             {/* Color preview */}
                             <div className="flex space-x-2 items-center">
-                              <div 
+                              <div
                                 className="w-8 h-8 rounded border"
-                                style={{ 
+                                style={{
                                   backgroundColor: lightHex,
                                   boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
                                 }}
                                 title="Light mode color"
                               />
                               {darkHex && (
-                                <div 
+                                <div
                                   className="w-8 h-8 rounded border"
-                                  style={{ 
+                                  style={{
                                     backgroundColor: darkHex,
                                     boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
                                   }}
@@ -207,7 +207,7 @@ export default function ColorPaletteModal({
             </div>
           )}
         </div>
-        
+
         <DialogFooter className="flex flex-col sm:flex-row gap-2">
           <Button
             variant="outline"
@@ -234,4 +234,4 @@ export default function ColorPaletteModal({
       `}</style>
     </Dialog>
   );
-} 
+}

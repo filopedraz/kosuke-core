@@ -1,21 +1,21 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { Palette, Sun, Moon, TextQuote, Wand2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { type FontInfo } from '@/lib/font-parser';
+import { Moon, Palette, Sun, TextQuote, Wand2 } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 import ColorCard from './color-card';
 import ColorCardSkeleton from './color-card-skeleton';
+import ColorPaletteModal from './color-palette-modal';
 import FontCard from './font-card';
 import FontCardSkeleton from './font-card-skeleton';
-import ColorPaletteModal from './color-palette-modal';
 import KeywordsModal from './keywords-modal';
 import { ThemePreviewProvider } from './theme-context';
-import { convertToHsl, groupColorsByCategory, getCategoryTitle } from './utils/color-utils';
 import { type CssVariable, type ThemeMode } from './types';
-import { type FontInfo } from '@/lib/font-parser';
+import { convertToHsl, getCategoryTitle, groupColorsByCategory } from './utils/color-utils';
 
 interface BrandGuidelinesProps {
   projectId: number;
@@ -29,49 +29,49 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [_stats, setStats] = useState({ lightCount: 0, darkCount: 0, foundLocation: '' });
   const { toast } = useToast();
-  
+
   // Add font state
   const [fontVariables, setFontVariables] = useState<FontInfo[]>([]);
   const [isFontsLoading, setIsFontsLoading] = useState(true);
   const [fontsError, setFontsError] = useState<string | null>(null);
-  
+
   // Add state for palette generation
   const [isGeneratingPalette, setIsGeneratingPalette] = useState(false);
   const [isPalettePreviewOpen, setIsPalettePreviewOpen] = useState(false);
   const [generatedPalette, setGeneratedPalette] = useState<CssVariable[]>([]);
-  
+
   // Add state for keywords modal
   const [isKeywordsModalOpen, setIsKeywordsModalOpen] = useState(false);
-  
+
   // Add state for active tab
   const [activeTab, setActiveTab] = useState('colors');
 
   const togglePreviewMode = () => {
     setPreviewMode(prev => prev === 'dark' ? 'light' : 'dark');
   };
-  
+
   // Function to fetch CSS variables
   const fetchCssVariables = useCallback(async () => {
     setIsLoading(true);
     setError(null);
-    
+
     try {
       const response = await fetch(`/api/projects/${projectId}/branding/colors`);
-      
+
       if (!response.ok) {
         throw new Error(`Failed to fetch colors: ${response.statusText}`);
       }
-      
+
       const data = await response.json();
       console.log('Fetched colors:', data);
-      
+
       // Update stats for debugging
       setStats({
         lightCount: data.lightCount || 0,
         darkCount: data.darkCount || 0,
         foundLocation: data.foundLocation || ''
       });
-      
+
       setColorVariables(data.colors || []);
     } catch (err) {
       console.error('Error fetching CSS variables:', err);
@@ -80,19 +80,19 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
       setIsLoading(false);
     }
   }, [projectId]);
-  
+
   // Add function to fetch font variables
   const fetchFontVariables = useCallback(async () => {
     setIsFontsLoading(true);
     setFontsError(null);
-    
+
     try {
       const response = await fetch(`/api/projects/${projectId}/branding/fonts`);
-      
+
       if (!response.ok) {
         throw new Error(`Failed to fetch fonts: ${response.statusText}`);
       }
-      
+
       const data = await response.json();
       setFontVariables(data.fonts || []);
     } catch (err) {
@@ -102,13 +102,13 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
       setIsFontsLoading(false);
     }
   }, [projectId]);
-  
+
   // Handle color change from ColorCard
   const handleColorChange = async (name: string, newValue: string) => {
     try {
       // Convert the color to HSL format before sending to API
       const hslValue = convertToHsl(newValue);
-      
+
       // Optimistically update UI
       const updatedVariables = colorVariables.map(variable => {
         if (variable.name === name) {
@@ -119,9 +119,9 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
         }
         return variable;
       });
-      
+
       setColorVariables(updatedVariables);
-      
+
       // Send update to server with HSL value
       const response = await fetch(`/api/projects/${projectId}/branding/colors`, {
         method: 'POST',
@@ -134,16 +134,16 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
           mode: previewMode
         }),
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to update color');
       }
-      
+
       toast({
         title: "Color updated",
         description: `${name.replace(/^--/, '')} has been updated successfully.`,
       });
-      
+
     } catch (err) {
       console.error('Error updating color:', err);
       toast({
@@ -151,24 +151,24 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
         description: err instanceof Error ? err.message : "Failed to update color",
         variant: "destructive",
       });
-      
+
       // Revert changes on error
       fetchCssVariables();
     }
   };
-  
+
   // Update function to first show keywords modal
   const handleGenerateColorPalette = () => {
     setIsKeywordsModalOpen(true);
   };
-  
+
   // Add function to generate color palette with keywords
   const generateColorPaletteWithKeywords = async (keywords: string) => {
     setIsKeywordsModalOpen(false);
     setIsGeneratingPalette(true);
     // Show the palette modal immediately with the loading state
     setIsPalettePreviewOpen(true);
-    
+
     try {
       const response = await fetch(`/api/projects/${projectId}/branding/generate-palette`, {
         method: 'POST',
@@ -179,22 +179,22 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
           keywords: keywords.trim()
         })
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || 'Failed to generate color palette');
       }
-      
+
       // Successfully generated the palette
       const data = await response.json();
-      
+
       if (data.success && data.colors) {
         // Save the generated palette
         setGeneratedPalette(data.colors);
       } else {
         throw new Error('Failed to generate a valid color palette');
       }
-      
+
     } catch (err) {
       console.error('Error generating color palette:', err);
       toast({
@@ -208,12 +208,12 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
       setIsGeneratingPalette(false);
     }
   };
-  
+
   // Function to apply the generated palette
   const applyGeneratedPalette = async () => {
     try {
       // Modal is already closed at this point from the ColorPaletteModal component
-      
+
       const response = await fetch(`/api/projects/${projectId}/branding/generate-palette?apply=true`, {
         method: 'POST',
         headers: {
@@ -223,21 +223,21 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
           colors: generatedPalette
         })
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || 'Failed to apply color palette');
       }
-      
+
       // Show success message
       toast({
         title: "Palette applied",
         description: "New color palette has been applied to your project.",
       });
-      
+
       // Refresh the colors
       fetchCssVariables();
-      
+
     } catch (err) {
       console.error('Error applying color palette:', err);
       toast({
@@ -247,15 +247,15 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
       });
     }
   };
-  
+
   // Fetch data on component mount
   useEffect(() => {
     fetchCssVariables();
     fetchFontVariables();
   }, [fetchCssVariables, fetchFontVariables]);
-  
+
   // Group colors into categories for display
-  const groupedColors = groupColorsByCategory<CssVariable>(colorVariables);
+  const groupedColors = groupColorsByCategory<CssVariable>(colorVariables || []);
 
   // Get current color value based on theme mode
   const getCurrentColorValue = (color: CssVariable) => {
@@ -264,7 +264,7 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
     }
     return color.lightValue;
   };
-  
+
   // Group fonts by type
   const groupedFonts = (() => {
     const grouped: Record<string, FontInfo[]> = {
@@ -274,7 +274,7 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
       'display': [],
       'other': []
     };
-    
+
     // Group fonts by naming convention
     fontVariables.forEach(font => {
       const name = font.name.toLowerCase();
@@ -290,7 +290,7 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
         grouped['other'].push(font);
       }
     });
-    
+
     // Remove empty categories
     return Object.fromEntries(
       Object.entries(grouped).filter(([, fonts]) => fonts.length > 0)
@@ -301,7 +301,7 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
   const renderGeneratingIndicator = () => {
     return null; // No longer needed as we're showing the modal instead
   };
-  
+
   return (
     <ThemePreviewProvider initialMode={previewMode}>
       <div className="flex flex-col h-full p-6 space-y-6">
@@ -310,23 +310,23 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
             <Palette className="h-5 w-5 text-primary" />
             <h1 className="text-2xl font-semibold">Brand Guidelines</h1>
           </div>
-          
+
           <div className="flex items-center gap-3">
             {/* Generate Palette Button */}
-            <Button 
-              variant="outline" 
-              size="sm" 
+            <Button
+              variant="outline"
+              size="sm"
               className="gap-1.5 h-9"
               onClick={handleGenerateColorPalette}
             >
               <Wand2 className="h-4 w-4" />
               Generate Color Palette
             </Button>
-            
+
             {/* Theme Switcher */}
             <div className="flex items-center gap-2 border border-border px-3 py-1.5 rounded-md">
               <Sun className="h-4 w-4 text-muted-foreground" />
-              <Switch 
+              <Switch
                 checked={previewMode === 'dark'}
                 onCheckedChange={togglePreviewMode}
                 aria-label="Toggle color theme preview mode"
@@ -335,9 +335,9 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
             </div>
           </div>
         </div>
-        
-        <Tabs 
-          defaultValue="colors" 
+
+        <Tabs
+          defaultValue="colors"
           className="w-full"
           value={activeTab}
           onValueChange={setActiveTab}
@@ -346,14 +346,14 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
             <TabsTrigger value="colors">Colors</TabsTrigger>
             <TabsTrigger value="fonts">Typography</TabsTrigger>
           </TabsList>
-          
+
           <TabsContent value="colors" className="space-y-6 pt-6 pb-12">
             {error && (
               <div className="p-4 bg-destructive/10 border border-destructive text-destructive rounded-md">
                 {error}
               </div>
             )}
-            
+
             {isLoading ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4 gap-6">
                 {Array.from({ length: 9 }).map((_, i) => (
@@ -371,7 +371,7 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
                 </div>
               ) : (
                 // Display each category
-                Object.entries(groupedColors).map(([category, colors]) => (
+                Object.entries(groupedColors || {}).map(([category, colors]) => (
                   <div key={category} className="space-y-4 mb-10">
                     <h2 className="text-xl font-medium">{getCategoryTitle(category)}</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4 gap-6">
@@ -392,14 +392,14 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
               )
             )}
           </TabsContent>
-          
+
           <TabsContent value="fonts" className="space-y-6 pt-6 pb-12">
             {fontsError && (
               <div className="p-4 bg-destructive/10 border border-destructive text-destructive rounded-md">
                 {fontsError}
               </div>
             )}
-            
+
             {isFontsLoading ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {Array.from({ length: 3 }).map((_, i) => (
@@ -430,15 +430,15 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
             )}
           </TabsContent>
         </Tabs>
-        
+
         {/* Keywords Modal */}
-        <KeywordsModal 
+        <KeywordsModal
           isOpen={isKeywordsModalOpen}
           onOpenChange={setIsKeywordsModalOpen}
           onSubmit={generateColorPaletteWithKeywords}
           isGenerating={isGeneratingPalette}
         />
-        
+
         {/* Color Palette Preview Modal */}
         <ColorPaletteModal
           isOpen={isPalettePreviewOpen}
@@ -454,4 +454,4 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
       </div>
     </ThemePreviewProvider>
   );
-} 
+}

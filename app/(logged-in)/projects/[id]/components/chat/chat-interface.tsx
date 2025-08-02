@@ -26,18 +26,12 @@ export default function ChatInterface({
   className,
   isLoading: initialIsLoading = false,
 }: ChatInterfaceProps) {
-  console.log('🚀 [ChatInterface] Component mounted/updated:', {
-    projectId,
-    initialMessagesCount: initialMessages.length,
-    initialIsLoading,
-    hasInitialMessages: initialMessages.length > 0
-  });
 
   // Refs
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // User data
-  const { userPromise } = useUser();
+  const { user: clerkUser, isLoaded } = useUser();
   const [user, setUser] = useState<ChatUser | null>(null);
 
   // Custom hooks for business logic
@@ -84,12 +78,18 @@ export default function ChatInterface({
     clearError,
   } = chatState;
 
-  // Fetch user data
+  // Set user data when Clerk user is loaded
   useEffect(() => {
-    userPromise.then(userData => {
-      setUser(userData);
-    });
-  }, [userPromise]);
+    if (isLoaded && clerkUser) {
+      setUser({
+        name: clerkUser.fullName || undefined,
+        email: clerkUser.emailAddresses[0]?.emailAddress || '',
+        imageUrl: clerkUser.imageUrl || undefined,
+      });
+    } else if (isLoaded && !clerkUser) {
+      setUser(null);
+    }
+  }, [isLoaded, clerkUser]);
 
   // State for immediate loading feedback
   const [isGenerating, setIsGenerating] = useState(false);
