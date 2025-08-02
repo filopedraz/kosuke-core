@@ -205,10 +205,6 @@ export default function ChatInterface({
             <div className="flex items-center justify-center h-32">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
-          ) : messages.length === 0 ? (
-            <div className="flex items-center justify-center h-32 text-muted-foreground">
-              No messages yet. Start a conversation!
-            </div>
           ) : (
             <>
               {enhancedMessages.map(message => (

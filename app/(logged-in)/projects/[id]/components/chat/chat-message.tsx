@@ -1,10 +1,11 @@
 'use client';
 
 import { formatDistanceToNow } from 'date-fns';
-import { CircleIcon, RefreshCcw, User } from 'lucide-react';
+import { CircleIcon, RefreshCcw } from 'lucide-react';
 import Image from 'next/image';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useUser } from '@/hooks/use-user';
 import { cn } from '@/lib/utils';
 
 // Import types and utilities
@@ -27,6 +28,7 @@ export default function ChatMessage({
   onRegenerate,
 }: ChatMessageProps) {
   const isUser = role === 'user';
+  const { imageUrl, displayName, initials } = useUser();
 
 
 
@@ -115,16 +117,10 @@ export default function ChatMessage({
         <Avatar className="h-8 w-8">
           {isUser ? (
             <>
+              <AvatarImage src={imageUrl || undefined} alt={displayName || 'User'} />
               <AvatarFallback className="bg-primary text-primary-foreground">
-                {user ? (
-                  user.name?.charAt(0)?.toUpperCase() ||
-                  user.email?.charAt(0)?.toUpperCase() ||
-                  'U'
-                ) : (
-                  <User className="h-4 w-4" />
-                )}
+                {initials}
               </AvatarFallback>
-              <AvatarImage src={user?.imageUrl || ''} alt={user?.name || 'User'} />
             </>
           ) : (
             <div className="relative flex items-center justify-center h-full w-full">
