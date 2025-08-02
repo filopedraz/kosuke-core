@@ -1,8 +1,8 @@
 import { redirect } from 'next/navigation';
-import { getUser } from '@/lib/db/queries';
+import { getCurrentUser } from '@/lib/api/internal/user';
 
 export default async function Home() {
-  const user = await getUser();
+  const user = await getCurrentUser();
 
   if (user) {
     redirect('/projects');

@@ -4,9 +4,9 @@ import { z } from 'zod';
 import { ApiErrorHandler } from '@/lib/api/errors';
 import { ApiResponseHandler } from '@/lib/api/responses';
 import { auth } from '@/lib/auth/server';
+import { getCurrentUserProjects } from '@/lib/api/internal/projects';
 import {
-    createProject,
-    getProjectsByUserId
+    createProject
 } from '@/lib/db/projects';
 
 
@@ -22,19 +22,7 @@ const createProjectSchema = z.object({
  */
 export async function GET(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    const searchParams = request.nextUrl.searchParams;
-    const requestedUserId = searchParams.get('userId');
-
-    // Use the authenticated user's ID, not from query params for security
-    const projects = await getProjectsByUserId(requestedUserId || userId);
+    const projects = await getCurrentUserProjects();
     return NextResponse.json(projects);
   } catch (error) {
     console.error('Error fetching projects:', error);
