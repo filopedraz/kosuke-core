@@ -113,7 +113,7 @@ describe('useProjects', () => {
     expect(screen.getByTestId('loading')).toHaveTextContent('loaded');
     expect(screen.getByTestId('project-1')).toHaveTextContent('Test Project');
     expect(mockSetProjects).toHaveBeenCalledWith(mockProjects);
-    expect(mockFetch).toHaveBeenCalledWith('/api/projects?userId=user_123');
+    expect(mockFetch).toHaveBeenCalledWith('/api/projects');
   });
 
   it('should handle fetch error gracefully', async () => {

@@ -1,7 +1,6 @@
 import { auth } from '@/lib/auth/server';
 import { db } from '@/lib/db/drizzle';
-import { getProjectById } from '@/lib/db/projects';
-import { chatMessages } from '@/lib/db/schema';
+import { chatMessages, projects } from '@/lib/db/schema';
 import { desc, eq } from 'drizzle-orm';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -34,7 +33,7 @@ export async function GET(
     }
 
     // Get the project
-    const project = await getProjectById(projectId);
+    const [project] = await db.select().from(projects).where(eq(projects.id, projectId));
     if (!project) {
       return NextResponse.json(
         { error: 'Project not found' },

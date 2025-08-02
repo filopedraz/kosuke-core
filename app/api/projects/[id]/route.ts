@@ -4,7 +4,9 @@ import { z } from 'zod';
 import { ApiErrorHandler } from '@/lib/api/errors';
 import { ApiResponseHandler } from '@/lib/api/responses';
 import { auth } from '@/lib/auth/server';
-import { archiveProject, getProjectById, updateProject } from '@/lib/db/projects';
+import { db } from '@/lib/db/drizzle';
+import { projects } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
 
 // Schema for updating a project
 const updateProjectSchema = z.object({
@@ -35,7 +37,7 @@ export async function GET(
     }
 
     // Get the project
-    const project = await getProjectById(projectId);
+    const [project] = await db.select().from(projects).where(eq(projects.id, projectId));
     if (!project) {
       return ApiErrorHandler.notFound('Project not found');
     }
@@ -74,7 +76,7 @@ export async function PATCH(
     }
 
     // Get the project
-    const project = await getProjectById(projectId);
+    const [project] = await db.select().from(projects).where(eq(projects.id, projectId));
     if (!project) {
       return ApiErrorHandler.notFound('Project not found');
     }
@@ -94,7 +96,8 @@ export async function PATCH(
     }
 
     // Update the project
-    const updatedProject = await updateProject(projectId, result.data);
+    const updateData = { ...result.data, updatedAt: new Date() };
+    const [updatedProject] = await db.update(projects).set(updateData).where(eq(projects.id, projectId)).returning();
 
     return ApiResponseHandler.success(updatedProject);
   } catch (error) {
@@ -125,7 +128,7 @@ export async function DELETE(
     }
 
     // Get the project
-    const project = await getProjectById(projectId);
+    const [project] = await db.select().from(projects).where(eq(projects.id, projectId));
     if (!project) {
       return ApiErrorHandler.notFound('Project not found');
     }
@@ -160,7 +163,7 @@ export async function DELETE(
     }
 
     // Archive the project
-    const archivedProject = await archiveProject(projectId);
+    const [archivedProject] = await db.update(projects).set({ isArchived: true, updatedAt: new Date() }).where(eq(projects.id, projectId)).returning();
 
     return ApiResponseHandler.success(archivedProject);
   } catch (error) {

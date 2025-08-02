@@ -308,25 +308,21 @@ This comprehensive plan now covers:
 ## 🔧 Key Updates Made:
 
 1. **Code Organization:**
-
    - Renamed `agent/app/api/endpoints/` to `agent/app/api/routes/` for better naming consistency
 
 2. **Testing & Quality Infrastructure:**
-
    - Comprehensive pytest setup with coverage reporting
    - Python code quality tools: ruff, mypy, bandit
    - Multi-language pre-commit hooks for Python and TypeScript
    - Development scripts and Makefile for easy commands
 
 3. **Preview System Enhanced:**
-
    - Uses correct Docker image: `ghcr.io/filopedraz/kosuke-template:v0.0.73`
    - Each project gets its own postgres database: `kosuke_project_{id}`
    - Preview containers connect to kosuke network for database access
    - Environment variables injected into preview containers
 
 4. **Environment Variables System:**
-
    - New Settings tab in project detail view
    - Secure storage with secret variable support
    - Integration with preview containers

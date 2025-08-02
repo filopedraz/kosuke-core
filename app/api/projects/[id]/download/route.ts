@@ -1,6 +1,8 @@
 import { auth } from '@/lib/auth/server';
 import { CONTEXT } from '@/lib/constants';
-import { getProjectById } from '@/lib/db/projects';
+import { db } from '@/lib/db/drizzle';
+import { projects } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
 import { exec } from 'child_process';
 import { readFile, unlink } from 'fs/promises';
 import { NextRequest, NextResponse } from 'next/server';
@@ -26,7 +28,7 @@ export async function GET(
       return new NextResponse('Invalid project ID', { status: 400 });
     }
 
-    const project = await getProjectById(projectId);
+    const [project] = await db.select().from(projects).where(eq(projects.id, projectId));
 
     if (!project || project.createdBy !== userId) {
       return new NextResponse('Project not found', { status: 404 });

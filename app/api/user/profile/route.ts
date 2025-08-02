@@ -1,3 +1,4 @@
+import { ApiResponseHandler } from '@/lib/api/responses';
 import { auth } from '@/lib/auth/server';
 import { db } from '@/lib/db/drizzle';
 import { users } from '@/lib/db/schema';
@@ -18,7 +19,7 @@ export async function GET() {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    return NextResponse.json(user);
+    return ApiResponseHandler.success(user);
   } catch (error) {
     console.error('Error fetching user profile:', error);
     return NextResponse.json({ error: 'Failed to fetch profile' }, { status: 500 });
