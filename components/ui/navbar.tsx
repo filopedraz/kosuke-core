@@ -1,22 +1,24 @@
 'use client';
 
+import { useClerk, useUser } from '@clerk/nextjs';
 import {
-  LogOut,
-  Settings,
-  LayoutDashboard,
-  Code,
-  Eye,
   CircleIcon,
+  Code,
+  CreditCard,
+  Eye,
+  LayoutDashboard,
+  LogOut,
   PanelLeftClose,
   PanelLeftOpen,
+  Settings,
   Sparkles,
-  CreditCard,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
-import { signOut } from '@/app/(logged-out)/actions';
+import { useUserProfileImage } from '@/hooks/use-user-profile-image';
+
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -28,18 +30,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 
-type User = {
-  id?: number;
-  name?: string;
-  email: string;
-  imageUrl?: string;
-  subscription?: {
-    tier: string;
-  };
-} | null;
-
 type NavbarProps = {
-  user?: User;
   variant?: 'standard' | 'project' | 'waitlist';
   projectProps?: {
     projectName: string;
@@ -52,12 +43,10 @@ type NavbarProps = {
   className?: string;
 };
 
-export default function Navbar({
-  user,
-  variant = 'standard',
-  projectProps,
-  className,
-}: NavbarProps) {
+export default function Navbar({ variant = 'standard', projectProps, className }: NavbarProps) {
+  const { user, isLoaded, isSignedIn } = useUser();
+  const { imageUrl: profileImageUrl } = useUserProfileImage();
+  const { signOut } = useClerk();
   const [isUpgradable, setIsUpgradable] = useState(false);
   const router = useRouter();
 
@@ -80,9 +69,10 @@ export default function Navbar({
   const handleLogout = async () => {
     try {
       await signOut();
+      router.push('/');
+      router.refresh();
     } catch (error) {
       console.error('Error signing out:', error);
-    } finally {
       // Always redirect and refresh regardless of success/failure
       router.push('/');
       router.refresh();
@@ -91,16 +81,20 @@ export default function Navbar({
 
   // Render user menu or auth buttons
   const renderUserSection = () => {
-    if (user) {
+    if (!isLoaded) {
+      return <div className="h-8 w-8 rounded-full bg-gray-200 animate-pulse" />;
+    }
+
+    if (isSignedIn && user) {
       return (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-8 w-8 rounded-md p-0">
               <Avatar className="h-8 w-8 cursor-pointer transition-all">
-                <AvatarImage src={user.imageUrl || ''} alt={user.name || 'User'} />
+                <AvatarImage src={profileImageUrl} alt={user.fullName || 'User'} />
                 <AvatarFallback className="bg-primary text-primary-foreground">
-                  {user.name?.charAt(0)?.toUpperCase() ||
-                    user.email?.charAt(0)?.toUpperCase() ||
+                  {user.fullName?.charAt(0)?.toUpperCase() ||
+                    user.primaryEmailAddress?.emailAddress?.charAt(0)?.toUpperCase() ||
                     'U'}
                 </AvatarFallback>
               </Avatar>
@@ -109,8 +103,10 @@ export default function Navbar({
           <DropdownMenuContent align="end" className="w-56 mt-1">
             <div className="flex items-center justify-start gap-2 p-2">
               <div className="flex flex-col space-y-0.5">
-                <p className="text-sm font-medium">{user.name || 'User'}</p>
-                <p className="text-xs text-muted-foreground">{user.email}</p>
+                <p className="text-sm font-medium">{user.fullName || 'User'}</p>
+                <p className="text-xs text-muted-foreground">
+                  {user.primaryEmailAddress?.emailAddress}
+                </p>
               </div>
             </div>
             <DropdownMenuSeparator />

@@ -2,7 +2,7 @@ import mime from 'mime-types';
 import { NextRequest, NextResponse } from 'next/server';
 import path from 'path';
 
-import { getSession } from '@/lib/auth/session';
+import { auth } from '@/lib/auth/server';
 import { getProjectById } from '@/lib/db/projects';
 import { getFileContent } from '@/lib/fs/operations';
 
@@ -16,8 +16,8 @@ export async function GET(
 ) {
   try {
     // Get the session
-    const session = await getSession();
-    if (!session) {
+    const { userId } = await auth();
+    if (!userId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -26,7 +26,7 @@ export async function GET(
 
     const { id, filepath } = await params;
     const projectId = Number(id);
-    
+
     if (isNaN(projectId)) {
       return NextResponse.json(
         { error: 'Invalid project ID' },
@@ -44,7 +44,7 @@ export async function GET(
     }
 
     // Check if the user has access to the project
-    if (project.createdBy !== session.user.id) {
+    if (project.createdBy !== userId) {
       return NextResponse.json(
         { error: 'Forbidden' },
         { status: 403 }
@@ -53,14 +53,14 @@ export async function GET(
 
     // Construct the relative file path
     const filePath = path.join(...filepath);
-    
+
     try {
       // Get the file content using the shared file operations
       const fileContent = await getFileContent(projectId, filePath);
-      
+
       // Determine the content type
       const contentType = mime.lookup(filePath) || 'application/octet-stream';
-      
+
       // Return the file content
       return new NextResponse(fileContent, {
         headers: {

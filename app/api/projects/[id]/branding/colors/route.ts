@@ -1,9 +1,9 @@
+import { auth } from '@/lib/auth/server';
+import { fileExists, getProjectPath, updateFile } from '@/lib/fs/operations';
+import fs from 'fs/promises';
 import { NextRequest, NextResponse } from 'next/server';
 import path from 'path';
 import { z } from 'zod';
-import fs from 'fs/promises';
-import { getSession } from '@/lib/auth/session';
-import { fileExists, updateFile, getProjectPath } from '@/lib/fs/operations';
 
 // Type for CSS variable
 type CssVariable = {
@@ -40,13 +40,13 @@ function parseCssVariables(cssContent: string): { light: CssVariable[], dark: Cs
       // Match CSS variable declarations
       const regex = /--([\w-]+)\s*:\s*([^;]+);/g;
       let match;
-      
+
       while ((match = regex.exec(block)) !== null) {
         const name = '--' + match[1];
         const value = match[2].trim();
         variables.push({ name, value, scope });
       }
-      
+
       return variables;
     };
 
@@ -91,12 +91,12 @@ function parseCssVariables(cssContent: string): { light: CssVariable[], dark: Cs
 function combineVariables(light: CssVariable[], dark: CssVariable[]): ColorVariable[] {
   const combined: ColorVariable[] = [];
   const darkMap = new Map<string, string>();
-  
+
   // Create a map of dark variables for quick lookup
   dark.forEach(variable => {
     darkMap.set(variable.name, variable.value);
   });
-  
+
   // Process light variables and add dark values where available
   light.forEach(lightVar => {
     combined.push({
@@ -106,7 +106,7 @@ function combineVariables(light: CssVariable[], dark: CssVariable[]): ColorVaria
       scope: lightVar.scope
     });
   });
-  
+
   // Add any dark variables that weren't in the light set
   dark.forEach(darkVar => {
     if (!combined.some(c => c.name === darkVar.name)) {
@@ -118,7 +118,7 @@ function combineVariables(light: CssVariable[], dark: CssVariable[]): ColorVaria
       });
     }
   });
-  
+
   return combined;
 }
 
@@ -128,20 +128,20 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await getSession();
-    if (!session) {
+    const { userId } = await auth();
+    if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    
+
     // Await params object before accessing properties
     const paramsObj = await params;
     const projectId = parseInt(paramsObj.id);
     if (isNaN(projectId)) {
       return NextResponse.json({ error: 'Invalid project ID' }, { status: 400 });
     }
-    
+
     const projectPath = getProjectPath(projectId);
-    
+
     // Define possible locations for globals.css
     const possibleLocations = [
       path.join(projectPath, 'app', 'globals.css'),
@@ -154,10 +154,10 @@ export async function GET(
       path.join(projectPath, 'app', 'theme.css'),
       path.join(projectPath, 'styles', 'theme.css'),
     ];
-    
+
     let cssContent: string | null = null;
     let foundLocation: string | null = null;
-    
+
     for (const location of possibleLocations) {
       if (await fileExists(location)) {
         console.log(`Found CSS file at: ${location}`);
@@ -174,19 +174,19 @@ export async function GET(
 
     if (!cssContent) {
       console.error('Could not find or read CSS files in any expected location.');
-      return NextResponse.json({ 
+      return NextResponse.json({
         colors: [],
         message: 'No CSS files found or readable for this project'
       }, { status: 404 });
     }
-    
+
     // Parse CSS variables for both light and dark themes
     const { light, dark } = parseCssVariables(cssContent);
-    
+
     // Combine variables for easier consumption by the client
     const combinedColors = combineVariables(light, dark);
-    
-    return NextResponse.json({ 
+
+    return NextResponse.json({
       colors: combinedColors,
       foundLocation,
       lightCount: light.length,
@@ -218,31 +218,31 @@ async function readFile(filePath: string): Promise<string> {
  */
 function updateCssVariables(cssContent: string, updates: Record<string, string>, mode: 'light' | 'dark' = 'light'): string {
   let updatedContent = cssContent;
-  
+
   // Get the selector based on the mode
   const selector = mode === 'light' ? ':root' : '.dark';
-  
+
   // Find the section for the specified mode
   const sectionRegex = new RegExp(`(${selector}\\s*{)([^}]*)(})`, 'g');
   const sectionMatch = sectionRegex.exec(updatedContent);
-  
+
   if (sectionMatch) {
     let sectionContent = sectionMatch[2];
     let updated = false;
-    
+
     // Update each variable in the section
     Object.entries(updates).forEach(([name, value]) => {
       // Make sure the name has the -- prefix
       const varName = name.startsWith('--') ? name : `--${name}`;
-      
+
       // Create regex to find the variable declaration within the section
       const varRegex = new RegExp(`(\\s*${varName}\\s*:\\s*)([^;]+)(;)`, 'g');
-      
+
       // Check if the variable exists in this section
       if (varRegex.test(sectionContent)) {
         // Reset lastIndex after test
         varRegex.lastIndex = 0;
-        
+
         // Replace the value in the section content
         sectionContent = sectionContent.replace(varRegex, `$1${value}$3`);
         console.log(`Updated ${varName} to ${value} in ${selector} section`);
@@ -251,7 +251,7 @@ function updateCssVariables(cssContent: string, updates: Record<string, string>,
         console.warn(`Variable ${varName} not found in ${selector} section, cannot update.`);
       }
     });
-    
+
     // If any updates were made, replace the entire section in the original content
     if (updated) {
       updatedContent = updatedContent.replace(
@@ -262,7 +262,7 @@ function updateCssVariables(cssContent: string, updates: Record<string, string>,
   } else {
     console.warn(`Could not find ${selector} section in CSS content, cannot update variables for ${mode} mode.`);
   }
-  
+
   return updatedContent;
 }
 
@@ -272,33 +272,33 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await getSession();
-    if (!session) {
+    const { userId } = await auth();
+    if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    
+
     // Await params object before accessing properties
     const paramsObj = await params;
     const projectId = parseInt(paramsObj.id);
     if (isNaN(projectId)) {
       return NextResponse.json({ error: 'Invalid project ID' }, { status: 400 });
     }
-    
+
     const body = await req.json();
     const validation = UpdateColorsSchema.safeParse(body);
-    
+
     if (!validation.success) {
       return NextResponse.json(
         { error: 'Invalid request body', details: validation.error.errors },
         { status: 400 }
       );
     }
-    
+
     const { colors } = validation.data;
     const mode = body.mode || 'light';
-    
+
     const projectPath = getProjectPath(projectId);
-    
+
     // Find the correct globals.css path again for writing
     const possibleLocations = [
       path.join(projectPath, 'app', 'globals.css'),
@@ -326,17 +326,17 @@ export async function PUT(
         { status: 404 }
       );
     }
-    
+
     // Read the current content
     const currentCssContent = await readFile(globalsCssPath);
-    
+
     // Update CSS variables with the specified mode
     const updatedContent = updateCssVariables(currentCssContent, colors, mode as 'light' | 'dark');
-    
+
     // Write the updated content back to the file
     await fs.mkdir(path.dirname(globalsCssPath), { recursive: true });
     await updateFile(globalsCssPath, updatedContent);
-    
+
     return NextResponse.json(
       { success: true, message: `CSS variables updated successfully in ${mode} mode` },
       { status: 200 }
@@ -356,21 +356,21 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await getSession();
-    if (!session) {
+    const { userId } = await auth();
+    if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    
+
     // Await params object before accessing properties
     const paramsObj = await params;
     const projectId = parseInt(paramsObj.id);
     if (isNaN(projectId)) {
       return NextResponse.json({ error: 'Invalid project ID' }, { status: 400 });
     }
-    
+
     // Parse request body
     const body = await req.json();
-    
+
     // Validate required fields
     if (!body.name || !body.value) {
       return NextResponse.json(
@@ -378,11 +378,11 @@ export async function POST(
         { status: 400 }
       );
     }
-    
+
     const { name, value, mode = 'light' } = body;
-    
+
     const projectPath = getProjectPath(projectId);
-    
+
     // Find the correct globals.css path for writing
     const possibleLocations = [
       path.join(projectPath, 'app', 'globals.css'),
@@ -410,23 +410,23 @@ export async function POST(
         { status: 404 }
       );
     }
-    
+
     // Read the current content
     const currentCssContent = await readFile(globalsCssPath);
-    
+
     // Prepare a single update
     const update = { [name]: value };
-    
+
     // Update CSS variables with the specified mode
     const updatedContent = updateCssVariables(currentCssContent, update, mode as 'light' | 'dark');
-    
+
     // Write the updated content back to the file
     await fs.mkdir(path.dirname(globalsCssPath), { recursive: true });
     await updateFile(globalsCssPath, updatedContent);
-    
+
     return NextResponse.json(
-      { 
-        success: true, 
+      {
+        success: true,
         message: `CSS variable ${name} updated successfully with value ${value} in ${mode} mode`,
         mode
       },
@@ -439,4 +439,4 @@ export async function POST(
       { status: 500 }
     );
   }
-} 
+}

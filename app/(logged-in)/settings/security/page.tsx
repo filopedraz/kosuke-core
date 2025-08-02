@@ -1,55 +1,45 @@
 'use client';
 
-import { Check, Loader2, AlertTriangle } from 'lucide-react';
+import { useClerk } from '@clerk/nextjs';
+import { AlertTriangle, Loader2, Shield } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
-import { updatePassword, deleteAccount } from '@/app/(logged-out)/actions';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 
 type FormState = {
   error?: string;
   success?: string;
 } | null;
 
-type ActionData = Record<string, unknown>;
-
 export default function SecurityPage() {
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [formState, setFormState] = useState<FormState>(null);
   const [deleteFormState, setDeleteFormState] = useState<FormState>(null);
+  const router = useRouter();
+  const { signOut } = useClerk();
 
-  const handlePasswordUpdate = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-
-    const formData = new FormData(e.currentTarget);
-    const result = await updatePassword({} as ActionData, formData);
-
-    setFormState(result as FormState);
-    setIsSubmitting(false);
-
-    // Reset form if successful
-    if (result?.success) {
-      e.currentTarget.reset();
-    }
-  };
-
-  const handleAccountDelete = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const handleAccountDelete = async () => {
     setIsDeleting(true);
 
-    const formData = new FormData(e.currentTarget);
     try {
-      const result = await deleteAccount({} as ActionData, formData);
-      setDeleteFormState(result as FormState);
+      const response = await fetch('/api/user/delete-account', {
+        method: 'DELETE',
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        // Account deleted successfully - sign out and redirect
+        await signOut();
+        router.push('/');
+      } else {
+        setDeleteFormState({ error: result.error || 'Failed to delete account' });
+      }
     } catch (error) {
-      // The deleteAccount action redirects on success, so we'll only get here on error
       console.error('Error deleting account:', error);
+      setDeleteFormState({ error: 'Failed to delete account' });
     } finally {
       setIsDeleting(false);
     }
@@ -59,70 +49,37 @@ export default function SecurityPage() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Password</CardTitle>
-          <CardDescription>Update your password to keep your account secure.</CardDescription>
+          <CardTitle className="flex items-center gap-2">
+            <Shield className="h-5 w-5" />
+            Authentication & Security
+          </CardTitle>
+          <CardDescription>
+            Your account is secured with Clerk&apos;s passwordless authentication system.
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handlePasswordUpdate} className="space-y-6">
-            <div className="flex flex-col space-y-4">
-              <div className="grid gap-2">
-                <Label htmlFor="currentPassword">Current Password</Label>
-                <Input
-                  id="currentPassword"
-                  name="currentPassword"
-                  type="password"
-                  placeholder="••••••••"
-                  required
-                />
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="newPassword">New Password</Label>
-                <Input
-                  id="newPassword"
-                  name="newPassword"
-                  type="password"
-                  placeholder="••••••••"
-                  required
-                />
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="confirmPassword">Confirm New Password</Label>
-                <Input
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  type="password"
-                  placeholder="••••••••"
-                  required
-                />
+          <div className="space-y-4">
+            <div className="rounded-md bg-primary/10 p-4">
+              <div className="text-sm font-medium">Passwordless Authentication</div>
+              <div className="text-xs text-muted-foreground mt-1">
+                Your account uses secure, passwordless authentication through Clerk. You can sign in
+                using email magic links, social providers, or other secure methods without managing
+                passwords.
               </div>
             </div>
-
-            {formState?.error && (
-              <div className="rounded-md bg-destructive/10 p-3">
-                <div className="text-sm text-destructive">{formState.error}</div>
-              </div>
-            )}
-
-            {formState?.success && (
-              <div className="rounded-md bg-green-500/10 p-3 flex items-center gap-2">
-                <Check className="h-4 w-4 text-green-500" />
-                <div className="text-sm text-green-500">{formState.success}</div>
-              </div>
-            )}
-
-            <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto">
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Updating...
-                </>
-              ) : (
-                'Update Password'
-              )}
-            </Button>
-          </form>
+            <div className="text-sm text-muted-foreground">
+              To manage your authentication methods, visit your{' '}
+              <a
+                href="/user-profile"
+                className="text-primary hover:underline"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                user profile settings
+              </a>
+              .
+            </div>
+          </div>
         </CardContent>
       </Card>
 
@@ -144,7 +101,7 @@ export default function SecurityPage() {
               </Button>
             </div>
           ) : (
-            <form onSubmit={handleAccountDelete} className="space-y-6">
+            <div className="space-y-6">
               <div className="rounded-md bg-destructive/10 p-4 flex items-start gap-3">
                 <AlertTriangle className="h-5 w-5 text-destructive mt-0.5" />
                 <div>
@@ -156,20 +113,6 @@ export default function SecurityPage() {
                     deleted.
                   </p>
                 </div>
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="deletePassword" className="text-destructive">
-                  Enter your password to confirm
-                </Label>
-                <Input
-                  id="deletePassword"
-                  name="password"
-                  type="password"
-                  placeholder="••••••••"
-                  required
-                  className="border-destructive/50 focus-visible:ring-destructive"
-                />
               </div>
 
               {deleteFormState?.error && (
@@ -189,7 +132,7 @@ export default function SecurityPage() {
                 >
                   Cancel
                 </Button>
-                <Button type="submit" variant="destructive" disabled={isDeleting}>
+                <Button onClick={handleAccountDelete} variant="destructive" disabled={isDeleting}>
                   {isDeleting ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -200,7 +143,7 @@ export default function SecurityPage() {
                   )}
                 </Button>
               </div>
-            </form>
+            </div>
           )}
         </CardContent>
       </Card>

@@ -1,16 +1,16 @@
 'use client';
 
-import { Loader2, RefreshCw, ExternalLink, Download, Github } from 'lucide-react';
-import { useState, useEffect, useCallback } from 'react';
+import { Download, ExternalLink, Github, Loader2, RefreshCw } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import DownloadingModal from './downloading-modal';
@@ -37,85 +37,119 @@ export default function PreviewPanel({
   const [error, setError] = useState<string | null>(null);
   const [iframeKey, setIframeKey] = useState(0);
   const [isDownloading, setIsDownloading] = useState(false);
-  const [lastRefresh, setLastRefresh] = useState(Date.now());
 
   // Check if the preview server is ready
   const checkServerHealth = useCallback(async (url: string): Promise<boolean> => {
     try {
-      // Create a controller to timeout the request after 5 seconds
+      // Create a controller to timeout the request after 3 seconds (reduced from 5)
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000);
-      
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
+
       // With no-cors mode, we can't read the response, but if the fetch succeeds, the server is up
-      await fetch(url, { 
-        method: 'HEAD', 
+      await fetch(url, {
+        method: 'HEAD',
         mode: 'no-cors',
-        signal: controller.signal 
+        signal: controller.signal
       });
-      
+
       clearTimeout(timeoutId);
       return true; // If we get here, the server is responding
     } catch (error) {
-      console.log('[Preview Panel] Health check failed:', error);
+      // Only log every 5th failure to reduce console noise
+      if (Math.random() < 0.2) {
+        console.log('[Preview Panel] Health check failed (sample):', error instanceof Error ? error.message : 'Connection failed');
+      }
       return false;
     }
   }, []);
 
   // Poll the server until it's ready
   const pollServerUntilReady = useCallback(async (url: string, maxAttempts = 30) => {
-    console.log('[Preview Panel] Starting health check polling');
+    console.log('[Preview Panel] Starting health check polling (will wait 5s before first attempt)');
     let attempts = 0;
-    
+
     const poll = async () => {
       if (attempts >= maxAttempts) {
         setError('Server failed to start after multiple attempts');
         setStatus('error');
         return;
       }
-      
+
       attempts++;
       setProgress(Math.min(90, Math.floor((attempts / maxAttempts) * 100)));
-      
+
       const isHealthy = await checkServerHealth(url);
-      
+
       if (isHealthy) {
         console.log('[Preview Panel] Server is healthy');
         setStatus('ready');
         setProgress(100);
       } else {
-        console.log(`[Preview Panel] Health check attempt ${attempts}/${maxAttempts} failed`);
-        setTimeout(poll, 2000); // Try again after 2 seconds
+        console.log(`[Preview Panel] Health check attempt ${attempts}/${maxAttempts} failed, retrying in 3s`);
+        // Use longer delays for more patient polling
+        const delay = attempts <= 3 ? 5000 : 3000; // 5s for first 3 attempts, then 3s
+        setTimeout(poll, delay);
       }
     };
-    
-    await poll();
+
+    // Wait 5 seconds before starting health checks to give container time to start
+    setTimeout(poll, 5000);
   }, [checkServerHealth]);
 
+    // Prevent multiple simultaneous requests
+  const [, setIsRequestInProgress] = useState(false);
+
+  // Ref to store fetchPreviewUrl function to avoid circular dependencies
+  const fetchPreviewUrlRef = useRef<((forceStart?: boolean) => Promise<void>) | null>(null);
+
   // Fetch the preview URL
-  const fetchPreviewUrl = useCallback(async () => {
+  const fetchPreviewUrl = useCallback(async (forceStart: boolean = false) => {
+    // Prevent duplicate requests using functional state update
+    let shouldProceed = false;
+    setIsRequestInProgress(prev => {
+      if (prev) {
+        console.log(`[Preview Panel] Request already in progress for project ${projectId}, skipping`);
+        return prev; // Don't change state, request already in progress
+      }
+      shouldProceed = true;
+      return true; // Set to true, we'll proceed
+    });
+
+    if (!shouldProceed) {
+      return;
+    }
     setStatus('loading');
     setProgress(0);
     setError(null);
-    
+
     try {
-      console.log(`[Preview Panel] Fetching preview URL for project ${projectId}`);
-      const response = await fetch(`/api/projects/${projectId}/preview`);
-      
+      console.log(`[Preview Panel] Fetching preview URL for project ${projectId}${forceStart ? ' (forcing start)' : ''}`);
+
+      // For new projects or when forcing start, call POST to start the container
+      // Otherwise, call GET to check status
+      const method = forceStart || initialLoading ? 'POST' : 'GET';
+      const response = await fetch(`/api/projects/${projectId}/preview`, {
+        method,
+        headers: method === 'POST' ? { 'Content-Type': 'application/json' } : undefined,
+        body: method === 'POST' ? JSON.stringify({}) : undefined,
+      });
+
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || `Failed to fetch preview: ${response.statusText}`);
+        throw new Error(data.error || `Failed to ${method === 'POST' ? 'start' : 'fetch'} preview: ${response.statusText}`);
       }
-      
+
       const data = await response.json();
-      console.log('[Preview Panel] Preview URL response:', data);
-      
-      if (data.previewUrl) {
-        // Use the direct preview URL instead of the proxy
-        console.log('[Preview Panel] Setting preview URL:', data.previewUrl);
-        setPreviewUrl(data.previewUrl);
-        
+      console.log(`[Preview Panel] Preview ${method === 'POST' ? 'start' : 'status'} response:`, data);
+
+      if (data.previewUrl || data.url) {
+        // Use the direct preview URL (handle both previewUrl and url for compatibility)
+        const url = data.previewUrl || data.url;
+        console.log('[Preview Panel] Setting preview URL:', url);
+        setPreviewUrl(url);
+
         // Start polling for health check
-        pollServerUntilReady(data.previewUrl);
+        pollServerUntilReady(url);
       } else {
         throw new Error('No preview URL returned');
       }
@@ -123,63 +157,49 @@ export default function PreviewPanel({
       console.error('[Preview Panel] Error fetching preview URL:', error);
       setError(error instanceof Error ? error.message : 'Unknown error');
       setStatus('error');
+    } finally {
+      setIsRequestInProgress(false);
     }
-  }, [projectId, pollServerUntilReady]);
+  }, [projectId, pollServerUntilReady, initialLoading]);
+
+  // Update ref when fetchPreviewUrl changes
+  useEffect(() => {
+    fetchPreviewUrlRef.current = fetchPreviewUrl;
+  }, [fetchPreviewUrl]);
 
   // Fetch the preview URL on component mount
   useEffect(() => {
     console.log(`[Preview Panel] Initializing preview for project ${projectId}`);
-    fetchPreviewUrl();
-  }, [projectId, fetchPreviewUrl]);
+    fetchPreviewUrlRef.current?.();
+  }, [projectId]); // Only depend on projectId to avoid circular dependencies
 
   // Function to refresh the preview
-  const handleRefresh = useCallback(async () => {
-    console.log('[Preview Panel] Manually refreshing preview');
+  const handleRefresh = useCallback(async (forceStart: boolean = false) => {
+    console.log(`[Preview Panel] Manually refreshing preview${forceStart ? ' (forcing start)' : ''}`);
     setIframeKey(prev => prev + 1);
-    setLastRefresh(Date.now());
-    fetchPreviewUrl();
+    fetchPreviewUrl(forceStart);
   }, [fetchPreviewUrl]);
 
-  // Add polling to check for new messages and refresh when needed
+  // Listen for custom refresh events from the chat interface (real-time via streaming)
   useEffect(() => {
-    console.log('[Preview Panel] Setting up message polling mechanism');
-    
-    const checkForChanges = async () => {
-      try {
-        console.log('[Preview Panel] Checking for new messages...');
-        const response = await fetch(`/api/projects/${projectId}/messages/latest`);
-        
-        if (response.ok) {
-          const data = await response.json();
-          if (data.timestamp) {
-            const messageTime = new Date(data.timestamp).getTime();
-            const refreshTime = lastRefresh;
-            
-            console.log(`[Preview Panel] Latest message: ${new Date(messageTime).toISOString()}, Last refresh: ${new Date(refreshTime).toISOString()}`);
-            
-            // If there's a new assistant message after our last refresh, update the preview
-            if (messageTime > refreshTime && data.role === 'assistant') {
-              console.log('[Preview Panel] New assistant message detected, refreshing preview');
-              handleRefresh();
-            }
-          }
-        }
-      } catch (error) {
-        console.error('[Preview Panel] Error checking for new messages:', error);
+    console.log('[Preview Panel] Setting up refresh event listener for real-time updates');
+
+    const handleRefreshPreview = (event: CustomEvent) => {
+      if (event.detail.projectId === projectId) {
+        console.log('[Preview Panel] Received refresh event from chat streaming');
+        // Use ref to avoid circular dependencies
+        fetchPreviewUrlRef.current?.();
       }
     };
-    
-    // Check for new messages every 3 seconds
-    const messageCheckId = setInterval(checkForChanges, 3000);
-    
-    // Also check immediately on mount
-    checkForChanges();
-    
+
+    // Listen for refresh events dispatched by the chat interface SSE
+    window.addEventListener('refresh-preview', handleRefreshPreview as EventListener);
+
     return () => {
-      console.log('[Preview Panel] Cleaning up message polling');
-      clearInterval(messageCheckId);
+      console.log('[Preview Panel] Cleaning up refresh event listener');
+      window.removeEventListener('refresh-preview', handleRefreshPreview as EventListener);
     };
-  }, [projectId, lastRefresh, handleRefresh]);
+  }, [projectId]); // Only depend on projectId to avoid circular dependencies
 
   // Function to open the preview in a new tab
   const openInNewTab = () => {
@@ -216,12 +236,12 @@ export default function PreviewPanel({
     try {
       setIsDownloading(true);
       const response = await fetch(`/api/projects/${projectId}/download`);
-      
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Failed to download project' }));
         throw new Error(errorData.error || 'Failed to download project');
       }
-      
+
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -289,10 +309,10 @@ export default function PreviewPanel({
               <ExternalLink className="h-4 w-4" />
             </Button>
           )}
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={handleRefresh}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleRefresh()}
             disabled={status === 'loading'}
             aria-label="Refresh preview"
             title="Refresh preview"
@@ -312,7 +332,7 @@ export default function PreviewPanel({
               )}
               {status === 'error' && (
                 <button
-                  onClick={handleRefresh}
+                  onClick={() => handleRefresh()}
                   className="mt-4 text-primary hover:underline"
                   data-testid="try-again-button"
                 >
@@ -334,7 +354,7 @@ export default function PreviewPanel({
                 No preview available yet. Click the refresh button to generate a preview.
               </p>
               <button
-                onClick={handleRefresh}
+                onClick={() => handleRefresh(true)}
                 className="text-primary hover:underline"
                 data-testid="generate-preview-button"
               >
@@ -347,4 +367,4 @@ export default function PreviewPanel({
       <DownloadingModal open={isDownloading} />
     </div>
   );
-} 
+}

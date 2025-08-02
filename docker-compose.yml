@@ -9,22 +9,10 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
-  minio:
-    image: minio/minio
-    container_name: next_saas_starter_minio
-    env_file:
-      - .env
-    ports:
-      - '9005:9000'
-      - '9006:9001'
-    volumes:
-      - minio_data:/data
-    command: server /data --console-address ":9001"
-
   nextjs:
     build:
       context: .
-      dockerfile: docker/nextjs/Dockerfile
+      dockerfile: Dockerfile
     container_name: next_saas_starter_nextjs
     env_file:
       - .env
@@ -37,7 +25,6 @@ services:
       - next_build_cache:/app/.next/cache
     depends_on:
       - postgres
-      - minio
       - agent
     restart: unless-stopped
 
@@ -57,8 +44,9 @@ services:
     environment:
       - PYTHONPATH=/app
       - PYTHONUNBUFFERED=1
-      - NEXTJS_URL=http://nextjs:3000
+      - NEXTJS_URL=http://host.docker.internal:3000
       - WEBHOOK_SECRET=dev-secret-change-in-production
+      - HOST_WORKSPACE_DIR=${PWD} # Pass the host workspace directory for Docker-in-Docker volume mounting
     depends_on:
       - postgres
     networks:
@@ -79,5 +67,4 @@ services:
 
 volumes:
   postgres_data:
-  minio_data:
   next_build_cache:

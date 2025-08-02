@@ -3,19 +3,7 @@
 import Navbar from '@/components/ui/navbar';
 import { useProjectStore } from '@/lib/stores/projectStore';
 
-// Reuse the User type definition (ideally move to a shared types file)
-type UserForNavbar = {
-  id: number;
-  name?: string;
-  email: string;
-  imageUrl?: string;
-} | null;
-
-interface ProjectNavbarClientProps {
-  user: UserForNavbar;
-}
-
-export default function ProjectNavbar({ user }: ProjectNavbarClientProps) {
+export default function ProjectNavbar() {
   // Select individual state pieces for stability
   const currentProject = useProjectStore(state => state.currentProject);
   const currentView = useProjectStore(state => state.currentView);
@@ -32,9 +20,8 @@ export default function ProjectNavbar({ user }: ProjectNavbarClientProps) {
     // Potentially trigger a refetch action in the store if required
   };
 
-  return (
-    <Navbar 
-      user={user}
+    return (
+    <Navbar
       variant="project"
       projectProps={{
         projectName: projectName,
@@ -46,4 +33,4 @@ export default function ProjectNavbar({ user }: ProjectNavbarClientProps) {
       }}
     />
   );
-} 
+}

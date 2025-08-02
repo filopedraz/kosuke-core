@@ -1,19 +1,20 @@
+import { auth } from '@/lib/auth/server';
 import { NextResponse } from 'next/server';
-
-import { canUpgradeSubscription } from '@/lib/actions/subscription';
-import { getSession } from '@/lib/auth/session';
 
 export async function GET() {
   try {
-    const session = await getSession();
-
-    if (!session) {
-      return NextResponse.json({ isUpgradable: false }, { status: 401 });
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const isUpgradable = await canUpgradeSubscription();
-
-    return NextResponse.json({ isUpgradable });
+    // For now, return a default response
+    // In the future, this would check actual subscription status
+    return NextResponse.json({
+      isUpgradable: true, // Always show upgrade option for now
+      tier: 'free',
+      hasActiveSubscription: false,
+    });
   } catch (error) {
     console.error('Error checking subscription status:', error);
     return NextResponse.json({ error: 'Failed to check subscription status' }, { status: 500 });

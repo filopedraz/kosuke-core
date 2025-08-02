@@ -1,16 +1,18 @@
 'use client';
 
+import { useUser } from '@clerk/nextjs';
+import { useQueryClient } from '@tanstack/react-query';
 import { Check, Loader2, Upload } from 'lucide-react';
-import { useState, use, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { useRef, useState } from 'react';
 
-import { updateAccount, updateProfileImage } from '@/app/(logged-out)/actions';
+import { useUserProfileImage } from '@/hooks/use-user-profile-image';
+
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useUser } from '@/lib/auth';
 
 type FormState = {
   error?: string;
@@ -18,8 +20,9 @@ type FormState = {
 } | null;
 
 export default function SettingsPage() {
-  const { userPromise } = useUser();
-  const user = use(userPromise);
+  const { user, isLoaded } = useUser();
+  const { imageUrl: profileImageUrl } = useUserProfileImage();
+  const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formState, setFormState] = useState<FormState>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
@@ -38,22 +41,34 @@ export default function SettingsPage() {
       reader.readAsDataURL(file);
 
       // Auto-submit the form when an image is selected
-      if (formRef.current) {
-        setIsSubmitting(true);
+      setIsSubmitting(true);
 
+      try {
         // Create a new FormData only for the image
         const formData = new FormData();
         formData.set('profileImage', file);
 
-        // Use the dedicated image update action
-        const result = await updateProfileImage(formData, formData);
+        // Call the API endpoint
+        const response = await fetch('/api/user/profile-image', {
+          method: 'PUT',
+          body: formData,
+        });
 
-        setFormState(result as FormState);
-        setIsSubmitting(false);
+        const result = await response.json();
 
-        if ((result as FormState)?.success) {
+        if (response.ok) {
+          setFormState({ success: result.success });
+          // Invalidate the user profile query to refetch the updated image
+          queryClient.invalidateQueries({ queryKey: ['user-profile'] });
           router.refresh();
+        } else {
+          setFormState({ error: result.error || 'Failed to update profile image' });
         }
+      } catch (error) {
+        console.error('Error updating profile image:', error);
+        setFormState({ error: 'Failed to update profile image' });
+      } finally {
+        setIsSubmitting(false);
       }
     }
   };
@@ -66,19 +81,57 @@ export default function SettingsPage() {
     e.preventDefault();
     setIsSubmitting(true);
 
-    const formData = new FormData(e.currentTarget);
-    const result = await updateAccount(formData, formData);
+    try {
+      const formData = new FormData(e.currentTarget);
 
-    setFormState(result as FormState);
-    setIsSubmitting(false);
+      // Call the API endpoint
+      const response = await fetch('/api/user/profile', {
+        method: 'PUT',
+        body: formData,
+      });
 
-    if ((result as FormState)?.success) {
-      router.refresh();
+      const result = await response.json();
+
+      if (response.ok) {
+        setFormState({ success: result.success });
+        // Invalidate the user profile query to refetch the updated data
+        queryClient.invalidateQueries({ queryKey: ['user-profile'] });
+        router.refresh();
+      } else {
+        setFormState({ error: result.error || 'Failed to update profile' });
+      }
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      setFormState({ error: 'Failed to update profile' });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  // Use the user's actual image URL if available
-  const avatarSrc = previewImage || user?.imageUrl || '';
+  // Use preview image if available, then database image, then fall back to Clerk image
+  const avatarSrc = previewImage || profileImageUrl;
+
+  if (!isLoaded) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Account</CardTitle>
+            <CardDescription>Loading account information...</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-6">
+              <div className="h-16 w-16 rounded-full bg-gray-200 animate-pulse" />
+              <div className="space-y-2">
+                <div className="h-4 bg-gray-200 rounded animate-pulse" />
+                <div className="h-4 bg-gray-200 rounded animate-pulse" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -92,10 +145,10 @@ export default function SettingsPage() {
             <div className="flex flex-col space-y-4">
               <div className="flex items-center space-x-4">
                 <Avatar className="h-16 w-16">
-                  <AvatarImage src={avatarSrc} alt={user?.name || 'User'} />
+                  <AvatarImage src={avatarSrc} alt={user?.fullName || 'User'} />
                   <AvatarFallback className="text-lg bg-primary text-primary-foreground">
-                    {user?.name?.charAt(0)?.toUpperCase() ||
-                      user?.email?.charAt(0)?.toUpperCase() ||
+                    {user?.fullName?.charAt(0)?.toUpperCase() ||
+                      user?.primaryEmailAddress?.emailAddress?.charAt(0)?.toUpperCase() ||
                       'U'}
                   </AvatarFallback>
                 </Avatar>
@@ -142,7 +195,7 @@ export default function SettingsPage() {
                 <Input
                   id="name"
                   name="name"
-                  defaultValue={user?.name || ''}
+                  defaultValue={user?.fullName || ''}
                   placeholder="Your name"
                   required
                 />
@@ -154,7 +207,7 @@ export default function SettingsPage() {
                   id="email"
                   name="email"
                   type="email"
-                  defaultValue={user?.email || ''}
+                  defaultValue={user?.primaryEmailAddress?.emailAddress || ''}
                   placeholder="your.email@example.com"
                   required
                 />

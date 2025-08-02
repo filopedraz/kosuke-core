@@ -57,6 +57,34 @@
       "when": 1746350680090,
       "tag": "0007_giant_ultron",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1753911230823,
+      "tag": "0008_gigantic_skaar",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1753912317992,
+      "tag": "0009_gifted_killer_shrike",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1754134942359,
+      "tag": "0010_past_aaron_stack",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1754139497209,
+      "tag": "0011_familiar_thanos",
+      "breakpoints": true
     }
   ]
 }
