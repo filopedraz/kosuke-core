@@ -5,11 +5,17 @@ export interface Project {
   id: number;
   name: string;
   description: string | null;
-  userId: number;
-  createdBy: number;
+  userId: string; // Updated to match Clerk user ID
+  createdBy: string; // Updated to match Clerk user ID
   createdAt: Date;
   updatedAt: Date;
   isArchived: boolean | null;
+  githubRepoUrl: string | null;
+  githubOwner: string | null;
+  githubRepoName: string | null;
+  githubBranch: string | null;
+  autoCommit: boolean | null;
+  lastGithubSync: Date | null;
 }
 
 // Define the possible view types

@@ -1,30 +1,19 @@
-import { desc, and, eq, isNull } from 'drizzle-orm';
-import { cookies } from 'next/headers';
+import { and, desc, eq, isNull } from 'drizzle-orm';
 
-import { verifyToken } from '@/lib/auth/session';
-
+import { auth } from '@/lib/auth/server';
 import { db } from '@/lib/db/drizzle';
 import { activityLogs, users } from '@/lib/db/schema';
 
 export async function getUser() {
-  const sessionCookie = (await cookies()).get('session');
-  if (!sessionCookie || !sessionCookie.value) {
-    return null;
-  }
-
-  const sessionData = await verifyToken(sessionCookie.value);
-  if (!sessionData || !sessionData.user || typeof sessionData.user.id !== 'number') {
-    return null;
-  }
-
-  if (new Date(sessionData.expires) < new Date()) {
+  const { userId } = await auth();
+  if (!userId) {
     return null;
   }
 
   const user = await db
     .select()
     .from(users)
-    .where(and(eq(users.id, sessionData.user.id), isNull(users.deletedAt)))
+    .where(and(eq(users.clerkUserId, userId), isNull(users.deletedAt)))
     .limit(1);
 
   if (user.length === 0) {
@@ -35,8 +24,8 @@ export async function getUser() {
 }
 
 export async function getActivityLogs() {
-  const user = await getUser();
-  if (!user) {
+  const { userId } = await auth();
+  if (!userId) {
     throw new Error('User not authenticated');
   }
 
@@ -49,8 +38,8 @@ export async function getActivityLogs() {
       userName: users.name,
     })
     .from(activityLogs)
-    .leftJoin(users, eq(activityLogs.userId, users.id))
-    .where(eq(activityLogs.userId, user.id))
+    .leftJoin(users, eq(activityLogs.userId, users.clerkUserId))
+    .where(eq(activityLogs.userId, userId))
     .orderBy(desc(activityLogs.timestamp))
     .limit(10);
 }

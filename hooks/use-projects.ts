@@ -1,10 +1,10 @@
 'use client';
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useProjectStore, type Project } from '@/lib/stores/projectStore';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 interface UseProjectsOptions {
-  userId: number;
+  userId: string;
   initialData?: Project[];
 }
 
@@ -64,18 +64,20 @@ export function useCreateProject() {
   const { addProject } = useProjectStore();
 
   return useMutation<Project, Error, { prompt: string; name: string }>({
-    mutationFn: async data => {
+    mutationFn: async requestData => {
       const response = await fetch('/api/projects', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify(requestData),
       });
       if (!response.ok) {
         throw new Error('Failed to create project');
       }
-      const project = await response.json();
+      const { data } = await response.json();
+      // Extract project from the wrapped response structure
+      const project = data.project || data;
       return {
         ...project,
         createdAt: new Date(project.createdAt),

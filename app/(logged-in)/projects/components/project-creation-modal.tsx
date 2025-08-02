@@ -1,6 +1,6 @@
 'use client';
 
-import { Folder, ArrowRight, Loader2 } from 'lucide-react';
+import { ArrowRight, Folder, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { createProject } from '@/lib/actions/project';
+import { useCreateProject } from '@/hooks/use-projects';
 
 interface ProjectCreationModalProps {
   open: boolean;
@@ -24,29 +24,30 @@ export default function ProjectCreationModal({
   prompt = '',
 }: ProjectCreationModalProps) {
   const [projectName, setProjectName] = useState(initialProjectName);
-  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const createProjectMutation = useCreateProject();
 
   const handleCreateProject = async () => {
     if (!projectName.trim()) return;
 
-    try {
-      setIsLoading(true);
-
-      // Create a new project with the prompt if provided
-      const project = await createProject(prompt || projectName);
-
-      // Close modal and redirect to the project page
-      onOpenChange(false);
-
-      if (project?.id) {
-        router.push(`/projects/${project.id}?new=true`);
+    createProjectMutation.mutate(
+      {
+        name: projectName.trim(),
+        prompt: prompt || projectName.trim(),
+      },
+      {
+        onSuccess: (project) => {
+          // Close modal and redirect to the project page
+          onOpenChange(false);
+          if (project?.id) {
+            router.push(`/projects/${project.id}?new=true`);
+          }
+        },
+        onError: (error) => {
+          console.error('Error creating project:', error);
+        },
       }
-    } catch (error) {
-      console.error('Error creating project:', error);
-    } finally {
-      setIsLoading(false);
-    }
+    );
   };
 
   return (
@@ -72,7 +73,7 @@ export default function ProjectCreationModal({
                 autoFocus
                 placeholder="My awesome project"
                 onKeyDown={e => {
-                  if (e.key === 'Enter' && !isLoading && projectName.trim()) {
+                  if (e.key === 'Enter' && !createProjectMutation.isPending && projectName.trim()) {
                     e.preventDefault();
                     handleCreateProject();
                   }
@@ -87,10 +88,10 @@ export default function ProjectCreationModal({
             </Button>
             <Button
               onClick={handleCreateProject}
-              disabled={isLoading || !projectName.trim()}
+              disabled={createProjectMutation.isPending || !projectName.trim()}
               className="h-10 space-x-2"
             >
-              {isLoading ? (
+              {createProjectMutation.isPending ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
                   <span>Creating...</span>

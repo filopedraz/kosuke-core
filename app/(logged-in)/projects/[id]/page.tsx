@@ -1,13 +1,20 @@
-import { db } from '@/lib/db/drizzle';
-import { chatMessages } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+'use client';
+
 import { notFound } from 'next/navigation';
-import { Suspense } from 'react';
+import { use } from 'react';
 
 import ProjectContent from '@/app/(logged-in)/projects/[id]/components/layout/project-content';
 import { Skeleton } from '@/components/ui/skeleton';
-import { getSession } from '@/lib/auth/session';
-import { getProjectById } from '@/lib/db/projects';
+import { useChatMessages } from '@/hooks/use-chat-messages';
+import { useProject } from '@/hooks/use-projects';
+import { useUser } from '@clerk/nextjs';
+
+interface ProjectPageProps {
+  params: Promise<{
+    id: string;
+  }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}
 
 function ProjectLoadingSkeleton() {
   return (
@@ -51,96 +58,46 @@ function ProjectLoadingSkeleton() {
   );
 }
 
-// FetchedChatMessage type
-interface FetchedChatMessage {
-  id: number; // Assuming ID is always present after fetch
-  content?: string;
-  role?: 'user' | 'assistant' | 'system';
-  timestamp?: string | Date;
-}
+export default function ProjectPage({ params, searchParams }: ProjectPageProps) {
+  // Unwrap promises using React.use()
+  const { id } = use(params);
+  const searchParamsData = use(searchParams);
 
-interface ProjectPageProps {
-  params: Promise<{
-    id: string;
-  }>;
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
-}
-
-// Function to fetch messages
-async function fetchChatHistoryForProject(projectId: number): Promise<FetchedChatMessage[]> {
-  console.log(`Fetching chat history for project ${projectId}`);
-
-  // Fetch chat history, oldest first
-  const history = await db
-    .select()
-    .from(chatMessages)
-    .where(eq(chatMessages.projectId, projectId))
-    .orderBy(chatMessages.timestamp); // Ascending order
-
-  // Return the data, matching the FetchedChatMessage structure
-  return history.map(msg => ({
-    id: msg.id,
-    content: msg.content,
-    role: msg.role as 'user' | 'assistant' | 'system',
-    timestamp: msg.timestamp,
-  }));
-}
-
-export default async function ProjectPage({ params, searchParams }: ProjectPageProps) {
-  const session = await getSession();
-
-  if (!session) {
-    // Session check might be redundant if layout handles it, but keep for safety
-    notFound();
-  }
-
-  const { id } = await params;
   const projectId = Number(id);
+  const isNewProject = searchParamsData?.new === 'true';
+
   if (isNaN(projectId)) {
     notFound();
   }
 
-  // Fetch project details and initial chat messages
-  const [project, initialMessagesResult] = await Promise.all([
-    getProjectById(projectId),
-    fetchChatHistoryForProject(projectId)
-  ]);
+  const { user } = useUser();
+  const { data: project, isLoading: isProjectLoading, error: projectError } = useProject(projectId);
+  const { data: messagesData, isLoading: isMessagesLoading } = useChatMessages(projectId, [], false);
 
-  if (!project || project.createdBy !== session.user.id) {
+  // Loading state
+  if (isProjectLoading || isMessagesLoading || !user) {
+    return <ProjectLoadingSkeleton />;
+  }
+
+  // Error handling
+  if (projectError || !project) {
     notFound();
   }
 
-  // Process fetched messages (adjust id/timestamp types if needed)
-  const initialMessages = initialMessagesResult.map(msg => ({
-    id: typeof msg.id === 'string' ? parseInt(msg.id, 10) : msg.id, // Ensure ID is number
-    content: msg.content || '',
-    role: msg.role || 'user',
-    timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date(), // Ensure timestamp is Date
-  }));
+  // Access control
+  if (project.createdBy !== user.id) {
+    notFound();
+  }
 
-  // Removed user details fetching and mapping
-
-  // Check if this is a new project (via query param)
-  const searchParamsData = await searchParams;
-  const isNewProject = searchParamsData.new === 'true';
-
-  // Format dates for the project
-  const formattedProject = {
-    ...project,
-    createdAt: new Date(project.createdAt),
-    updatedAt: new Date(project.updatedAt),
-  };
+  // Process messages from the hook
+  const initialMessages = messagesData?.messages || [];
 
   return (
-    <Suspense fallback={<ProjectLoadingSkeleton />}>
-      {/* Removed wrapper div, layout handles the main structure */}
-      <ProjectContent
-        projectId={projectId}
-        project={formattedProject}
-        // Removed user prop
-        isNewProject={isNewProject}
-        initialMessages={initialMessages}
-      />
-    </Suspense>
+    <ProjectContent
+      projectId={projectId}
+      project={project}
+      isNewProject={isNewProject}
+      initialMessages={initialMessages}
+    />
   );
 }

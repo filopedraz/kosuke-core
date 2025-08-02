@@ -10,13 +10,13 @@ import CodeExplorer from '../preview/code-explorer';
 import PreviewPanel from '../preview/preview-panel';
 
 // Import types
-import type { ChatMessage } from '@/lib/types';
+import type { ChatMessageProps } from '@/lib/types';
 
 interface ProjectContentProps {
   projectId: number;
   project: Project;
   isNewProject?: boolean;
-  initialMessages: ChatMessage[];
+  initialMessages: ChatMessageProps[];
 }
 
 export default function ProjectContent({
