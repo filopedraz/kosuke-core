@@ -47,16 +47,12 @@ jest.mock('@/lib/auth/session', () => ({
   getSession: jest.fn(),
 }));
 
-// Mock database functions
-jest.mock('@/lib/db/projects', () => ({
-  getProjectById: jest.fn(),
-  getProjectsByUserId: jest.fn(),
-  createProject: jest.fn(),
-  updateProject: jest.fn(),
-  archiveProject: jest.fn(),
-}));
-
 // Mock database queries
 jest.mock('@/lib/db/queries', () => ({
   getUser: jest.fn(),
+  getActivityLogs: jest.fn(),
+  getChatMessagesWithUserDetails: jest.fn(),
+  getDiffsWithChatDetails: jest.fn(),
+  updateDiffStatus: jest.fn(),
+  getProjectWithDetails: jest.fn(),
 })); 
