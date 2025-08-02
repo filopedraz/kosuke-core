@@ -23,6 +23,8 @@
     "test:coverage": "jest --coverage"
   },
   "dependencies": {
+    "@clerk/nextjs": "^4.31.8",
+    "@clerk/themes": "^1.7.20",
     "@opentelemetry/api-logs": "^0.200.0",
     "@opentelemetry/instrumentation": "^0.200.0",
     "@opentelemetry/sdk-logs": "^0.200.0",

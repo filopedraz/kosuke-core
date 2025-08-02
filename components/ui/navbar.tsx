@@ -1,45 +1,20 @@
 'use client';
 
 import {
-  LogOut,
-  Settings,
-  LayoutDashboard,
   Code,
   Eye,
   CircleIcon,
   PanelLeftClose,
   PanelLeftOpen,
   Sparkles,
-  CreditCard,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { UserButton, useUser } from '@clerk/nextjs';
 
-import { signOut } from '@/app/(logged-out)/actions';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 
-type User = {
-  id?: number;
-  name?: string;
-  email: string;
-  imageUrl?: string;
-  subscription?: {
-    tier: string;
-  };
-} | null;
-
 type NavbarProps = {
-  user?: User;
   variant?: 'standard' | 'project' | 'waitlist';
   projectProps?: {
     projectName: string;
@@ -53,93 +28,32 @@ type NavbarProps = {
 };
 
 export default function Navbar({
-  user,
   variant = 'standard',
   projectProps,
   className,
 }: NavbarProps) {
-  const [isUpgradable, setIsUpgradable] = useState(false);
-  const router = useRouter();
-
-  useEffect(() => {
-    const checkSubscription = async () => {
-      try {
-        const response = await fetch('/api/subscription/status');
-        const data = await response.json();
-        setIsUpgradable(data.isUpgradable);
-      } catch (error) {
-        console.error('Error checking subscription status:', error);
-      }
-    };
-
-    if (user) {
-      checkSubscription();
-    }
-  }, [user]);
-
-  const handleLogout = async () => {
-    try {
-      await signOut();
-    } catch (error) {
-      console.error('Error signing out:', error);
-    } finally {
-      // Always redirect and refresh regardless of success/failure
-      router.push('/');
-      router.refresh();
-    }
-  };
+  const { user, isLoaded, isSignedIn } = useUser();
 
   // Render user menu or auth buttons
   const renderUserSection = () => {
-    if (user) {
+    if (!isLoaded) {
       return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="relative h-8 w-8 rounded-md p-0">
-              <Avatar className="h-8 w-8 cursor-pointer transition-all">
-                <AvatarImage src={user.imageUrl || ''} alt={user.name || 'User'} />
-                <AvatarFallback className="bg-primary text-primary-foreground">
-                  {user.name?.charAt(0)?.toUpperCase() ||
-                    user.email?.charAt(0)?.toUpperCase() ||
-                    'U'}
-                </AvatarFallback>
-              </Avatar>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56 mt-1">
-            <div className="flex items-center justify-start gap-2 p-2">
-              <div className="flex flex-col space-y-0.5">
-                <p className="text-sm font-medium">{user.name || 'User'}</p>
-                <p className="text-xs text-muted-foreground">{user.email}</p>
-              </div>
-            </div>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => router.push('/projects')} className="cursor-pointer">
-              <LayoutDashboard className="mr-2 h-4 w-4" />
-              <span>Projects</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => router.push('/settings')} className="cursor-pointer">
-              <Settings className="mr-2 h-4 w-4" />
-              <span>Settings</span>
-            </DropdownMenuItem>
-            {isUpgradable ? (
-              <DropdownMenuItem onClick={() => router.push('/billing')} className="cursor-pointer">
-                <Sparkles className="mr-2 h-4 w-4" />
-                <span>Upgrade Plan</span>
-              </DropdownMenuItem>
-            ) : (
-              <DropdownMenuItem onClick={() => router.push('/billing')} className="cursor-pointer">
-                <CreditCard className="mr-2 h-4 w-4" />
-                <span>Billing</span>
-              </DropdownMenuItem>
-            )}
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
-              <LogOut className="mr-2 h-4 w-4" />
-              <span>Log out</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="h-8 w-8 rounded-full bg-gray-200 animate-pulse" />
+      );
+    }
+
+    if (isSignedIn && user) {
+      return (
+        <UserButton
+          appearance={{
+            elements: {
+              avatarBox: 'w-8 h-8',
+              userButtonPopoverCard: 'bg-gray-900 border-gray-800',
+              userButtonPopoverActions: 'bg-gray-900',
+            },
+          }}
+          afterSignOutUrl="/"
+        />
       );
     }
 

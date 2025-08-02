@@ -1,7 +1,7 @@
 'use server';
 
 import { SortOption } from '@/app/(logged-in)/projects/components/project-filters';
-import { getSession } from '@/lib/auth/session';
+import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { createProject as dbCreateProject, getProjectsByUserId } from '@/lib/db/projects';
 import { chatMessages, Project } from '@/lib/db/schema';
@@ -17,9 +17,9 @@ export async function createProject(prompt: string, name?: string) {
   try {
     console.log('🚀 Starting project creation process at', new Date().toISOString());
 
-    // Get the session
-    const session = await getSession();
-    if (!session) {
+    // Get the authenticated user
+    const { userId } = auth();
+    if (!userId) {
       throw new Error('Unauthorized');
     }
 
@@ -31,8 +31,8 @@ export async function createProject(prompt: string, name?: string) {
     const project = await dbCreateProject({
       name: name || generateProjectName(prompt),
       description: prompt,
-      userId: session.user.id,
-      createdBy: session.user.id,
+      userId: userId,
+      createdBy: userId,
     });
     console.log(`✅ Project created with ID: ${project.id}, name: ${project.name}`);
 
@@ -121,7 +121,7 @@ function generateProjectName(prompt: string): string {
  * @returns Filtered projects
  */
 export async function getFilteredProjects(
-  userId: number,
+  userId: string,
   search: string,
   sort: SortOption
 ): Promise<Project[]> {

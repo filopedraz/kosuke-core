@@ -2,11 +2,11 @@ import './globals.css';
 import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import { ReactNode } from 'react';
+import { ClerkProvider } from '@clerk/nextjs';
+import { dark } from '@clerk/themes';
 
 import { Toaster } from '@/components/ui/toaster';
 import { ErrorBoundary } from '@/components/error-boundary';
-import { UserProvider } from '@/lib/auth';
-import { getUser } from '@/lib/db/queries';
 import Providers from './providers';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -28,24 +28,35 @@ interface RootLayoutProps {
   children: ReactNode;
 }
 
-export default async function RootLayout({ children }: RootLayoutProps) {
-  const userFromDb = await getUser();
-  const userPromise = Promise.resolve(userFromDb);
-
+export default function RootLayout({ children }: RootLayoutProps) {
   return (
-    <html lang="en" className={`dark ${inter.className}`} style={{ colorScheme: 'dark' }}>
-      <body className="min-h-[100dvh] bg-background text-foreground overflow-x-hidden">
-        <Providers>
-          <UserProvider userPromise={userPromise}>
+    <ClerkProvider
+      appearance={{
+        baseTheme: dark,
+        variables: {
+          colorPrimary: '#3b82f6',
+          colorBackground: '#0a0a0a',
+          colorInputBackground: '#1a1a1a',
+          colorInputText: '#ffffff',
+        },
+        elements: {
+          formButtonPrimary: 'bg-blue-600 hover:bg-blue-700',
+          card: 'bg-gray-900 border-gray-800',
+        },
+      }}
+    >
+      <html lang="en" className={`dark ${inter.className}`} style={{ colorScheme: 'dark' }}>
+        <body className="min-h-[100dvh] bg-background text-foreground overflow-x-hidden">
+          <Providers>
             <div className="flex flex-col min-h-[100dvh]">
               <ErrorBoundary>
                 <main className="flex-1">{children}</main>
               </ErrorBoundary>
             </div>
-          </UserProvider>
-        </Providers>
-        <Toaster />
-      </body>
-    </html>
+          </Providers>
+          <Toaster />
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }

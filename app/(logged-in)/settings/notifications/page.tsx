@@ -8,7 +8,6 @@ import { updateNotificationPreferences } from '@/app/(logged-out)/actions';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { useUser } from '@/lib/auth';
 
 type FormState = {
   error?: string;

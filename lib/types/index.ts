@@ -1,2 +1,2 @@
-// Re-export all types for easy importing
-export * from './chat';
+// Re-export all types from domain-specific files
+export * from './auth';
