@@ -3,10 +3,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { auth } from '@/lib/auth/server';
-import { getChatMessagesByProjectId } from '@/lib/db/chat';
 import { db } from '@/lib/db/drizzle';
-import { getProjectById } from '@/lib/db/projects';
-import { chatMessages } from '@/lib/db/schema';
+import { chatMessages, projects } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
 import { uploadFile } from '@/lib/storage';
 
 // Schema for sending a message - support both formats
@@ -106,7 +105,7 @@ export async function GET(
     }
 
     // Get the project
-    const project = await getProjectById(projectId);
+    const [project] = await db.select().from(projects).where(eq(projects.id, projectId));
     if (!project) {
       return NextResponse.json(
         { error: 'Project not found' },
