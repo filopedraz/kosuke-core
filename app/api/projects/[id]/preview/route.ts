@@ -1,5 +1,7 @@
 import { auth } from '@/lib/auth/server';
-import { getProjectById } from '@/lib/db/projects';
+import { db } from '@/lib/db/drizzle';
+import { projects } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -32,7 +34,7 @@ export async function GET(
     console.log(`[Preview API] GET request for project ${projectId}`);
 
     // Get the project
-    const project = await getProjectById(projectId);
+    const [project] = await db.select().from(projects).where(eq(projects.id, projectId));
     if (!project) {
       console.log(`[Preview API] Project ${projectId} not found`);
       return NextResponse.json(

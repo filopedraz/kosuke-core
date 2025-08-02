@@ -3,8 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { eq } from 'drizzle-orm';
 
 import { db } from '@/lib/db/drizzle';
-import { getProjectById } from '@/lib/db/projects';
-import { chatMessages } from '@/lib/db/schema';
+import { chatMessages, projects } from '@/lib/db/schema';
 import type { WebhookAssistantData } from '@/lib/types';
 
 // Webhook authentication
@@ -47,7 +46,7 @@ export async function POST(
     }
 
     // Verify project exists
-    const project = await getProjectById(projectId);
+    const [project] = await db.select().from(projects).where(eq(projects.id, projectId));
     if (!project) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }

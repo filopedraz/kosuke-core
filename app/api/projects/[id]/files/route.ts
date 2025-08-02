@@ -4,7 +4,9 @@ import path from 'path';
 import { promisify } from 'util';
 
 import { auth } from '@/lib/auth/server';
-import { getProjectById } from '@/lib/db/projects';
+import { db } from '@/lib/db/drizzle';
+import { projects } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
 import { deleteDir, fileExists, getProjectFiles, getProjectPath } from '@/lib/fs/operations';
 
 const exec = promisify(execCallback);
@@ -37,7 +39,7 @@ export async function GET(
     }
 
     // Get the project
-    const project = await getProjectById(projectId);
+    const [project] = await db.select().from(projects).where(eq(projects.id, projectId));
     if (!project) {
       return NextResponse.json(
         { error: 'Project not found' },
@@ -94,7 +96,7 @@ export async function DELETE(
     }
 
     // Get the project
-    const project = await getProjectById(projectId);
+    const [project] = await db.select().from(projects).where(eq(projects.id, projectId));
     if (!project) {
       return NextResponse.json(
         { error: 'Project not found' },
