@@ -1,12 +1,45 @@
 // User Profile and Settings Types
 import type { User } from '@/lib/db/schema';
+import type { User as ClerkUser } from '@clerk/nextjs/server';
 
-// Extended User Types
-export interface UserProfile
-  extends Pick<User, 'id' | 'clerkUserId' | 'name' | 'email' | 'imageUrl'> {
+// Base User Data (from Clerk)
+export interface BaseUser {
+  id: string; // Clerk ID
+  email: string;
+  firstName: string | null;
+  lastName: string | null;
+  imageUrl: string | null;
+  username: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
+
+// Database User (from our database)
+export type DatabaseUser = Pick<
+  User,
+  'id' | 'clerkUserId' | 'name' | 'email' | 'imageUrl' | 'createdAt' | 'updatedAt'
+>;
+
+// Enhanced User (combined data with computed fields)
+export interface EnhancedUser extends DatabaseUser {
+  // Clerk data
+  clerkUser: ClerkUser | null;
+
+  // Computed fields
+  fullName: string;
+  initials: string;
+  displayName: string;
+
+  // Optional subscription data
+  subscription?: {
+    tier: 'free' | 'pro' | 'business';
+    status: string;
+    currentPeriodEnd?: Date;
+  };
+}
+
+// Legacy types for backward compatibility
+export type UserProfile = DatabaseUser;
 
 export interface UserWithSubscription extends UserProfile {
   subscription?: {
@@ -14,6 +47,35 @@ export interface UserWithSubscription extends UserProfile {
     status: string;
     currentPeriodEnd?: Date;
   };
+}
+
+// Unified User Hook Return Type
+export interface UseUserReturn {
+  // Primary data
+  user: EnhancedUser | null;
+  clerkUser: ClerkUser | null;
+  dbUser: DatabaseUser | null;
+
+  // Loading states
+  isLoading: boolean;
+  isLoaded: boolean;
+  isSignedIn: boolean;
+
+  // Error states
+  error: Error | null;
+
+  // Computed helpers
+  imageUrl: string | null;
+  displayName: string;
+  initials: string;
+
+  // Mutations
+  updateProfile: (data: FormData) => Promise<void>;
+  updateProfileImage: (file: File) => Promise<void>;
+  deleteAccount: () => Promise<void>;
+
+  // Utilities
+  refresh: () => Promise<void>;
 }
 
 // User Preferences

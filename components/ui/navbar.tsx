@@ -1,6 +1,6 @@
 'use client';
 
-import { useClerk, useUser } from '@clerk/nextjs';
+import { useClerk } from '@clerk/nextjs';
 import {
   CircleIcon,
   Code,
@@ -15,7 +15,7 @@ import {
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
-import { useUserProfileImage } from '@/hooks/use-user-profile-image';
+import { useUser } from '@/hooks/use-user';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -42,8 +42,7 @@ type NavbarProps = {
 };
 
 export default function Navbar({ variant = 'standard', projectProps, className }: NavbarProps) {
-  const { user, isLoaded, isSignedIn } = useUser();
-  const { imageUrl: profileImageUrl } = useUserProfileImage();
+  const { clerkUser, isLoaded, isSignedIn, imageUrl, displayName, initials } = useUser();
   const { signOut } = useClerk();
   const router = useRouter();
 
@@ -66,17 +65,15 @@ export default function Navbar({ variant = 'standard', projectProps, className }
       return <div className="h-8 w-8 rounded-full bg-gray-200 animate-pulse" />;
     }
 
-    if (isSignedIn && user) {
+    if (isSignedIn && clerkUser) {
       return (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-8 w-8 rounded-md p-0">
               <Avatar className="h-8 w-8 cursor-pointer transition-all">
-                <AvatarImage src={profileImageUrl} alt={user.fullName || 'User'} />
+                <AvatarImage src={imageUrl || undefined} alt={displayName || 'User'} />
                 <AvatarFallback className="bg-primary text-primary-foreground">
-                  {user.fullName?.charAt(0)?.toUpperCase() ||
-                    user.primaryEmailAddress?.emailAddress?.charAt(0)?.toUpperCase() ||
-                    'U'}
+                  {initials}
                 </AvatarFallback>
               </Avatar>
             </Button>
@@ -84,9 +81,9 @@ export default function Navbar({ variant = 'standard', projectProps, className }
           <DropdownMenuContent align="end" className="w-56 mt-1">
             <div className="flex items-center justify-start gap-2 p-2">
               <div className="flex flex-col space-y-0.5">
-                <p className="text-sm font-medium">{user.fullName || 'User'}</p>
+                <p className="text-sm font-medium">{displayName}</p>
                 <p className="text-xs text-muted-foreground">
-                  {user.primaryEmailAddress?.emailAddress}
+                  {clerkUser?.emailAddresses[0]?.emailAddress}
                 </p>
               </div>
             </div>

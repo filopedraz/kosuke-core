@@ -2,15 +2,13 @@
 
 import ProjectsClient from '@/app/(logged-in)/projects/components/projects-client';
 import { ProjectsLoadingSkeleton } from '@/app/(logged-in)/projects/components/projects-loading-skeleton';
-import { useCurrentUser } from '@/hooks/use-current-user';
+import { useUser } from '@/hooks/use-user';
 import { useProjects } from '@/hooks/use-projects';
-import { useUser } from '@clerk/nextjs';
 import { redirect } from 'next/navigation';
 import { useEffect } from 'react';
 
 export default function ProjectsPage() {
-  const { user: clerkUser, isLoaded } = useUser();
-  const { data: user, isLoading: isUserLoading } = useCurrentUser();
+  const { clerkUser, dbUser, isLoading } = useUser();
   const { data: projects, isLoading: isProjectsLoading } = useProjects({
     userId: clerkUser?.id || '',
     initialData: []
@@ -18,15 +16,15 @@ export default function ProjectsPage() {
 
   // Redirect if not authenticated
   useEffect(() => {
-    if (isLoaded && !clerkUser) {
+    if (!isLoading && !clerkUser) {
       redirect('/sign-in');
     }
-  }, [isLoaded, clerkUser]);
+  }, [isLoading, clerkUser]);
 
   // Show loading skeleton
-  if (!isLoaded || isUserLoading || isProjectsLoading || !clerkUser || !user) {
+  if (isLoading || isProjectsLoading || !clerkUser || !dbUser) {
     return <ProjectsLoadingSkeleton />;
   }
 
-  return <ProjectsClient projects={projects || []} userId={user.clerkUserId} />;
+  return <ProjectsClient projects={projects || []} userId={dbUser.clerkUserId} />;
 }

@@ -1,11 +1,9 @@
 'use client';
 
-import { useUser } from '@clerk/nextjs';
 import { Check, Loader2, Upload } from 'lucide-react';
 import { useRef, useState } from 'react';
 
-import { useUserProfileImage } from '@/hooks/use-user-profile-image';
-import { useUpdateProfile, useUpdateProfileImage } from '@/hooks/use-user-profile';
+import { useUser } from '@/hooks/use-user';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -14,17 +12,24 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
 export default function SettingsPage() {
-  const { user, isLoaded } = useUser();
-  const { imageUrl: profileImageUrl } = useUserProfileImage();
+  const {
+    clerkUser,
+    isLoading,
+    imageUrl,
+    displayName,
+    initials,
+    updateProfile,
+    updateProfileImage,
+  } = useUser();
 
   // Form state
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isImageUploading, setIsImageUploading] = useState(false);
+  const [formSuccess, setFormSuccess] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
-
-  // Mutations
-  const updateProfileMutation = useUpdateProfile();
-  const updateProfileImageMutation = useUpdateProfileImage();
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -37,7 +42,18 @@ export default function SettingsPage() {
       reader.readAsDataURL(file);
 
       // Auto-submit the image
-      updateProfileImageMutation.mutate(file);
+      setIsImageUploading(true);
+      setFormError(null);
+      setFormSuccess(null);
+
+      try {
+        await updateProfileImage(file);
+        setFormSuccess('Profile image updated successfully!');
+      } catch (error) {
+        setFormError(error instanceof Error ? error.message : 'Failed to update profile image');
+      } finally {
+        setIsImageUploading(false);
+      }
     }
   };
 
@@ -47,11 +63,22 @@ export default function SettingsPage() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    updateProfileMutation.mutate(formData);
+    setIsSubmitting(true);
+    setFormError(null);
+    setFormSuccess(null);
+
+    try {
+      const formData = new FormData(e.currentTarget);
+      await updateProfile(formData);
+      setFormSuccess('Profile updated successfully!');
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : 'Failed to update profile');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  if (!isLoaded) {
+  if (isLoading) {
     return (
       <div className="max-w-2xl">
         <div className="space-y-6">
@@ -69,7 +96,7 @@ export default function SettingsPage() {
     );
   }
 
-  if (!user) {
+  if (!clerkUser) {
     return (
       <div className="max-w-2xl">
         <div className="space-y-6">
@@ -98,33 +125,16 @@ export default function SettingsPage() {
         </div>
 
         {/* Success/Error Messages */}
-        {updateProfileMutation.isSuccess && (
+        {formSuccess && (
           <div className="p-4 bg-green-50 border border-green-200 text-green-700 rounded-md flex items-center gap-2">
             <Check className="h-4 w-4" />
-            Profile updated successfully!
+            {formSuccess}
           </div>
         )}
 
-        {updateProfileMutation.isError && (
+        {formError && (
           <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-md">
-            {updateProfileMutation.error instanceof Error
-              ? updateProfileMutation.error.message
-              : 'Failed to update profile'}
-          </div>
-        )}
-
-        {updateProfileImageMutation.isSuccess && (
-          <div className="p-4 bg-green-50 border border-green-200 text-green-700 rounded-md flex items-center gap-2">
-            <Check className="h-4 w-4" />
-            Profile image updated successfully!
-          </div>
-        )}
-
-        {updateProfileImageMutation.isError && (
-          <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-md">
-            {updateProfileImageMutation.error instanceof Error
-              ? updateProfileImageMutation.error.message
-              : 'Failed to update profile image'}
+            {formError}
           </div>
         )}
 
@@ -139,13 +149,10 @@ export default function SettingsPage() {
               <div className="flex items-center gap-4">
                 <Avatar className="h-20 w-20">
                   <AvatarImage
-                    src={previewImage || profileImageUrl || user.imageUrl}
-                    alt={user.firstName || 'Profile picture'}
+                    src={previewImage || imageUrl || clerkUser.imageUrl}
+                    alt={displayName || 'Profile picture'}
                   />
-                  <AvatarFallback className="text-lg">
-                    {user.firstName?.[0]?.toUpperCase() ||
-                      user.emailAddresses[0]?.emailAddress[0]?.toUpperCase()}
-                  </AvatarFallback>
+                  <AvatarFallback className="text-lg">{initials}</AvatarFallback>
                 </Avatar>
 
                 <div className="flex-1">
@@ -153,10 +160,10 @@ export default function SettingsPage() {
                     type="button"
                     variant="outline"
                     onClick={handleClickUpload}
-                    disabled={updateProfileImageMutation.isPending}
+                    disabled={isImageUploading}
                     className="relative"
                   >
-                    {updateProfileImageMutation.isPending ? (
+                    {isImageUploading ? (
                       <>
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                         Uploading...
@@ -188,7 +195,7 @@ export default function SettingsPage() {
                   <Input
                     id="firstName"
                     name="firstName"
-                    defaultValue={user.firstName || ''}
+                    defaultValue={clerkUser.firstName || ''}
                     placeholder="Enter your first name"
                   />
                 </div>
@@ -197,7 +204,7 @@ export default function SettingsPage() {
                   <Input
                     id="lastName"
                     name="lastName"
-                    defaultValue={user.lastName || ''}
+                    defaultValue={clerkUser.lastName || ''}
                     placeholder="Enter your last name"
                   />
                 </div>
@@ -209,7 +216,7 @@ export default function SettingsPage() {
                   id="email"
                   name="email"
                   type="email"
-                  defaultValue={user.emailAddresses[0]?.emailAddress || ''}
+                  defaultValue={clerkUser.emailAddresses[0]?.emailAddress || ''}
                   placeholder="Enter your email address"
                 />
               </div>
@@ -217,12 +224,8 @@ export default function SettingsPage() {
           </Card>
 
           <div className="flex justify-end">
-            <Button
-              type="submit"
-              disabled={updateProfileMutation.isPending}
-              className="min-w-[120px]"
-            >
-              {updateProfileMutation.isPending ? (
+            <Button type="submit" disabled={isSubmitting} className="min-w-[120px]">
+              {isSubmitting ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   Saving...
