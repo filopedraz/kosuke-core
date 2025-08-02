@@ -4,9 +4,9 @@ import { z } from 'zod';
 import { ApiErrorHandler } from '@/lib/api/errors';
 import { ApiResponseHandler } from '@/lib/api/responses';
 import { auth } from '@/lib/auth/server';
-import { getCurrentUserProjects } from '@/lib/api/internal/projects';
 import {
-    createProject
+    createProject,
+    getProjectsByUserId
 } from '@/lib/db/projects';
 
 
@@ -20,9 +20,18 @@ const createProjectSchema = z.object({
  * GET /api/projects
  * Get all projects for the current user
  */
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    const projects = await getCurrentUserProjects();
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    // Use Drizzle ORM through the projects service
+    const projects = await getProjectsByUserId(userId);
     return NextResponse.json(projects);
   } catch (error) {
     console.error('Error fetching projects:', error);

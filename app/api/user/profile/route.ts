@@ -1,10 +1,18 @@
-import { getCurrentUser } from '@/lib/api/internal/user';
-import { NextResponse } from 'next/server';
-import { NextRequest } from 'next/server';
+import { auth } from '@/lib/auth/server';
+import { db } from '@/lib/db/drizzle';
+import { users } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
+import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET() {
   try {
-    const user = await getCurrentUser();
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Get user from database using Drizzle ORM
+    const [user] = await db.select().from(users).where(eq(users.clerkUserId, userId)).limit(1);
 
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });

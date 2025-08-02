@@ -1,12 +1,25 @@
+'use client';
+
+import { HomeLoadingSkeleton } from '@/app/components/home-loading-skeleton';
+import { useCurrentUser } from '@/hooks/use-current-user';
+import { useUser } from '@clerk/nextjs';
 import { redirect } from 'next/navigation';
-import { getCurrentUser } from '@/lib/api/internal/user';
+import { useEffect } from 'react';
 
-export default async function Home() {
-  const user = await getCurrentUser();
+export default function Home() {
+  const { user: clerkUser, isLoaded } = useUser();
+  const { data: user, isLoading: isUserLoading } = useCurrentUser();
 
-  if (user) {
-    redirect('/projects');
-  } else {
-    redirect('/waitlist');
-  }
+  useEffect(() => {
+    if (isLoaded && !isUserLoading) {
+      if (clerkUser && user) {
+        redirect('/projects');
+      } else {
+        redirect('/waitlist');
+      }
+    }
+  }, [isLoaded, isUserLoading, clerkUser, user]);
+
+  // Show loading skeleton while checking authentication
+  return <HomeLoadingSkeleton />;
 }
