@@ -1,9 +1,9 @@
-import { and, desc, eq, isNull, asc, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, isNull } from 'drizzle-orm';
 
 import { auth } from '@/lib/auth/server';
 import { db } from '@/lib/db/drizzle';
-import { activityLogs, users, chatMessages, diffs, projects } from '@/lib/db/schema';
 import type { Diff } from '@/lib/db/schema';
+import { activityLogs, chatMessages, diffs, projects, users } from '@/lib/db/schema';
 
 /**
  * Get current authenticated user with soft delete check
