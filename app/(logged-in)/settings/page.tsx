@@ -1,12 +1,11 @@
 'use client';
 
 import { useUser } from '@clerk/nextjs';
-import { useQueryClient } from '@tanstack/react-query';
 import { Check, Loader2, Upload } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
 
 import { useUserProfileImage } from '@/hooks/use-user-profile-image';
+import { useUpdateProfile, useUpdateProfileImage } from '@/hooks/use-user-profile';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -14,21 +13,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
-type FormState = {
-  error?: string;
-  success?: string;
-} | null;
-
 export default function SettingsPage() {
   const { user, isLoaded } = useUser();
   const { imageUrl: profileImageUrl } = useUserProfileImage();
-  const queryClient = useQueryClient();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formState, setFormState] = useState<FormState>(null);
+  
+  // Form state
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
+
+  // Mutations
+  const updateProfileMutation = useUpdateProfile();
+  const updateProfileImageMutation = useUpdateProfileImage();
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -40,36 +36,8 @@ export default function SettingsPage() {
       };
       reader.readAsDataURL(file);
 
-      // Auto-submit the form when an image is selected
-      setIsSubmitting(true);
-
-      try {
-        // Create a new FormData only for the image
-        const formData = new FormData();
-        formData.set('profileImage', file);
-
-        // Call the API endpoint
-        const response = await fetch('/api/user/profile-image', {
-          method: 'PUT',
-          body: formData,
-        });
-
-        const result = await response.json();
-
-        if (response.ok) {
-          setFormState({ success: result.success });
-          // Invalidate the user profile query to refetch the updated image
-          queryClient.invalidateQueries({ queryKey: ['user-profile'] });
-          router.refresh();
-        } else {
-          setFormState({ error: result.error || 'Failed to update profile image' });
-        }
-      } catch (error) {
-        console.error('Error updating profile image:', error);
-        setFormState({ error: 'Failed to update profile image' });
-      } finally {
-        setIsSubmitting(false);
-      }
+      // Auto-submit the image
+      updateProfileImageMutation.mutate(file);
     }
   };
 
@@ -79,93 +47,119 @@ export default function SettingsPage() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setIsSubmitting(true);
-
-    try {
-      const formData = new FormData(e.currentTarget);
-
-      // Call the API endpoint
-      const response = await fetch('/api/user/profile', {
-        method: 'PUT',
-        body: formData,
-      });
-
-      const result = await response.json();
-
-      if (response.ok) {
-        setFormState({ success: result.success });
-        // Invalidate the user profile query to refetch the updated data
-        queryClient.invalidateQueries({ queryKey: ['user-profile'] });
-        router.refresh();
-      } else {
-        setFormState({ error: result.error || 'Failed to update profile' });
-      }
-    } catch (error) {
-      console.error('Error updating profile:', error);
-      setFormState({ error: 'Failed to update profile' });
-    } finally {
-      setIsSubmitting(false);
-    }
+    const formData = new FormData(e.currentTarget);
+    updateProfileMutation.mutate(formData);
   };
-
-  // Use preview image if available, then database image, then fall back to Clerk image
-  const avatarSrc = previewImage || profileImageUrl;
 
   if (!isLoaded) {
     return (
-      <div className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Account</CardTitle>
-            <CardDescription>Loading account information...</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-6">
-              <div className="h-16 w-16 rounded-full bg-gray-200 animate-pulse" />
-              <div className="space-y-2">
-                <div className="h-4 bg-gray-200 rounded animate-pulse" />
-                <div className="h-4 bg-gray-200 rounded animate-pulse" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="max-w-2xl">
+        <div className="space-y-6">
+          <div>
+            <h1 className="text-2xl font-semibold">Profile Settings</h1>
+            <p className="text-muted-foreground">
+              Manage your account settings and set email preferences.
+            </p>
+          </div>
+          <div className="flex items-center justify-center h-64">
+            <Loader2 className="h-8 w-8 animate-spin" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="max-w-2xl">
+        <div className="space-y-6">
+          <div>
+            <h1 className="text-2xl font-semibold">Profile Settings</h1>
+            <p className="text-muted-foreground">
+              Manage your account settings and set email preferences.
+            </p>
+          </div>
+          <div className="flex items-center justify-center h-64">
+            <p className="text-muted-foreground">Unable to load user information.</p>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Account</CardTitle>
-          <CardDescription>Update your account information and profile settings.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form ref={formRef} onSubmit={handleSubmit} className="space-y-6">
-            <div className="flex flex-col space-y-4">
-              <div className="flex items-center space-x-4">
-                <Avatar className="h-16 w-16">
-                  <AvatarImage src={avatarSrc} alt={user?.fullName || 'User'} />
-                  <AvatarFallback className="text-lg bg-primary text-primary-foreground">
-                    {user?.fullName?.charAt(0)?.toUpperCase() ||
-                      user?.primaryEmailAddress?.emailAddress?.charAt(0)?.toUpperCase() ||
-                      'U'}
+    <div className="max-w-2xl">
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-semibold">Profile Settings</h1>
+          <p className="text-muted-foreground">
+            Manage your account settings and set email preferences.
+          </p>
+        </div>
+
+        {/* Success/Error Messages */}
+        {updateProfileMutation.isSuccess && (
+          <div className="p-4 bg-green-50 border border-green-200 text-green-700 rounded-md flex items-center gap-2">
+            <Check className="h-4 w-4" />
+            Profile updated successfully!
+          </div>
+        )}
+
+        {updateProfileMutation.isError && (
+          <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-md">
+            {updateProfileMutation.error instanceof Error 
+              ? updateProfileMutation.error.message 
+              : 'Failed to update profile'
+            }
+          </div>
+        )}
+
+        {updateProfileImageMutation.isSuccess && (
+          <div className="p-4 bg-green-50 border border-green-200 text-green-700 rounded-md flex items-center gap-2">
+            <Check className="h-4 w-4" />
+            Profile image updated successfully!
+          </div>
+        )}
+
+        {updateProfileImageMutation.isError && (
+          <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-md">
+            {updateProfileImageMutation.error instanceof Error 
+              ? updateProfileImageMutation.error.message 
+              : 'Failed to update profile image'
+            }
+          </div>
+        )}
+
+        <form ref={formRef} onSubmit={handleSubmit} className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Personal Information</CardTitle>
+              <CardDescription>
+                Update your personal details and profile picture.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Profile Picture Section */}
+              <div className="flex items-center gap-4">
+                <Avatar className="h-20 w-20">
+                  <AvatarImage 
+                    src={previewImage || profileImageUrl || user.imageUrl} 
+                    alt={user.firstName || 'Profile picture'} 
+                  />
+                  <AvatarFallback className="text-lg">
+                    {user.firstName?.[0]?.toUpperCase() || user.emailAddresses[0]?.emailAddress[0]?.toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                <div className="flex flex-col space-y-1">
-                  <h3 className="text-sm font-medium">Profile Picture</h3>
-                  <p className="text-xs text-muted-foreground">
-                    Your profile picture will be shown across the platform.
-                  </p>
+
+                <div className="flex-1">
                   <Button
                     type="button"
                     variant="outline"
-                    size="sm"
-                    className="mt-2 flex items-center"
                     onClick={handleClickUpload}
-                    disabled={isSubmitting}
+                    disabled={updateProfileImageMutation.isPending}
+                    className="relative"
                   >
-                    {isSubmitting ? (
+                    {updateProfileImageMutation.isPending ? (
                       <>
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                         Uploading...
@@ -173,73 +167,76 @@ export default function SettingsPage() {
                     ) : (
                       <>
                         <Upload className="h-4 w-4 mr-2" />
-                        Upload
+                        Change Picture
                       </>
                     )}
                   </Button>
                   <input
                     ref={fileInputRef}
                     type="file"
-                    id="profileImage"
-                    name="profileImage"
                     accept="image/*"
-                    className="hidden"
                     onChange={handleImageChange}
-                    disabled={isSubmitting}
+                    className="hidden"
+                  />
+                  <p className="text-sm text-muted-foreground mt-1">
+                    JPG, PNG or GIF. Max size 5MB.
+                  </p>
+                </div>
+              </div>
+
+              {/* Name and Email Fields */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="firstName">First Name</Label>
+                  <Input
+                    id="firstName"
+                    name="firstName"
+                    defaultValue={user.firstName || ''}
+                    placeholder="Enter your first name"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="lastName">Last Name</Label>
+                  <Input
+                    id="lastName"
+                    name="lastName"
+                    defaultValue={user.lastName || ''}
+                    placeholder="Enter your last name"
                   />
                 </div>
               </div>
 
-              <div className="grid gap-2">
-                <Label htmlFor="name">Name</Label>
-                <Input
-                  id="name"
-                  name="name"
-                  defaultValue={user?.fullName || ''}
-                  placeholder="Your name"
-                  required
-                />
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="email">Email</Label>
+              <div className="space-y-2">
+                <Label htmlFor="email">Email Address</Label>
                 <Input
                   id="email"
                   name="email"
                   type="email"
-                  defaultValue={user?.primaryEmailAddress?.emailAddress || ''}
-                  placeholder="your.email@example.com"
-                  required
+                  defaultValue={user.emailAddresses[0]?.emailAddress || ''}
+                  placeholder="Enter your email address"
                 />
               </div>
-            </div>
+            </CardContent>
+          </Card>
 
-            {formState?.error && (
-              <div className="rounded-md bg-destructive/10 p-3">
-                <div className="text-sm text-destructive">{formState.error}</div>
-              </div>
-            )}
-
-            {formState?.success && (
-              <div className="rounded-md bg-green-500/10 p-3 flex items-center gap-2">
-                <Check className="h-4 w-4 text-green-500" />
-                <div className="text-sm text-green-500">{formState.success}</div>
-              </div>
-            )}
-
-            <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto">
-              {isSubmitting ? (
+          <div className="flex justify-end">
+            <Button 
+              type="submit" 
+              disabled={updateProfileMutation.isPending}
+              className="min-w-[120px]"
+            >
+              {updateProfileMutation.isPending ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   Saving...
                 </>
               ) : (
                 'Save Changes'
               )}
             </Button>
-          </form>
-        </CardContent>
-      </Card>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
