@@ -4,7 +4,6 @@ import { useClerk, useUser } from '@clerk/nextjs';
 import {
   CircleIcon,
   Code,
-  CreditCard,
   Eye,
   LayoutDashboard,
   LogOut,
@@ -15,7 +14,6 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import React from 'react';
 
 import { useUserProfileImage } from '@/hooks/use-user-profile-image';
 
@@ -100,10 +98,6 @@ export default function Navbar({ variant = 'standard', projectProps, className }
             <DropdownMenuItem onClick={() => router.push('/settings')} className="cursor-pointer">
               <Settings className="mr-2 h-4 w-4" />
               <span>Settings</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => router.push('/billing')} className="cursor-pointer">
-              <CreditCard className="mr-2 h-4 w-4" />
-              <span>Billing</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
