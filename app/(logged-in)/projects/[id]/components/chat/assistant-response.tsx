@@ -42,7 +42,7 @@ export default function AssistantResponse({
   };
 
   return (
-    <div className={cn('w-full space-y-3', className)}>
+    <div className={cn('w-full space-y-1', className)}>
       {/* Content Blocks */}
       {response.contentBlocks.map((block) => {
         // If user has made an explicit choice, use that. Otherwise use original state.

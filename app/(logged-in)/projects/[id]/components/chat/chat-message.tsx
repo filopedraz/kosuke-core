@@ -21,7 +21,7 @@ export default function ChatMessage({
   timestamp,
   isLoading = false,
   className,
-  user,
+  user, // eslint-disable-line @typescript-eslint/no-unused-vars
   showAvatar = true,
   hasError = false,
   errorType = 'unknown',
@@ -134,7 +134,7 @@ export default function ChatMessage({
         <div className="w-8" />
       )}
 
-      <div className="flex-1 space-y-2">
+      <div className="flex-1 space-y-1">
         {showAvatar && ( // Only show header for first message in a sequence
           <div className="flex items-center justify-between">
             <h4>

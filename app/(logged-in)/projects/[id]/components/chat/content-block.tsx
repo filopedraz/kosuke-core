@@ -86,7 +86,7 @@ export default function ContentBlock({
     return (
       <div className={cn('w-full', className)}>
         {/* Thinking Content */}
-        <div className="space-y-2">
+        <div className="space-y-1">
           <div
             className="flex items-center gap-2 cursor-pointer rounded-sm p-1 -m-1"
             onClick={handleToggleCollapse}
@@ -186,7 +186,7 @@ export default function ContentBlock({
   return (
     <div className={cn('w-full', className)}>
       {/* Text Content */}
-      <div className="space-y-2 w-full">
+      <div className="space-y-1 w-full">
         <div className="w-full max-w-full text-sm text-foreground [overflow-wrap:anywhere] [&>*]:max-w-full [&>pre]:w-full [&>pre]:max-w-full">
           {renderedContent ? (
             <div
