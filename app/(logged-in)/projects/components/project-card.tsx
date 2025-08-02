@@ -13,8 +13,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import DeleteProjectDialog from './delete-project-dialog';
 import { Project } from '@/lib/stores/projectStore';
+import DeleteProjectDialog from './delete-project-dialog';
 
 interface ProjectCardProps {
   project: Project;
@@ -23,7 +23,7 @@ interface ProjectCardProps {
 export default function ProjectCard({ project }: ProjectCardProps) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  
+
   const handleOpenDeleteDialog = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -31,11 +31,11 @@ export default function ProjectCard({ project }: ProjectCardProps) {
     setDropdownOpen(false);
     setShowDeleteDialog(true);
   };
-  
+
   return (
     <>
       <Link href={`/projects/${project.id}`} className="block group">
-        <Card className="overflow-hidden h-full transition-all duration-300 border border-border hover:border-muted relative group-hover:translate-y-[-2px] bg-card">
+        <Card className="overflow-hidden h-full transition-all duration-300 border border-border hover:border-muted relative group-hover:translate-y-[-2px] bg-card pb-0">
           <CardHeader className="pb-2">
             <div className="flex justify-between items-start">
               <div className="flex flex-col gap-1">
@@ -46,7 +46,7 @@ export default function ProjectCard({ project }: ProjectCardProps) {
                   {formatDistanceToNow(new Date(project.createdAt), { addSuffix: true })}
                 </CardDescription>
               </div>
-              
+
               <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
                 <DropdownMenuTrigger asChild onClick={(e) => e.preventDefault()}>
                   <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => e.preventDefault()}>
@@ -55,7 +55,7 @@ export default function ProjectCard({ project }: ProjectCardProps) {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="bg-card border-border">
-                  <DropdownMenuItem 
+                  <DropdownMenuItem
                     onClick={handleOpenDeleteDialog}
                     className="focus:bg-muted"
                   >
@@ -75,11 +75,11 @@ export default function ProjectCard({ project }: ProjectCardProps) {
         </Card>
       </Link>
 
-      <DeleteProjectDialog 
+      <DeleteProjectDialog
         project={project}
         open={showDeleteDialog}
         onOpenChange={setShowDeleteDialog}
       />
     </>
   );
-} 
+}
