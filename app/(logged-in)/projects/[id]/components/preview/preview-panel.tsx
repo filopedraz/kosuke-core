@@ -1,14 +1,14 @@
 'use client';
 
 import { Download, ExternalLink, Github, Loader2, RefreshCw } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
@@ -41,9 +41,9 @@ export default function PreviewPanel({
   // Check if the preview server is ready
   const checkServerHealth = useCallback(async (url: string): Promise<boolean> => {
     try {
-      // Create a controller to timeout the request after 5 seconds
+      // Create a controller to timeout the request after 3 seconds (reduced from 5)
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
 
       // With no-cors mode, we can't read the response, but if the fetch succeeds, the server is up
       await fetch(url, {
@@ -55,14 +55,17 @@ export default function PreviewPanel({
       clearTimeout(timeoutId);
       return true; // If we get here, the server is responding
     } catch (error) {
-      console.log('[Preview Panel] Health check failed:', error);
+      // Only log every 5th failure to reduce console noise
+      if (Math.random() < 0.2) {
+        console.log('[Preview Panel] Health check failed (sample):', error instanceof Error ? error.message : 'Connection failed');
+      }
       return false;
     }
   }, []);
 
   // Poll the server until it's ready
   const pollServerUntilReady = useCallback(async (url: string, maxAttempts = 30) => {
-    console.log('[Preview Panel] Starting health check polling');
+    console.log('[Preview Panel] Starting health check polling (will wait 5s before first attempt)');
     let attempts = 0;
 
     const poll = async () => {
@@ -82,16 +85,39 @@ export default function PreviewPanel({
         setStatus('ready');
         setProgress(100);
       } else {
-        console.log(`[Preview Panel] Health check attempt ${attempts}/${maxAttempts} failed`);
-        setTimeout(poll, 2000); // Try again after 2 seconds
+        console.log(`[Preview Panel] Health check attempt ${attempts}/${maxAttempts} failed, retrying in 3s`);
+        // Use longer delays for more patient polling
+        const delay = attempts <= 3 ? 5000 : 3000; // 5s for first 3 attempts, then 3s
+        setTimeout(poll, delay);
       }
     };
 
-    await poll();
+    // Wait 5 seconds before starting health checks to give container time to start
+    setTimeout(poll, 5000);
   }, [checkServerHealth]);
+
+    // Prevent multiple simultaneous requests
+  const [, setIsRequestInProgress] = useState(false);
+
+  // Ref to store fetchPreviewUrl function to avoid circular dependencies
+  const fetchPreviewUrlRef = useRef<((forceStart?: boolean) => Promise<void>) | null>(null);
 
   // Fetch the preview URL
   const fetchPreviewUrl = useCallback(async (forceStart: boolean = false) => {
+    // Prevent duplicate requests using functional state update
+    let shouldProceed = false;
+    setIsRequestInProgress(prev => {
+      if (prev) {
+        console.log(`[Preview Panel] Request already in progress for project ${projectId}, skipping`);
+        return prev; // Don't change state, request already in progress
+      }
+      shouldProceed = true;
+      return true; // Set to true, we'll proceed
+    });
+
+    if (!shouldProceed) {
+      return;
+    }
     setStatus('loading');
     setProgress(0);
     setError(null);
@@ -131,14 +157,21 @@ export default function PreviewPanel({
       console.error('[Preview Panel] Error fetching preview URL:', error);
       setError(error instanceof Error ? error.message : 'Unknown error');
       setStatus('error');
+    } finally {
+      setIsRequestInProgress(false);
     }
   }, [projectId, pollServerUntilReady, initialLoading]);
+
+  // Update ref when fetchPreviewUrl changes
+  useEffect(() => {
+    fetchPreviewUrlRef.current = fetchPreviewUrl;
+  }, [fetchPreviewUrl]);
 
   // Fetch the preview URL on component mount
   useEffect(() => {
     console.log(`[Preview Panel] Initializing preview for project ${projectId}`);
-    fetchPreviewUrl();
-  }, [projectId, fetchPreviewUrl]);
+    fetchPreviewUrlRef.current?.();
+  }, [projectId]); // Only depend on projectId to avoid circular dependencies
 
   // Function to refresh the preview
   const handleRefresh = useCallback(async (forceStart: boolean = false) => {
@@ -154,7 +187,8 @@ export default function PreviewPanel({
     const handleRefreshPreview = (event: CustomEvent) => {
       if (event.detail.projectId === projectId) {
         console.log('[Preview Panel] Received refresh event from chat streaming');
-        handleRefresh();
+        // Use ref to avoid circular dependencies
+        fetchPreviewUrlRef.current?.();
       }
     };
 
@@ -165,7 +199,7 @@ export default function PreviewPanel({
       console.log('[Preview Panel] Cleaning up refresh event listener');
       window.removeEventListener('refresh-preview', handleRefreshPreview as EventListener);
     };
-  }, [projectId, handleRefresh]);
+  }, [projectId]); // Only depend on projectId to avoid circular dependencies
 
   // Function to open the preview in a new tab
   const openInNewTab = () => {
@@ -278,7 +312,7 @@ export default function PreviewPanel({
           <Button
             variant="ghost"
             size="sm"
-            onClick={handleRefresh}
+            onClick={() => handleRefresh()}
             disabled={status === 'loading'}
             aria-label="Refresh preview"
             title="Refresh preview"
@@ -298,7 +332,7 @@ export default function PreviewPanel({
               )}
               {status === 'error' && (
                 <button
-                  onClick={handleRefresh}
+                  onClick={() => handleRefresh()}
                   className="mt-4 text-primary hover:underline"
                   data-testid="try-again-button"
                 >

@@ -241,6 +241,26 @@ class DockerService:
             raise Exception("Container creation timeout") from None
         except Exception as e:
             logger.error(f"Failed to create container for project {project_id}: {e}")
+
+            # If it's a container name conflict, try to recover the existing container
+            if "Conflict" in str(e) and "already in use" in str(e):
+                logger.info(
+                    f"Container name conflict for project {project_id}, attempting to recover existing container"
+                )
+                existing = await self._get_existing_container(container_name)
+                if existing:
+                    logger.info(f"Successfully recovered existing container for project {project_id}")
+                    container_info = ContainerInfo(
+                        project_id=project_id,
+                        container_id=existing["container"].id,
+                        container_name=container_name,
+                        port=existing["host_port"],
+                        url=existing["url"],
+                        compilation_complete=True,
+                    )
+                    self.containers[project_id] = container_info
+                    return existing["url"]
+
             raise Exception(f"Failed to create container: {e}") from e
 
     async def _monitor_compilation_async(self, project_id: int) -> None:

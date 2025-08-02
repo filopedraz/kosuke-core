@@ -257,7 +257,7 @@ describe('useCreateProject', () => {
     const newProject = { ...mockProject, id: 2, name: 'New Project' };
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => newProject,
+      json: async () => ({ data: newProject }),
     });
 
     render(
