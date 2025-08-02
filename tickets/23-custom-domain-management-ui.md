@@ -1383,13 +1383,11 @@ describe('useDeployDomain', () => {
 ## 🌐 Production Subdomain Solution:
 
 1. **Infrastructure Layer:**
-
    - **Traefik** as reverse proxy with automatic SSL (Let's Encrypt)
    - **Cloudflare DNS** with wildcard `*.kosuke.ai` → your server
    - **Docker Compose** orchestration for all services
 
 2. **Domain Management:**
-
    - Database tracks project subdomains
    - Python agent creates containers with Traefik labels
    - Dynamic routing based on `Host()` rules

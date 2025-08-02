@@ -126,7 +126,7 @@ export async function POST(
     }
 
     // Get the project
-    const project = await getProjectById(projectId);
+    const [project] = await db.select().from(projects).where(eq(projects.id, projectId));
     if (!project) {
       return NextResponse.json(
         { error: 'Project not found' },
@@ -203,7 +203,7 @@ export async function DELETE(
     }
 
     // Get the project
-    const project = await getProjectById(projectId);
+    const [project] = await db.select().from(projects).where(eq(projects.id, projectId));
     if (!project) {
       return NextResponse.json(
         { error: 'Project not found' },

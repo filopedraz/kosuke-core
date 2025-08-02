@@ -5,8 +5,8 @@ import { z } from 'zod';
 import { auth } from '@/lib/auth/server';
 import { db } from '@/lib/db/drizzle';
 import { chatMessages, projects } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
 import { uploadFile } from '@/lib/storage';
+import { eq } from 'drizzle-orm';
 
 // Schema for sending a message - support both formats
 const sendMessageSchema = z.union([
@@ -122,7 +122,11 @@ export async function GET(
     }
 
     // Get chat history
-    const chatHistory = await getChatMessagesByProjectId(projectId);
+    const chatHistory = await db
+      .select()
+      .from(chatMessages)
+      .where(eq(chatMessages.projectId, projectId))
+      .orderBy(chatMessages.timestamp);
 
     console.log(`📊 Chat history for project ${projectId}: ${chatHistory.length} messages`);
 
@@ -163,7 +167,7 @@ export async function POST(
     }
 
     // Get the project and verify access
-    const project = await getProjectById(projectId);
+    const [project] = await db.select().from(projects).where(eq(projects.id, projectId));
     if (!project) {
       return new Response('Project not found', { status: 404 });
     }

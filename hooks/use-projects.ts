@@ -15,8 +15,8 @@ export function useProjects({ userId, initialData }: UseProjectsOptions) {
     queryKey: ['projects', userId],
     queryFn: async () => {
       try {
-        // Make the API call
-        const response = await fetch(`/api/projects?userId=${userId}`);
+        // Make the API call (userId is obtained from auth on server side)
+        const response = await fetch('/api/projects');
         if (!response.ok) {
           throw new Error('Failed to fetch projects');
         }

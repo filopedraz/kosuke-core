@@ -1,13 +1,12 @@
+import { eq } from 'drizzle-orm';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { ApiErrorHandler } from '@/lib/api/errors';
 import { ApiResponseHandler } from '@/lib/api/responses';
 import { auth } from '@/lib/auth/server';
-import {
-    createProject,
-    getProjectsByUserId
-} from '@/lib/db/projects';
+import { db } from '@/lib/db/drizzle';
+import { projects } from '@/lib/db/schema';
 
 
 // Schema for project creation
@@ -30,9 +29,14 @@ export async function GET() {
       );
     }
 
-    // Use Drizzle ORM through the projects service
-    const projects = await getProjectsByUserId(userId);
-    return NextResponse.json(projects);
+    // Query projects directly from database
+    const userProjects = await db
+      .select()
+      .from(projects)
+      .where(eq(projects.userId, userId))
+      .orderBy(projects.createdAt);
+
+    return NextResponse.json(userProjects);
   } catch (error) {
     console.error('Error fetching projects:', error);
     return NextResponse.json(
@@ -65,13 +69,18 @@ export async function POST(request: NextRequest) {
       return ApiErrorHandler.validationError(result.error);
     }
 
-    // Create the project
-    const project = await createProject({
-      name: result.data.name,
-      description: result.data.description || null,
-      userId: userId,
-      createdBy: userId,
-    });
+    // Create the project directly in database
+    const [project] = await db
+      .insert(projects)
+      .values({
+        name: result.data.name,
+        description: result.data.description || null,
+        userId: userId,
+        createdBy: userId,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning();
 
     return ApiResponseHandler.created({ project });
   } catch (error) {
