@@ -22,14 +22,14 @@ export function useProjectDownload(projectId: number, projectName: string) {
 
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
-      
+
       // Create download link
       const link = document.createElement('a');
       link.href = url;
       link.download = `${projectName}.zip`;
       document.body.appendChild(link);
       link.click();
-      
+
       // Cleanup
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
@@ -37,17 +37,16 @@ export function useProjectDownload(projectId: number, projectName: string) {
       setDownloadProgress({ isDownloading: false, progress: 100 });
 
       toast({
-        title: "Download complete",
+        title: 'Download complete',
         description: `${projectName}.zip has been downloaded.`,
       });
-
     } catch (error) {
       setDownloadProgress({ isDownloading: false, progress: 0 });
-      
+
       toast({
-        title: "Download failed",
-        description: error instanceof Error ? error.message : "Failed to download project",
-        variant: "destructive",
+        title: 'Download failed',
+        description: error instanceof Error ? error.message : 'Failed to download project',
+        variant: 'destructive',
       });
     }
   }, [projectId, projectName, toast]);

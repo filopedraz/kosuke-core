@@ -21,37 +21,43 @@ export function useBrandGuidelines(projectId: number) {
 
   // Actions
   const togglePreviewMode = useCallback(() => {
-    setPreviewMode(prev => prev === 'dark' ? 'light' : 'dark');
+    setPreviewMode(prev => (prev === 'dark' ? 'light' : 'dark'));
   }, []);
 
   const handleGenerateColorPalette = useCallback(() => {
     setIsKeywordsModalOpen(true);
   }, []);
 
-  const generateColorPaletteWithKeywords = useCallback(async (keywords: string) => {
-    setIsKeywordsModalOpen(false);
-    setIsPalettePreviewOpen(true);
+  const generateColorPaletteWithKeywords = useCallback(
+    async (keywords: string) => {
+      setIsKeywordsModalOpen(false);
+      setIsPalettePreviewOpen(true);
 
-    try {
-      const result = await generatePaletteMutation.mutateAsync({ keywords });
-      setGeneratedPalette(result.colors);
-    } catch {
-      // Error handling is done in the mutation
-      setIsPalettePreviewOpen(false);
-    }
-  }, [generatePaletteMutation]);
+      try {
+        const result = await generatePaletteMutation.mutateAsync({ keywords });
+        setGeneratedPalette(result.colors);
+      } catch {
+        // Error handling is done in the mutation
+        setIsPalettePreviewOpen(false);
+      }
+    },
+    [generatePaletteMutation]
+  );
 
   const applyGeneratedPalette = useCallback(async () => {
     setIsPalettePreviewOpen(false);
     await applyPaletteMutation.mutateAsync(generatedPalette);
   }, [applyPaletteMutation, generatedPalette]);
 
-  const getCurrentColorValue = useCallback((color: CssVariable) => {
-    if (previewMode === 'dark' && color.darkValue) {
-      return color.darkValue;
-    }
-    return color.lightValue;
-  }, [previewMode]);
+  const getCurrentColorValue = useCallback(
+    (color: CssVariable) => {
+      if (previewMode === 'dark' && color.darkValue) {
+        return color.darkValue;
+      }
+      return color.lightValue;
+    },
+    [previewMode]
+  );
 
   return {
     // State
@@ -71,7 +77,7 @@ export function useBrandGuidelines(projectId: number) {
     colorStats: {
       lightCount: colorsQuery.data?.lightCount || 0,
       darkCount: colorsQuery.data?.darkCount || 0,
-      foundLocation: colorsQuery.data?.foundLocation || ''
+      foundLocation: colorsQuery.data?.foundLocation || '',
     },
 
     // Loading states

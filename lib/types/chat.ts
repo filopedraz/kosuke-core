@@ -39,7 +39,6 @@ export interface ChatUser {
   email: string;
   imageUrl: string | null;
   marketingEmails: boolean | null;
-  stripeCustomerId: string | null;
   createdAt: Date;
   updatedAt: Date;
   deletedAt: Date | null;

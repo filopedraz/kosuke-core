@@ -1,9 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
-import type { 
-  NotificationSettings, 
-  UpdateNotificationResponse 
-} from '@/lib/types';
+import type { NotificationSettings, UpdateNotificationResponse } from '@/lib/types';
 
 // Hook for fetching notification settings
 export function useNotificationSettings() {
@@ -11,11 +8,11 @@ export function useNotificationSettings() {
     queryKey: ['notification-settings'],
     queryFn: async (): Promise<NotificationSettings> => {
       const response = await fetch('/api/user/notifications');
-      
+
       if (!response.ok) {
         throw new Error('Failed to fetch notification settings');
       }
-      
+
       const data = await response.json();
       return data.data;
     },
@@ -30,7 +27,9 @@ export function useUpdateNotificationSettings() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (settings: Partial<NotificationSettings>): Promise<UpdateNotificationResponse> => {
+    mutationFn: async (
+      settings: Partial<NotificationSettings>
+    ): Promise<UpdateNotificationResponse> => {
       const response = await fetch('/api/user/notifications', {
         method: 'PUT',
         headers: {
@@ -47,12 +46,14 @@ export function useUpdateNotificationSettings() {
 
       return result;
     },
-    onMutate: async (newSettings) => {
+    onMutate: async newSettings => {
       // Cancel any outgoing refetches
       await queryClient.cancelQueries({ queryKey: ['notification-settings'] });
 
       // Snapshot the previous value
-      const previousSettings = queryClient.getQueryData<NotificationSettings>(['notification-settings']);
+      const previousSettings = queryClient.getQueryData<NotificationSettings>([
+        'notification-settings',
+      ]);
 
       // Optimistically update to the new value
       if (previousSettings) {
@@ -64,9 +65,9 @@ export function useUpdateNotificationSettings() {
 
       return { previousSettings };
     },
-    onSuccess: (data) => {
+    onSuccess: data => {
       toast({
-        title: "Settings updated",
+        title: 'Settings updated',
         description: data.success,
       });
     },
@@ -77,9 +78,10 @@ export function useUpdateNotificationSettings() {
       }
 
       toast({
-        title: "Update failed",
-        description: error instanceof Error ? error.message : "Failed to update notification settings",
-        variant: "destructive",
+        title: 'Update failed',
+        description:
+          error instanceof Error ? error.message : 'Failed to update notification settings',
+        variant: 'destructive',
       });
     },
     onSettled: () => {

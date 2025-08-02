@@ -2,7 +2,8 @@
 import type { User } from '@/lib/db/schema';
 
 // Extended User Types
-export interface UserProfile extends Pick<User, 'id' | 'clerkUserId' | 'name' | 'email' | 'imageUrl'> {
+export interface UserProfile
+  extends Pick<User, 'id' | 'clerkUserId' | 'name' | 'email' | 'imageUrl'> {
   createdAt: Date;
   updatedAt: Date;
 }

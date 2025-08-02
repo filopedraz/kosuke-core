@@ -1,12 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
-import type { 
-  UserProfile, 
-  ProfileFormData, 
-  UpdateProfileResponse,
-  FormState 
-} from '@/lib/types';
+import type { UserProfile, ProfileFormData, UpdateProfileResponse, FormState } from '@/lib/types';
 
 // Hook for fetching user profile
 export function useUserProfile() {
@@ -14,11 +9,11 @@ export function useUserProfile() {
     queryKey: ['user-profile'],
     queryFn: async (): Promise<UserProfile> => {
       const response = await fetch('/api/user/profile');
-      
+
       if (!response.ok) {
         throw new Error('Failed to fetch user profile');
       }
-      
+
       const data = await response.json();
       return data.data;
     },
@@ -48,9 +43,9 @@ export function useUpdateProfile() {
 
       return result;
     },
-    onSuccess: (data) => {
+    onSuccess: data => {
       toast({
-        title: "Profile updated",
+        title: 'Profile updated',
         description: data.success,
       });
 
@@ -58,11 +53,11 @@ export function useUpdateProfile() {
       queryClient.invalidateQueries({ queryKey: ['user-profile'] });
       router.refresh();
     },
-    onError: (error) => {
+    onError: error => {
       toast({
-        title: "Update failed",
-        description: error instanceof Error ? error.message : "Failed to update profile",
-        variant: "destructive",
+        title: 'Update failed',
+        description: error instanceof Error ? error.message : 'Failed to update profile',
+        variant: 'destructive',
       });
     },
   });
@@ -92,9 +87,9 @@ export function useUpdateProfileImage() {
 
       return result;
     },
-    onSuccess: (data) => {
+    onSuccess: data => {
       toast({
-        title: "Profile image updated",
+        title: 'Profile image updated',
         description: data.success,
       });
 
@@ -102,11 +97,11 @@ export function useUpdateProfileImage() {
       queryClient.invalidateQueries({ queryKey: ['user-profile'] });
       router.refresh();
     },
-    onError: (error) => {
+    onError: error => {
       toast({
-        title: "Image update failed",
-        description: error instanceof Error ? error.message : "Failed to update profile image",
-        variant: "destructive",
+        title: 'Image update failed',
+        description: error instanceof Error ? error.message : 'Failed to update profile image',
+        variant: 'destructive',
       });
     },
   });
@@ -132,18 +127,18 @@ export function useDeleteAccount() {
     },
     onSuccess: () => {
       toast({
-        title: "Account deleted",
-        description: "Your account has been permanently deleted.",
+        title: 'Account deleted',
+        description: 'Your account has been permanently deleted.',
       });
-      
+
       // Redirect to home page
       router.push('/');
     },
-    onError: (error) => {
+    onError: error => {
       toast({
-        title: "Deletion failed",
-        description: error instanceof Error ? error.message : "Failed to delete account",
-        variant: "destructive",
+        title: 'Deletion failed',
+        description: error instanceof Error ? error.message : 'Failed to delete account',
+        variant: 'destructive',
       });
     },
   });

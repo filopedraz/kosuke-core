@@ -1,25 +1,23 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
-import type { 
-  CssVariable, 
-  PaletteGenerationRequest, 
-  PaletteGenerationResponse 
-} from '@/lib/types';
+import type { CssVariable, PaletteGenerationRequest, PaletteGenerationResponse } from '@/lib/types';
 
 // Hook for generating color palettes
 export function useGenerateColorPalette(projectId: number) {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async ({ keywords }: PaletteGenerationRequest): Promise<PaletteGenerationResponse> => {
+    mutationFn: async ({
+      keywords,
+    }: PaletteGenerationRequest): Promise<PaletteGenerationResponse> => {
       const response = await fetch(`/api/projects/${projectId}/branding/generate-palette`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          keywords: keywords.trim()
-        })
+          keywords: keywords.trim(),
+        }),
       });
 
       if (!response.ok) {
@@ -35,11 +33,11 @@ export function useGenerateColorPalette(projectId: number) {
 
       return data;
     },
-    onError: (error) => {
+    onError: error => {
       toast({
-        title: "Generation failed",
-        description: error instanceof Error ? error.message : "Failed to generate color palette",
-        variant: "destructive",
+        title: 'Generation failed',
+        description: error instanceof Error ? error.message : 'Failed to generate color palette',
+        variant: 'destructive',
       });
     },
   });
@@ -52,15 +50,18 @@ export function useApplyColorPalette(projectId: number) {
 
   return useMutation({
     mutationFn: async (colors: CssVariable[]) => {
-      const response = await fetch(`/api/projects/${projectId}/branding/generate-palette?apply=true`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          colors
-        })
-      });
+      const response = await fetch(
+        `/api/projects/${projectId}/branding/generate-palette?apply=true`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            colors,
+          }),
+        }
+      );
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -72,18 +73,18 @@ export function useApplyColorPalette(projectId: number) {
     onSuccess: () => {
       // Show success message
       toast({
-        title: "Palette applied",
-        description: "New color palette has been applied to your project.",
+        title: 'Palette applied',
+        description: 'New color palette has been applied to your project.',
       });
 
       // Refresh the colors
       queryClient.invalidateQueries({ queryKey: ['brand-colors', projectId] });
     },
-    onError: (error) => {
+    onError: error => {
       toast({
-        title: "Application failed",
-        description: error instanceof Error ? error.message : "Failed to apply color palette",
-        variant: "destructive",
+        title: 'Application failed',
+        description: error instanceof Error ? error.message : 'Failed to apply color palette',
+        variant: 'destructive',
       });
     },
   });

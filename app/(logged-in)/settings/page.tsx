@@ -16,7 +16,7 @@ import { Label } from '@/components/ui/label';
 export default function SettingsPage() {
   const { user, isLoaded } = useUser();
   const { imageUrl: profileImageUrl } = useUserProfileImage();
-  
+
   // Form state
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -107,10 +107,9 @@ export default function SettingsPage() {
 
         {updateProfileMutation.isError && (
           <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-md">
-            {updateProfileMutation.error instanceof Error 
-              ? updateProfileMutation.error.message 
-              : 'Failed to update profile'
-            }
+            {updateProfileMutation.error instanceof Error
+              ? updateProfileMutation.error.message
+              : 'Failed to update profile'}
           </div>
         )}
 
@@ -123,10 +122,9 @@ export default function SettingsPage() {
 
         {updateProfileImageMutation.isError && (
           <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-md">
-            {updateProfileImageMutation.error instanceof Error 
-              ? updateProfileImageMutation.error.message 
-              : 'Failed to update profile image'
-            }
+            {updateProfileImageMutation.error instanceof Error
+              ? updateProfileImageMutation.error.message
+              : 'Failed to update profile image'}
           </div>
         )}
 
@@ -134,20 +132,19 @@ export default function SettingsPage() {
           <Card>
             <CardHeader>
               <CardTitle>Personal Information</CardTitle>
-              <CardDescription>
-                Update your personal details and profile picture.
-              </CardDescription>
+              <CardDescription>Update your personal details and profile picture.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Profile Picture Section */}
               <div className="flex items-center gap-4">
                 <Avatar className="h-20 w-20">
-                  <AvatarImage 
-                    src={previewImage || profileImageUrl || user.imageUrl} 
-                    alt={user.firstName || 'Profile picture'} 
+                  <AvatarImage
+                    src={previewImage || profileImageUrl || user.imageUrl}
+                    alt={user.firstName || 'Profile picture'}
                   />
                   <AvatarFallback className="text-lg">
-                    {user.firstName?.[0]?.toUpperCase() || user.emailAddresses[0]?.emailAddress[0]?.toUpperCase()}
+                    {user.firstName?.[0]?.toUpperCase() ||
+                      user.emailAddresses[0]?.emailAddress[0]?.toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
 
@@ -220,8 +217,8 @@ export default function SettingsPage() {
           </Card>
 
           <div className="flex justify-end">
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               disabled={updateProfileMutation.isPending}
               className="min-w-[120px]"
             >

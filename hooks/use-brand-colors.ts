@@ -1,11 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
-import type { 
-  CssVariable, 
-  ColorUpdateRequest, 
+import type {
+  CssVariable,
+  ColorUpdateRequest,
   ColorStats,
   ThemeMode,
-  ApiSuccess 
+  ApiSuccess,
 } from '@/lib/types';
 import { convertToHsl } from '@/app/(logged-in)/projects/[id]/components/brand/utils/color-utils';
 
@@ -22,11 +22,11 @@ export function useBrandColors(projectId: number) {
     queryKey: ['brand-colors', projectId],
     queryFn: async (): Promise<ColorsResponse> => {
       const response = await fetch(`/api/projects/${projectId}/branding/colors`);
-      
+
       if (!response.ok) {
         throw new Error(`Failed to fetch colors: ${response.statusText}`);
       }
-      
+
       return response.json();
     },
     staleTime: 1000 * 60 * 5, // 5 minutes
@@ -52,7 +52,7 @@ export function useUpdateBrandColor(projectId: number) {
         body: JSON.stringify({
           name,
           value: hslValue,
-          mode
+          mode,
         }),
       });
 
@@ -77,11 +77,11 @@ export function useUpdateBrandColor(projectId: number) {
             if (variable.name === name) {
               return {
                 ...variable,
-                [mode === 'light' ? 'lightValue' : 'darkValue']: value
+                [mode === 'light' ? 'lightValue' : 'darkValue']: value,
               };
             }
             return variable;
-          })
+          }),
         };
 
         queryClient.setQueryData(['brand-colors', projectId], updatedColors);
@@ -91,7 +91,7 @@ export function useUpdateBrandColor(projectId: number) {
     },
     onSuccess: (_, { name }) => {
       toast({
-        title: "Color updated",
+        title: 'Color updated',
         description: `${name.replace(/^--/, '')} has been updated successfully.`,
       });
     },
@@ -102,9 +102,9 @@ export function useUpdateBrandColor(projectId: number) {
       }
 
       toast({
-        title: "Update failed",
-        description: error instanceof Error ? error.message : "Failed to update color",
-        variant: "destructive",
+        title: 'Update failed',
+        description: error instanceof Error ? error.message : 'Failed to update color',
+        variant: 'destructive',
       });
     },
     onSettled: () => {

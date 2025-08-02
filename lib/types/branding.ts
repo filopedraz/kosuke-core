@@ -14,9 +14,9 @@ export interface CssVariable {
 }
 
 // Color Categories
-export type ColorCategory = 
+export type ColorCategory =
   | 'background'
-  | 'foreground' 
+  | 'foreground'
   | 'primary'
   | 'secondary'
   | 'accent'
@@ -76,22 +76,22 @@ export interface BrandGuidelinesState {
   colorVariables: CssVariable[];
   isLoadingColors: boolean;
   colorsError: string | null;
-  
+
   // Font-related state
   fontVariables: FontInfo[];
   isLoadingFonts: boolean;
   fontsError: string | null;
-  
+
   // Palette generation state
   isGeneratingPalette: boolean;
   isPalettePreviewOpen: boolean;
   generatedPalette: CssVariable[];
-  
+
   // UI state
   previewMode: ThemeMode;
   activeTab: 'colors' | 'fonts';
   isKeywordsModalOpen: boolean;
-  
+
   // Statistics
   stats: ColorStats;
 }

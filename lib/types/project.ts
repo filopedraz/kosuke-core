@@ -8,7 +8,8 @@ export interface ProjectWithStats extends Project {
   previewUrl?: string;
 }
 
-export interface ProjectListItem extends Pick<Project, 'id' | 'name' | 'description' | 'createdAt' | 'updatedAt'> {
+export interface ProjectListItem
+  extends Pick<Project, 'id' | 'name' | 'description' | 'createdAt' | 'updatedAt'> {
   messageCount: number;
   lastActivity?: Date;
 }

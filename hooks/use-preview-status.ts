@@ -1,9 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type { 
-  PreviewStatusResponse, 
-  StartPreviewResponse, 
+import type {
+  PreviewStatusResponse,
+  StartPreviewResponse,
   StopPreviewResponse,
-  ServerHealthOptions 
+  ServerHealthOptions,
 } from '@/lib/types';
 
 // Hook for fetching preview status
@@ -12,11 +12,11 @@ export function usePreviewStatus(projectId: number, polling = true) {
     queryKey: ['preview-status', projectId],
     queryFn: async (): Promise<PreviewStatusResponse> => {
       const response = await fetch(`/api/projects/${projectId}/preview/status`);
-      
+
       if (!response.ok) {
         throw new Error('Failed to fetch preview status');
       }
-      
+
       return response.json();
     },
     refetchInterval: polling ? 3000 : false, // Poll every 3 seconds when enabled
@@ -74,7 +74,7 @@ export function useStopPreview(projectId: number) {
 // Utility function for server health checks
 export async function checkServerHealth(options: ServerHealthOptions): Promise<boolean> {
   const { url, timeout = 3000 } = options;
-  
+
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeout);
@@ -82,7 +82,7 @@ export async function checkServerHealth(options: ServerHealthOptions): Promise<b
     await fetch(url, {
       method: 'HEAD',
       mode: 'no-cors',
-      signal: controller.signal
+      signal: controller.signal,
     });
 
     clearTimeout(timeoutId);
