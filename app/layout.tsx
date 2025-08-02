@@ -30,7 +30,7 @@ interface RootLayoutProps {
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <ClerkThemeProvider>
-      <html lang="en" className={`dark ${inter.className}`} style={{ colorScheme: 'dark' }}>
+      <html lang="en" className={inter.className} suppressHydrationWarning>
         <body className="min-h-[100dvh] bg-background text-foreground overflow-x-hidden">
           <Providers>
             <div className="flex flex-col min-h-[100dvh]">
