@@ -5,7 +5,6 @@ import { useTheme } from 'next-themes';
 import { useEffect, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 
 export function ThemeSwitcher() {
   const { theme, setTheme } = useTheme();
@@ -46,7 +45,7 @@ export function ThemeSwitcher() {
 
   return (
     <div className="flex gap-2">
-      {themes.map((themeOption) => {
+      {themes.map(themeOption => {
         const Icon = themeOption.icon;
         const isActive = theme === themeOption.value;
 
