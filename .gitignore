@@ -49,3 +49,7 @@ next-env.d.ts
 
 *storybook.log
 
+# uploads (local development)
+public/uploads/*
+!public/uploads/.gitkeep
+

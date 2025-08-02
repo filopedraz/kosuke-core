@@ -1,12 +1,11 @@
-import './globals.css';
 import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import { ReactNode } from 'react';
-import { ClerkProvider } from '@clerk/nextjs';
-import { dark } from '@clerk/themes';
+import './globals.css';
 
-import { Toaster } from '@/components/ui/toaster';
+import { ClerkThemeProvider } from '@/components/clerk-theme-provider';
 import { ErrorBoundary } from '@/components/error-boundary';
+import { Toaster } from '@/components/ui/toaster';
 import Providers from './providers';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -30,21 +29,7 @@ interface RootLayoutProps {
 
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
-    <ClerkProvider
-      appearance={{
-        baseTheme: dark,
-        variables: {
-          colorPrimary: '#3b82f6',
-          colorBackground: '#0a0a0a',
-          colorInputBackground: '#1a1a1a',
-          colorInputText: '#ffffff',
-        },
-        elements: {
-          formButtonPrimary: 'bg-blue-600 hover:bg-blue-700',
-          card: 'bg-gray-900 border-gray-800',
-        },
-      }}
-    >
+    <ClerkThemeProvider>
       <html lang="en" className={`dark ${inter.className}`} style={{ colorScheme: 'dark' }}>
         <body className="min-h-[100dvh] bg-background text-foreground overflow-x-hidden">
           <Providers>
@@ -57,6 +42,6 @@ export default function RootLayout({ children }: RootLayoutProps) {
           <Toaster />
         </body>
       </html>
-    </ClerkProvider>
+    </ClerkThemeProvider>
   );
 }

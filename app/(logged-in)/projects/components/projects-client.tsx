@@ -1,28 +1,28 @@
 'use client';
 
-import { Suspense, useState, useEffect } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
 import ProjectCreationModal from '@/app/(logged-in)/projects/components/project-creation-modal';
 import ProjectGrid from '@/app/(logged-in)/projects/components/project-grid';
 import ProjectsHeader from '@/app/(logged-in)/projects/components/projects-header';
-import EmptyState from './empty-state';
-import { ProjectsLoadingSkeleton } from './projects-loading-skeleton';
-import { ProjectModalSkeleton } from './project-modal-skeleton';
 import { Project } from '@/lib/stores/projectStore';
+import { useQueryClient } from '@tanstack/react-query';
+import { Suspense, useEffect, useState } from 'react';
+import EmptyState from './empty-state';
+import { ProjectModalSkeleton } from './project-modal-skeleton';
+import { ProjectsLoadingSkeleton } from './projects-loading-skeleton';
 
 interface ProjectsClientProps {
   projects: Project[];
-  userId: number;
+  userId: string;
 }
 
 export default function ProjectsClient({ projects, userId }: ProjectsClientProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const queryClient = useQueryClient();
-  
+
   // Ensure project data is fresh when the page is visited
   useEffect(() => {
     // Refetch projects data when the component mounts
-    queryClient.invalidateQueries({ 
+    queryClient.invalidateQueries({
       queryKey: ['projects', userId],
       refetchType: 'active'
     });
@@ -31,11 +31,11 @@ export default function ProjectsClient({ projects, userId }: ProjectsClientProps
   return (
     <>
       <div className="container mx-auto py-8">
-        <ProjectsHeader 
+        <ProjectsHeader
           hasProjects={projects?.length > 0}
           onCreateClick={() => setIsModalOpen(true)}
         />
-        
+
         <Suspense fallback={<ProjectsLoadingSkeleton />}>
           {!projects?.length ? (
             <EmptyState onCreateClick={() => setIsModalOpen(true)} />
@@ -46,11 +46,11 @@ export default function ProjectsClient({ projects, userId }: ProjectsClientProps
       </div>
 
       <Suspense fallback={<ProjectModalSkeleton />}>
-        <ProjectCreationModal 
+        <ProjectCreationModal
           open={isModalOpen}
           onOpenChange={setIsModalOpen}
         />
       </Suspense>
     </>
   );
-} 
+}

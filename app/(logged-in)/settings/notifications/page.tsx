@@ -1,10 +1,9 @@
 'use client';
 
+import { useUser } from '@clerk/nextjs';
 import { Check } from 'lucide-react';
-import { useState, use, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
-import { updateNotificationPreferences } from '@/app/(logged-out)/actions';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -15,51 +14,100 @@ type FormState = {
 } | null;
 
 export default function NotificationsPage() {
-  const { userPromise } = useUser();
-  const user = use(userPromise);
+  const { user, isLoaded } = useUser();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formState, setFormState] = useState<FormState>(null);
-  const router = useRouter();
 
   // Notification settings state - only marketing emails
   const [marketingEmails, setMarketingEmails] = useState(false);
+  const [dbUser, setDbUser] = useState<{ marketingEmails: boolean } | null>(null);
 
-  // Load user's preferences
+  // Load user's preferences from database
   useEffect(() => {
-    if (user?.id) {
-      // Set initial state based on user data
-      setMarketingEmails(user.marketingEmails || false);
+    if (isLoaded && user) {
+      fetchUserPreferences();
     }
-  }, [user]);
+  }, [isLoaded, user]);
+
+  const fetchUserPreferences = async () => {
+    try {
+      const response = await fetch('/api/user/profile');
+      if (response.ok) {
+        const userData = await response.json();
+        setDbUser(userData);
+        setMarketingEmails(userData.marketingEmails || false);
+      }
+    } catch (error) {
+      console.error('Error fetching user preferences:', error);
+    }
+  };
 
   // Handle toggle change and automatically save
   const handleToggleChange = async (checked: boolean) => {
-    if (!user?.id) return;
+    if (!user) return;
 
     setMarketingEmails(checked);
     setIsSubmitting(true);
 
     try {
-      // Use the server action to update preferences
-      const result = await updateNotificationPreferences(user.id, checked);
-      setFormState(result as FormState);
+      // Call the API endpoint to update preferences
+      const response = await fetch('/api/user/notifications', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ marketingEmails: checked }),
+      });
 
-      if ((result as FormState)?.success) {
-        // Refresh the router to update user data
-        router.refresh();
+      const result = await response.json();
+
+      if (response.ok) {
+        setFormState({ success: result.success });
+        // Update local state
+        setDbUser({ ...dbUser, marketingEmails: checked });
 
         // Hide success message after 3 seconds
         setTimeout(() => {
           setFormState(null);
         }, 3000);
+      } else {
+        setFormState({ error: result.error || 'Failed to update preferences' });
+        // Revert the toggle if the API call failed
+        setMarketingEmails(!checked);
       }
     } catch (error) {
       console.error('Error saving preferences:', error);
       setFormState({ error: 'Failed to update preferences' });
+      // Revert the toggle if the API call failed
+      setMarketingEmails(!checked);
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  if (!isLoaded) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Notifications</CardTitle>
+            <CardDescription>Loading notification preferences...</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between space-x-2">
+                <div className="space-y-2">
+                  <div className="h-4 bg-gray-200 rounded animate-pulse w-32" />
+                  <div className="h-3 bg-gray-200 rounded animate-pulse w-64" />
+                </div>
+                <div className="h-6 w-11 bg-gray-200 rounded-full animate-pulse" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

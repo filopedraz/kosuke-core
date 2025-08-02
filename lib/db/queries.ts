@@ -1,11 +1,11 @@
-import { desc, and, eq, isNull } from 'drizzle-orm';
+import { and, desc, eq, isNull } from 'drizzle-orm';
 
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db/drizzle';
 import { activityLogs, users } from '@/lib/db/schema';
 
 export async function getUser() {
-  const { userId } = auth();
+  const { userId } = await auth();
   if (!userId) {
     return null;
   }
@@ -24,7 +24,7 @@ export async function getUser() {
 }
 
 export async function getActivityLogs() {
-  const { userId } = auth();
+  const { userId } = await auth();
   if (!userId) {
     throw new Error('User not authenticated');
   }

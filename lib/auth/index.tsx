@@ -1,10 +1,10 @@
-import { auth as clerkAuth, currentUser } from '@clerk/nextjs';
+import { auth as clerkAuth, currentUser } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
 
 export { clerkAuth as auth };
 
 export async function requireAuth() {
-  const { userId } = clerkAuth();
+  const { userId } = await clerkAuth();
   if (!userId) {
     redirect('/sign-in');
   }
@@ -16,6 +16,6 @@ export async function getCurrentUser() {
 }
 
 export async function getUserId() {
-  const { userId } = clerkAuth();
+  const { userId } = await clerkAuth();
   return userId;
 }

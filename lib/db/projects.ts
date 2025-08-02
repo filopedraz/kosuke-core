@@ -1,7 +1,7 @@
-import { eq, and, desc } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 
 import { db } from './drizzle';
-import { projects, NewProject, Project, users } from './schema';
+import { NewProject, Project, projects, users } from './schema';
 
 /**
  * Create a new project
@@ -21,24 +21,24 @@ export async function getProjectById(projectId: number): Promise<Project | undef
 }
 
 /**
- * Get projects by user ID
+ * Get projects by user ID (Clerk User ID)
  */
-export async function getProjectsByUserId(userId: number): Promise<Project[]> {
+export async function getProjectsByUserId(clerkUserId: string): Promise<Project[]> {
   return db
     .select()
     .from(projects)
-    .where(and(eq(projects.userId, userId), eq(projects.isArchived, false)))
+    .where(and(eq(projects.userId, clerkUserId), eq(projects.isArchived, false)))
     .orderBy(desc(projects.updatedAt));
 }
 
 /**
- * Get projects by creator ID
+ * Get projects by creator ID (Clerk User ID)
  */
-export async function getProjectsByCreatorId(creatorId: number): Promise<Project[]> {
+export async function getProjectsByCreatorId(clerkUserId: string): Promise<Project[]> {
   return db
     .select()
     .from(projects)
-    .where(and(eq(projects.createdBy, creatorId), eq(projects.isArchived, false)))
+    .where(and(eq(projects.createdBy, clerkUserId), eq(projects.isArchived, false)))
     .orderBy(desc(projects.updatedAt));
 }
 
@@ -88,7 +88,7 @@ export async function getProjectWithDetails(id: number) {
       creatorEmail: users.email,
     })
     .from(projects)
-    .leftJoin(users, eq(projects.createdBy, users.id))
+    .leftJoin(users, eq(projects.createdBy, users.clerkUserId))
     .where(eq(projects.id, id));
 
   return result[0];

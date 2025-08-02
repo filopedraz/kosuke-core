@@ -1,10 +1,10 @@
 'use client';
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useProjectStore, type Project } from '@/lib/stores/projectStore';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 interface UseProjectsOptions {
-  userId: number;
+  userId: string;
   initialData?: Project[];
 }
 
