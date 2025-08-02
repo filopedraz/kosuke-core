@@ -3,7 +3,7 @@
 import { useProjects } from '@/hooks/use-projects';
 import { Project, useProjectStore } from '@/lib/stores/projectStore';
 import ProjectCard from './project-card';
-import { ProjectCardSkeleton } from './project-card-skeleton';
+import { ProjectCardSkeleton } from './skeletons';
 
 interface ProjectGridProps {
   userId: string;
