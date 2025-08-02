@@ -20,7 +20,7 @@ const createProjectSchema = z.object({
  * GET /api/projects
  * Get all projects for the current user
  */
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const { userId } = await auth();
     if (!userId) {
@@ -30,11 +30,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const searchParams = request.nextUrl.searchParams;
-    const requestedUserId = searchParams.get('userId');
-
-    // Use the authenticated user's ID, not from query params for security
-    const projects = await getProjectsByUserId(requestedUserId || userId);
+    // Use Drizzle ORM through the projects service
+    const projects = await getProjectsByUserId(userId);
     return NextResponse.json(projects);
   } catch (error) {
     console.error('Error fetching projects:', error);

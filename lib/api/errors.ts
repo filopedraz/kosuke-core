@@ -1,35 +1,6 @@
 import { NextResponse } from 'next/server';
 import { ZodError } from 'zod';
-
-/**
- * Type for error details - similar to MetadataValue but specific to errors
- */
-export type ErrorDetail =
-  | string
-  | number
-  | boolean
-  | null
-  | undefined
-  | ErrorDetailObject
-  | ErrorDetail[];
-
-export interface ErrorDetailObject {
-  [key: string]: ErrorDetail;
-}
-
-/**
- * Standard error response structure
- */
-export interface ApiError {
-  error: string;
-  details?: ErrorDetailObject;
-  code?: string;
-}
-
-/**
- * Type for handleable errors
- */
-export type HandleableError = Error | ZodError | { message: string } | unknown;
+import type { ErrorDetailObject, ApiError, HandleableError } from '@/lib/types';
 
 /**
  * Error handler for API routes

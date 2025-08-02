@@ -11,7 +11,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get user from database
+    // Get user from database using Drizzle ORM
     const [user] = await db.select().from(users).where(eq(users.clerkUserId, userId)).limit(1);
 
     if (!user) {
@@ -27,6 +27,7 @@ export async function GET() {
 
 export async function PUT(request: NextRequest) {
   try {
+    const { auth } = await import('@/lib/auth/server');
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -39,6 +40,10 @@ export async function PUT(request: NextRequest) {
     if (!name || !email) {
       return NextResponse.json({ error: 'Name and email are required' }, { status: 400 });
     }
+
+    const { db } = await import('@/lib/db/drizzle');
+    const { users } = await import('@/lib/db/schema');
+    const { eq } = await import('drizzle-orm');
 
     // Update user in database
     await db
