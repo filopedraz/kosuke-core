@@ -3,10 +3,9 @@
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useToast } from '@/hooks/use-toast';
-import { type FontInfo } from '@/lib/font-parser';
+import { useBrandGuidelines } from '@/hooks/use-brand-guidelines';
+import { useUpdateBrandColor } from '@/hooks/use-brand-colors';
 import { Moon, Palette, Sun, TextQuote, Wand2 } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
 import ColorCard from './color-card';
 import ColorCardSkeleton from './color-card-skeleton';
 import ColorPaletteModal from './color-palette-modal';
@@ -14,256 +13,59 @@ import FontCard from './font-card';
 import FontCardSkeleton from './font-card-skeleton';
 import KeywordsModal from './keywords-modal';
 import { ThemePreviewProvider } from './theme-context';
-import { type CssVariable, type ThemeMode } from './types';
-import { convertToHsl, getCategoryTitle, groupColorsByCategory } from './utils/color-utils';
+import { getCategoryTitle, groupColorsByCategory } from './utils/color-utils';
+import type { FontInfo } from '@/lib/font-parser';
 
 interface BrandGuidelinesProps {
   projectId: number;
 }
 
 export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
-  const [previewMode, setPreviewMode] = useState<ThemeMode>('light'); // Default to light
-  const [colorVariables, setColorVariables] = useState<CssVariable[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [_stats, setStats] = useState({ lightCount: 0, darkCount: 0, foundLocation: '' });
-  const { toast } = useToast();
+  // Use the comprehensive brand guidelines hook
+  const {
+    // State
+    previewMode,
+    activeTab,
+    isKeywordsModalOpen,
+    isPalettePreviewOpen,
+    generatedPalette,
 
-  // Add font state
-  const [fontVariables, setFontVariables] = useState<FontInfo[]>([]);
-  const [isFontsLoading, setIsFontsLoading] = useState(true);
-  const [fontsError, setFontsError] = useState<string | null>(null);
+    // Data
+    colors,
+    fonts,
+    isLoadingColors,
+    isLoadingFonts,
+    colorsError,
+    fontsError,
 
-  // Add state for palette generation
-  const [isGeneratingPalette, setIsGeneratingPalette] = useState(false);
-  const [isPalettePreviewOpen, setIsPalettePreviewOpen] = useState(false);
-  const [generatedPalette, setGeneratedPalette] = useState<CssVariable[]>([]);
+    // Loading states
+    isGeneratingPalette,
 
-  // Add state for keywords modal
-  const [isKeywordsModalOpen, setIsKeywordsModalOpen] = useState(false);
+    // Actions
+    setActiveTab,
+    setIsKeywordsModalOpen,
+    setIsPalettePreviewOpen,
+    togglePreviewMode,
+    handleGenerateColorPalette,
+    generateColorPaletteWithKeywords,
+    applyGeneratedPalette,
+    getCurrentColorValue,
+  } = useBrandGuidelines(projectId);
 
-  // Add state for active tab
-  const [activeTab, setActiveTab] = useState('colors');
-
-  const togglePreviewMode = () => {
-    setPreviewMode(prev => prev === 'dark' ? 'light' : 'dark');
-  };
-
-  // Function to fetch CSS variables
-  const fetchCssVariables = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const response = await fetch(`/api/projects/${projectId}/branding/colors`);
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch colors: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      console.log('Fetched colors:', data);
-
-      // Update stats for debugging
-      setStats({
-        lightCount: data.lightCount || 0,
-        darkCount: data.darkCount || 0,
-        foundLocation: data.foundLocation || ''
-      });
-
-      setColorVariables(data.colors || []);
-    } catch (err) {
-      console.error('Error fetching CSS variables:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch colors');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [projectId]);
-
-  // Add function to fetch font variables
-  const fetchFontVariables = useCallback(async () => {
-    setIsFontsLoading(true);
-    setFontsError(null);
-
-    try {
-      const response = await fetch(`/api/projects/${projectId}/branding/fonts`);
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch fonts: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      setFontVariables(data.fonts || []);
-    } catch (err) {
-      console.error('Error fetching font variables:', err);
-      setFontsError(err instanceof Error ? err.message : 'Failed to fetch fonts');
-    } finally {
-      setIsFontsLoading(false);
-    }
-  }, [projectId]);
+  // Color update mutation
+  const updateColorMutation = useUpdateBrandColor(projectId);
 
   // Handle color change from ColorCard
-  const handleColorChange = async (name: string, newValue: string) => {
-    try {
-      // Convert the color to HSL format before sending to API
-      const hslValue = convertToHsl(newValue);
-
-      // Optimistically update UI
-      const updatedVariables = colorVariables.map(variable => {
-        if (variable.name === name) {
-          return {
-            ...variable,
-            [previewMode === 'light' ? 'lightValue' : 'darkValue']: newValue
-          };
-        }
-        return variable;
-      });
-
-      setColorVariables(updatedVariables);
-
-      // Send update to server with HSL value
-      const response = await fetch(`/api/projects/${projectId}/branding/colors`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name,
-          value: hslValue, // Use HSL value for API
-          mode: previewMode
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update color');
-      }
-
-      toast({
-        title: "Color updated",
-        description: `${name.replace(/^--/, '')} has been updated successfully.`,
-      });
-
-    } catch (err) {
-      console.error('Error updating color:', err);
-      toast({
-        title: "Update failed",
-        description: err instanceof Error ? err.message : "Failed to update color",
-        variant: "destructive",
-      });
-
-      // Revert changes on error
-      fetchCssVariables();
-    }
+  const handleColorChange = (name: string, newValue: string) => {
+    updateColorMutation.mutate({
+      name,
+      value: newValue,
+      mode: previewMode
+    });
   };
-
-  // Update function to first show keywords modal
-  const handleGenerateColorPalette = () => {
-    setIsKeywordsModalOpen(true);
-  };
-
-  // Add function to generate color palette with keywords
-  const generateColorPaletteWithKeywords = async (keywords: string) => {
-    setIsKeywordsModalOpen(false);
-    setIsGeneratingPalette(true);
-    // Show the palette modal immediately with the loading state
-    setIsPalettePreviewOpen(true);
-
-    try {
-      const response = await fetch(`/api/projects/${projectId}/branding/generate-palette`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          keywords: keywords.trim()
-        })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to generate color palette');
-      }
-
-      // Successfully generated the palette
-      const data = await response.json();
-
-      if (data.success && data.colors) {
-        // Save the generated palette
-        setGeneratedPalette(data.colors);
-      } else {
-        throw new Error('Failed to generate a valid color palette');
-      }
-
-    } catch (err) {
-      console.error('Error generating color palette:', err);
-      toast({
-        title: "Generation failed",
-        description: err instanceof Error ? err.message : "Failed to generate color palette",
-        variant: "destructive",
-      });
-      // Close the modal on error
-      setIsPalettePreviewOpen(false);
-    } finally {
-      setIsGeneratingPalette(false);
-    }
-  };
-
-  // Function to apply the generated palette
-  const applyGeneratedPalette = async () => {
-    try {
-      // Modal is already closed at this point from the ColorPaletteModal component
-
-      const response = await fetch(`/api/projects/${projectId}/branding/generate-palette?apply=true`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          colors: generatedPalette
-        })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to apply color palette');
-      }
-
-      // Show success message
-      toast({
-        title: "Palette applied",
-        description: "New color palette has been applied to your project.",
-      });
-
-      // Refresh the colors
-      fetchCssVariables();
-
-    } catch (err) {
-      console.error('Error applying color palette:', err);
-      toast({
-        title: "Application failed",
-        description: err instanceof Error ? err.message : "Failed to apply color palette",
-        variant: "destructive",
-      });
-    }
-  };
-
-  // Fetch data on component mount
-  useEffect(() => {
-    fetchCssVariables();
-    fetchFontVariables();
-  }, [fetchCssVariables, fetchFontVariables]);
 
   // Group colors into categories for display
-  const groupedColors = groupColorsByCategory<CssVariable>(colorVariables || []);
-
-  // Get current color value based on theme mode
-  const getCurrentColorValue = (color: CssVariable) => {
-    if (previewMode === 'dark' && color.darkValue) {
-      return color.darkValue;
-    }
-    return color.lightValue;
-  };
+  const groupedColors = groupColorsByCategory(colors);
 
   // Group fonts by type
   const groupedFonts = (() => {
@@ -276,7 +78,7 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
     };
 
     // Group fonts by naming convention
-    fontVariables.forEach(font => {
+    fonts.forEach(font => {
       const name = font.name.toLowerCase();
       if (name.includes('mono')) {
         grouped['mono'].push(font);
@@ -296,11 +98,6 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
       Object.entries(grouped).filter(([, fonts]) => fonts.length > 0)
     );
   })();
-
-  // Render floating loading indicator (removed since we now use the modal)
-  const renderGeneratingIndicator = () => {
-    return null; // No longer needed as we're showing the modal instead
-  };
 
   return (
     <ThemePreviewProvider initialMode={previewMode}>
@@ -340,7 +137,7 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
           defaultValue="colors"
           className="w-full"
           value={activeTab}
-          onValueChange={setActiveTab}
+          onValueChange={(value) => setActiveTab(value as 'colors' | 'fonts')}
         >
           <TabsList>
             <TabsTrigger value="colors">Colors</TabsTrigger>
@@ -348,20 +145,20 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
           </TabsList>
 
           <TabsContent value="colors" className="space-y-6 pt-6 pb-12">
-            {error && (
+            {colorsError && (
               <div className="p-4 bg-destructive/10 border border-destructive text-destructive rounded-md">
-                {error}
+                {colorsError}
               </div>
             )}
 
-            {isLoading ? (
+            {isLoadingColors ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4 gap-6">
                 {Array.from({ length: 9 }).map((_, i) => (
                   <ColorCardSkeleton key={i} />
                 ))}
               </div>
             ) : (
-              colorVariables.length === 0 ? (
+              colors.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-64 text-center">
                   <Palette className="h-12 w-12 text-muted-foreground mb-4" />
                   <h3 className="text-xl font-medium">No Color Variables Found</h3>
@@ -371,11 +168,11 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
                 </div>
               ) : (
                 // Display each category
-                Object.entries(groupedColors || {}).map(([category, colors]) => (
+                Object.entries(groupedColors).map(([category, categoryColors]) => (
                   <div key={category} className="space-y-4 mb-10">
                     <h2 className="text-xl font-medium">{getCategoryTitle(category)}</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4 gap-6">
-                      {colors.map(color => (
+                      {categoryColors.map(color => (
                         <ColorCard
                           key={color.name + (color.scope || '')}
                           colorVar={{
@@ -400,14 +197,14 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
               </div>
             )}
 
-            {isFontsLoading ? (
+            {isLoadingFonts ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {Array.from({ length: 3 }).map((_, i) => (
                   <FontCardSkeleton key={i} />
                 ))}
               </div>
             ) : (
-              fontVariables.length === 0 ? (
+              fonts.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-64 text-center">
                   <TextQuote className="h-12 w-12 text-muted-foreground mb-4" />
                   <h3 className="text-xl font-medium">No Fonts Found</h3>
@@ -416,11 +213,11 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
                   </p>
                 </div>
               ) : (
-                Object.entries(groupedFonts).map(([category, fonts], index, arr) => (
+                Object.entries(groupedFonts).map(([category, categoryFonts], index, arr) => (
                   <div key={category} className={`space-y-4 ${index === arr.length - 1 ? 'mb-6' : 'mb-10'}`}>
                     <h2 className="text-xl font-medium capitalize">{category} Fonts</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {fonts.map(font => (
+                      {categoryFonts.map(font => (
                         <FontCard key={font.name} font={font} />
                       ))}
                     </div>
@@ -448,9 +245,6 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
           onRegenerate={handleGenerateColorPalette}
           onApply={applyGeneratedPalette}
         />
-
-        {/* Floating loading indicator that stays visible across tabs */}
-        {renderGeneratingIndicator()}
       </div>
     </ThemePreviewProvider>
   );

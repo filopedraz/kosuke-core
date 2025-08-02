@@ -1,17 +1,30 @@
+'use client';
+
 import ProjectsClient from '@/app/(logged-in)/projects/components/projects-client';
-import { getProjectsByUserId } from '@/lib/db/projects';
-import { getUser } from '@/lib/db/queries';
+import { ProjectsLoadingSkeleton } from '@/app/(logged-in)/projects/components/projects-loading-skeleton';
+import { useUser } from '@/hooks/use-user';
+import { useProjects } from '@/hooks/use-projects';
+import { redirect } from 'next/navigation';
+import { useEffect } from 'react';
 
-export default async function ProjectsPage() {
-  const user = await getUser();
+export default function ProjectsPage() {
+  const { clerkUser, dbUser, isLoading } = useUser();
+  const { data: projects, isLoading: isProjectsLoading } = useProjects({
+    userId: clerkUser?.id || '',
+    initialData: []
+  });
 
-  // User should always exist here due to middleware protection
-  if (!user) {
-    throw new Error('User not found - this should not happen');
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (!isLoading && !clerkUser) {
+      redirect('/sign-in');
+    }
+  }, [isLoading, clerkUser]);
+
+  // Show loading skeleton
+  if (isLoading || isProjectsLoading || !clerkUser || !dbUser) {
+    return <ProjectsLoadingSkeleton />;
   }
 
-  // Get all projects for the user to pass as initial data
-  const projects = await getProjectsByUserId(user.clerkUserId);
-
-  return <ProjectsClient projects={projects} userId={user.clerkUserId} />;
+  return <ProjectsClient projects={projects || []} userId={dbUser.clerkUserId} />;
 }

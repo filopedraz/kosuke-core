@@ -1,10 +1,9 @@
 'use client';
 
-import { useClerk, useUser } from '@clerk/nextjs';
+import { useClerk } from '@clerk/nextjs';
 import {
   CircleIcon,
   Code,
-  CreditCard,
   Eye,
   LayoutDashboard,
   LogOut,
@@ -15,9 +14,8 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
 
-import { useUserProfileImage } from '@/hooks/use-user-profile-image';
+import { useUser } from '@/hooks/use-user';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -44,27 +42,9 @@ type NavbarProps = {
 };
 
 export default function Navbar({ variant = 'standard', projectProps, className }: NavbarProps) {
-  const { user, isLoaded, isSignedIn } = useUser();
-  const { imageUrl: profileImageUrl } = useUserProfileImage();
+  const { clerkUser, isLoaded, isSignedIn, imageUrl, displayName, initials } = useUser();
   const { signOut } = useClerk();
-  const [isUpgradable, setIsUpgradable] = useState(false);
   const router = useRouter();
-
-  useEffect(() => {
-    const checkSubscription = async () => {
-      try {
-        const response = await fetch('/api/subscription/status');
-        const data = await response.json();
-        setIsUpgradable(data.isUpgradable);
-      } catch (error) {
-        console.error('Error checking subscription status:', error);
-      }
-    };
-
-    if (user) {
-      checkSubscription();
-    }
-  }, [user]);
 
   const handleLogout = async () => {
     try {
@@ -85,17 +65,15 @@ export default function Navbar({ variant = 'standard', projectProps, className }
       return <div className="h-8 w-8 rounded-full bg-gray-200 animate-pulse" />;
     }
 
-    if (isSignedIn && user) {
+    if (isSignedIn && clerkUser) {
       return (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-8 w-8 rounded-md p-0">
               <Avatar className="h-8 w-8 cursor-pointer transition-all">
-                <AvatarImage src={profileImageUrl} alt={user.fullName || 'User'} />
+                <AvatarImage src={imageUrl || undefined} alt={displayName || 'User'} />
                 <AvatarFallback className="bg-primary text-primary-foreground">
-                  {user.fullName?.charAt(0)?.toUpperCase() ||
-                    user.primaryEmailAddress?.emailAddress?.charAt(0)?.toUpperCase() ||
-                    'U'}
+                  {initials}
                 </AvatarFallback>
               </Avatar>
             </Button>
@@ -103,9 +81,9 @@ export default function Navbar({ variant = 'standard', projectProps, className }
           <DropdownMenuContent align="end" className="w-56 mt-1">
             <div className="flex items-center justify-start gap-2 p-2">
               <div className="flex flex-col space-y-0.5">
-                <p className="text-sm font-medium">{user.fullName || 'User'}</p>
+                <p className="text-sm font-medium">{displayName}</p>
                 <p className="text-xs text-muted-foreground">
-                  {user.primaryEmailAddress?.emailAddress}
+                  {clerkUser?.emailAddresses[0]?.emailAddress}
                 </p>
               </div>
             </div>
@@ -118,17 +96,6 @@ export default function Navbar({ variant = 'standard', projectProps, className }
               <Settings className="mr-2 h-4 w-4" />
               <span>Settings</span>
             </DropdownMenuItem>
-            {isUpgradable ? (
-              <DropdownMenuItem onClick={() => router.push('/billing')} className="cursor-pointer">
-                <Sparkles className="mr-2 h-4 w-4" />
-                <span>Upgrade Plan</span>
-              </DropdownMenuItem>
-            ) : (
-              <DropdownMenuItem onClick={() => router.push('/billing')} className="cursor-pointer">
-                <CreditCard className="mr-2 h-4 w-4" />
-                <span>Billing</span>
-              </DropdownMenuItem>
-            )}
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
               <LogOut className="mr-2 h-4 w-4" />
@@ -186,7 +153,7 @@ export default function Navbar({ variant = 'standard', projectProps, className }
   // Project variant
   if (variant === 'project' && projectProps) {
     return (
-      <div className="w-full border-b border-border">
+      <div className="w-full">
         <header className={cn('w-full h-14 flex items-center bg-background', className)}>
           <div className="flex w-full h-full">
             {/* Left section - matches chat width */}

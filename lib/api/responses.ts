@@ -1,29 +1,5 @@
 import { NextResponse } from 'next/server';
-
-/**
- * Type for API metadata values - using unknown is safer than any
- * as it requires type checking before use
- */
-export type MetadataValue =
-  | string
-  | number
-  | boolean
-  | null
-  | undefined
-  | MetadataObject
-  | MetadataValue[];
-
-export interface MetadataObject {
-  [key: string]: MetadataValue;
-}
-
-/**
- * Standard success response structure
- */
-export interface ApiSuccess<T> {
-  data: T;
-  meta?: MetadataObject;
-}
+import type { MetadataObject, ApiSuccess } from '@/lib/types';
 
 /**
  * Response handler for API routes
