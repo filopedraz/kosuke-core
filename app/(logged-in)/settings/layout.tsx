@@ -1,6 +1,6 @@
 'use client';
 
-import { User, Bell, Shield } from 'lucide-react';
+import { User, Bell, Shield, Palette } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Suspense } from 'react';
 
@@ -26,7 +26,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
         </div>
 
         <Tabs value={currentTab} onValueChange={handleTabChange} className="w-full">
-          <TabsList className="grid grid-cols-3 w-full max-w-md">
+          <TabsList className="grid grid-cols-4 w-full max-w-lg">
             <TabsTrigger value="account" className="flex items-center gap-2">
               <User className="h-4 w-4" />
               <span>Account</span>
@@ -38,6 +38,10 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
             <TabsTrigger value="security" className="flex items-center gap-2">
               <Shield className="h-4 w-4" />
               <span>Security</span>
+            </TabsTrigger>
+            <TabsTrigger value="appearance" className="flex items-center gap-2">
+              <Palette className="h-4 w-4" />
+              <span>Appearance</span>
             </TabsTrigger>
           </TabsList>
         </Tabs>
