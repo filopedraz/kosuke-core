@@ -1,7 +1,7 @@
 'use client';
 
 import { useClerk } from '@clerk/nextjs';
-import { AlertTriangle, Loader2, Shield } from 'lucide-react';
+import { AlertTriangle, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
@@ -47,42 +47,6 @@ export default function SecurityPage() {
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5" />
-            Authentication & Security
-          </CardTitle>
-          <CardDescription>
-            Your account is secured with Clerk&apos;s passwordless authentication system.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="rounded-md bg-primary/10 p-4">
-              <div className="text-sm font-medium">Passwordless Authentication</div>
-              <div className="text-xs text-muted-foreground mt-1">
-                Your account uses secure, passwordless authentication through Clerk. You can sign in
-                using email magic links, social providers, or other secure methods without managing
-                passwords.
-              </div>
-            </div>
-            <div className="text-sm text-muted-foreground">
-              To manage your authentication methods, visit your{' '}
-              <a
-                href="/user-profile"
-                className="text-primary hover:underline"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                user profile settings
-              </a>
-              .
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
       <Card className="border-destructive/20">
         <CardHeader>
           <CardTitle className="text-destructive">Danger Zone</CardTitle>

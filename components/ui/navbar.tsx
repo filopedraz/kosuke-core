@@ -62,7 +62,7 @@ export default function Navbar({ variant = 'standard', projectProps, className }
   // Render user menu or auth buttons
   const renderUserSection = () => {
     if (!isLoaded) {
-      return <div className="h-8 w-8 rounded-full bg-gray-200 animate-pulse" />;
+      return <div className="h-8 w-8 rounded-full bg-muted animate-pulse" />;
     }
 
     if (isSignedIn && clerkUser) {

@@ -1,6 +1,6 @@
 'use client';
 
-import { User, Bell, Shield, Palette } from 'lucide-react';
+import { Bell, Palette, Shield, User } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Suspense } from 'react';
 
@@ -48,7 +48,29 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
 
         <Suspense
           fallback={
-            <div className="h-[400px] w-full flex items-center justify-center">Loading...</div>
+            <div className="max-w-2xl">
+              <div className="h-[400px] w-full space-y-6">
+                <div className="rounded-lg border p-6 space-y-4">
+                  <div className="space-y-2">
+                    <div className="h-6 bg-muted rounded w-48 animate-pulse" />
+                    <div className="h-4 bg-muted rounded w-80 animate-pulse" />
+                  </div>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <div className="h-4 bg-muted rounded w-24 animate-pulse" />
+                      <div className="h-10 bg-muted rounded w-full animate-pulse" />
+                    </div>
+                    <div className="space-y-2">
+                      <div className="h-4 bg-muted rounded w-32 animate-pulse" />
+                      <div className="h-10 bg-muted rounded w-full animate-pulse" />
+                    </div>
+                    <div className="flex justify-end">
+                      <div className="h-10 bg-muted rounded w-24 animate-pulse" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           }
         >
           <div className="max-w-2xl">{children}</div>

@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 
 type FormState = {
@@ -95,12 +96,12 @@ export default function NotificationsPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="flex items-center justify-between space-x-2">
+              <div className="flex items-start justify-between space-x-3">
                 <div className="space-y-2">
-                  <div className="h-4 bg-gray-200 rounded animate-pulse w-32" />
-                  <div className="h-3 bg-gray-200 rounded animate-pulse w-64" />
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-3 w-64" />
                 </div>
-                <div className="h-6 w-11 bg-gray-200 rounded-full animate-pulse" />
+                <Skeleton className="h-6 w-11 rounded-full mt-0.5 flex-shrink-0" />
               </div>
             </div>
           </CardContent>
@@ -119,18 +120,21 @@ export default function NotificationsPage() {
         <CardContent>
           <div className="space-y-6">
             <div className="space-y-4">
-              <div className="flex items-center justify-between space-x-2">
-                <Label htmlFor="marketing-emails" className="flex flex-col space-y-1">
-                  <span>Marketing Emails</span>
-                  <span className="font-normal text-xs text-muted-foreground">
+              <div className="flex items-start justify-between space-x-3">
+                <div className="space-y-1">
+                  <Label htmlFor="marketing-emails" className="text-sm font-medium cursor-pointer">
+                    Marketing Emails
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
                     Receive emails about new features, tips, and product updates
-                  </span>
-                </Label>
+                  </p>
+                </div>
                 <Switch
                   id="marketing-emails"
                   checked={marketingEmails}
                   onCheckedChange={handleToggleChange}
                   disabled={isSubmitting}
+                  className="mt-0.5 flex-shrink-0"
                 />
               </div>
             </div>

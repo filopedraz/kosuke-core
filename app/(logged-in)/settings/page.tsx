@@ -88,8 +88,44 @@ export default function SettingsPage() {
               Manage your account settings and set email preferences.
             </p>
           </div>
-          <div className="flex items-center justify-center h-64">
-            <Loader2 className="h-8 w-8 animate-spin" />
+
+          <Card>
+            <CardHeader>
+              <div className="h-6 bg-muted rounded w-48 animate-pulse" />
+              <div className="h-4 bg-muted rounded w-80 animate-pulse" />
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Profile Picture Section */}
+              <div className="flex items-center gap-4">
+                <div className="h-20 w-20 bg-muted rounded-full animate-pulse" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-10 bg-muted rounded w-32 animate-pulse" />
+                  <div className="h-3 bg-muted rounded w-48 animate-pulse" />
+                </div>
+              </div>
+
+              {/* Name Fields */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <div className="h-4 bg-muted rounded w-20 animate-pulse" />
+                  <div className="h-10 bg-muted rounded w-full animate-pulse" />
+                </div>
+                <div className="space-y-2">
+                  <div className="h-4 bg-muted rounded w-20 animate-pulse" />
+                  <div className="h-10 bg-muted rounded w-full animate-pulse" />
+                </div>
+              </div>
+
+              {/* Email Field */}
+              <div className="space-y-2">
+                <div className="h-4 bg-muted rounded w-24 animate-pulse" />
+                <div className="h-10 bg-muted rounded w-full animate-pulse" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="flex justify-end">
+            <div className="h-10 bg-muted rounded w-32 animate-pulse" />
           </div>
         </div>
       </div>
@@ -117,13 +153,6 @@ export default function SettingsPage() {
   return (
     <div className="max-w-2xl">
       <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-semibold">Profile Settings</h1>
-          <p className="text-muted-foreground">
-            Manage your account settings and set email preferences.
-          </p>
-        </div>
-
         {/* Success/Error Messages */}
         {formSuccess && (
           <div className="p-4 bg-green-50 border border-green-200 text-green-700 rounded-md flex items-center gap-2">
