@@ -283,7 +283,7 @@ export async function POST(
     console.log(`✅ Assistant message placeholder created with ID: ${assistantMessage.id}`);
 
     // Proxy stream directly to Python FastAPI service
-    const agentServiceUrl = process.env.AGENT_SERVICE_URL || 'http://localhost:8000';
+    const agentServiceUrl = process.env.AGENT_SERVICE_URL || 'http://localhost:8001';
 
     // Mark unused variables for future use
     void includeContext;
