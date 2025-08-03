@@ -1,14 +1,16 @@
 'use client';
 
+import { useQueryClient } from '@tanstack/react-query';
 import { ArrowRight, Folder, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useCreateProject } from '@/hooks/use-projects';
+import { useProjectStore } from '@/lib/stores/projectStore';
 
 interface ProjectCreationModalProps {
   open: boolean;
@@ -25,6 +27,8 @@ export default function ProjectCreationModal({
 }: ProjectCreationModalProps) {
   const [projectName, setProjectName] = useState(initialProjectName);
   const router = useRouter();
+  const queryClient = useQueryClient();
+  const { addProject } = useProjectStore();
   const createProjectMutation = useCreateProject();
 
   const handleCreateProject = async () => {
@@ -36,11 +40,44 @@ export default function ProjectCreationModal({
         prompt: prompt || projectName.trim(),
       },
       {
-        onSuccess: (project) => {
-          // Close modal and redirect to the project page
-          onOpenChange(false);
-          if (project?.id) {
-            router.push(`/projects/${project.id}?new=true`);
+                        onSuccess: (project) => {
+          console.log('🎉 Project creation success callback triggered');
+          console.log('📦 Project data received:', project);
+          console.log('🔍 Project ID:', project?.id);
+          console.log('🔍 Project type:', typeof project);
+
+          // Ensure we have a valid project with ID
+          if (project && typeof project === 'object' && project.id) {
+            console.log('✅ Valid project data, proceeding with store updates and redirect');
+
+            // Update store and invalidate queries (moved from hook)
+            console.log('🔄 Adding project to store...');
+            addProject(project);
+            console.log('🔄 Invalidating queries...');
+            queryClient.invalidateQueries({ queryKey: ['projects'] });
+
+            const targetUrl = `/projects/${project.id}?new=true`;
+            console.log('🎯 Target URL:', targetUrl);
+
+            // Close modal and navigate immediately
+            onOpenChange(false);
+            console.log('🚪 Modal closed, attempting navigation...');
+
+            // Try immediate navigation
+            router.push(targetUrl);
+            console.log('🔄 Router.push called with:', targetUrl);
+
+            // Backup navigation after a short delay
+            setTimeout(() => {
+              console.log('⏰ Backup navigation attempt');
+              window.location.href = targetUrl;
+            }, 1000);
+
+          } else {
+            console.error('❌ Project created but invalid data received:', project);
+            console.log('🔧 Falling back to refresh');
+            onOpenChange(false);
+            router.refresh();
           }
         },
         onError: (error) => {
@@ -54,6 +91,9 @@ export default function ProjectCreationModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px] p-0 overflow-hidden border border-border bg-card shadow-lg rounded-md">
         <DialogTitle className="sr-only">New Project</DialogTitle>
+        <DialogDescription className="sr-only">
+          Create a new project by entering a project name
+        </DialogDescription>
         <div className="p-8">
           <div className="flex items-center space-x-3 mb-8">
             <Folder className="h-5 w-5 text-primary" />

@@ -60,9 +60,6 @@ export function useProject(projectId: number) {
 }
 
 export function useCreateProject() {
-  const queryClient = useQueryClient();
-  const { addProject } = useProjectStore();
-
   return useMutation<Project, Error, { prompt: string; name: string }>({
     mutationFn: async requestData => {
       const response = await fetch('/api/projects', {
@@ -75,19 +72,37 @@ export function useCreateProject() {
       if (!response.ok) {
         throw new Error('Failed to create project');
       }
-      const { data } = await response.json();
-      // Extract project from the wrapped response structure
-      const project = data.project || data;
-      return {
+      const responseData = await response.json();
+      console.log('🔥 useCreateProject: Full API response:', responseData);
+
+      // Handle different response structures
+      let project;
+      if (responseData.data) {
+        // Standard API response format: { data: { project: {...} } }
+        project = responseData.data.project || responseData.data;
+        console.log('🔥 useCreateProject: Extracted from responseData.data:', project);
+      } else {
+        // Direct response format
+        project = responseData.project || responseData;
+        console.log('🔥 useCreateProject: Extracted from responseData directly:', project);
+      }
+
+      // Validate project data
+      if (!project || !project.id) {
+        console.error('🔥 useCreateProject: Invalid project data - project:', project);
+        throw new Error('Invalid project data received from server');
+      }
+
+      const finalProject = {
         ...project,
         createdAt: new Date(project.createdAt),
         updatedAt: new Date(project.updatedAt),
       };
+
+      console.log('🔥 useCreateProject: Final project being returned:', finalProject);
+      return finalProject;
     },
-    onSuccess: data => {
-      addProject(data);
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
-    },
+    // onSuccess moved to modal to avoid conflicts - will be handled in modal callback
   });
 }
 
