@@ -156,157 +156,211 @@ Project Guidelines & Cursor Rules
         logger.info(f"📁 Working directory: {self.project_path}")
 
         try:
-            # Enhanced prompt with system instructions
-            base_system_prompt = (
-                "You are an expert software development assistant working on a Kosuke template project."
-                "\n\n"
-                "You can:\n\n"
-                "- Analyze code structure, architecture, and quality\n"
-                "- Read, create, modify, and organize files and directories\n"
-                "- Generate high-quality code following best practices\n"
-                "- Debug issues and provide solutions\n"
-                "- Implement features and improvements\n"
-                "- Work with Next.js, React, TypeScript, and modern web technologies\n\n"
-                "You have access to tools to read files, write files, run bash commands, and search through code.\n"
-                "Tool execution is handled automatically - when you decide to use a tool like Read, Write, or Bash,\n"
-                "it will be executed automatically and the results will be provided to you.\n\n"
-                "Be thorough in your analysis and make thoughtful, well-reasoned changes.\n"
-                "Always explain your reasoning and provide clear documentation for any modifications."
-            )
+            # Setup options and run query
+            options = self._setup_claude_code_options(max_turns)
+            async for event in self._stream_query_events(prompt, options):
+                yield event
 
-            # Include cursor rules if they exist
-            cursor_rules = self._get_cursor_rules()
+        except (CLINotFoundError, ProcessError, ClaudeSDKError) as e:
+            async for error_event in self._handle_known_error(e):
+                yield error_event
+        except Exception as e:
+            async for error_event in self._handle_unexpected_error(e):
+                yield error_event
 
-            # Build complete system prompt
-            system_prompt_parts = [base_system_prompt]
-            if cursor_rules:
-                system_prompt_parts.append(cursor_rules)
-                logger.info("📋 Added cursor rules to system prompt")
+    def _setup_claude_code_options(self, max_turns: int) -> ClaudeCodeOptions:
+        """Setup claude-code options with system prompt and tools"""
+        system_prompt = self._build_system_prompt()
+        all_tools = self._get_available_tools()
 
-            system_prompt = "\n\n".join(system_prompt_parts)
-            logger.info(f"📋 System prompt length: {len(system_prompt)} characters")
+        options = ClaudeCodeOptions(
+            cwd=str(self.project_path),
+            allowed_tools=all_tools,
+            permission_mode="acceptEdits",
+            max_turns=max_turns,
+            system_prompt=system_prompt,
+        )
 
-            # Set up claude-code options with all available tools
-            all_tools = [
-                "Task",
-                "Bash",
-                "Glob",
-                "Grep",
-                "LS",
-                "ExitPlanMode",
-                "Read",
-                "Edit",
-                "MultiEdit",
-                "Write",
-                "NotebookRead",
-                "NotebookEdit",
-                "WebFetch",
-                "TodoWrite",
-                "WebSearch",
-            ]
+        self._log_options_config(options, all_tools)
+        return options
 
-            options = ClaudeCodeOptions(
-                cwd=str(self.project_path),
-                allowed_tools=all_tools,  # Enable all available tools
-                permission_mode="acceptEdits",  # Auto-accept file edits
-                max_turns=max_turns,
-                system_prompt=system_prompt,
-                # Note: model parameter may not be available in claude-code-sdk
-                # The CLI uses whatever model is configured globally
-            )
+    def _build_system_prompt(self) -> str:
+        """Build the complete system prompt with cursor rules"""
+        base_system_prompt = (
+            "You are an expert software development assistant working on a Kosuke template project."
+            "\n\n"
+            "You can:\n\n"
+            "- Analyze code structure, architecture, and quality\n"
+            "- Read, create, modify, and organize files and directories\n"
+            "- Generate high-quality code following best practices\n"
+            "- Debug issues and provide solutions\n"
+            "- Implement features and improvements\n"
+            "- Work with Next.js, React, TypeScript, and modern web technologies\n\n"
+            "You have access to tools to read files, write files, run bash commands, and search through code.\n"
+            "Tool execution is handled automatically - when you decide to use a tool like Read, Write, or Bash,\n"
+            "it will be executed automatically and the results will be provided to you.\n\n"
+            "Be thorough in your analysis and make thoughtful, well-reasoned changes.\n"
+            "Always explain your reasoning and provide clear documentation for any modifications."
+        )
 
-            logger.info("⚙️ Claude Code options configured:")
-            logger.info(f"  📁 CWD: {options.cwd}")
-            logger.info(f"  🔧 Tools ({len(all_tools)}): {all_tools}")
-            logger.info(f"  🔐 Permission mode: {options.permission_mode}")
-            logger.info(f"  🔄 Max turns: {options.max_turns}")
+        cursor_rules = self._get_cursor_rules()
+        system_prompt_parts = [base_system_prompt]
 
-            # Log the currently configured model
-            import os
+        if cursor_rules:
+            system_prompt_parts.append(cursor_rules)
+            logger.info("📋 Added cursor rules to system prompt")
 
-            current_model = os.getenv("CLAUDE_MODEL", "default")
-            logger.info(f"🤖 Model (from env): {current_model}")
-            logger.info("📝 Note: Model is configured globally in Claude Code CLI via CLAUDE_MODEL env var")
+        system_prompt = "\n\n".join(system_prompt_parts)
+        logger.info(f"📋 System prompt length: {len(system_prompt)} characters")
+        return system_prompt
 
-            # Stream the agentic query
-            logger.info("🚀 Starting Claude Code query stream...")
-            message_count = 0
+    def _get_available_tools(self) -> list[str]:
+        """Get list of all available tools"""
+        return [
+            "Task",
+            "Bash",
+            "Glob",
+            "Grep",
+            "LS",
+            "ExitPlanMode",
+            "Read",
+            "Edit",
+            "MultiEdit",
+            "Write",
+            "NotebookRead",
+            "NotebookEdit",
+            "WebFetch",
+            "TodoWrite",
+            "WebSearch",
+        ]
 
-            async for message in query(prompt=prompt, options=options):
-                message_count += 1
-                logger.debug(f"📨 Received message {message_count}: {type(message).__name__}")
+    def _log_options_config(self, options: ClaudeCodeOptions, all_tools: list[str]):
+        """Log the options configuration"""
+        logger.info("⚙️ Claude Code options configured:")
+        logger.info(f"  📁 CWD: {options.cwd}")
+        logger.info(f"  🔧 Tools ({len(all_tools)}): {all_tools}")
+        logger.info(f"  🔐 Permission mode: {options.permission_mode}")
+        logger.info(f"  🔄 Max turns: {options.max_turns}")
 
-                if isinstance(message, AssistantMessage):
-                    logger.debug(f"🤖 Processing AssistantMessage with {len(message.content)} blocks")
+        import os
 
-                    # Process assistant message content
-                    for block_idx, block in enumerate(message.content):
-                        if isinstance(block, TextBlock):
-                            logger.debug(f"📝 Text block {block_idx}: {len(block.text)} chars")
-                            # AssistantMessage doesn't have .id attribute in claude-code-sdk
-                            message_id = getattr(message, "id", None) or f"msg_{abs(hash(str(message)))}"
+        current_model = os.getenv("CLAUDE_MODEL", "default")
+        logger.info(f"🤖 Model (from env): {current_model}")
+        logger.info("📝 Note: Model is configured globally in Claude Code CLI via CLAUDE_MODEL env var")
 
-                            # Simulate streaming by yielding text word by word
-                            async for text_event in self._simulate_text_streaming(block.text, message_id):
-                                yield text_event
-                        elif isinstance(block, ToolUseBlock):
-                            logger.info(f"🔧 Tool use block {block_idx}: {block.name} (id: {block.id})")
-                            logger.debug(f"🔧 Tool input: {str(block.input)[:200]}...")
-                            yield {
-                                "type": "tool_start",
-                                "tool_name": block.name,
-                                "tool_input": block.input,
-                                "tool_id": block.id,
-                            }
-                        else:
-                            logger.debug(f"❓ Unknown block type {block_idx}: {type(block).__name__}")
-                elif isinstance(message, UserMessage):
-                    logger.debug(f"👤 Processing UserMessage with {len(message.content)} blocks")
+    async def _stream_query_events(
+        self, prompt: str, options: ClaudeCodeOptions
+    ) -> AsyncGenerator[dict[str, Any], None]:
+        """Stream events from the agentic query"""
+        logger.info("🚀 Starting Claude Code query stream...")
+        message_count = 0
 
-                    # Process user message content - looking for tool results
-                    for block_idx, block in enumerate(message.content):
-                        if isinstance(block, ToolResultBlock):
-                            logger.info(f"✅ Tool result block {block_idx}: tool_use_id={block.tool_use_id}")
-                            logger.debug(f"✅ Tool result content: {str(block.content)[:200]}...")
-                            yield {
-                                "type": "tool_stop",
-                                "tool_id": block.tool_use_id,
-                                "tool_result": block.content,
-                                "is_error": getattr(block, "is_error", False),
-                            }
-                        else:
-                            logger.debug(f"📤 User message block {block_idx}: {type(block).__name__}")
-                            # For non-tool-result blocks, treat as regular message
-                            yield {"type": "message", "message": str(block)}
-                else:
-                    # Handle other message types
-                    logger.debug(f"📤 Other message type: {type(message).__name__}")
-                    logger.debug(f"📤 Message content preview: {str(message)[:200]}...")
-                    yield {"type": "message", "message": str(message)}
+        async for message in query(prompt=prompt, options=options):
+            message_count += 1
+            logger.debug(f"📨 Received message {message_count}: {type(message).__name__}")
 
-            logger.info(f"✅ Processed {message_count} messages from Claude Code stream")
+            async for event in self._process_message(message, message_count):
+                yield event
 
-        except CLINotFoundError as e:
+        logger.info(f"✅ Processed {message_count} messages from Claude Code stream")
+
+    async def _process_message(self, message: Any, message_count: int) -> AsyncGenerator[dict[str, Any], None]:
+        """Process a single message from the query stream"""
+        if isinstance(message, AssistantMessage):
+            async for event in self._process_assistant_message(message):
+                yield event
+        elif isinstance(message, UserMessage):
+            async for event in self._process_user_message(message):
+                yield event
+        else:
+            logger.debug(f"📤 Other message type: {type(message).__name__}")
+            logger.debug(f"📤 Message content preview: {str(message)[:200]}...")
+            yield {"type": "message", "message": str(message)}
+
+    async def _process_assistant_message(self, message: AssistantMessage) -> AsyncGenerator[dict[str, Any], None]:
+        """Process assistant message content"""
+        logger.debug(f"🤖 Processing AssistantMessage with {len(message.content)} blocks")
+
+        for block_idx, block in enumerate(message.content):
+            if isinstance(block, TextBlock):
+                async for event in self._process_text_block(block, message, block_idx):
+                    yield event
+            elif isinstance(block, ToolUseBlock):
+                yield self._create_tool_start_event(block, block_idx)
+            else:
+                logger.debug(f"❓ Unknown block type {block_idx}: {type(block).__name__}")
+
+    async def _process_text_block(
+        self, block: TextBlock, message: AssistantMessage, block_idx: int
+    ) -> AsyncGenerator[dict[str, Any], None]:
+        """Process a text block from assistant message"""
+        logger.debug(f"📝 Text block {block_idx}: {len(block.text)} chars")
+        message_id = getattr(message, "id", None) or f"msg_{abs(hash(str(message)))}"
+
+        async for text_event in self._simulate_text_streaming(block.text, message_id):
+            yield text_event
+
+    def _create_tool_start_event(self, block: ToolUseBlock, block_idx: int) -> dict[str, Any]:
+        """Create tool start event from tool use block"""
+        logger.info(f"🔧 Tool use block {block_idx}: {block.name} (id: {block.id})")
+        logger.debug(f"🔧 Tool input: {str(block.input)[:200]}...")
+
+        return {
+            "type": "tool_start",
+            "tool_name": block.name,
+            "tool_input": block.input,
+            "tool_id": block.id,
+        }
+
+    async def _process_user_message(self, message: UserMessage) -> AsyncGenerator[dict[str, Any], None]:
+        """Process user message content"""
+        logger.debug(f"👤 Processing UserMessage with {len(message.content)} blocks")
+
+        for block_idx, block in enumerate(message.content):
+            if isinstance(block, ToolResultBlock):
+                yield self._create_tool_stop_event(block, block_idx)
+            else:
+                logger.debug(f"📤 User message block {block_idx}: {type(block).__name__}")
+                yield {"type": "message", "message": str(block)}
+
+    def _create_tool_stop_event(self, block: ToolResultBlock, block_idx: int) -> dict[str, Any]:
+        """Create tool stop event from tool result block"""
+        logger.info(f"✅ Tool result block {block_idx}: tool_use_id={block.tool_use_id}")
+        logger.debug(f"✅ Tool result content: {str(block.content)[:200]}...")
+
+        return {
+            "type": "tool_stop",
+            "tool_id": block.tool_use_id,
+            "tool_result": block.content,
+            "is_error": getattr(block, "is_error", False),
+        }
+
+    async def _handle_known_error(self, error: Exception) -> AsyncGenerator[dict[str, Any], None]:
+        """Handle known errors (CLI, Process, SDK)"""
+        if isinstance(error, CLINotFoundError):
             error_msg = "Claude Code CLI not found. Please install: npm install -g @anthropic-ai/claude-code"
             logger.error(f"❌ {error_msg}")
-            logger.error(f"❌ CLINotFoundError details: {e}")
-            yield {"type": "error", "message": error_msg}
-        except ProcessError as e:
-            error_msg = f"Process failed with exit code {e.exit_code}: {e}"
+            logger.error(f"❌ CLINotFoundError details: {error}")
+        elif isinstance(error, ProcessError):
+            error_msg = f"Process failed with exit code {error.exit_code}: {error}"
             logger.error(f"❌ ProcessError: {error_msg}")
-            logger.error(f"❌ Exit code: {e.exit_code}")
-            yield {"type": "error", "message": error_msg}
-        except ClaudeSDKError as e:
-            error_msg = f"Claude SDK error: {e}"
+            logger.error(f"❌ Exit code: {error.exit_code}")
+        elif isinstance(error, ClaudeSDKError):
+            error_msg = f"Claude SDK error: {error}"
             logger.error(f"❌ ClaudeSDKError: {error_msg}")
-            logger.error(f"❌ SDK error type: {type(e).__name__}")
-            yield {"type": "error", "message": error_msg}
-        except Exception as e:
-            error_msg = f"Unexpected error in agentic pipeline: {e}"
-            logger.error(f"❌ Unexpected error: {error_msg}")
-            logger.error(f"❌ Error type: {type(e).__name__}")
-            logger.exception("❌ Full error traceback:")
-            yield {"type": "error", "message": error_msg}
+            logger.error(f"❌ SDK error type: {type(error).__name__}")
+        else:
+            error_msg = str(error)
+
+        yield {"type": "error", "message": error_msg}
+
+    async def _handle_unexpected_error(self, error: Exception) -> AsyncGenerator[dict[str, Any], None]:
+        """Handle unexpected errors"""
+        error_msg = f"Unexpected error in agentic pipeline: {error}"
+        logger.error(f"❌ Unexpected error: {error_msg}")
+        logger.error(f"❌ Error type: {type(error).__name__}")
+        logger.exception("❌ Full error traceback:")
+        yield {"type": "error", "message": error_msg}
 
     def get_project_context(self) -> dict[str, Any]:
         """

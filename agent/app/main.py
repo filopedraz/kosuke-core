@@ -1,11 +1,11 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.routes import agentic as claude_code
 from app.api.routes import branding
 from app.api.routes import chat
 from app.api.routes import health
 from app.api.routes import preview
-from app.api.routes import agentic as claude_code
 
 app = FastAPI(title="Agentic Coding Pipeline", description="AI-powered code generation microservice", version="1.0.0")
 

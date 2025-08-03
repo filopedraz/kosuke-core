@@ -2,6 +2,7 @@ import { ApiResponseHandler } from '@/lib/api/responses';
 import { auth } from '@/lib/auth/server';
 import { db } from '@/lib/db/drizzle';
 import { users } from '@/lib/db/schema';
+import type { InferInsertModel } from 'drizzle-orm';
 import { eq } from 'drizzle-orm';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -57,7 +58,7 @@ export async function PUT(request: NextRequest) {
     const { eq } = await import('drizzle-orm');
 
     // Prepare update data
-    const updateData: any = {
+    const updateData: Partial<InferInsertModel<typeof users>> = {
       updatedAt: new Date(),
     };
 

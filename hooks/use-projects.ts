@@ -60,6 +60,9 @@ export function useProject(projectId: number) {
 }
 
 export function useCreateProject() {
+  const queryClient = useQueryClient();
+  const { addProject } = useProjectStore();
+
   return useMutation<Project, Error, { prompt: string; name: string }>({
     mutationFn: async requestData => {
       const response = await fetch('/api/projects', {
@@ -95,7 +98,10 @@ export function useCreateProject() {
         updatedAt: new Date(project.updatedAt),
       };
     },
-    // onSuccess moved to modal to avoid conflicts - will be handled in modal callback
+    onSuccess: data => {
+      addProject(data);
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+    },
   });
 }
 

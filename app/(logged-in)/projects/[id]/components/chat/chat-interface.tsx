@@ -47,7 +47,6 @@ export default function ChatInterface({
   const {
     data: messagesData,
     isLoading: isLoadingMessages,
-    refetch: refetchMessages,
   } = messagesQuery;
 
 

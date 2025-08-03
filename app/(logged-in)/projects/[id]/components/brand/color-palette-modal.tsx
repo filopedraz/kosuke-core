@@ -2,12 +2,12 @@
 
 import { Button } from '@/components/ui/button';
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from '@/components/ui/dialog';
 import { useEffect, useRef } from 'react';
 import { colorToHex, formatColorName, groupColorsByCategory } from './utils/color-utils';
@@ -89,12 +89,6 @@ export default function ColorPaletteModal({
       }, 10);
     }
   }, [isGenerating, isOpen]);
-
-  // Function to convert HSL to HEX for display
-  const getHexColor = (hslValue: string): string => {
-    return colorToHex(hslValue);
-  };
-
   // Handle apply with proper state management
   const handleApply = () => {
     // Close the modal first

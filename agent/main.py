@@ -265,6 +265,24 @@ class KosukeCLI:
 
     async def run(self):
         """Main CLI loop"""
+        if not await self._initialize_cli():
+            return
+
+        while True:
+            try:
+                choice = await self._show_main_menu()
+
+                if not await self._handle_menu_choice(choice):
+                    break  # User chose to exit
+
+            except KeyboardInterrupt:
+                self.console.print("\n👋 [yellow]Goodbye![/yellow]")
+                break
+            except Exception as e:
+                self.console.print(f"❌ [red]Error: {e}[/red]")
+
+    async def _initialize_cli(self) -> bool:
+        """Initialize CLI and check service connection"""
         self.console.print("\n🤖 [bold blue]Kosuke Agent CLI[/bold blue]")
         self.console.print("=" * 20)
 
@@ -272,35 +290,31 @@ class KosukeCLI:
         if not await self.client.health_check():
             self.console.print("❌ [red]Agent service not running at http://localhost:8001[/red]")
             self.console.print("💡 Start it with: [yellow]docker-compose up agent[/yellow]")
-            return
+            return False
 
         self.console.print("✅ [green]Agent service connected[/green]\n")
+        return True
 
-        while True:
-            try:
-                choice = await self._show_main_menu()
+    async def _handle_menu_choice(self, choice: str) -> bool:
+        """Handle user menu choice. Returns False if user wants to exit."""
+        menu_actions = {
+            "1": self._create_new_project,
+            "2": self._continue_existing_project,
+            "3": self._list_projects,
+            "4": self._delete_project,
+            "5": self._switch_pipeline,
+        }
 
-                if choice == "1":
-                    await self._create_new_project()
-                elif choice == "2":
-                    await self._continue_existing_project()
-                elif choice == "3":
-                    await self._list_projects()
-                elif choice == "4":
-                    await self._delete_project()
-                elif choice == "5":
-                    await self._switch_pipeline()
-                elif choice == "6":
-                    self.console.print("👋 [yellow]Goodbye![/yellow]")
-                    break
-                else:
-                    self.console.print("❌ [red]Invalid choice[/red]")
+        if choice == "6":
+            self.console.print("👋 [yellow]Goodbye![/yellow]")
+            return False
 
-            except KeyboardInterrupt:
-                self.console.print("\n👋 [yellow]Goodbye![/yellow]")
-                break
-            except Exception as e:
-                self.console.print(f"❌ [red]Error: {e}[/red]")
+        if choice in menu_actions:
+            await menu_actions[choice]()
+            return True
+
+        self.console.print("❌ [red]Invalid choice[/red]")
+        return True
 
     async def _show_main_menu(self) -> str:
         """Display main menu and get user choice"""

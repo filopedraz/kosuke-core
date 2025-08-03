@@ -45,118 +45,134 @@ class ClaudeCodeAgent:
         print(f"🤖 Processing claude-code request for project ID: {self.project_id}")
         processing_start = time.time()
 
-        # Collect all assistant response blocks for final webhook
-        all_assistant_blocks = []
-
-        # Track text block state for proper content_block_stop/start events
-        current_text_block_active = False
-        current_text_content = ""  # Accumulate text chunks for single block
+        # Initialize state for text block tracking
+        text_state = {"active": False, "content": "", "all_blocks": []}
 
         try:
             # Stream events from claude-code-sdk
             async for event in self.claude_code_service.run_agentic_query(prompt, max_turns):
                 self.total_actions += 1
 
-                # Transform events to match our existing format
-                if event["type"] == "text":
-                    # If no text block is active, start a new one
-                    if not current_text_block_active:
-                        yield {"type": "content_block_start"}
-                        current_text_block_active = True
-                        current_text_content = ""
+                # Process event and yield results
+                async for result in self._process_event(event, text_state):
+                    yield result
 
-                    # Pass through text chunks as they come from claude-code-sdk
-                    yield {"type": "content_block_delta", "delta_type": "text_delta", "text": event["text"], "index": 0}
-
-                    # Accumulate text content for single block
-                    current_text_content += event["text"]
-
-                elif event["type"] == "tool_start":
-                    # End any active text block before starting a tool
-                    if current_text_block_active:
-                        yield {"type": "content_block_stop"}
-                        current_text_block_active = False
-                        # Save accumulated text content
-                        if current_text_content.strip():
-                            all_assistant_blocks.append({"type": "text", "content": current_text_content})
-                        current_text_content = ""
-
-                    yield {
-                        "type": "tool_start",
-                        "tool_name": event["tool_name"],
-                        "tool_input": event.get("tool_input", {}),
-                        "tool_id": event.get("tool_id"),
-                    }
-
-                    # Store tool start info for webhook (will be updated with result on tool_stop)
-                    all_assistant_blocks.append(
-                        {
-                            "type": "tool",
-                            "id": event.get("tool_id"),
-                            "name": event["tool_name"],  # Use AssistantBlock format
-                            "input": event.get("tool_input", {}),  # Use AssistantBlock format
-                            "status": "pending",
-                        }
-                    )
-
-                elif event["type"] == "tool_stop":
-                    yield {
-                        "type": "tool_stop",
-                        "tool_id": event["tool_id"],
-                        "tool_result": event.get("tool_result", ""),
-                        "is_error": event.get("is_error", False),
-                    }
-
-                    # Update the existing tool block with the result
-                    for block in all_assistant_blocks:
-                        if block.get("type") == "tool" and block.get("id") == event["tool_id"]:
-                            block["result"] = event.get("tool_result", "")  # Use AssistantBlock format
-                            block["status"] = "completed" if not event.get("is_error", False) else "error"
-                            break
-
-                elif event["type"] == "error":
-                    # End any active text block before erroring
-                    if current_text_block_active:
-                        yield {"type": "content_block_stop"}
-                        # Save accumulated text content
-                        if current_text_content.strip():
-                            all_assistant_blocks.append({"type": "text", "content": current_text_content})
-
-                    yield {"type": "error", "message": event["message"]}
-                    await self._send_assistant_message_webhook(all_assistant_blocks, success=False)
-                    return
-
-                elif event["type"] == "message":
-                    # Skip system messages to reduce noise in the UI
-                    # These are typically ResultMessage/SystemMessage objects that aren't user-facing
-                    pass
-
-            # End any active text block before completing the message
-            if current_text_block_active:
-                yield {"type": "content_block_stop"}
-                # Save accumulated text content
-                if current_text_content.strip():
-                    all_assistant_blocks.append({"type": "text", "content": current_text_content})
-
-            # Send completion events
+            # Finalize processing
+            await self._finalize_processing(text_state)
             yield {"type": "message_complete"}
-            await self._send_assistant_message_webhook(all_assistant_blocks, success=True)
 
         except Exception as e:
-            # End any active text block before erroring
-            if current_text_block_active:
-                yield {"type": "content_block_stop"}
-                # Save accumulated text content
-                if current_text_content.strip():
-                    all_assistant_blocks.append({"type": "text", "content": current_text_content})
-
-            error_msg = f"Error in claude-code agent: {e}"
-            print(f"❌ {error_msg}")
-            yield {"type": "error", "message": error_msg}
-            await self._send_assistant_message_webhook(all_assistant_blocks, success=False)
+            await self._handle_error(e, text_state)
+            yield {"type": "error", "message": f"Error in claude-code agent: {e}"}
 
         processing_end = time.time()
         print(f"⏱️ Total claude-code processing time: {processing_end - processing_start:.2f}s")
+
+    async def _process_event(self, event: dict, text_state: dict) -> AsyncGenerator[dict, None]:
+        """Process a single event from the claude-code service"""
+        event_type = event["type"]
+
+        if event_type == "text":
+            async for result in self._handle_text_event(event, text_state):
+                yield result
+        elif event_type == "tool_start":
+            async for result in self._handle_tool_start_event(event, text_state):
+                yield result
+        elif event_type == "tool_stop":
+            async for result in self._handle_tool_stop_event(event, text_state):
+                yield result
+        elif event_type == "error":
+            async for result in self._handle_error_event(event, text_state):
+                yield result
+        elif event_type == "message":
+            # Skip system messages to reduce noise in the UI
+            pass
+
+    async def _handle_text_event(self, event: dict, text_state: dict) -> AsyncGenerator[dict, None]:
+        """Handle text events"""
+        # If no text block is active, start a new one
+        if not text_state["active"]:
+            yield {"type": "content_block_start"}
+            text_state["active"] = True
+            text_state["content"] = ""
+
+        # Pass through text chunks and accumulate content
+        yield {"type": "content_block_delta", "delta_type": "text_delta", "text": event["text"], "index": 0}
+        text_state["content"] += event["text"]
+
+    async def _handle_tool_start_event(self, event: dict, text_state: dict) -> AsyncGenerator[dict, None]:
+        """Handle tool start events"""
+        # End any active text block before starting a tool
+        if text_state["active"]:
+            yield {"type": "content_block_stop"}
+            self._save_text_content(text_state)
+
+        yield {
+            "type": "tool_start",
+            "tool_name": event["tool_name"],
+            "tool_input": event.get("tool_input", {}),
+            "tool_id": event.get("tool_id"),
+        }
+
+        # Store tool start info for webhook
+        text_state["all_blocks"].append(
+            {
+                "type": "tool",
+                "id": event.get("tool_id"),
+                "name": event["tool_name"],
+                "input": event.get("tool_input", {}),
+                "status": "pending",
+            }
+        )
+
+    async def _handle_tool_stop_event(self, event: dict, text_state: dict) -> AsyncGenerator[dict, None]:
+        """Handle tool stop events"""
+        yield {
+            "type": "tool_stop",
+            "tool_id": event["tool_id"],
+            "tool_result": event.get("tool_result", ""),
+            "is_error": event.get("is_error", False),
+        }
+
+        # Update the existing tool block with the result
+        self._update_tool_block(event, text_state["all_blocks"])
+
+    async def _handle_error_event(self, event: dict, text_state: dict) -> AsyncGenerator[dict, None]:
+        """Handle error events"""
+        if text_state["active"]:
+            yield {"type": "content_block_stop"}
+            self._save_text_content(text_state)
+
+        yield {"type": "error", "message": event["message"]}
+        await self._send_assistant_message_webhook(text_state["all_blocks"], success=False)
+
+    def _save_text_content(self, text_state: dict):
+        """Save accumulated text content and reset state"""
+        if text_state["content"].strip():
+            text_state["all_blocks"].append({"type": "text", "content": text_state["content"]})
+        text_state["active"] = False
+        text_state["content"] = ""
+
+    def _update_tool_block(self, event: dict, all_blocks: list):
+        """Update tool block with result"""
+        for block in all_blocks:
+            if block.get("type") == "tool" and block.get("id") == event["tool_id"]:
+                block["result"] = event.get("tool_result", "")
+                block["status"] = "completed" if not event.get("is_error", False) else "error"
+                break
+
+    async def _finalize_processing(self, text_state: dict):
+        """Finalize processing and send webhooks"""
+        if text_state["active"]:
+            self._save_text_content(text_state)
+        await self._send_assistant_message_webhook(text_state["all_blocks"], success=True)
+
+    async def _handle_error(self, error: Exception, text_state: dict):
+        """Handle errors during processing"""
+        if text_state["active"]:
+            self._save_text_content(text_state)
+        print(f"❌ Error in claude-code agent: {error}")
+        await self._send_assistant_message_webhook(text_state["all_blocks"], success=False)
 
     async def _send_assistant_message_webhook(self, assistant_blocks: list, success: bool = True):
         """Send complete assistant message with all blocks to Next.js"""
