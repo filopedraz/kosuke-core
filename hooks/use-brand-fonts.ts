@@ -1,5 +1,5 @@
+import type { FontInfo } from '@/lib/types/branding';
 import { useQuery } from '@tanstack/react-query';
-import type { FontInfo } from '@/lib/font-parser';
 
 interface FontsResponse {
   fonts: FontInfo[];

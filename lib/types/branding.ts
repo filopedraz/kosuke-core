@@ -1,8 +1,21 @@
 // Branding and Design System Types
-import type { FontInfo } from '@/lib/font-parser';
 
 // Theme Mode Types
 export type ThemeMode = 'light' | 'dark';
+
+// Font Types
+export interface FontInfo {
+  name: string;
+  provider: string;
+  variable: string;
+  config: {
+    subsets: string[];
+    weights?: number[];
+    display?: string;
+    [key: string]: unknown;
+  };
+  usage: string;
+}
 
 // Color Variable Types
 export interface CssVariable {
@@ -11,6 +24,28 @@ export interface CssVariable {
   darkValue?: string;
   scope: 'root' | 'dark' | 'light' | 'unknown';
   [key: string]: string | undefined;
+}
+
+// Color variable type for Agent service communication
+export interface ColorVariable {
+  name: string;
+  lightValue: string;
+  darkValue?: string;
+  scope: 'root' | 'dark' | 'light' | 'unknown';
+  description?: string;
+}
+
+// Color palette generation result
+export interface ColorPaletteResult {
+  success: boolean;
+  message?: string;
+  colors?: Array<{
+    name: string;
+    value: string;
+    description?: string;
+  }>;
+  applied?: boolean;
+  projectContent?: string;
 }
 
 // Color Categories
