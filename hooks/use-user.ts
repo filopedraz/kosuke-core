@@ -5,6 +5,7 @@ import type {
   ApiSuccess,
   DatabaseUser,
   EnhancedUser,
+  PipelinePreference,
   UpdateProfileResponse,
   UseUserReturn,
 } from '@/lib/types';
@@ -14,12 +15,13 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useMemo } from 'react';
 
 // Helper function to create enhanced user from database user and Clerk user
-function createEnhancedUser(dbUser: DatabaseUser, clerkUser: any): EnhancedUser {
-  const firstName = dbUser.name?.split(' ')[0] || clerkUser?.firstName || '';
-  const lastName = dbUser.name?.split(' ').slice(1).join(' ') || clerkUser?.lastName || '';
+function createEnhancedUser(dbUser: DatabaseUser, clerkUser: unknown): EnhancedUser {
+  const clerkUserTyped = clerkUser as { firstName?: string; lastName?: string } | null;
 
   const fullName =
-    dbUser.name || `${clerkUser?.firstName || ''} ${clerkUser?.lastName || ''}`.trim() || '';
+    dbUser.name ||
+    `${clerkUserTyped?.firstName || ''} ${clerkUserTyped?.lastName || ''}`.trim() ||
+    '';
   const displayName = fullName || dbUser.email.split('@')[0] || 'User';
 
   // Create initials from name or email
@@ -34,7 +36,7 @@ function createEnhancedUser(dbUser: DatabaseUser, clerkUser: any): EnhancedUser 
 
   return {
     ...dbUser,
-    clerkUser,
+    clerkUser: clerkUserTyped,
     fullName,
     displayName,
     initials,
@@ -158,6 +160,45 @@ export function useUser(): UseUserReturn {
     },
   });
 
+  // Pipeline preference update mutation
+  const updatePipelinePreferenceMutation = useMutation({
+    mutationFn: async (preference: PipelinePreference): Promise<UpdateProfileResponse> => {
+      const formData = new FormData();
+      // Only send pipeline preference for pipeline-only updates
+      formData.set('pipelinePreference', preference);
+
+      const response = await fetch('/api/user/profile', {
+        method: 'PUT',
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to update pipeline preference');
+      }
+
+      return result;
+    },
+    onSuccess: () => {
+      toast({
+        title: 'Pipeline preference updated',
+        description: 'Your pipeline preference has been saved.',
+      });
+
+      // Invalidate and refetch user data
+      queryClient.invalidateQueries({ queryKey: ['user', clerkUser?.id] });
+    },
+    onError: error => {
+      toast({
+        title: 'Update failed',
+        description:
+          error instanceof Error ? error.message : 'Failed to update pipeline preference',
+        variant: 'destructive',
+      });
+    },
+  });
+
   // Account deletion mutation
   const deleteAccountMutation = useMutation({
     mutationFn: async () => {
@@ -241,6 +282,13 @@ export function useUser(): UseUserReturn {
     [updateProfileImageMutation]
   );
 
+  const updatePipelinePreference = useCallback(
+    async (preference: PipelinePreference) => {
+      await updatePipelinePreferenceMutation.mutateAsync(preference);
+    },
+    [updatePipelinePreferenceMutation]
+  );
+
   const deleteAccount = useCallback(async () => {
     await deleteAccountMutation.mutateAsync();
   }, [deleteAccountMutation]);
@@ -256,7 +304,7 @@ export function useUser(): UseUserReturn {
   return {
     // Primary data
     user: enhancedUser,
-    clerkUser: clerkUser || null,
+    clerkUser,
     dbUser: dbUser || null,
 
     // Loading states
@@ -275,6 +323,7 @@ export function useUser(): UseUserReturn {
     // Mutations
     updateProfile,
     updateProfileImage,
+    updatePipelinePreference,
     deleteAccount,
 
     // Utilities

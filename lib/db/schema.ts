@@ -16,6 +16,9 @@ export const users = pgTable('users', {
   email: varchar('email', { length: 255 }).notNull().unique(),
   imageUrl: text('image_url'),
   marketingEmails: boolean('marketing_emails').default(false),
+  pipelinePreference: varchar('pipeline_preference', { length: 20 })
+    .notNull()
+    .default('claude-code'), // 'kosuke' | 'claude-code'
   role: varchar('role', { length: 20 }).notNull().default('member'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),

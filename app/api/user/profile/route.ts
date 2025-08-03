@@ -37,24 +37,45 @@ export async function PUT(request: NextRequest) {
     const formData = await request.formData();
     const name = formData.get('name') as string;
     const email = formData.get('email') as string;
+    const pipelinePreference = formData.get('pipelinePreference') as string;
 
-    if (!name || !email) {
+    // Check if this is a pipeline-only update
+    const isPipelineOnlyUpdate = pipelinePreference && !name && !email;
+
+    // Validate required fields for profile updates (not pipeline-only updates)
+    if (!isPipelineOnlyUpdate && (!name || !email)) {
       return NextResponse.json({ error: 'Name and email are required' }, { status: 400 });
+    }
+
+    // Validate pipeline preference if provided
+    if (pipelinePreference && !['kosuke', 'claude-code'].includes(pipelinePreference)) {
+      return NextResponse.json({ error: 'Invalid pipeline preference' }, { status: 400 });
     }
 
     const { db } = await import('@/lib/db/drizzle');
     const { users } = await import('@/lib/db/schema');
     const { eq } = await import('drizzle-orm');
 
+    // Prepare update data
+    const updateData: any = {
+      updatedAt: new Date(),
+    };
+
+    // For pipeline-only updates, only update pipeline preference
+    if (isPipelineOnlyUpdate) {
+      updateData.pipelinePreference = pipelinePreference;
+    } else {
+      // For profile updates, include name and email
+      updateData.name = name;
+      updateData.email = email;
+      // Include pipeline preference if provided
+      if (pipelinePreference) {
+        updateData.pipelinePreference = pipelinePreference;
+      }
+    }
+
     // Update user in database
-    await db
-      .update(users)
-      .set({
-        name,
-        email,
-        updatedAt: new Date(),
-      })
-      .where(eq(users.clerkUserId, userId));
+    await db.update(users).set(updateData).where(eq(users.clerkUserId, userId));
 
     return NextResponse.json({ success: 'Profile updated successfully' });
   } catch (error) {
