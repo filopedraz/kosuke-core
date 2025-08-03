@@ -48,6 +48,10 @@ class ClaudeCodeAgent:
         # Collect all assistant response blocks for final webhook
         all_assistant_blocks = []
 
+        # Track text block state for proper content_block_stop/start events
+        current_text_block_active = False
+        tool_executed_since_last_text = False
+
         try:
             # Stream events from claude-code-sdk
             async for event in self.claude_code_service.run_agentic_query(prompt, max_turns):
@@ -55,12 +59,27 @@ class ClaudeCodeAgent:
 
                 # Transform events to match our existing format
                 if event["type"] == "text":
-                    yield {"type": "content_block_delta", "delta": {"type": "text", "text": event["text"]}, "index": 0}
+                    # If a tool was executed since the last text, we need to start a new text block
+                    if tool_executed_since_last_text and current_text_block_active:
+                        # End the previous text block
+                        yield {"type": "content_block_stop"}
+                        current_text_block_active = False
+
+                    # If no text block is active, start a new one
+                    if not current_text_block_active:
+                        yield {"type": "content_block_start"}
+                        current_text_block_active = True
+                        tool_executed_since_last_text = False
+
+                    yield {"type": "content_block_delta", "delta_type": "text_delta", "text": event["text"], "index": 0}
 
                     # Collect for webhook
                     all_assistant_blocks.append({"type": "text", "content": event["text"]})
 
                 elif event["type"] == "tool_start":
+                    # Mark that a tool has been executed since the last text
+                    tool_executed_since_last_text = True
+
                     yield {
                         "type": "tool_start",
                         "tool_name": event["tool_name"],
@@ -68,7 +87,15 @@ class ClaudeCodeAgent:
                         "tool_id": event.get("tool_id"),
                     }
 
-                    # Note: We'll collect tool result for webhook when tool_stop event is received
+                    # Store tool start info for webhook (will be updated with result on tool_stop)
+                    all_assistant_blocks.append(
+                        {
+                            "type": "tool",
+                            "id": event.get("tool_id"),
+                            "name": event["tool_name"],
+                            "status": "pending",
+                        }
+                    )
 
                 elif event["type"] == "tool_stop":
                     yield {
@@ -78,29 +105,40 @@ class ClaudeCodeAgent:
                         "is_error": event.get("is_error", False),
                     }
 
-                    # Collect for webhook - tool with actual result
-                    all_assistant_blocks.append(
-                        {
-                            "type": "tool",
-                            "id": event["tool_id"],
-                            "result": event.get("tool_result", ""),
-                            "status": "completed" if not event.get("is_error", False) else "error",
-                        }
-                    )
+                    # Update the existing tool block with the result
+                    for block in all_assistant_blocks:
+                        if block.get("type") == "tool" and block.get("id") == event["tool_id"]:
+                            block["result"] = event.get("tool_result", "")
+                            block["status"] = "completed" if not event.get("is_error", False) else "error"
+                            break
 
                 elif event["type"] == "error":
+                    # End any active text block before erroring
+                    if current_text_block_active:
+                        yield {"type": "content_block_stop"}
+
                     yield {"type": "error", "message": event["message"]}
                     await self._send_assistant_message_webhook(all_assistant_blocks, success=False)
                     return
 
                 elif event["type"] == "message":
-                    yield {"type": "message_chunk", "message": event["message"]}
+                    # Skip system messages to reduce noise in the UI
+                    # These are typically ResultMessage/SystemMessage objects that aren't user-facing
+                    pass
+
+            # End any active text block before completing the message
+            if current_text_block_active:
+                yield {"type": "content_block_stop"}
 
             # Send completion events
             yield {"type": "message_complete"}
             await self._send_assistant_message_webhook(all_assistant_blocks, success=True)
 
         except Exception as e:
+            # End any active text block before erroring
+            if current_text_block_active:
+                yield {"type": "content_block_stop"}
+
             error_msg = f"Error in claude-code agent: {e}"
             print(f"❌ {error_msg}")
             yield {"type": "error", "message": error_msg}
