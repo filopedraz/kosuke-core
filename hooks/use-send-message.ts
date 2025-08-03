@@ -546,18 +546,21 @@ export function useSendMessage(projectId: number) {
     },
     onSettled: () => {
       // Add a delay before invalidating queries to allow webhook to save data
-      setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ['messages', projectId] });
-      }, 2000); // 2 second delay to allow webhook to complete
+      setTimeout(async () => {
+        // Invalidate and wait for the query to settle before clearing streaming state
+        await queryClient.invalidateQueries({ queryKey: ['messages', projectId] });
 
-      // Clean up streaming state
-      setStreamingState({
-        isStreaming: false,
-        expectingWebhookUpdate: false,
-        streamingContentBlocks: [],
-        streamingAssistantMessageId: null,
-        streamAbortController: null,
-      });
+        // Add small delay to ensure new data is rendered
+        setTimeout(() => {
+          setStreamingState({
+            isStreaming: false,
+            expectingWebhookUpdate: false,
+            streamingContentBlocks: [],
+            streamingAssistantMessageId: null,
+            streamAbortController: null,
+          });
+        }, 100); // Small delay to ensure smooth transition
+      }, 2000); // 2 second delay to allow webhook to complete
     },
   });
 
