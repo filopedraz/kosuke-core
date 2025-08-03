@@ -28,67 +28,30 @@ class ClaudeCodeService:
         self.project_id = project_id
         self.project_path = Path(f"/tmp/projects/{project_id}")
         
-        # Ensure project structure exists with kosuke-template
-        self._setup_project_structure()
-        
-    def _setup_project_structure(self):
-        """Set up the project directory structure starting from kosuke-template"""
+        # Ensure project directory exists (project is already kosuke-template structured)
         self.project_path.mkdir(parents=True, exist_ok=True)
         
-        # If project doesn't exist yet, we'll let claude-code-sdk work in the empty directory
-        # The agent will analyze whatever files are present or create new ones as needed
-        if not (self.project_path / "package.json").exists():
-            # Create a minimal kosuke-template structure
-            package_json = {
-                "name": f"kosuke-project-{self.project_id}",
-                "version": "1.0.0",
-                "description": "Kosuke Template Project",
-                "main": "app/page.tsx",
-                "scripts": {
-                    "dev": "next dev",
-                    "build": "next build",
-                    "start": "next start",
-                    "lint": "next lint"
-                },
-                "dependencies": {
-                    "next": "15.x",
-                    "react": "19.x",
-                    "react-dom": "19.x",
-                    "@types/node": "^20",
-                    "@types/react": "^18",
-                    "@types/react-dom": "^18",
-                    "typescript": "^5"
-                }
-            }
-            with open(self.project_path / "package.json", "w") as f:
-                json.dump(package_json, f, indent=2)
-                
-            # Create basic Next.js structure
-            (self.project_path / "app").mkdir(exist_ok=True)
-            (self.project_path / "app" / "page.tsx").write_text("""export default function Home() {
-  return (
-    <main>
-      <h1>Kosuke Template Project</h1>
-      <p>This is a template project that can be modified by the AI agent.</p>
-    </main>
-  );
-}
-""")
+    def _get_cursor_rules(self) -> str:
+        """
+        Fetch cursor rules from .cursor/rules/general.mdc if it exists
+        """
+        try:
+            cursor_rules_path = self.project_path / ".cursor" / "rules" / "general.mdc"
             
-            # Create README
-            (self.project_path / "README.md").write_text(f"""# Kosuke Project {self.project_id}
-
-This project was initialized from the Kosuke template and can be modified by the AI agent.
-
-## Getting Started
-
-```bash
-npm install
-npm run dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) to view the project.
-""")
+            if cursor_rules_path.exists():
+                rules_content = cursor_rules_path.read_text(encoding="utf-8")
+                
+                return f"""
+================================================================
+Project Guidelines & Cursor Rules
+================================================================
+{rules_content}
+================================================================
+"""
+            return ""
+        except Exception as e:
+            print(f"Warning: Could not load cursor rules: {e}")
+            return ""
     
 
     
@@ -105,7 +68,7 @@ Open [http://localhost:3000](http://localhost:3000) to view the project.
         """
         try:
             # Enhanced prompt with system instructions for the single agent
-            system_prompt = """You are an expert software development assistant working on a Kosuke template project. You can:
+            base_system_prompt = """You are an expert software development assistant working on a Kosuke template project. You can:
 
 - Analyze code structure, architecture, and quality
 - Read, create, modify, and organize files and directories  
@@ -118,7 +81,15 @@ You have access to tools to read files, write files, run bash commands, and sear
 
 Be thorough in your analysis and make thoughtful, well-reasoned changes. Always explain your reasoning and provide clear documentation for any modifications."""
 
-            enhanced_prompt = f"{system_prompt}\n\nUser Request: {prompt}"
+            # Include cursor rules if they exist
+            cursor_rules = self._get_cursor_rules()
+            
+            # Build complete system prompt
+            system_prompt_parts = [base_system_prompt]
+            if cursor_rules:
+                system_prompt_parts.append(cursor_rules)
+            
+            system_prompt = "\n\n".join(system_prompt_parts)
             
             # Set up claude-code options
             options = ClaudeCodeOptions(

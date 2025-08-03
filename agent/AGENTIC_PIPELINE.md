@@ -42,16 +42,32 @@ You don't need to implement tool execution logic - it's all handled behind the s
 
 ### Project Structure
 
-Projects start with Kosuke template structure:
+Projects use the existing Kosuke template structure. The agent works with whatever files are already present in the project directory:
 
 ```
 /tmp/projects/{project_id}/
-├── package.json          # Next.js configuration
+├── .cursor/
+│   └── rules/
+│       └── general.mdc   # Cursor rules (included in system prompt)
+├── package.json          # Next.js configuration  
 ├── app/
 │   └── page.tsx          # Main page component
 ├── README.md             # Project documentation
-└── {additional files as created by agent}
+└── {existing project files}
 ```
+
+The agent automatically includes `.cursor/rules/general.mdc` in its system prompt for project-specific guidelines.
+
+## Cursor Rules Integration
+
+The claude-code agent automatically reads and includes cursor rules from `.cursor/rules/general.mdc` in its system prompt, just like the existing agent. This ensures the agent:
+
+- Follows project-specific coding standards
+- Adheres to established patterns and conventions  
+- Respects any custom guidelines or restrictions
+- Maintains consistency with the existing codebase
+
+If cursor rules are present, they will be included in the system prompt with clear formatting to ensure the agent understands and follows them.
 
 ## API Endpoints
 
@@ -97,6 +113,7 @@ The single agent can:
 - Identify potential issues and improvements
 - Assess code quality and suggest optimizations
 - Analyze security considerations
+- Follow project-specific guidelines from `.cursor/rules/general.mdc`
 
 ### File Operations
 - Read and understand existing files
@@ -109,6 +126,7 @@ The single agent can:
 - Implement features following best practices
 - Debug issues and provide solutions
 - Add proper documentation and comments
+- Adhere to project coding standards and conventions
 
 ### Bash Operations
 - Run build commands and tests
