@@ -1,8 +1,17 @@
 /**
- * Color palette generation using LLM
- * This is a placeholder implementation that returns mock data
- * Replace this with actual LLM integration when needed
+ * Color palette generation using Agent microservice
  */
+
+// Agent service configuration
+const AGENT_BASE_URL = process.env.AGENT_SERVICE_URL || 'http://localhost:8000';
+
+export interface ColorVariable {
+  name: string;
+  lightValue: string;
+  darkValue?: string;
+  scope: 'root' | 'dark' | 'light' | 'unknown';
+  description?: string;
+}
 
 export interface ColorPaletteResult {
   success: boolean;
@@ -12,10 +21,12 @@ export interface ColorPaletteResult {
     value: string;
     description?: string;
   }>;
+  applied?: boolean;
+  projectContent?: string;
 }
 
 /**
- * Generate a color palette for a project
+ * Generate a color palette for a project using the agent microservice
  */
 export async function generateColorPalette(
   projectId: number,
@@ -23,59 +34,121 @@ export async function generateColorPalette(
   homePageContent: string,
   keywords: string
 ): Promise<ColorPaletteResult> {
-  // Placeholder implementation
-  // In a real implementation, this would use an LLM to analyze the content and generate colors
+  try {
+    console.log(`🎨 Generating color palette for project ${projectId} via agent microservice`);
+    console.log(`Keywords: ${keywords}`);
+    console.log(`Existing colors: ${existingColors.length}`);
 
-  console.log(`Generating color palette for project ${projectId}`);
-  console.log(`Keywords: ${keywords}`);
-  console.log(`Existing colors: ${existingColors.length}`);
-  console.log(`Content length: ${homePageContent.length}`);
+    // Convert existing colors to the agent's expected format
+    const formattedExistingColors: ColorVariable[] = existingColors.map(color => ({
+      name: color.name,
+      lightValue: typeof color.value === 'string' ? color.value.replace(/hsl\(([^)]+)\)/, '$1') : '',
+      scope: 'root' as const,
+      description: color.description as string | undefined,
+    }));
 
-  // Mock color palette generation
-  const mockColors = [
-    { name: '--primary', value: 'hsl(210, 100%, 50%)', description: 'Primary brand color' },
-    { name: '--secondary', value: 'hsl(300, 100%, 50%)', description: 'Secondary accent color' },
-    { name: '--background', value: 'hsl(0, 0%, 100%)', description: 'Background color' },
-    { name: '--foreground', value: 'hsl(0, 0%, 3.9%)', description: 'Text color' },
-    { name: '--muted', value: 'hsl(210, 40%, 98%)', description: 'Muted background' },
-    { name: '--muted-foreground', value: 'hsl(215.4, 16.3%, 46.9%)', description: 'Muted text' },
-    { name: '--accent', value: 'hsl(210, 40%, 98%)', description: 'Accent color' },
-    { name: '--accent-foreground', value: 'hsl(222.2, 84%, 4.9%)', description: 'Accent text' },
-  ];
+    // Call agent microservice
+    const response = await fetch(
+      `${AGENT_BASE_URL}/api/projects/${projectId}/branding/generate-palette`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          keywords,
+          existingColors: formattedExistingColors,
+          applyImmediately: false,
+        }),
+      }
+    );
 
-  return {
-    success: true,
-    message: 'Color palette generated successfully (mock implementation)',
-    colors: mockColors,
-  };
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Agent service error: ${response.status} - ${errorText}`);
+    }
+
+    const result = await response.json();
+    
+    console.log(`✅ Successfully generated ${result.colors?.length || 0} colors`);
+
+    // Convert back to the expected format for compatibility
+    const compatibleColors = result.colors?.map((color: ColorVariable) => ({
+      name: color.name,
+      value: `hsl(${color.lightValue})`,
+      description: color.description,
+    })) || [];
+
+    return {
+      success: result.success,
+      message: result.message,
+      colors: compatibleColors,
+      applied: result.applied,
+    };
+
+  } catch (error) {
+    console.error('❌ Error generating color palette:', error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Unknown error occurred',
+      colors: [],
+    };
+  }
 }
 
 /**
- * Apply a color palette to a project's CSS files
+ * Apply a color palette to a project's CSS files using the agent microservice
  */
 export async function applyColorPalette(
   projectId: number,
   colors: Array<{ name: string; value: string; description?: string }>
 ): Promise<ColorPaletteResult> {
-  // Placeholder implementation
-  // In a real implementation, this would update the project's CSS files
-
-  console.log(`Applying color palette to project ${projectId}`);
-  console.log(`Applying ${colors.length} colors`);
-
-  // Mock application - in reality this would modify CSS files
   try {
-    // Simulate some processing time
-    await new Promise(resolve => setTimeout(resolve, 100));
+    console.log(`🎨 Applying color palette to project ${projectId} via agent microservice`);
+    console.log(`Applying ${colors.length} colors`);
+
+    // Convert colors to the agent's expected format
+    const formattedColors: ColorVariable[] = colors.map(color => ({
+      name: color.name,
+      lightValue: color.value.replace(/hsl\(([^)]+)\)/, '$1'),
+      scope: 'root' as const,
+      description: color.description,
+    }));
+
+    // Call agent microservice
+    const response = await fetch(
+      `${AGENT_BASE_URL}/api/projects/${projectId}/branding/apply-palette`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          colors: formattedColors,
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Agent service error: ${response.status} - ${errorText}`);
+    }
+
+    const result = await response.json();
+    
+    console.log(`✅ Successfully applied ${result.appliedColors || 0} colors`);
 
     return {
-      success: true,
-      message: `Applied ${colors.length} colors to project (mock implementation)`,
+      success: result.success,
+      message: result.message,
+      applied: result.success,
     };
+
   } catch (error) {
+    console.error('❌ Error applying color palette:', error);
     return {
       success: false,
-      message: `Failed to apply color palette: ${error}`,
+      message: error instanceof Error ? error.message : 'Unknown error occurred',
     };
   }
 }
