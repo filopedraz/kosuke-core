@@ -11,7 +11,7 @@ export function usePreviewStatus(projectId: number, polling = true) {
   return useQuery({
     queryKey: ['preview-status', projectId],
     queryFn: async (): Promise<PreviewStatusResponse> => {
-      const response = await fetch(`/api/projects/${projectId}/preview/status`);
+      const response = await fetch(`/api/projects/${projectId}/preview`);
 
       if (!response.ok) {
         throw new Error('Failed to fetch preview status');
@@ -31,7 +31,7 @@ export function useStartPreview(projectId: number) {
 
   return useMutation({
     mutationFn: async (): Promise<StartPreviewResponse> => {
-      const response = await fetch(`/api/projects/${projectId}/preview/start`, {
+      const response = await fetch(`/api/projects/${projectId}/preview`, {
         method: 'POST',
       });
 
@@ -54,8 +54,8 @@ export function useStopPreview(projectId: number) {
 
   return useMutation({
     mutationFn: async (): Promise<StopPreviewResponse> => {
-      const response = await fetch(`/api/projects/${projectId}/preview/stop`, {
-        method: 'POST',
+      const response = await fetch(`/api/projects/${projectId}/preview`, {
+        method: 'DELETE',
       });
 
       if (!response.ok) {
