@@ -23,7 +23,7 @@ function ProjectsLoadingSkeleton() {
         {Array.from({ length: 6 }).map((_, i) => (
           <ProjectCardSkeleton key={i} />
         ))}
-
+      </div>
     </div>
   );
 }
