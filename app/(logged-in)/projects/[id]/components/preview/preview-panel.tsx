@@ -5,14 +5,14 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Progress } from '@/components/ui/progress';
-import { useToast } from '@/hooks/use-toast';
 import { usePreviewStart } from '@/hooks/use-preview';
+import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import DownloadingModal from './downloading-modal';
 
@@ -345,7 +345,7 @@ export default function PreviewPanel({
                           }, 2000);
                         }
                       });
-                    } catch (error) {
+                    } catch {
                       // Error is already handled by the hook
                     }
                   }}

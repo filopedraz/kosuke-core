@@ -67,7 +67,7 @@ export default function ProjectContent({
 
     // Check and start preview when component mounts or projectId changes
     checkAndStartPreview();
-  }, [projectId]); // Only depend on projectId to prevent infinite loop
+  }, [projectId, checkPreviewStatus, startPreview]); // Include all dependencies
 
   return (
     <div className={cn('flex h-[calc(100vh-3.5rem)] w-full overflow-hidden')}>

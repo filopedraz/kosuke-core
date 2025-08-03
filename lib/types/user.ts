@@ -1,6 +1,5 @@
 // User Profile and Settings Types
 import type { User } from '@/lib/db/schema';
-import type { User as ClerkUser } from '@clerk/nextjs/server';
 
 // Base User Data (from Clerk)
 export interface BaseUser {
@@ -17,13 +16,13 @@ export interface BaseUser {
 // Database User (from our database)
 export type DatabaseUser = Pick<
   User,
-  'id' | 'clerkUserId' | 'name' | 'email' | 'imageUrl' | 'createdAt' | 'updatedAt'
+  'clerkUserId' | 'name' | 'email' | 'imageUrl' | 'pipelinePreference' | 'createdAt' | 'updatedAt'
 >;
 
 // Enhanced User (combined data with computed fields)
 export interface EnhancedUser extends DatabaseUser {
   // Clerk data
-  clerkUser: ClerkUser | null;
+  clerkUser: unknown;
 
   // Computed fields
   fullName: string;
@@ -53,7 +52,7 @@ export interface UserWithSubscription extends UserProfile {
 export interface UseUserReturn {
   // Primary data
   user: EnhancedUser | null;
-  clerkUser: ClerkUser | null;
+  clerkUser: unknown;
   dbUser: DatabaseUser | null;
 
   // Loading states
@@ -72,6 +71,7 @@ export interface UseUserReturn {
   // Mutations
   updateProfile: (data: FormData) => Promise<void>;
   updateProfileImage: (file: File) => Promise<void>;
+  updatePipelinePreference: (preference: PipelinePreference) => Promise<void>;
   deleteAccount: () => Promise<void>;
 
   // Utilities
@@ -85,10 +85,14 @@ export interface NotificationSettings {
   securityAlerts: boolean;
 }
 
+// Pipeline Preference Types
+export type PipelinePreference = 'kosuke' | 'claude-code';
+
 export interface UserPreferences {
   notifications: NotificationSettings;
   theme?: 'light' | 'dark' | 'system';
   language?: string;
+  pipelinePreference?: PipelinePreference;
 }
 
 // Form State Types for Settings Pages

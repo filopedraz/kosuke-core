@@ -109,7 +109,7 @@ export default function BuildingStatus({
     }, 3000);
 
     return () => clearTimeout(buildingTimeout);
-  }, [projectId, initialLoading]); // checkPreviewStatus is stable with useCallback
+  }, [projectId, initialLoading, checkPreviewStatus]); // Include checkPreviewStatus dependency
 
   if (!visible) return null;
 

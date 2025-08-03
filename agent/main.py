@@ -5,6 +5,7 @@ Kosuke Agent CLI - Interactive SDK for agent microservice
 Provides terminal-based interface matching the UI functionality:
 - Create/manage projects
 - Interactive chat with streaming responses
+- Pipeline selection (Kosuke vs Claude Code)
 - File change tracking and diff display
 - Project preview URLs
 
@@ -20,18 +21,25 @@ Requirements:
 
 Features:
     - Interactive menu-driven interface
+    - Pipeline selection between Kosuke and Claude Code
     - Real-time streaming responses with rich formatting
+    - Enhanced event logging for debugging
     - Automatic project management in ./projects/ directory
     - File change diff display with +/- line counts
     - Error handling with graceful fallbacks
     - Preview URL integration
 
+Pipelines:
+    - Claude Code: Advanced repository analysis using claude-code-sdk (default)
+    - Kosuke: Traditional agentic workflow with standard tools
+
 Example workflow:
     1. Run: python main.py
-    2. Choose "1" to create new project
-    3. Chat with agent: "Create a todo list component"
-    4. See streaming responses and file changes
-    5. Preview at http://localhost:3001
+    2. Choose "5" to switch pipeline (optional)
+    3. Choose "1" to create new project
+    4. Chat with agent: "Create a todo list component"
+    5. See streaming responses and detailed event logs
+    6. Preview at http://localhost:3001
 """
 
 import asyncio
@@ -57,6 +65,15 @@ class KosukeAgentClient:
         self.console = Console()
         self.projects_dir = Path("../projects")
         self.projects_dir.mkdir(exist_ok=True)
+        self.current_pipeline = "claude-code"  # Default pipeline
+
+    def set_pipeline(self, pipeline: str):
+        """Set the current pipeline (kosuke or claude-code)"""
+        if pipeline in ["kosuke", "claude-code"]:
+            self.current_pipeline = pipeline
+            self.console.print(f"🔄 Pipeline set to: {pipeline}")
+        else:
+            self.console.print(f"❌ Invalid pipeline: {pipeline}. Use 'kosuke' or 'claude-code'")
 
     async def health_check(self) -> bool:
         """Check if agent service is running"""
@@ -113,12 +130,20 @@ class KosukeAgentClient:
             return False
 
     async def chat_stream(self, project_id: int, prompt: str) -> AsyncGenerator[dict, None]:
-        """Stream chat responses from agent"""
+        """Stream chat responses from agent using selected pipeline"""
         payload = {"project_id": project_id, "prompt": prompt, "chat_history": []}
+
+        # Select endpoint based on current pipeline
+        if self.current_pipeline == "claude-code":
+            endpoint = f"{self.base_url}/api/claude-code/stream"
+            self.console.print("🧠 [blue]Using Claude Code pipeline[/blue]")
+        else:
+            endpoint = f"{self.base_url}/api/chat/stream"
+            self.console.print("🤖 [green]Using Kosuke pipeline[/green]")
 
         try:
             async with httpx.AsyncClient(timeout=300.0) as client, client.stream(
-                "POST", f"{self.base_url}/api/chat/stream", json=payload, headers={"Accept": "text/event-stream"}
+                "POST", endpoint, json=payload, headers={"Accept": "text/event-stream"}
             ) as response:
                 if response.status_code != 200:
                     yield {"type": "error", "message": f"HTTP {response.status_code}: {response.text}"}
@@ -131,12 +156,73 @@ class KosukeAgentClient:
                             break
                         try:
                             data = json.loads(data_str)
+                            # Log event details for debugging
+                            self._log_event(data)
                             yield data
                         except json.JSONDecodeError:
                             continue
 
         except Exception as e:
             yield {"type": "error", "message": f"Connection error: {e}"}
+
+    def _log_event(self, event: dict):
+        """Log event details for debugging"""
+        event_type = event.get("type", "unknown")
+
+        if self.current_pipeline == "claude-code":
+            self._log_claude_code_event(event_type, event)
+        else:
+            self._log_kosuke_event(event_type, event)
+
+    def _log_claude_code_event(self, event_type: str, event: dict):
+        """Log Claude Code specific events"""
+        if event_type == "text":
+            text_preview = event.get("text", "")[:50]
+            message_id = event.get("message_id", "N/A")
+            ellipsis = "..." if len(event.get("text", "")) > 50 else ""
+            self.console.print(f"📝 [dim]Claude Code Text Event: {text_preview}{ellipsis} (msg: {message_id})[/dim]")
+        elif event_type == "tool_start":
+            tool_name = event.get("tool_name", "unknown")
+            tool_id = event.get("tool_id", "N/A")
+            tool_input = str(event.get("tool_input", {}))[:100]
+            self.console.print(
+                f"🔧 [dim]Claude Code Tool Start: {tool_name} (id: {tool_id}) - Input: {tool_input}[/dim]"
+            )
+        elif event_type in ["message", "message_chunk"]:
+            message = event.get("message", "")[:100]
+            ellipsis = "..." if len(event.get("message", "")) > 100 else ""
+            event_icon = "💬" if event_type == "message" else "📩"
+            self.console.print(f"{event_icon} [dim]Claude Code: {message}{ellipsis}[/dim]")
+        elif event_type == "content_block_delta":
+            delta = event.get("delta", {})
+            text = delta.get("text", "")[:50]
+            if text:
+                ellipsis = "..." if len(delta.get("text", "")) > 50 else ""
+                self.console.print(f"🔄 [dim]Claude Code Content Delta: {text}{ellipsis}[/dim]")
+        elif event_type == "error":
+            error_message = event.get("message", "Unknown error")
+            self.console.print(f"❌ [red]Claude Code Error: {error_message}[/red]")
+        elif event_type == "message_complete":
+            self.console.print("✅ [dim]Claude Code Message Complete[/dim]")
+        else:
+            self.console.print(f"🔍 [dim]Claude Code Unknown Event: {event_type} - {str(event)[:100]}[/dim]")
+
+    def _log_kosuke_event(self, event_type: str, event: dict):
+        """Log Kosuke specific events"""
+        if event_type in ["content_block_delta", "message_delta"]:
+            text = event.get("delta", {}).get("text", "") or event.get("text", "")
+            if text and len(text) > 0:
+                text_preview = text[:30]
+                ellipsis = "..." if len(text) > 30 else ""
+                self.console.print(f"📝 [dim]Kosuke Text: {text_preview}{ellipsis}[/dim]")
+        elif event_type == "tool_start":
+            tool_name = event.get("tool_name", "unknown")
+            self.console.print(f"🔧 [dim]Kosuke Tool: {tool_name}[/dim]")
+        elif event_type == "error":
+            error_message = event.get("message", "Unknown error")
+            self.console.print(f"❌ [red]Kosuke Error: {error_message}[/red]")
+        elif event_type in ["message_start", "message_complete", "message_stop"]:
+            self.console.print(f"🎯 [dim]Kosuke Event: {event_type}[/dim]")
 
     async def get_project_files(self, project_id: int) -> dict[str, str]:
         """Get all files in project with their content"""
@@ -179,34 +265,15 @@ class KosukeCLI:
 
     async def run(self):
         """Main CLI loop"""
-        self.console.print("\n🤖 [bold blue]Kosuke Agent CLI[/bold blue]")
-        self.console.print("=" * 20)
-
-        # Check if service is running
-        if not await self.client.health_check():
-            self.console.print("❌ [red]Agent service not running at http://localhost:8001[/red]")
-            self.console.print("💡 Start it with: [yellow]docker-compose up agent[/yellow]")
+        if not await self._initialize_cli():
             return
-
-        self.console.print("✅ [green]Agent service connected[/green]\n")
 
         while True:
             try:
                 choice = await self._show_main_menu()
 
-                if choice == "1":
-                    await self._create_new_project()
-                elif choice == "2":
-                    await self._continue_existing_project()
-                elif choice == "3":
-                    await self._list_projects()
-                elif choice == "4":
-                    await self._delete_project()
-                elif choice == "5":
-                    self.console.print("👋 [yellow]Goodbye![/yellow]")
-                    break
-                else:
-                    self.console.print("❌ [red]Invalid choice[/red]")
+                if not await self._handle_menu_choice(choice):
+                    break  # User chose to exit
 
             except KeyboardInterrupt:
                 self.console.print("\n👋 [yellow]Goodbye![/yellow]")
@@ -214,16 +281,60 @@ class KosukeCLI:
             except Exception as e:
                 self.console.print(f"❌ [red]Error: {e}[/red]")
 
+    async def _initialize_cli(self) -> bool:
+        """Initialize CLI and check service connection"""
+        self.console.print("\n🤖 [bold blue]Kosuke Agent CLI[/bold blue]")
+        self.console.print("=" * 20)
+
+        # Check if service is running
+        if not await self.client.health_check():
+            self.console.print("❌ [red]Agent service not running at http://localhost:8001[/red]")
+            self.console.print("💡 Start it with: [yellow]docker-compose up agent[/yellow]")
+            return False
+
+        self.console.print("✅ [green]Agent service connected[/green]\n")
+        return True
+
+    async def _handle_menu_choice(self, choice: str) -> bool:
+        """Handle user menu choice. Returns False if user wants to exit."""
+        menu_actions = {
+            "1": self._create_new_project,
+            "2": self._continue_existing_project,
+            "3": self._list_projects,
+            "4": self._delete_project,
+            "5": self._switch_pipeline,
+        }
+
+        if choice == "6":
+            self.console.print("👋 [yellow]Goodbye![/yellow]")
+            return False
+
+        if choice in menu_actions:
+            await menu_actions[choice]()
+            return True
+
+        self.console.print("❌ [red]Invalid choice[/red]")
+        return True
+
     async def _show_main_menu(self) -> str:
         """Display main menu and get user choice"""
+        # Show current pipeline status
+        pipeline_emoji = "🧠" if self.client.current_pipeline == "claude-code" else "🤖"
+        pipeline_color = "blue" if self.client.current_pipeline == "claude-code" else "green"
+        pipeline_title = self.client.current_pipeline.title()
+
+        self.console.print(
+            f"\n[bold]Current Pipeline:[/bold] {pipeline_emoji} [{pipeline_color}]{pipeline_title}[/{pipeline_color}]"
+        )
         self.console.print("\n[bold]Choose an option:[/bold]")
         self.console.print("1. 📂 Create new project")
         self.console.print("2. 💬 Continue existing project")
         self.console.print("3. 📋 List projects")
         self.console.print("4. 🗑️  Delete project")
-        self.console.print("5. 🚪 Exit")
+        self.console.print("5. 🔄 Switch pipeline")
+        self.console.print("6. 🚪 Exit")
 
-        return Prompt.ask("\nEnter choice", choices=["1", "2", "3", "4", "5"])
+        return Prompt.ask("\nEnter choice", choices=["1", "2", "3", "4", "5", "6"])
 
     async def _create_new_project(self):
         """Create new project and start chat"""
@@ -299,9 +410,47 @@ class KosukeCLI:
         except ValueError:
             self.console.print("❌ [red]Invalid project ID[/red]")
 
+    async def _switch_pipeline(self):
+        """Switch between Kosuke and Claude Code pipelines"""
+        current = self.client.current_pipeline
+
+        self.console.print(f"\n[bold]Current pipeline:[/bold] {current}")
+        self.console.print("\n[bold]Available pipelines:[/bold]")
+        self.console.print("1. 🤖 Kosuke - Traditional agentic pipeline")
+        self.console.print("2. 🧠 Claude Code - Advanced repository analysis with claude-code-sdk")
+
+        choice = Prompt.ask("Select pipeline", choices=["1", "2"])
+
+        if choice == "1":
+            self.client.set_pipeline("kosuke")
+        elif choice == "2":
+            self.client.set_pipeline("claude-code")
+
+        # Show pipeline differences
+        if self.client.current_pipeline == "claude-code":
+            self.console.print("\n[blue]Claude Code Pipeline Features:[/blue]")
+            self.console.print("  • Advanced repository analysis")
+            self.console.print("  • Intelligent file modification")
+            self.console.print("  • Automatic tool execution (Read, Write, Bash, Grep)")
+            self.console.print("  • Enhanced debugging with detailed event logs")
+        else:
+            self.console.print("\n[green]Kosuke Pipeline Features:[/green]")
+            self.console.print("  • Traditional agentic workflow")
+            self.console.print("  • Streaming responses")
+            self.console.print("  • Standard tool integration")
+            self.console.print("  • Project-aware development")
+
     async def _chat_interface(self, project_id: int):
         """Interactive chat interface"""
-        self.console.print(f"\n💬 [bold blue]Chat with Kosuke Agent[/bold blue] (Project {project_id})")
+        pipeline_emoji = "🧠" if self.client.current_pipeline == "claude-code" else "🤖"
+        pipeline_name = self.client.current_pipeline.title()
+        pipeline_color = "blue" if self.client.current_pipeline == "claude-code" else "green"
+
+        self.console.print(
+            f"\n💬 [bold blue]Chat with {pipeline_emoji} {pipeline_name} Agent[/bold blue] (Project {project_id})"
+        )
+        self.console.print(f"[{pipeline_color}]Using {pipeline_name} pipeline[/{pipeline_color}]")
+
         # Show dynamic preview URL
         await self._show_preview_status(project_id)
         self.console.print("💡 [dim]Type 'exit' to return to main menu[/dim]\n")
@@ -323,9 +472,22 @@ class KosukeCLI:
                 continue
 
     def _get_message_emoji(self, event_type: str) -> str:
-        """Get emoji for Anthropic event type"""
-        emoji_map = {
-            # Native Anthropic events
+        """Get emoji for event type based on current pipeline"""
+        if self.client.current_pipeline == "claude-code":
+            # Claude Code specific events
+            claude_code_emoji_map = {
+                "text": "📝",
+                "tool_start": "🔧",
+                "message": "💬",
+                "message_chunk": "📩",
+                "content_block_delta": "🔄",
+                "message_complete": "✅",
+                "error": "❌",
+            }
+            return claude_code_emoji_map.get(event_type, "🔍")
+
+        # Traditional Kosuke/Anthropic events
+        kosuke_emoji_map = {
             "message_start": "🚀",
             "content_block_start": "📋",
             "content_block_delta": "💭",
@@ -333,18 +495,17 @@ class KosukeCLI:
             "message_delta": "📝",
             "message_stop": "🛑",
             "message_complete": "✅",
-            # Tool execution events (custom)
             "tool_start": "⚙️",
             "tool_complete": "✅",
             "tool_error": "❌",
-            # Error handling
             "error": "❌",
         }
-        return emoji_map.get(event_type, "📝")
+        return kosuke_emoji_map.get(event_type, "📝")
 
     async def _handle_chat_response(self, project_id: int, prompt: str):  # noqa: C901, PLR0912, PLR0915
-        """Handle streaming chat response with native Anthropic events"""
-        self.console.print("\n🤖 [bold blue]Agent Response:[/bold blue]")
+        """Handle streaming chat response for both Kosuke and Claude Code pipelines"""
+        pipeline_name = self.client.current_pipeline.title()
+        self.console.print(f"\n🤖 [bold blue]{pipeline_name} Agent Response:[/bold blue]")
 
         current_text = ""
         current_thinking = ""
@@ -358,8 +519,44 @@ class KosukeCLI:
             event_type = event.get("type", "unknown")
             emoji = self._get_message_emoji(event_type)
 
-            # Handle different event types
-            if event_type == "message_start":
+            # Handle Claude Code specific events
+            if self.client.current_pipeline == "claude-code":
+                if event_type == "text":
+                    text = event.get("text", "")
+                    if text:
+                        current_text += text
+                        self.console.print(text, end="")
+
+                elif event_type == "tool_start":
+                    tool_name = event.get("tool_name", "unknown")
+                    tool_input = event.get("tool_input", {})
+                    self.console.print(f"\n  🔧 [yellow]Claude Code Tool: {tool_name}[/yellow]")
+                    if tool_input and len(str(tool_input)) < 200:
+                        self.console.print(f"     [dim]Input: {tool_input!s}[/dim]")
+
+                elif event_type == "message":
+                    message = event.get("message", "")
+                    if message:
+                        self.console.print(f"\n  💬 [cyan]Claude Code: {message}[/cyan]")
+
+                elif event_type == "message_chunk":
+                    message = event.get("message", "")
+                    if message:
+                        self.console.print(f"\n  📩 [cyan]Chunk: {message}[/cyan]")
+
+                elif event_type == "content_block_delta":
+                    delta = event.get("delta", {})
+                    text = delta.get("text", "")
+                    if text:
+                        current_text += text
+                        self.console.print(text, end="")
+
+                elif event_type == "message_complete":
+                    self.console.print("\n  ✅ [green]Claude Code response completed![/green]")
+                    break
+
+            # Handle traditional Kosuke/Anthropic events
+            elif event_type == "message_start":
                 self.console.print(f"  {emoji} [bold]Starting response...[/bold]")
 
             elif event_type == "content_block_start":

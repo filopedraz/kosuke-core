@@ -75,9 +75,23 @@ export function useCreateProject() {
       if (!response.ok) {
         throw new Error('Failed to create project');
       }
-      const { data } = await response.json();
-      // Extract project from the wrapped response structure
-      const project = data.project || data;
+      const responseData = await response.json();
+
+      // Handle different response structures
+      let project;
+      if (responseData.data) {
+        // Standard API response format: { data: { project: {...} } }
+        project = responseData.data.project || responseData.data;
+      } else {
+        // Direct response format
+        project = responseData.project || responseData;
+      }
+
+      // Validate project data
+      if (!project || !project.id) {
+        throw new Error('Invalid project data received from server');
+      }
+
       return {
         ...project,
         createdAt: new Date(project.createdAt),

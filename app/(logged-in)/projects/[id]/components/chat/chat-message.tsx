@@ -21,7 +21,6 @@ export default function ChatMessage({
   timestamp,
   isLoading = false,
   className,
-  user,
   showAvatar = true,
   hasError = false,
   errorType = 'unknown',

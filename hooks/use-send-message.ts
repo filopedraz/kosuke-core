@@ -257,7 +257,9 @@ const sendMessage = async (
                 // Create tool content block inline
                 if (data.tool_name) {
                   const toolBlock: ContentBlock = {
-                    id: `tool-${assistantMessageId}-${data.tool_name}-${Date.now()}`,
+                    id: data.tool_id
+                      ? `tool-${data.tool_id}`
+                      : `tool-${assistantMessageId}-${data.tool_name}-${Date.now()}`,
                     index: contentBlocks.length,
                     type: 'tool',
                     content: `Executing ${data.tool_name}...`,
@@ -265,6 +267,7 @@ const sendMessage = async (
                     timestamp: new Date(),
                     toolName: data.tool_name,
                     toolInput: data.tool_input, // Include tool input for file path extraction
+                    toolId: data.tool_id, // Store tool ID for matching with tool_stop
                   };
 
                   contentBlocks.push(toolBlock);
@@ -274,15 +277,15 @@ const sendMessage = async (
                     contentBlockCallback([...contentBlocks]);
                   }
                 }
-              } else if (data.type === 'tool_complete') {
-                // Find and finalize the last streaming tool with matching name
-                if (data.tool_name) {
+              } else if (data.type === 'tool_stop') {
+                // Find and finalize the streaming tool with matching ID
+                if (data.tool_id) {
                   let toolBlock: ContentBlock | null = null;
                   for (let i = contentBlocks.length - 1; i >= 0; i--) {
                     if (
                       contentBlocks[i].type === 'tool' &&
-                      contentBlocks[i].toolName === data.tool_name &&
-                      contentBlocks[i].status === 'streaming'
+                      contentBlocks[i].status === 'streaming' &&
+                      contentBlocks[i].toolId === data.tool_id
                     ) {
                       toolBlock = contentBlocks[i];
                       break;
@@ -290,16 +293,15 @@ const sendMessage = async (
                   }
 
                   if (toolBlock) {
-                    toolBlock.status = 'completed';
-                    toolBlock.toolResult = data.result || 'Tool completed successfully';
+                    toolBlock.status = data.is_error ? 'error' : 'completed';
+                    toolBlock.toolResult =
+                      data.tool_result || data.result || 'Tool completed successfully';
 
                     // Notify callback
                     if (contentBlockCallback) {
                       contentBlockCallback([...contentBlocks]);
                     }
                   }
-
-                  // Special handling for task_completed is handled by the tool result
                 }
               } else if (data.type === 'task_summary') {
                 // Add task summary as final content block
@@ -544,18 +546,21 @@ export function useSendMessage(projectId: number) {
     },
     onSettled: () => {
       // Add a delay before invalidating queries to allow webhook to save data
-      setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ['messages', projectId] });
-      }, 2000); // 2 second delay to allow webhook to complete
+      setTimeout(async () => {
+        // Invalidate and wait for the query to settle before clearing streaming state
+        await queryClient.invalidateQueries({ queryKey: ['messages', projectId] });
 
-      // Clean up streaming state
-      setStreamingState({
-        isStreaming: false,
-        expectingWebhookUpdate: false,
-        streamingContentBlocks: [],
-        streamingAssistantMessageId: null,
-        streamAbortController: null,
-      });
+        // Add small delay to ensure new data is rendered
+        setTimeout(() => {
+          setStreamingState({
+            isStreaming: false,
+            expectingWebhookUpdate: false,
+            streamingContentBlocks: [],
+            streamingAssistantMessageId: null,
+            streamAbortController: null,
+          });
+        }, 100); // Small delay to ensure smooth transition
+      }, 2000); // 2 second delay to allow webhook to complete
     },
   });
 
