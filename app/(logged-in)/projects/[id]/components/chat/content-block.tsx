@@ -111,7 +111,7 @@ export default function ContentBlock({
             <div className="pl-2 py-2">
               <div className="text-muted-foreground/70 text-xs leading-relaxed">
                 {contentBlock.content.split('\n').map((line, j) => (
-                  <p key={j} className={line.trim() === '' ? 'h-3' : '[word-break:normal] [overflow-wrap:anywhere]'}>
+                  <p key={j} className={line.trim() === '' ? 'h-3 my-1' : 'my-1 w-full max-w-full [word-break:normal] [overflow-wrap:anywhere]'}>
                     {line}
                   </p>
                 ))}
@@ -199,7 +199,7 @@ export default function ContentBlock({
             // Loading state or fallback for when content is being rendered
             <div className="w-full max-w-full">
               {contentBlock.content.split('\n').map((line, j) => (
-                <p key={j} className={line.trim() === '' ? 'h-4' : '[word-break:normal] [overflow-wrap:anywhere]'}>
+                <p key={j} className={line.trim() === '' ? 'h-4 my-2' : 'my-2 w-full max-w-full [word-break:normal] [overflow-wrap:anywhere]'}>
                   {line}
                 </p>
               ))}
