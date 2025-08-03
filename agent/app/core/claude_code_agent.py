@@ -63,6 +63,7 @@ class ClaudeCodeAgent:
                         yield {"type": "content_block_start"}
                         current_text_block_active = True
 
+                    # Pass through text chunks as they come from claude-code-sdk
                     yield {"type": "content_block_delta", "delta_type": "text_delta", "text": event["text"], "index": 0}
 
                     # Collect for webhook
@@ -86,7 +87,8 @@ class ClaudeCodeAgent:
                         {
                             "type": "tool",
                             "id": event.get("tool_id"),
-                            "name": event["tool_name"],
+                            "name": event["tool_name"],  # Use AssistantBlock format
+                            "input": event.get("tool_input", {}),  # Use AssistantBlock format
                             "status": "pending",
                         }
                     )
@@ -102,7 +104,7 @@ class ClaudeCodeAgent:
                     # Update the existing tool block with the result
                     for block in all_assistant_blocks:
                         if block.get("type") == "tool" and block.get("id") == event["tool_id"]:
-                            block["result"] = event.get("tool_result", "")
+                            block["result"] = event.get("tool_result", "")  # Use AssistantBlock format
                             block["status"] = "completed" if not event.get("is_error", False) else "error"
                             break
 

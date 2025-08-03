@@ -165,20 +165,27 @@ export default function ContentBlock({
 
                     // Second priority: extract from tool result for backward compatibility
                     if (contentBlock.toolResult) {
-                      // Pattern 1: "Successfully [action] [file_path]" - most common
+                      // Pattern 1: "The file [file_path] has been updated/created/read" - Claude Code SDK format
+                      const fileMatch = contentBlock.toolResult.match(/The file\s+([^\s]+)\s+has been/i);
+                      if (fileMatch) {
+                        const filePath = fileMatch[1].trim();
+                        return filePath.split('/').pop(); // Get just the filename
+                      }
+
+                      // Pattern 2: "Successfully [action] [file_path]" - legacy format
                       const successMatch = contentBlock.toolResult.match(/Successfully\s+(?:edited|read|created|deleted)\s+(.+?)(?:\s|$)/i);
                       if (successMatch) {
                         const filePath = successMatch[1].trim();
                         return filePath.split('/').pop(); // Get just the filename
                       }
 
-                      // Pattern 2: "[action] file: [file_path]"
+                      // Pattern 3: "[action] file: [file_path]"
                       const actionMatch = contentBlock.toolResult.match(/(?:file|path)[:=]\s*["']?([^"'\s]+)["']?/i);
                       if (actionMatch) {
                         return actionMatch[1].split('/').pop(); // Get just the filename
                       }
 
-                      // Pattern 3: Look for any file-like path (contains . and /)
+                      // Pattern 4: Look for any file-like path (contains . and /)
                       const pathMatch = contentBlock.toolResult.match(/([a-zA-Z0-9_-]+\/[a-zA-Z0-9_.\/-]+\.[a-zA-Z0-9]+)/);
                       if (pathMatch) {
                         return pathMatch[1].split('/').pop(); // Get just the filename
