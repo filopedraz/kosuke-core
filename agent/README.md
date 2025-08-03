@@ -1,168 +1,298 @@
-# Agentic Coding Pipeline - Python Microservice
+# Kosuke Agent 🤖
 
-AI-powered code generation microservice built with FastAPI, PydanticAI, and Claude 3.5 Sonnet.
+A powerful Python-based agent service using Claude Code CLI and FastAPI for agentic coding workflows.
 
-## Features
+## Quick Start
 
-- 🤖 **Agentic Workflow**: Iterative thinking and execution phases
-- 🔄 **Real-time Streaming**: Server-Sent Events for live updates
-- 🛠️ **File Operations**: Read, create, edit, delete files and directories
-- 🧠 **Context Analysis**: TypeScript project structure analysis
-- 📊 **Observability**: Langfuse integration for AI tracing and monitoring
-- 🚀 **FastAPI**: High-performance async web framework
-- 🐳 **Docker**: Containerized with hot reload for development
+### 1. Environment Setup
 
-## Setup
-
-### 1. Environment Variables
-
-Copy the config file and set your API key:
+Copy the environment template and configure your settings:
 
 ```bash
-cp config.env .env
+cp .env.example .env
 ```
 
-Edit `.env` and set your Anthropic API key:
+**Important**: Edit `.env` and set your `ANTHROPIC_API_KEY` and preferred `CLAUDE_MODEL`.
 
-```env
-ANTHROPIC_API_KEY=your_actual_api_key_here
-```
-
-#### Optional: Configure Langfuse Observability
-
-For AI tracing and monitoring, you can optionally configure Langfuse:
-
-1. Sign up at [https://cloud.langfuse.com](https://cloud.langfuse.com)
-2. Create a project and get your API keys
-3. Add to your `config.env` file:
-
-```env
-LANGFUSE_PUBLIC_KEY=pk-lf-your_public_key_here
-LANGFUSE_SECRET_KEY=sk-lf-your_secret_key_here
-LANGFUSE_HOST=https://cloud.langfuse.com
-```
-
-The integration uses the official [Langfuse Pydantic AI integration](https://langfuse.com/integrations/frameworks/pydantic-ai) which automatically instruments all AI agent interactions. The system will verify your credentials and initialize instrumentation automatically. Simply leave the keys empty to disable observability.
-
-### 2. Development Setup
-
-#### Using Docker (Recommended)
+### 2. Start the Agent
 
 ```bash
-# Build and start the service
+# From the root directory
+docker-compose up agent --build
+```
+
+The agent will be available at `http://localhost:8001`
+
+## 🤖 Claude Model Configuration
+
+### Understanding Model Settings
+
+The agent uses **two separate model configurations**:
+
+1. **`CLAUDE_MODEL`** - Controls the Claude Code CLI tool model
+2. **`MODEL_NAME`** - Controls the Python Anthropic client model
+
+**For consistent behavior, both should be set to the same model.**
+
+### Common Issue: Wrong Model Being Used
+
+If you see the agent using `claude-sonnet-4-20250514` instead of your configured model:
+
+#### **Diagnosis**
+```bash
+# Check your environment file
+cat agent/.env | grep CLAUDE_MODEL
+
+# Check container environment
+docker-compose exec agent env | grep CLAUDE
+
+# Check Claude Code CLI configuration
+docker-compose exec agent claude-code config --list
+```
+
+#### **Solution**
+1. **Create/Update `.env` file**:
+   ```bash
+   # In agent/.env
+   CLAUDE_MODEL=claude-3-7-sonnet-20250219
+   MODEL_NAME=claude-3-7-sonnet-20250219
+   ```
+
+2. **Rebuild the container**:
+   ```bash
+   docker-compose down
+   docker-compose up agent --build
+   ```
+
+3. **Verify the fix**:
+   ```bash
+   docker-compose logs agent | grep -E "(model|claude)"
+   ```
+
+### Supported Models
+
+- `claude-3-7-sonnet-20250219` (Recommended)
+- `claude-sonnet-4-20250514`
+- `claude-3-5-sonnet@20240620`
+- `claude-3-5-haiku@20241022`
+
+## 🏗️ Architecture
+
+```
+agent/
+├── app/                    # Main application package
+│   ├── main.py            # FastAPI app with CORS and routing
+│   ├── api/routes/        # API endpoint definitions
+│   ├── core/              # Core agent logic and workflows
+│   ├── models/            # Pydantic models for validation
+│   ├── services/          # Business logic services
+│   ├── tools/             # Agent tool implementations
+│   └── utils/             # Utilities and configuration
+├── tests/                 # Comprehensive test suite
+├── requirements.txt       # Python dependencies
+├── pyproject.toml        # Tool configuration
+├── Dockerfile            # Container definition
+└── .env                  # Environment configuration (create from .env.example)
+```
+
+## 🛠️ Development
+
+### Prerequisites
+
+- Docker and Docker Compose
+- Python 3.11+ (for local development)
+- Anthropic API key
+
+### Local Development
+
+1. **Setup virtual environment**:
+   ```bash
+   cd agent
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   pip install -r requirements.txt
+   ```
+
+2. **Configure environment**:
+   ```bash
+   cp .env.example .env
+   # Edit .env with your API keys and preferences
+   ```
+
+3. **Run locally**:
+   ```bash
+   uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+   ```
+
+### Code Quality
+
+```bash
+# Format and lint
+ruff format .
+ruff check --fix .
+
+# Type checking
+mypy app/
+
+# Security analysis
+bandit -r app/
+
+# Run tests
+pytest --cov=app
+```
+
+### Docker Development
+
+```bash
+# Build and start
 docker-compose up agent --build
 
-# The service will be available at http://localhost:8000
+# View logs
+docker-compose logs -f agent
+
+# Execute commands in container
+docker-compose exec agent bash
 ```
 
-#### Local Development
+## 🔧 Configuration
 
-```bash
-# Install dependencies
-pip install -r requirements.txt
+### Environment Variables
 
-# Run the server with hot reload
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-```
+| Variable | Description | Default | Required |
+|----------|-------------|---------|----------|
+| `CLAUDE_MODEL` | Claude Code CLI model | `claude-3-7-sonnet-20250219` | No |
+| `MODEL_NAME` | Python client model | `claude-3-7-sonnet-20250219` | No |
+| `ANTHROPIC_API_KEY` | Anthropic API key | - | **Yes** |
+| `LOG_LEVEL` | Logging level | `INFO` | No |
+| `MAX_ITERATIONS` | Max agent iterations | `25` | No |
+| `PROJECTS_DIR` | Projects directory | `projects` | No |
 
-## API Endpoints
+### Agent Tools
+
+Available tools for the Claude Code agent:
+
+- **File Operations**: `Read`, `Write`, `Edit`, `MultiEdit`
+- **System Commands**: `Bash`, `LS`, `Glob`, `Grep`
+- **Workflow**: `Task`, `TodoWrite`, `ExitPlanMode`
+- **Web**: `WebFetch`, `WebSearch`
+- **Notebooks**: `NotebookRead`, `NotebookEdit`
+
+## 🚀 API Endpoints
 
 ### Health Check
-
+```bash
+GET /api/health/simple
 ```
-GET /health
-```
 
-### Chat Streaming
-
-```
-POST /api/chat/stream
+### Agentic Chat Stream
+```bash
+POST /api/agentic/stream
 Content-Type: application/json
 
 {
   "project_id": 1,
-  "prompt": "Create a new React component",
-  "chat_history": []
+  "prompt": "Create a simple React component",
+  "max_iterations": 25
 }
 ```
 
-## Project Structure
-
-```
-agent/
-├── app/
-│   ├── __init__.py
-│   ├── main.py              # FastAPI application
-│   ├── api/                 # API endpoints
-│   ├── core/                # Core agent logic
-│   ├── models/              # Pydantic models
-│   ├── services/            # Business logic services
-│   ├── tools/               # Agent tools
-│   └── utils/               # Utilities
-├── requirements.txt         # Python dependencies
-├── Dockerfile              # Docker configuration
-├── config.env              # Environment variables template
-└── README.md               # This file
-```
-
-## Development
-
-### Hot Reload
-
-The Docker setup includes hot reload - any changes to Python files will automatically restart the server.
-
-### Testing
+## 🧪 Testing
 
 ```bash
-# Run tests
+# Run all tests
 pytest
 
 # Run with coverage
-pytest --cov=app
+pytest --cov=app --cov-report=term-missing
+
+# Run specific test file
+pytest tests/test_health.py
+
+# Verbose output
+pytest -v
 ```
 
-## Integration
+## 📊 Monitoring
 
-This microservice is designed to work with the main Next.js application. The Next.js app proxies chat requests to this service and handles database operations.
+### Logging
 
-### Frontend Integration
+The agent provides structured logging with multiple levels:
 
-The Next.js application should proxy requests to:
+```python
+# In your code
+import logging
+logger = logging.getLogger(__name__)
 
-- `http://agent:8000/api/chat/stream` (when running in Docker)
-- `http://localhost:8000/api/chat/stream` (when running locally)
+logger.info("🎯 Starting task")
+logger.debug("📝 Debug info")
+logger.error("❌ Error occurred")
+```
 
-## Configuration
+### Health Checks
 
-All configuration is handled through environment variables:
+Docker Compose includes health checks:
 
-- `ANTHROPIC_API_KEY`: Your Anthropic API key for Claude access
-- `LANGFUSE_PUBLIC_KEY`: Langfuse public key for observability (optional)
-- `LANGFUSE_SECRET_KEY`: Langfuse secret key for observability (optional)
-- `LANGFUSE_HOST`: Langfuse host URL (default: https://cloud.langfuse.com)
-- `LOG_LEVEL`: Logging level (default: INFO)
-- `MAX_ITERATIONS`: Maximum agent iterations (default: 25)
-- `PROCESSING_TIMEOUT`: Request timeout in ms (default: 90000)
-- `MAX_TOKENS`: Maximum tokens per request (default: 60000)
-- `PROJECTS_DIR`: Directory where projects are stored (default: /app/projects)
+```yaml
+healthcheck:
+  test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/api/health/simple')"]
+  interval: 30s
+  timeout: 10s
+  retries: 3
+```
 
-## Architecture
+## 🔍 Troubleshooting
 
-The service follows a layered architecture:
+### Common Issues
 
-1. **API Layer**: FastAPI endpoints with streaming support
-2. **Core Layer**: Agent workflow and action execution
-3. **Services Layer**: LLM integration, file system, context analysis
-4. **Tools Layer**: Individual agent capabilities
-5. **Models Layer**: Data validation and serialization
+1. **Wrong Claude Model Used**
+   - Check `.env` file exists and has correct `CLAUDE_MODEL`
+   - Rebuild container: `docker-compose up agent --build`
+   - Verify logs: `docker-compose logs agent`
 
-## Error Handling
+2. **API Key Issues**
+   - Verify `ANTHROPIC_API_KEY` in `.env`
+   - Check API key permissions on Anthropic console
 
-The service maintains compatibility with the original TypeScript implementation:
+3. **Container Startup Fails**
+   - Check Docker daemon is running
+   - Verify port 8001 is available
+   - Check logs: `docker-compose logs agent`
 
-- `timeout`: Request timeout errors
-- `parsing`: JSON/response parsing errors
-- `processing`: General processing errors
-- `unknown`: Unexpected errors
+4. **File Permission Errors**
+   - Ensure proper volume mounting in `docker-compose.yml`
+   - Check host directory permissions
 
-All errors are streamed back to the client in real-time.
+### Debug Commands
+
+```bash
+# Check container environment
+docker-compose exec agent env
+
+# Test API endpoint
+curl http://localhost:8001/api/health/simple
+
+# View real-time logs
+docker-compose logs -f agent
+
+# Check Claude Code CLI config
+docker-compose exec agent claude-code config --list
+```
+
+## 🤝 Contributing
+
+1. **Setup Development Environment**
+2. **Make Changes**
+3. **Run Tests**: `pytest`
+4. **Check Code Quality**: `ruff format . && ruff check . && mypy app/`
+5. **Test in Docker**: `docker-compose up agent --build`
+
+## 📚 Additional Resources
+
+- [FastAPI Documentation](https://fastapi.tiangolo.com/)
+- [PydanticAI Documentation](https://ai.pydantic.dev/)
+- [Claude Code CLI Documentation](https://github.com/anthropics/claude-code)
+- [Anthropic API Documentation](https://docs.anthropic.com/)
+
+---
+
+**Need help?** Check the troubleshooting section above or review the logs for specific error messages.
