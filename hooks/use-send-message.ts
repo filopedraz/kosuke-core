@@ -273,6 +273,7 @@ const sendMessage = async (
                     status: 'streaming',
                     timestamp: new Date(),
                     toolName: data.tool_name,
+                    toolInput: data.tool_input, // Include tool input for file path extraction
                   };
 
                   contentBlocks.push(toolBlock);

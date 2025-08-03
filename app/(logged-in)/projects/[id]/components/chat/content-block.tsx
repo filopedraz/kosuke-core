@@ -151,11 +151,16 @@ export default function ContentBlock({
                 <div className={cn(
                   "text-[10px] font-medium text-muted-foreground"
                 )}>
-                  {/* Extract filename from tool result */}
+                  {/* Extract filename from tool input */}
                   {(() => {
+                    // First priority: check tool input for file_path
+                    if (contentBlock.toolInput && 'file_path' in contentBlock.toolInput) {
+                      const filePath = contentBlock.toolInput.file_path as string;
+                      return filePath.split('/').pop(); // Get just the filename
+                    }
+
+                    // Second priority: extract from tool result for backward compatibility
                     if (contentBlock.toolResult) {
-                      // Try to extract file path from tool result - updated patterns for agent responses
-                      
                       // Pattern 1: "Successfully [action] [file_path]" - most common
                       const successMatch = contentBlock.toolResult.match(/Successfully\s+(?:edited|read|created|deleted)\s+(.+?)(?:\s|$)/i);
                       if (successMatch) {
@@ -163,7 +168,7 @@ export default function ContentBlock({
                         return filePath.split('/').pop(); // Get just the filename
                       }
 
-                      // Pattern 2: "[action] file: [file_path]" 
+                      // Pattern 2: "[action] file: [file_path]"
                       const actionMatch = contentBlock.toolResult.match(/(?:file|path)[:=]\s*["']?([^"'\s]+)["']?/i);
                       if (actionMatch) {
                         return actionMatch[1].split('/').pop(); // Get just the filename
@@ -175,7 +180,7 @@ export default function ContentBlock({
                         return pathMatch[1].split('/').pop(); // Get just the filename
                       }
                     }
-                    
+
                     // Fallback to tool name processing
                     const toolAction = contentBlock.toolName?.replace(/_/g, ' ') || 'Tool';
                     return toolAction;
