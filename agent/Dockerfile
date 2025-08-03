@@ -27,15 +27,24 @@ RUN curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /
 # Install Claude Code CLI globally (required by claude-code-sdk)
 RUN npm install -g @anthropic-ai/claude-code
 
+# Set default model for Claude Code CLI (can be overridden by environment variable)
+ENV CLAUDE_MODEL=claude-3-7-sonnet-20250219
+
 # Copy requirements and install Python deps
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy entrypoint script with execute permissions
+COPY --chmod=755 entrypoint.sh /app/entrypoint.sh
 
 # Copy application code
 COPY . .
 
 # Expose port
 EXPOSE 8000
+
+# Use entrypoint script
+ENTRYPOINT ["/app/entrypoint.sh"]
 
 # Development command with hot reload, only watching app directory
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--reload-exclude", "/app/projects"]

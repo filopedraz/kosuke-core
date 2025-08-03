@@ -25,10 +25,16 @@ class ClaudeCodeService:
     Service for using claude-code-sdk with agentic capabilities
 
     This service provides:
-    - Custom agent framework with file-based agent definitions
-    - Tool use capabilities
-    - Parallel agent execution
-    - Smart task routing
+    - All available Claude Code tools (Task, Bash, Glob, Grep, LS, ExitPlanMode,
+      Read, Edit, MultiEdit, Write, NotebookRead, NotebookEdit, WebFetch, TodoWrite, WebSearch)
+    - Project-based working directory isolation
+    - Comprehensive debugging logs
+    - Smart task routing and execution
+
+    Note:
+    - Model selection is handled by the Claude Code CLI configuration, not the Python SDK
+    - Project directories must exist before using this service (no auto-creation)
+    - Supports up to 25 conversation turns by default
     """
 
     def __init__(self, project_id: int):
@@ -40,25 +46,29 @@ class ClaudeCodeService:
         logger.info(f"📁 Project path: {self.project_path}")
         logger.info(f"⚙️ Settings projects_dir: {settings.projects_dir}")
 
-        # Ensure project directory exists (project is already kosuke-template structured)
-        self.project_path.mkdir(parents=True, exist_ok=True)
+        # Check that project directory exists - DO NOT create it if missing
+        if not self.project_path.exists():
+            error_msg = f"❌ Project directory does not exist: {self.project_path}"
+            logger.error(error_msg)
+            raise FileNotFoundError(
+                f"Project directory not found: {self.project_path}. "
+                "Projects must be created before using Claude Code service."
+            )
 
         # Log project directory status
-        if self.project_path.exists():
-            files_count = len(list(self.project_path.rglob("*")))
-            logger.info(f"✅ Project directory exists with {files_count} files/folders")
+        files_count = len(list(self.project_path.rglob("*")))
+        logger.info(f"✅ Project directory exists with {files_count} files/folders")
 
-            # Log directory contents for debugging
-            try:
-                contents = list(self.project_path.iterdir())[:10]  # Limit to first 10 items
-                if contents:
-                    logger.info(f"📂 Directory contents: {[str(p.name) for p in contents]}")
-                else:
-                    logger.warning("⚠️ Project directory is empty!")
-            except Exception as e:
-                logger.error(f"❌ Failed to list directory contents: {e}")
-        else:
-            logger.error(f"❌ Failed to create project directory: {self.project_path}")
+        # Log directory contents for debugging
+        try:
+            contents = list(self.project_path.iterdir())[:10]  # Limit to first 10 items
+            if contents:
+                logger.info(f"📂 Directory contents: {[str(p.name) for p in contents]}")
+            else:
+                logger.warning("⚠️ Project directory is empty!")
+        except Exception as e:
+            logger.error(f"❌ Failed to list directory contents: {e}")
+            raise
 
     def _get_cursor_rules(self) -> str:
         """
@@ -133,20 +143,47 @@ Project Guidelines & Cursor Rules
             system_prompt = "\n\n".join(system_prompt_parts)
             logger.info(f"📋 System prompt length: {len(system_prompt)} characters")
 
-            # Set up claude-code options
+            # Set up claude-code options with all available tools
+            all_tools = [
+                "Task",
+                "Bash",
+                "Glob",
+                "Grep",
+                "LS",
+                "ExitPlanMode",
+                "Read",
+                "Edit",
+                "MultiEdit",
+                "Write",
+                "NotebookRead",
+                "NotebookEdit",
+                "WebFetch",
+                "TodoWrite",
+                "WebSearch",
+            ]
+
             options = ClaudeCodeOptions(
                 cwd=str(self.project_path),
-                allowed_tools=["Read", "Write", "Bash", "Grep"],
+                allowed_tools=all_tools,  # Enable all available tools
                 permission_mode="acceptEdits",  # Auto-accept file edits
                 max_turns=max_turns,
                 system_prompt=system_prompt,
+                # Note: model parameter may not be available in claude-code-sdk
+                # The CLI uses whatever model is configured globally
             )
 
             logger.info("⚙️ Claude Code options configured:")
             logger.info(f"  📁 CWD: {options.cwd}")
-            logger.info(f"  🔧 Tools: {options.allowed_tools}")
+            logger.info(f"  🔧 Tools ({len(all_tools)}): {all_tools}")
             logger.info(f"  🔐 Permission mode: {options.permission_mode}")
             logger.info(f"  🔄 Max turns: {options.max_turns}")
+
+            # Log the currently configured model
+            import os
+
+            current_model = os.getenv("CLAUDE_MODEL", "default")
+            logger.info(f"🤖 Model (from env): {current_model}")
+            logger.info("📝 Note: Model is configured globally in Claude Code CLI via CLAUDE_MODEL env var")
 
             # Stream the agentic query
             logger.info("🚀 Starting Claude Code query stream...")
