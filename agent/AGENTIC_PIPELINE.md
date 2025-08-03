@@ -1,16 +1,25 @@
-# Claude Code Agentic Pipeline
+# Claude Code Repository Agent
 
-This document describes the new agentic pipeline integration using the `claude-code-sdk` for advanced multi-agent workflows.
+This document describes the claude-code-sdk integration for repository analysis and intelligent file modification.
 
 ## Overview
 
-The agentic pipeline provides sophisticated AI agent capabilities beyond simple chat interactions:
+The claude-code agent provides sophisticated repository analysis and file modification capabilities:
 
-- **Multi-agent collaboration**: Multiple specialized agents working together
-- **Intelligent task routing**: Automatic selection of appropriate agents for tasks
-- **File-based agent definitions**: Custom agents defined in Markdown files
-- **Tool-aware execution**: Agents can use tools and understand their capabilities
-- **Parallel processing**: Multiple agents can work simultaneously
+- **Repository Analysis**: Understands existing code structure and architecture
+- **Intelligent File Modification**: Makes thoughtful changes based on context
+- **Tool-Aware Execution**: Automatically uses Read, Write, Bash, and Grep tools
+- **Kosuke Template Integration**: Works with Next.js/React/TypeScript projects
+
+## How Tool Execution Works
+
+**Important**: Tool execution is handled automatically by claude-code-sdk. When Claude decides to use a tool (like Read, Write, Bash, or Grep), the SDK:
+
+1. **Automatically executes the tool** with the parameters Claude specifies
+2. **Returns the results** to Claude without any manual intervention
+3. **Continues the conversation** with the tool results integrated
+
+You don't need to implement tool execution logic - it's all handled behind the scenes by claude-code-sdk.
 
 ## Architecture
 
@@ -18,131 +27,98 @@ The agentic pipeline provides sophisticated AI agent capabilities beyond simple 
 
 1. **ClaudeCodeService** (`app/services/claude_code_service.py`)
    - Wrapper around `claude-code-sdk`
-   - Manages project structure and agent definitions
-   - Handles agent discovery and execution
+   - Manages Kosuke template project structure
+   - Handles single-agent execution
 
 2. **ClaudeCodeAgent** (`app/core/claude_code_agent.py`)
-   - Main agent class for agentic workflows
+   - Main agent class for repository analysis
    - Compatible with existing FastAPI streaming architecture
-   - Provides agent management and execution capabilities
+   - Provides single-agent execution capabilities
 
-3. **Agentic API Routes** (`app/api/routes/agentic.py`)
-   - New endpoints for agentic workflows
-   - Agent management (list, create)
-   - Specialized endpoints for common tasks
+3. **Claude Code API Routes** (`app/api/routes/agentic.py`)
+   - Endpoints matching existing `/chat` interface
+   - Stream and simple (non-streaming) endpoints
+   - Direct compatibility with Next.js frontend
 
-### Agent Structure
+### Project Structure
 
-Agents are defined as Markdown files with YAML frontmatter:
+Projects start with Kosuke template structure:
 
-```markdown
----
-agent-type: "code-analyzer"
-description: "Analyzes code structure and quality"
-when-to-use: "For code analysis and review tasks"
-allowed-tools: ["Read", "Grep", "Bash"]
----
-
-You are a code analysis expert. You can:
-- Analyze code structure and architecture
-- Identify potential issues and improvements
-- Provide code quality metrics
-
-Always provide clear, actionable feedback.
+```
+/tmp/projects/{project_id}/
+├── package.json          # Next.js configuration
+├── app/
+│   └── page.tsx          # Main page component
+├── README.md             # Project documentation
+└── {additional files as created by agent}
 ```
 
 ## API Endpoints
 
-### Agentic Chat Stream
-**POST** `/api/agentic/chat/stream`
+The API provides endpoints that match the existing chat interface for seamless Next.js integration:
 
-Stream agentic responses with multi-agent collaboration.
+### Claude Code Stream
+**POST** `/api/claude-code/stream`
+
+Streaming endpoint that matches the existing `/api/chat/stream` interface.
 
 ```json
 {
   "project_id": 123,
-  "prompt": "Analyze the authentication system",
-  "agent_type": "code-analyzer",  // Optional: specific agent
-  "max_turns": 5,
+  "prompt": "Add a contact form to the homepage",
   "assistant_message_id": 456
 }
 ```
 
-### List Available Agents
-**POST** `/api/agentic/agents/list`
+### Claude Code Simple
+**POST** `/api/claude-code`
 
-Get information about all available agents for a project.
-
-```json
-{
-  "project_id": 123
-}
-```
-
-### Create Custom Agent
-**POST** `/api/agentic/agents/create`
-
-Create a new custom agent with specific capabilities.
+Non-streaming endpoint that matches the existing `/api/chat` interface.
 
 ```json
 {
   "project_id": 123,
-  "agent_type": "security-auditor",
-  "description": "Performs security audits and vulnerability assessments",
-  "system_prompt": "You are a security expert...",
-  "allowed_tools": ["Read", "Grep", "Bash"],
-  "when_to_use": "For security analysis and vulnerability scanning"
+  "prompt": "Analyze the current code structure",
+  "assistant_message_id": 456
 }
 ```
 
-### Specialized Endpoints
+### Test Endpoint
+**GET** `/api/claude-code/test`
 
-#### Code Analysis
-**POST** `/api/agentic/code-analysis`
+Verify the claude-code API is working properly.
 
-Automatic code analysis using the `code-analyzer` agent.
+## Agent Capabilities
 
-#### Development Assistant  
-**POST** `/api/agentic/dev-assistant`
+The single agent can:
 
-Development assistance using the `dev-assistant` agent.
+### Code Analysis
+- Understand existing code structure and architecture
+- Identify potential issues and improvements
+- Assess code quality and suggest optimizations
+- Analyze security considerations
 
-## Default Agents
+### File Operations
+- Read and understand existing files
+- Create new files with appropriate content
+- Modify existing files intelligently
+- Organize project structure
 
-The system includes three default agents:
+### Development Tasks
+- Generate high-quality React/TypeScript code
+- Implement features following best practices
+- Debug issues and provide solutions
+- Add proper documentation and comments
 
-### 1. Code Analyzer (`code-analyzer`)
-- **Purpose**: Code analysis, review, and quality assessment
-- **Tools**: Read, Grep, Bash
-- **Use Cases**: 
-  - Code structure analysis
-  - Quality metrics and improvements
-  - Security considerations
-  - Performance optimization
-
-### 2. File Operations (`file-operations`)
-- **Purpose**: File and directory management
-- **Tools**: Read, Write, Bash, Grep
-- **Use Cases**:
-  - File management and organization
-  - Content searching across files
-  - Project structure management
-  - File metadata handling
-
-### 3. Development Assistant (`dev-assistant`)
-- **Purpose**: Development assistance and code generation
-- **Tools**: Read, Write, Bash
-- **Use Cases**:
-  - Code generation in multiple languages
-  - Debugging and issue resolution
-  - Best practices and patterns
-  - API design and implementation
+### Bash Operations
+- Run build commands and tests
+- Install dependencies via npm/yarn
+- Execute project-specific scripts
+- Perform file system operations
 
 ## Prerequisites
 
 ### 1. Claude Code CLI Installation
-
-The `claude-code-sdk` requires the Claude Code CLI to be installed:
 
 ```bash
 npm install -g @anthropic-ai/claude-code
@@ -150,133 +126,129 @@ npm install -g @anthropic-ai/claude-code
 
 ### 2. Environment Setup
 
-Ensure the `ANTHROPIC_API_KEY` environment variable is set:
-
 ```bash
 export ANTHROPIC_API_KEY="your-api-key-here"
 ```
 
-### 3. Dependencies
-
-Install the required Python dependencies:
+### 3. Python Dependencies
 
 ```bash
-pip install -r requirements.txt
-```
-
-## Project Structure
-
-The agentic pipeline creates the following directory structure for each project:
-
-```
-/tmp/projects/{project_id}/
-├── .claude/
-│   └── agents/
-│       ├── code-analyzer.md
-│       ├── file-operations.md
-│       ├── dev-assistant.md
-│       └── {custom-agents}.md
-├── package.json
-└── {project files}
+cd agent && pip install -r requirements.txt
 ```
 
 ## Usage Examples
 
-### Basic Agentic Query
+### Basic Repository Analysis
+
+```bash
+curl -X POST "http://localhost:8000/api/claude-code/stream" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "project_id": 123,
+    "prompt": "Analyze the current codebase and suggest improvements"
+  }'
+```
+
+### Adding a Feature
+
+```bash
+curl -X POST "http://localhost:8000/api/claude-code/stream" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "project_id": 123, 
+    "prompt": "Add a user authentication system with login and signup forms"
+  }'
+```
+
+### Code Generation
 
 ```python
 from app.core.claude_code_agent import ClaudeCodeAgent
 
 agent = ClaudeCodeAgent(project_id=123)
 
-async for event in agent.run("Analyze the security of this codebase"):
+async for event in agent.run("Create a reusable Button component with TypeScript"):
     if event["type"] == "text":
         print(event["text"])
 ```
 
-### Using Specific Agent
+## Integration with Next.js Frontend
 
-```python
-async for event in agent.run(
-    prompt="Review the authentication module",
-    agent_type="code-analyzer",
-    max_turns=3
-):
-    # Process events
-    pass
+The claude-code endpoints are designed to be drop-in replacements for the existing chat endpoints:
+
+### Frontend Integration
+
+Replace existing chat calls:
+
+```typescript
+// Before (regular chat)
+const response = await fetch('/api/chat/stream', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ project_id, prompt })
+});
+
+// After (claude-code agent)
+const response = await fetch('/api/claude-code/stream', {
+  method: 'POST', 
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ project_id, prompt })
+});
 ```
 
-### Creating Custom Agent
+### Response Format
 
-```python
-agent_file = agent.claude_code_service.create_agent(
-    agent_type="api-designer",
-    description="Designs and reviews API specifications",
-    system_prompt="You are an API design expert...",
-    allowed_tools=["Read", "Write"],
-    when_to_use="For API design and specification tasks"
-)
+The response format is identical to existing chat endpoints:
+
+```typescript
+interface StreamEvent {
+  type: "text" | "tool_start" | "error" | "message_complete";
+  text?: string;
+  tool_name?: string;
+  tool_input?: any;
+  message?: string;
+}
 ```
 
-## Integration with Existing System
+## Tool Execution Details
 
-The agentic pipeline integrates seamlessly with the existing FastAPI architecture:
+### Available Tools
 
-1. **Streaming Compatible**: Uses the same Server-Sent Events streaming as existing endpoints
-2. **Webhook Integration**: Sends completion webhooks to Next.js frontend
-3. **Project Isolation**: Each project has its own agent configuration
-4. **Tool Compatibility**: Works with existing tool infrastructure
+- **Read**: Read file contents, directory listings
+- **Write**: Create/modify files with new content  
+- **Bash**: Execute shell commands (npm install, builds, etc.)
+- **Grep**: Search for patterns across files
+
+### Automatic Execution
+
+When Claude decides to use a tool, claude-code-sdk:
+
+1. **Intercepts the tool call** from Claude's response
+2. **Executes the tool** with the specified parameters
+3. **Captures the output** (file contents, command results, etc.)
+4. **Sends the results back** to Claude automatically
+5. **Continues the conversation** with the tool results
+
+### Example Tool Flow
+
+```
+User: "Add error handling to the API routes"
+
+Claude: "I'll analyze the current API routes first"
+→ claude-code-sdk automatically executes: Read("app/api/")
+
+Claude: "I can see there are 3 API routes. Let me check each one..."
+→ claude-code-sdk automatically executes: Read("app/api/users/route.ts")
+→ claude-code-sdk automatically executes: Read("app/api/auth/route.ts")
+
+Claude: "I'll add proper error handling to each route"
+→ claude-code-sdk automatically executes: Write("app/api/users/route.ts", updated_content)
+→ claude-code-sdk automatically executes: Write("app/api/auth/route.ts", updated_content)
+
+Claude: "Error handling has been added. Here's what I changed..."
+```
 
 ## Error Handling
-
-The system handles various error conditions:
-
-- **CLI Not Found**: Provides clear installation instructions
-- **Process Errors**: Reports exit codes and error details  
-- **SDK Errors**: Handles claude-code-sdk specific errors
-- **Agent Errors**: Graceful handling of agent-specific failures
-
-## Performance Considerations
-
-- **Parallel Execution**: Agents can run in parallel (up to 10 concurrent)
-- **Tool Optimization**: Efficient tool use and caching
-- **Memory Management**: Isolated agent execution prevents memory leaks
-- **Token Efficiency**: Smart context management and tool usage
-
-## Security
-
-- **Tool Permissions**: Fine-grained control over agent tool access
-- **Project Isolation**: Each project has isolated agent environment
-- **Sandboxed Execution**: Agents run in controlled environments
-- **Permission Validation**: Tools are validated before execution
-
-## Monitoring and Debugging
-
-- **Structured Logging**: Comprehensive logging for debugging
-- **Event Streaming**: Real-time visibility into agent operations
-- **Webhook Integration**: Status updates sent to frontend
-- **Error Reporting**: Detailed error information for troubleshooting
-
-## Migration from Existing Agent
-
-The new agentic pipeline can be used alongside the existing agent system:
-
-- **Backward Compatibility**: Existing `/api/chat/*` endpoints remain unchanged
-- **Gradual Migration**: Can migrate specific use cases to agentic endpoints
-- **Feature Parity**: Maintains all existing functionality
-- **Performance Benefits**: Enhanced capabilities through multi-agent collaboration
-
-## Future Enhancements
-
-Planned improvements include:
-
-1. **Agent Marketplace**: Sharing and discovering community agents
-2. **Visual Workflow Builder**: GUI for creating agent workflows
-3. **Advanced Routing**: More sophisticated task-to-agent routing
-4. **Enterprise Features**: Enhanced security and compliance tools
-5. **Custom Tool Integration**: Support for project-specific tools
-
-## Troubleshooting
 
 ### Common Issues
 
@@ -287,34 +259,65 @@ Planned improvements include:
 
 2. **Permission Errors**
    - Check file permissions on `/tmp/projects/`
-   - Ensure proper tool permissions in agent definitions
+   - Ensure claude-code CLI has proper access
 
 3. **API Key Issues**
    - Verify `ANTHROPIC_API_KEY` environment variable
-   - Check API key has proper permissions
-
-4. **Agent Not Found**
-   - Verify agent file exists in `.claude/agents/`
-   - Check agent file format and YAML frontmatter
+   - Ensure API key has claude-code access
 
 ### Debug Mode
-
-Enable debug logging:
 
 ```bash
 export ANTHROPIC_LOG=debug
 ```
 
-This provides detailed information about API calls and agent execution.
+## Performance Considerations
 
-## Contributing
+- **File Caching**: claude-code-sdk caches file reads for efficiency
+- **Tool Optimization**: Smart tool usage to minimize unnecessary operations
+- **Context Management**: Efficient handling of large codebases
+- **Streaming**: Real-time responses for better user experience
 
-To contribute new agents or improvements:
+## Security
 
-1. Create agent definitions following the Markdown + YAML format
-2. Test agents thoroughly with various prompts
-3. Ensure proper tool permissions and security
-4. Document agent capabilities and use cases
-5. Submit pull request with comprehensive tests
+- **Sandboxed Execution**: Tools run in project-specific directories
+- **Permission Control**: Limited to specified project directories
+- **API Key Security**: Secure handling of Anthropic credentials
+- **Process Isolation**: Each project runs independently
 
-For questions or support, please refer to the main project documentation or create an issue in the repository.
+## Migration from Regular Chat
+
+To migrate from regular chat to claude-code agent:
+
+1. **Change endpoint**: `/api/chat/stream` → `/api/claude-code/stream`
+2. **Keep same request format**: No changes to request structure
+3. **Same response format**: Existing frontend code works unchanged
+4. **Enhanced capabilities**: Now includes file modification abilities
+
+## Troubleshooting
+
+### Debug Steps
+
+1. **Test the endpoint**: `curl http://localhost:8000/api/claude-code/test`
+2. **Check CLI installation**: `claude-code --version`
+3. **Verify API key**: Echo `$ANTHROPIC_API_KEY`
+4. **Check logs**: Enable debug logging for detailed output
+
+### Common Solutions
+
+- **Restart after CLI installation**: Ensure PATH is updated
+- **Check project permissions**: Verify write access to `/tmp/projects/`
+- **API rate limits**: Monitor Anthropic API usage
+- **Large files**: claude-code-sdk handles large codebases efficiently
+
+## Next Steps
+
+The claude-code agent provides a powerful foundation for:
+
+1. **Intelligent Code Generation**: Context-aware file creation
+2. **Repository Refactoring**: Large-scale code improvements  
+3. **Feature Implementation**: End-to-end feature development
+4. **Code Analysis**: Comprehensive codebase understanding
+5. **Project Migration**: Converting between frameworks/patterns
+
+For questions or support, refer to the claude-code-sdk documentation or create an issue in the repository.
