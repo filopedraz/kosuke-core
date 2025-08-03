@@ -15,7 +15,7 @@ export const STORAGE_BASE_URL = IS_PRODUCTION
   : 'http://localhost:3000';
 
 // Agent Service
-export const AGENT_SERVICE_URL = process.env.AGENT_SERVICE_URL || 'http://localhost:8000';
+export const AGENT_SERVICE_URL = process.env.AGENT_SERVICE_URL || 'http://localhost:8001';
 
 // Context for file operations
 export const CONTEXT = {
