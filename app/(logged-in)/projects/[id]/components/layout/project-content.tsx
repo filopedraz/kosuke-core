@@ -2,8 +2,8 @@
 
 import { useEffect, useRef } from 'react';
 
-import { useProjectStore, type Project } from '@/lib/stores/projectStore';
 import { usePreviewStart, usePreviewStatus } from '@/hooks/use-preview';
+import { useProjectStore, type Project } from '@/lib/stores/projectStore';
 import { cn } from '@/lib/utils';
 import BrandGuidelines from '../brand/brand-guidelines';
 import ChatInterface from '../chat/chat-interface';
@@ -33,7 +33,7 @@ export default function ProjectContent({
 
   // Reference to the ChatInterface component to maintain its state
   const chatInterfaceRef = useRef<HTMLDivElement>(null);
-  
+
   // Preview management hooks
   const { startPreview } = usePreviewStart(projectId);
   const { checkPreviewStatus } = usePreviewStatus(projectId);
@@ -50,7 +50,7 @@ export default function ProjectContent({
     const checkAndStartPreview = async () => {
       try {
         const status = await checkPreviewStatus();
-        
+
         // If no preview URL is available, automatically start the preview
         if (!status?.previewUrl && !status?.url) {
           console.log(`[ProjectContent] No preview URL found, starting preview for project ${projectId}`);
@@ -65,9 +65,9 @@ export default function ProjectContent({
       }
     };
 
-    // Check and start preview when component mounts
+    // Check and start preview when component mounts or projectId changes
     checkAndStartPreview();
-  }, [projectId, checkPreviewStatus, startPreview]);
+  }, [projectId]); // Only depend on projectId to prevent infinite loop
 
   return (
     <div className={cn('flex h-[calc(100vh-3.5rem)] w-full overflow-hidden')}>

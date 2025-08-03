@@ -1,8 +1,8 @@
-import { useState, useCallback } from 'react';
-import type { ThemeMode, CssVariable } from '@/lib/types';
+import type { CssVariable, ThemeMode } from '@/lib/types';
+import { useCallback, useState } from 'react';
 import { useBrandColors } from './use-brand-colors';
 import { useBrandFonts } from './use-brand-fonts';
-import { useGenerateColorPalette, useApplyColorPalette } from './use-color-palette-generation';
+import { useApplyColorPalette, useGenerateColorPalette } from './use-color-palette-generation';
 
 // Hook that combines all brand guidelines functionality
 export function useBrandGuidelines(projectId: number) {
@@ -35,7 +35,17 @@ export function useBrandGuidelines(projectId: number) {
 
       try {
         const result = await generatePaletteMutation.mutateAsync({ keywords });
-        setGeneratedPalette(result.colors);
+
+        // Transform the API response format to CssVariable format
+        const transformedColors: CssVariable[] = result.colors.map(color => ({
+          name: color.name,
+          lightValue: color.value?.replace(/oklch\(([^)]+)\)/, '$1') || '', // Remove oklch() wrapper
+          darkValue: undefined, // Will be populated if dark mode colors are provided
+          scope: 'root' as const,
+          description: color.description,
+        }));
+
+        setGeneratedPalette(transformedColors);
       } catch {
         // Error handling is done in the mutation
         setIsPalettePreviewOpen(false);
@@ -46,7 +56,15 @@ export function useBrandGuidelines(projectId: number) {
 
   const applyGeneratedPalette = useCallback(async () => {
     setIsPalettePreviewOpen(false);
-    await applyPaletteMutation.mutateAsync(generatedPalette);
+
+    // Transform CssVariable format back to API format for application
+    const apiColors = generatedPalette.map(color => ({
+      name: color.name,
+      value: `oklch(${color.lightValue})`,
+      description: color.description,
+    }));
+
+    await applyPaletteMutation.mutateAsync(apiColors);
   }, [applyPaletteMutation, generatedPalette]);
 
   const getCurrentColorValue = useCallback(

@@ -152,8 +152,8 @@ export default function ColorPaletteModal({
                     </h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {colors.map(color => {
-                        const lightHex = getHexColor(color.lightValue);
-                        const darkHex = color.darkValue ? getHexColor(color.darkValue) : null;
+                        const lightHex = colorToHex(color.lightValue);
+                        const darkHex = color.darkValue ? colorToHex(color.darkValue) : null;
                         const formattedName = formatColorName(color.name);
 
                         return (

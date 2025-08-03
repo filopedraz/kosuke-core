@@ -9,8 +9,8 @@ class ColorVariable(BaseModel):
     """Color variable model representing a CSS custom property"""
 
     name: str = Field(..., description="CSS variable name (e.g., '--primary')")
-    lightValue: str = Field(..., description="Color value for light mode (HSL format without hsl())")
-    darkValue: str | None = Field(None, description="Color value for dark mode (HSL format without hsl())")
+    light_value: str = Field(..., description="Color value for light mode (HSL format without hsl())")
+    dark_value: str | None = Field(None, description="Color value for dark mode (HSL format without hsl())")
     scope: Literal["root", "dark", "light", "unknown"] = Field(default="root", description="CSS scope for the variable")
     description: str | None = Field(None, description="Human-readable description of the color")
 
@@ -18,10 +18,10 @@ class ColorVariable(BaseModel):
         schema_extra: ClassVar = {
             "example": {
                 "name": "--primary",
-                "lightValue": "220 100% 50%",
-                "darkValue": "220 100% 60%",
+                "light_value": "220 100% 50%",
+                "dark_value": "220 100% 60%",
                 "scope": "root",
-                "description": "Primary brand color"
+                "description": "Primary brand color",
             }
         }
 
@@ -30,22 +30,19 @@ class ColorPaletteRequest(BaseModel):
     """Request model for color palette generation"""
 
     keywords: str = Field(default="", description="Keywords to influence color palette generation")
-    existingColors: list[ColorVariable] = Field(default_factory=list, description="Current color variables in the project")
-    applyImmediately: bool = Field(default=False, description="Whether to apply colors immediately to globals.css")
+    existing_colors: list[ColorVariable] = Field(
+        default_factory=list, description="Current color variables in the project"
+    )
+    apply_immediately: bool = Field(default=False, description="Whether to apply colors immediately to globals.css")
 
     class Config:
         schema_extra: ClassVar = {
             "example": {
                 "keywords": "modern healthcare professional",
-                "existingColors": [
-                    {
-                        "name": "--primary",
-                        "lightValue": "210 100% 50%",
-                        "darkValue": "210 100% 60%",
-                        "scope": "root"
-                    }
+                "existing_colors": [
+                    {"name": "--primary", "light_value": "210 100% 50%", "dark_value": "210 100% 60%", "scope": "root"}
                 ],
-                "applyImmediately": True
+                "apply_immediately": True,
             }
         }
 
@@ -57,7 +54,7 @@ class ColorPaletteResponse(BaseModel):
     message: str = Field(default="", description="Human-readable message about the operation")
     colors: list[ColorVariable] = Field(default_factory=list, description="Generated color variables")
     applied: bool = Field(default=False, description="Whether colors were applied to CSS file")
-    projectContent: str = Field(default="", description="Summary of analyzed project content")
+    project_content: str = Field(default="", description="Summary of analyzed project content")
 
     class Config:
         schema_extra: ClassVar = {
@@ -67,14 +64,14 @@ class ColorPaletteResponse(BaseModel):
                 "colors": [
                     {
                         "name": "--primary",
-                        "lightValue": "220 100% 50%",
-                        "darkValue": "220 100% 60%",
+                        "light_value": "220 100% 50%",
+                        "dark_value": "220 100% 60%",
                         "scope": "root",
-                        "description": "Primary brand color"
+                        "description": "Primary brand color",
                     }
                 ],
                 "applied": True,
-                "projectContent": "React application with modern healthcare theme"
+                "project_content": "React application with modern healthcare theme",
             }
         }
 
@@ -88,12 +85,7 @@ class ApplyPaletteRequest(BaseModel):
         schema_extra: ClassVar = {
             "example": {
                 "colors": [
-                    {
-                        "name": "--primary",
-                        "lightValue": "220 100% 50%",
-                        "darkValue": "220 100% 60%",
-                        "scope": "root"
-                    }
+                    {"name": "--primary", "light_value": "220 100% 50%", "dark_value": "220 100% 60%", "scope": "root"}
                 ]
             }
         }
@@ -104,13 +96,9 @@ class ApplyPaletteResponse(BaseModel):
 
     success: bool = Field(..., description="Whether the application was successful")
     message: str = Field(default="", description="Human-readable message about the operation")
-    appliedColors: int = Field(default=0, description="Number of colors successfully applied")
+    applied_colors: int = Field(default=0, description="Number of colors successfully applied")
 
     class Config:
         schema_extra: ClassVar = {
-            "example": {
-                "success": True,
-                "message": "Successfully applied 8 colors to globals.css",
-                "appliedColors": 8
-            }
+            "example": {"success": True, "message": "Successfully applied 8 colors to globals.css", "applied_colors": 8}
         }

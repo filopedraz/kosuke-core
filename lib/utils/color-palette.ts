@@ -2,28 +2,8 @@
  * Color palette generation using Agent microservice
  */
 
-// Agent service configuration
-const AGENT_BASE_URL = process.env.AGENT_SERVICE_URL || 'http://localhost:8000';
-
-export interface ColorVariable {
-  name: string;
-  lightValue: string;
-  darkValue?: string;
-  scope: 'root' | 'dark' | 'light' | 'unknown';
-  description?: string;
-}
-
-export interface ColorPaletteResult {
-  success: boolean;
-  message?: string;
-  colors?: Array<{
-    name: string;
-    value: string;
-    description?: string;
-  }>;
-  applied?: boolean;
-  projectContent?: string;
-}
+import { AGENT_SERVICE_URL } from '@/lib/constants';
+import type { ColorPaletteResult, ColorVariable } from '@/lib/types/branding';
 
 /**
  * Generate a color palette for a project using the agent microservice
@@ -42,14 +22,17 @@ export async function generateColorPalette(
     // Convert existing colors to the agent's expected format
     const formattedExistingColors: ColorVariable[] = existingColors.map(color => ({
       name: color.name,
-      lightValue: typeof color.value === 'string' ? color.value.replace(/hsl\(([^)]+)\)/, '$1') : '',
+      lightValue:
+        typeof color.value === 'string'
+          ? color.value.replace(/oklch\(([^)]+)\)|hsl\(([^)]+)\)/, '$1$2')
+          : '',
       scope: 'root' as const,
       description: color.description as string | undefined,
     }));
 
     // Call agent microservice
     const response = await fetch(
-      `${AGENT_BASE_URL}/api/projects/${projectId}/branding/generate-palette`,
+      `${AGENT_SERVICE_URL}/api/projects/${projectId}/branding/generate-palette`,
       {
         method: 'POST',
         headers: {
@@ -69,15 +52,16 @@ export async function generateColorPalette(
     }
 
     const result = await response.json();
-    
+
     console.log(`✅ Successfully generated ${result.colors?.length || 0} colors`);
 
     // Convert back to the expected format for compatibility
-    const compatibleColors = result.colors?.map((color: ColorVariable) => ({
-      name: color.name,
-      value: `hsl(${color.lightValue})`,
-      description: color.description,
-    })) || [];
+    const compatibleColors =
+      result.colors?.map((color: ColorVariable) => ({
+        name: color.name,
+        value: `oklch(${color.lightValue})`,
+        description: color.description,
+      })) || [];
 
     return {
       success: result.success,
@@ -85,7 +69,6 @@ export async function generateColorPalette(
       colors: compatibleColors,
       applied: result.applied,
     };
-
   } catch (error) {
     console.error('❌ Error generating color palette:', error);
     return {
@@ -110,14 +93,14 @@ export async function applyColorPalette(
     // Convert colors to the agent's expected format
     const formattedColors: ColorVariable[] = colors.map(color => ({
       name: color.name,
-      lightValue: color.value.replace(/hsl\(([^)]+)\)/, '$1'),
+      lightValue: color.value.replace(/oklch\(([^)]+)\)|hsl\(([^)]+)\)/, '$1$2'),
       scope: 'root' as const,
       description: color.description,
     }));
 
     // Call agent microservice
     const response = await fetch(
-      `${AGENT_BASE_URL}/api/projects/${projectId}/branding/apply-palette`,
+      `${AGENT_SERVICE_URL}/api/projects/${projectId}/branding/apply-palette`,
       {
         method: 'POST',
         headers: {
@@ -135,7 +118,7 @@ export async function applyColorPalette(
     }
 
     const result = await response.json();
-    
+
     console.log(`✅ Successfully applied ${result.appliedColors || 0} colors`);
 
     return {
@@ -143,7 +126,6 @@ export async function applyColorPalette(
       message: result.message,
       applied: result.success,
     };
-
   } catch (error) {
     console.error('❌ Error applying color palette:', error);
     return {

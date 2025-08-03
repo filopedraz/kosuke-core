@@ -5,14 +5,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import path from 'path';
 import { z } from 'zod';
 
-// Type for CSS variable
+// Type for CSS variable (local definition for this API route's specific needs)
 type CssVariable = {
   name: string;
   value: string;
   scope: 'root' | 'dark' | 'light' | 'unknown';
 };
 
-// Combined color variable with light/dark variants
+// Combined color variable with light/dark variants (local definition)
 type ColorVariable = {
   name: string;
   lightValue: string;
