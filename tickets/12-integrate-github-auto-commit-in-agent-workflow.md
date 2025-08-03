@@ -1,6 +1,6 @@
 # 📋 Ticket 12: Integrate GitHub Auto-Commit in Agent Workflow
 
-**Priority:** High  
+**Priority:** High
 **Estimated Effort:** 4 hours
 
 ## Description
@@ -11,7 +11,7 @@ Integrate GitHub auto-commit functionality into the existing agent workflow, so 
 
 ```
 agent/app/core/agent.py
-agent/app/core/actions.py
+agent/app/core/tools.py
 agent/app/services/webhook_service.py
 ```
 
@@ -25,8 +25,8 @@ from app.services.github_service import GitHubService
 from typing import Optional
 
 class Agent:
-    def __init__(self):
-        # ... existing initialization
+    def __init__(self, project_id: int, assistant_message_id: int | None = None):
+        # ... existing initialization (project_id, assistant_message_id, webhook_service, etc.)
         self.github_service: Optional[GitHubService] = None
         self.current_session_id: Optional[str] = None
         self.github_token: Optional[str] = None
@@ -108,40 +108,34 @@ class Agent:
                     )
 ```
 
-**agent/app/core/actions.py** - Update to track file changes:
+**agent/app/core/tools.py** - Update to track file changes:
 
 ```python
-# Update ActionExecutor class
-class ActionExecutor:
-    def __init__(self, project_id: int, github_service: Optional[GitHubService] = None, session_id: Optional[str] = None):
-        self.project_id = project_id
-        self.github_service = github_service
-        self.session_id = session_id
+# Update tool execution to track file changes
+async def execute_tool(tool_name: str, tool_input: dict, project_id: int, github_service: Optional[GitHubService] = None, session_id: Optional[str] = None) -> str:
+    """Enhanced tool execution to track GitHub file changes"""
+    try:
+        # ... existing tool execution logic
 
-    async def execute_action(self, action: Action) -> ActionExecutionResult:
-        """Enhanced to track GitHub file changes"""
-        try:
-            # ... existing action execution logic
+        result = await _execute_single_tool(tool_name, tool_input, project_id)
 
-            result = await self._execute_single_action(action)
+        # Track file changes for GitHub if enabled
+        if (github_service and session_id and
+            tool_name in ['create_file', 'edit_file', 'create_directory']):
+            try:
+                file_path = tool_input.get('file_path') or tool_input.get('path')
+                if file_path and not file_path.startswith('/'):
+                    # Track relative file path
+                    github_service.track_file_change(session_id, file_path)
+            except Exception as e:
+                logger.warning(f"Error tracking file change for GitHub: {e}")
+                # Don't fail the tool if GitHub tracking fails
 
-            # Track file changes for GitHub if enabled
-            if (self.github_service and self.session_id and
-                action.type in ['create_file', 'edit_file', 'create_directory']):
-                try:
-                    file_path = action.filePath
-                    if file_path and not file_path.startswith('/'):
-                        # Track relative file path
-                        self.github_service.track_file_change(self.session_id, file_path)
-                except Exception as e:
-                    logger.warning(f"Error tracking file change for GitHub: {e}")
-                    # Don't fail the action if GitHub tracking fails
+        return result
 
-            return result
-
-        except Exception as e:
-            # ... existing error handling
-            raise e
+    except Exception as e:
+        # ... existing error handling
+        raise e
 ```
 
 **agent/app/services/webhook_service.py** - Add commit webhook:
