@@ -50,7 +50,6 @@ class ClaudeCodeAgent:
 
         # Track text block state for proper content_block_stop/start events
         current_text_block_active = False
-        tool_executed_since_last_text = False
 
         try:
             # Stream events from claude-code-sdk
@@ -59,17 +58,10 @@ class ClaudeCodeAgent:
 
                 # Transform events to match our existing format
                 if event["type"] == "text":
-                    # If a tool was executed since the last text, we need to start a new text block
-                    if tool_executed_since_last_text and current_text_block_active:
-                        # End the previous text block
-                        yield {"type": "content_block_stop"}
-                        current_text_block_active = False
-
                     # If no text block is active, start a new one
                     if not current_text_block_active:
                         yield {"type": "content_block_start"}
                         current_text_block_active = True
-                        tool_executed_since_last_text = False
 
                     yield {"type": "content_block_delta", "delta_type": "text_delta", "text": event["text"], "index": 0}
 
@@ -77,8 +69,10 @@ class ClaudeCodeAgent:
                     all_assistant_blocks.append({"type": "text", "content": event["text"]})
 
                 elif event["type"] == "tool_start":
-                    # Mark that a tool has been executed since the last text
-                    tool_executed_since_last_text = True
+                    # End any active text block before starting a tool
+                    if current_text_block_active:
+                        yield {"type": "content_block_stop"}
+                        current_text_block_active = False
 
                     yield {
                         "type": "tool_start",
