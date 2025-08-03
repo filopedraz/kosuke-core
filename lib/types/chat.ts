@@ -118,12 +118,13 @@ export interface ContentBlock {
   index: number;
   type: 'thinking' | 'text' | 'tool';
   content: string;
-  status: 'streaming' | 'completed';
+  status: 'streaming' | 'completed' | 'error';
   isCollapsed?: boolean; // For thinking blocks
   timestamp: Date;
   toolName?: string; // For tool blocks
   toolResult?: string; // For tool blocks
   toolInput?: ToolInput; // For tool blocks - contains input parameters like file_path
+  toolId?: string; // For tool blocks - unique identifier for matching tool_start/tool_stop events
 }
 
 // Webhook Data Types
@@ -187,7 +188,7 @@ export interface StreamingEvent {
     | 'message_delta'
     | 'message_stop'
     | 'tool_start'
-    | 'tool_complete'
+    | 'tool_stop'
     | 'task_summary'
     | 'message_complete'
     | 'error'
@@ -203,6 +204,9 @@ export interface StreamingEvent {
   // Tool-related fields
   tool_name?: string; // Name of the tool being executed
   tool_input?: ToolInput; // Tool input parameters (for tool_start events)
-  result?: string; // Tool execution result
+  tool_id?: string; // Tool ID (for tool_start and tool_stop events)
+  tool_result?: string; // Tool execution result (for tool_stop events)
+  is_error?: boolean; // Whether the tool execution failed (for tool_stop events)
+  result?: string; // Legacy tool execution result
   summary?: string; // Task completion summary
 }

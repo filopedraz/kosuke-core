@@ -135,6 +135,10 @@ export default function ContentBlock({
                 <div className="flex-shrink-0">
                   {contentBlock.status === 'streaming' ? (
                     <Loader2 className="h-3.5 w-3.5 text-blue-500 animate-spin" />
+                  ) : contentBlock.status === 'error' ? (
+                    <div className="h-3.5 w-3.5 bg-red-500 rounded-full flex items-center justify-center">
+                      <span className="text-white text-[8px] font-bold">✗</span>
+                    </div>
                   ) : (
                     <div className="h-3.5 w-3.5 bg-green-500 rounded-full flex items-center justify-center">
                       <span className="text-white text-[8px] font-bold">✓</span>

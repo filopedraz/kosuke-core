@@ -12,7 +12,9 @@ from claude_code_sdk import ClaudeSDKError
 from claude_code_sdk import CLINotFoundError
 from claude_code_sdk import ProcessError
 from claude_code_sdk import TextBlock
+from claude_code_sdk import ToolResultBlock
 from claude_code_sdk import ToolUseBlock
+from claude_code_sdk import UserMessage
 from claude_code_sdk import query
 
 from app.utils.config import settings
@@ -214,8 +216,26 @@ Project Guidelines & Cursor Rules
                             }
                         else:
                             logger.debug(f"❓ Unknown block type {block_idx}: {type(block).__name__}")
+                elif isinstance(message, UserMessage):
+                    logger.debug(f"👤 Processing UserMessage with {len(message.content)} blocks")
+
+                    # Process user message content - looking for tool results
+                    for block_idx, block in enumerate(message.content):
+                        if isinstance(block, ToolResultBlock):
+                            logger.info(f"✅ Tool result block {block_idx}: tool_use_id={block.tool_use_id}")
+                            logger.debug(f"✅ Tool result content: {str(block.content)[:200]}...")
+                            yield {
+                                "type": "tool_stop",
+                                "tool_id": block.tool_use_id,
+                                "tool_result": block.content,
+                                "is_error": getattr(block, "is_error", False),
+                            }
+                        else:
+                            logger.debug(f"📤 User message block {block_idx}: {type(block).__name__}")
+                            # For non-tool-result blocks, treat as regular message
+                            yield {"type": "message", "message": str(block)}
                 else:
-                    # Handle other message types (tool results, etc)
+                    # Handle other message types
                     logger.debug(f"📤 Other message type: {type(message).__name__}")
                     logger.debug(f"📤 Message content preview: {str(message)[:200]}...")
                     yield {"type": "message", "message": str(message)}
