@@ -7,8 +7,10 @@ import {
   Eye,
   LayoutDashboard,
   LogOut,
+  MessageSquare,
   Settings,
   Sparkles,
+  X,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -25,40 +27,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
-
-// Modern animated hamburger menu icon component
-function HamburgerIcon({ 
-  isOpen, 
-  className 
-}: { 
-  isOpen: boolean; 
-  className?: string; 
-}) {
-  return (
-    <div className={cn("w-5 h-5 flex flex-col justify-center items-center", className)}>
-      <div className="w-full h-[2px] bg-current rounded-full relative">
-        <div 
-          className={cn(
-            "absolute inset-0 bg-current rounded-full transition-all duration-300 ease-in-out",
-            isOpen ? "rotate-45 translate-y-0" : "rotate-0 -translate-y-1.5"
-          )}
-        />
-        <div 
-          className={cn(
-            "absolute inset-0 bg-current rounded-full transition-all duration-300 ease-in-out",
-            isOpen ? "opacity-0 scale-0" : "opacity-100 scale-100"
-          )}
-        />
-        <div 
-          className={cn(
-            "absolute inset-0 bg-current rounded-full transition-all duration-300 ease-in-out",
-            isOpen ? "-rotate-45 translate-y-0" : "rotate-0 translate-y-1.5"
-          )}
-        />
-      </div>
-    </div>
-  );
-}
 
 type NavbarProps = {
   variant?: 'standard' | 'project' | 'waitlist';
@@ -91,10 +59,7 @@ export default function Navbar({ variant = 'standard', projectProps, className }
     if (!isSignedIn) {
       return (
         <div className="flex items-center gap-2">
-          <Link
-            href="/sign-in"
-            className="text-sm font-medium text-gray-600 hover:text-gray-900"
-          >
+          <Link href="/sign-in" className="text-sm font-medium text-gray-600 hover:text-gray-900">
             Sign In
           </Link>
           <Link
@@ -209,10 +174,11 @@ export default function Navbar({ variant = 'standard', projectProps, className }
                   aria-label={projectProps.isChatCollapsed ? 'Open chat panel' : 'Close chat panel'}
                   title={projectProps.isChatCollapsed ? 'Open chat panel' : 'Close chat panel'}
                 >
-                  <HamburgerIcon 
-                    isOpen={!projectProps.isChatCollapsed} 
-                    className="text-foreground"
-                  />
+                  {projectProps.isChatCollapsed ? (
+                    <MessageSquare className="h-4 w-4" />
+                  ) : (
+                    <X className="h-4 w-4" />
+                  )}
                 </Button>
               )}
             </div>
