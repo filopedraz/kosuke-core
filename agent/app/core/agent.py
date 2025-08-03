@@ -240,7 +240,7 @@ class Agent:
         tool_calls = [block for block in content_blocks if block.get("type") == "tool_use"]
 
         for tool_call in tool_calls:
-            yield {"type": "tool_start", "tool_name": tool_call["name"]}
+            yield {"type": "tool_start", "tool_name": tool_call["name"], "tool_input": tool_call["input"]}
 
             try:
                 result = await execute_tool(tool_call["name"], tool_call["input"], self.project_id)

@@ -77,6 +77,7 @@ export default function ChatMessage({
           content: `Executed ${block.name}`,
           toolName: block.name,
           toolResult: block.result || 'Tool completed successfully',
+          toolInput: block.input, // Pass the tool input data
         };
       }
 
