@@ -50,6 +50,7 @@ class ClaudeCodeAgent:
 
         # Track text block state for proper content_block_stop/start events
         current_text_block_active = False
+        current_text_content = ""  # Accumulate text chunks for single block
 
         try:
             # Stream events from claude-code-sdk
@@ -62,18 +63,23 @@ class ClaudeCodeAgent:
                     if not current_text_block_active:
                         yield {"type": "content_block_start"}
                         current_text_block_active = True
+                        current_text_content = ""
 
                     # Pass through text chunks as they come from claude-code-sdk
                     yield {"type": "content_block_delta", "delta_type": "text_delta", "text": event["text"], "index": 0}
 
-                    # Collect for webhook
-                    all_assistant_blocks.append({"type": "text", "content": event["text"]})
+                    # Accumulate text content for single block
+                    current_text_content += event["text"]
 
                 elif event["type"] == "tool_start":
                     # End any active text block before starting a tool
                     if current_text_block_active:
                         yield {"type": "content_block_stop"}
                         current_text_block_active = False
+                        # Save accumulated text content
+                        if current_text_content.strip():
+                            all_assistant_blocks.append({"type": "text", "content": current_text_content})
+                        current_text_content = ""
 
                     yield {
                         "type": "tool_start",
@@ -112,6 +118,9 @@ class ClaudeCodeAgent:
                     # End any active text block before erroring
                     if current_text_block_active:
                         yield {"type": "content_block_stop"}
+                        # Save accumulated text content
+                        if current_text_content.strip():
+                            all_assistant_blocks.append({"type": "text", "content": current_text_content})
 
                     yield {"type": "error", "message": event["message"]}
                     await self._send_assistant_message_webhook(all_assistant_blocks, success=False)
@@ -125,6 +134,9 @@ class ClaudeCodeAgent:
             # End any active text block before completing the message
             if current_text_block_active:
                 yield {"type": "content_block_stop"}
+                # Save accumulated text content
+                if current_text_content.strip():
+                    all_assistant_blocks.append({"type": "text", "content": current_text_content})
 
             # Send completion events
             yield {"type": "message_complete"}
@@ -134,6 +146,9 @@ class ClaudeCodeAgent:
             # End any active text block before erroring
             if current_text_block_active:
                 yield {"type": "content_block_stop"}
+                # Save accumulated text content
+                if current_text_content.strip():
+                    all_assistant_blocks.append({"type": "text", "content": current_text_content})
 
             error_msg = f"Error in claude-code agent: {e}"
             print(f"❌ {error_msg}")
