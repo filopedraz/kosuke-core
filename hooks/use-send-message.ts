@@ -550,6 +550,12 @@ export function useSendMessage(projectId: number) {
         // Invalidate and wait for the query to settle before clearing streaming state
         await queryClient.invalidateQueries({ queryKey: ['messages', projectId] });
 
+        // Trigger preview refresh after streaming completes to show reflected changes
+        const fileUpdatedEvent = new CustomEvent('file-updated', {
+          detail: { projectId },
+        });
+        window.dispatchEvent(fileUpdatedEvent);
+
         // Add small delay to ensure new data is rendered
         setTimeout(() => {
           setStreamingState({
