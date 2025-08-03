@@ -1,7 +1,7 @@
-import { NextResponse } from 'next/server';
+import { parseLayoutForFonts } from '@/lib/utils/font-parser';
 import * as fs from 'fs/promises';
+import { NextResponse } from 'next/server';
 import * as path from 'path';
-import { parseLayoutForFonts } from '@/lib/font-parser';
 
 export async function GET(
   request: Request,
@@ -11,12 +11,12 @@ export async function GET(
     // Await params object before accessing properties
     const paramsObj = await params;
     const projectId = paramsObj.id;
-    
+
     const layoutPath = path.join(process.cwd(), 'projects', projectId, 'app/layout.tsx');
-    
+
     const layoutContent = await fs.readFile(layoutPath, 'utf-8');
     const fontData = parseLayoutForFonts(layoutContent);
-    
+
     return NextResponse.json({ fonts: fontData });
   } catch (error) {
     console.error('Error fetching fonts:', error);
@@ -25,4 +25,4 @@ export async function GET(
       { status: 500 }
     );
   }
-} 
+}

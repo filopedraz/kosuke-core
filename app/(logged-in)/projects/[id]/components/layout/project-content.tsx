@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 
+import { usePreviewStart, usePreviewStatus } from '@/hooks/use-preview';
 import { useProjectStore, type Project } from '@/lib/stores/projectStore';
 import { cn } from '@/lib/utils';
 import BrandGuidelines from '../brand/brand-guidelines';
@@ -33,12 +34,40 @@ export default function ProjectContent({
   // Reference to the ChatInterface component to maintain its state
   const chatInterfaceRef = useRef<HTMLDivElement>(null);
 
+  // Preview management hooks
+  const { startPreview } = usePreviewStart(projectId);
+  const { checkPreviewStatus } = usePreviewStatus(projectId);
+
   // Set the current project in the store when the component mounts or project changes
   useEffect(() => {
     setCurrentProject(project);
     // Optionally reset view/chat state when project changes
     useProjectStore.setState({ currentView: 'preview', isChatCollapsed: false });
   }, [project, setCurrentProject]);
+
+  // Automatically check and start preview if not running
+  useEffect(() => {
+    const checkAndStartPreview = async () => {
+      try {
+        const status = await checkPreviewStatus();
+
+        // If no preview URL is available, automatically start the preview
+        if (!status?.previewUrl && !status?.url) {
+          console.log(`[ProjectContent] No preview URL found, starting preview for project ${projectId}`);
+          // Start preview silently (no success toast for automatic attempts)
+          await startPreview();
+        } else {
+          console.log(`[ProjectContent] Preview already running for project ${projectId}:`, status.previewUrl || status.url);
+        }
+      } catch (error) {
+        console.error(`[ProjectContent] Error checking/starting preview for project ${projectId}:`, error);
+        // Don't show error toast for automatic attempts - user didn't manually trigger this
+      }
+    };
+
+    // Check and start preview when component mounts or projectId changes
+    checkAndStartPreview();
+  }, [projectId]); // Only depend on projectId to prevent infinite loop
 
   return (
     <div className={cn('flex h-[calc(100vh-3.5rem)] w-full overflow-hidden')}>

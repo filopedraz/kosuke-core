@@ -1,6 +1,6 @@
 # 📋 Ticket 13: Next.js GitHub Integration Routes
 
-**Priority:** Medium  
+**Priority:** Medium
 **Estimated Effort:** 3 hours
 
 ## Description
@@ -340,8 +340,8 @@ import { eq } from 'drizzle-orm';
 
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
+    const { userId } = auth();
+    if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -349,7 +349,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     const body = await request.json();
 
     // Get user's GitHub token
-    const githubToken = await getGitHubToken(session.user.id);
+    const githubToken = await getGitHubToken(userId);
     if (!githubToken) {
       return NextResponse.json({ error: 'GitHub not connected' }, { status: 400 });
     }
@@ -398,7 +398,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 
 ```typescript
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { auth } from '@clerk/nextjs/server';
 import { getGitHubToken } from '@/lib/github/auth';
 import { db } from '@/lib/db';
 import { projects } from '@/lib/db/schema';
@@ -406,8 +406,8 @@ import { eq } from 'drizzle-orm';
 
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
+    const { userId } = auth();
+    if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -415,7 +415,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     const { repo_url } = await request.json();
 
     // Get user's GitHub token
-    const githubToken = await getGitHubToken(session.user.id);
+    const githubToken = await getGitHubToken(userId);
     if (!githubToken) {
       return NextResponse.json({ error: 'GitHub not connected' }, { status: 400 });
     }
@@ -518,17 +518,17 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 
 ```typescript
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { auth } from '@clerk/nextjs/server';
 import { getUserGitHubInfo } from '@/lib/github/auth';
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
+    const { userId } = auth();
+    if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const githubInfo = await getUserGitHubInfo(session.user.id);
+    const githubInfo = await getUserGitHubInfo(userId);
 
     return NextResponse.json({
       connected: !!githubInfo,
@@ -545,17 +545,17 @@ export async function GET(request: NextRequest) {
 
 ```typescript
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { auth } from '@clerk/nextjs/server';
 import { disconnectGitHub } from '@/lib/github/auth';
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
+    const { userId } = auth();
+    if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    await disconnectGitHub(session.user.id);
+    await disconnectGitHub(userId);
 
     return NextResponse.json({ success: true });
   } catch (error) {
@@ -595,8 +595,8 @@ This comprehensive plan covers:
 **Total Estimated Effort:** ~30 hours
 
 **Benefits:**
-✅ Lean Next.js focused on frontend  
-✅ Centralized agent handling all operations  
-✅ Modern GitHub workflow like Vercel  
-✅ Automatic change tracking and commits  
+✅ Lean Next.js focused on frontend
+✅ Centralized agent handling all operations
+✅ Modern GitHub workflow like Vercel
+✅ Automatic change tracking and commits
 ✅ Clean separation of concerns

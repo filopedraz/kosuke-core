@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { desc, eq } from 'drizzle-orm';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -34,7 +34,7 @@ export async function GET() {
       .select()
       .from(projects)
       .where(eq(projects.userId, userId))
-      .orderBy(projects.createdAt);
+      .orderBy(desc(projects.createdAt));
 
     return NextResponse.json(userProjects);
   } catch (error) {

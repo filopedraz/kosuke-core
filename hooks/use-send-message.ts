@@ -36,10 +36,9 @@ const sendMessage = async (
   contextTokens?: number;
   error?: string;
   errorType?: ErrorType;
+  expectingWebhookUpdate?: boolean;
 }> => {
   try {
-    console.log('💾 Sending message via unified endpoint');
-
     // For image uploads, use FormData
     let requestBody: FormData | string;
     const requestHeaders: HeadersInit = {};
@@ -109,7 +108,6 @@ const sendMessage = async (
 
       // Extract assistant message ID from response headers for real-time updates
       const assistantMessageId = parseInt(response.headers.get('X-Assistant-Message-Id') || '0');
-      console.log(`📱 Assistant message ID for streaming updates: ${assistantMessageId}`);
 
       // Notify callback with assistant message ID
       if (setAssistantIdCallback) {
@@ -141,12 +139,10 @@ const sendMessage = async (
               // Handle [DONE] marker
               if (rawData === '[DONE]') {
                 isStreamActive = false;
-                console.log('✅ Streaming completed');
                 break;
               }
 
               const data: StreamingEvent = JSON.parse(rawData);
-              console.log('📡 Streaming update:', data);
 
               // Handle content block lifecycle events
               if (data.type === 'content_block_start') {
@@ -162,7 +158,6 @@ const sendMessage = async (
 
                 // Always append sequentially
                 contentBlocks.push(newBlock);
-                console.log(`📝 Created content block ${contentBlocks.length - 1}`);
 
                 // Notify callback
                 if (contentBlockCallback) {
@@ -230,8 +225,6 @@ const sendMessage = async (
                   }
                 }
 
-                console.log(`📝 Updated content block: ${data.delta_type}`);
-
                 // Notify callback
                 if (contentBlockCallback) {
                   contentBlockCallback([...contentBlocks]);
@@ -255,8 +248,6 @@ const sendMessage = async (
                     lastStreamingBlock.isCollapsed = true;
                   }
 
-                  console.log(`✅ Completed content block: ${lastStreamingBlock.type}`);
-
                   // Notify callback
                   if (contentBlockCallback) {
                     contentBlockCallback([...contentBlocks]);
@@ -273,10 +264,10 @@ const sendMessage = async (
                     status: 'streaming',
                     timestamp: new Date(),
                     toolName: data.tool_name,
+                    toolInput: data.tool_input, // Include tool input for file path extraction
                   };
 
                   contentBlocks.push(toolBlock);
-                  console.log(`🔧 Tool Started: ${data.tool_name}`);
 
                   // Notify callback
                   if (contentBlockCallback) {
@@ -301,8 +292,6 @@ const sendMessage = async (
                   if (toolBlock) {
                     toolBlock.status = 'completed';
                     toolBlock.toolResult = data.result || 'Tool completed successfully';
-
-                    console.log(`✅ Tool Completed: ${data.tool_name}`);
 
                     // Notify callback
                     if (contentBlockCallback) {
@@ -334,7 +323,6 @@ const sendMessage = async (
               } else if (data.type === 'message_complete') {
                 // Handle message completion
                 isStreamActive = false;
-                console.log('✅ Message streaming completed');
                 break;
               } else if (data.type === 'error') {
                 // Handle errors
@@ -344,7 +332,6 @@ const sendMessage = async (
               } else if (data.type === 'completed') {
                 // Legacy completion handling
                 isStreamActive = false;
-                console.log('✅ Streaming completed');
                 break;
               }
             } catch (parseError) {
@@ -367,6 +354,8 @@ const sendMessage = async (
         }
       }
 
+      // Mark that we're expecting a webhook update
+
       // Return success response with assistant message ID
       return {
         message: {
@@ -376,6 +365,7 @@ const sendMessage = async (
           timestamp: new Date(),
         } as ApiChatMessage,
         success: true,
+        expectingWebhookUpdate: true,
       };
     }
   } catch (error) {
@@ -391,7 +381,7 @@ export function useSendMessage(projectId: number) {
   // Streaming state (minimal React state for real-time updates)
   const [streamingState, setStreamingState] = useState({
     isStreaming: false,
-
+    expectingWebhookUpdate: false,
     streamingContentBlocks: [] as ContentBlock[],
     streamingAssistantMessageId: null as number | null,
     streamAbortController: null as AbortController | null,
@@ -400,11 +390,10 @@ export function useSendMessage(projectId: number) {
   // Function to cancel ongoing stream
   const cancelStream = useCallback(() => {
     if (streamingState.streamAbortController) {
-      console.log('🛑 Cancelling stream...');
       streamingState.streamAbortController.abort();
       setStreamingState({
         isStreaming: false,
-
+        expectingWebhookUpdate: false,
         streamingContentBlocks: [],
         streamingAssistantMessageId: null,
         streamAbortController: null,
@@ -420,6 +409,7 @@ export function useSendMessage(projectId: number) {
       setStreamingState(prev => ({
         ...prev,
         isStreaming: true,
+        expectingWebhookUpdate: false,
         streamingContentBlocks: [],
         streamAbortController: abortController,
       }));
@@ -533,17 +523,35 @@ export function useSendMessage(projectId: number) {
         window.dispatchEvent(fileUpdatedEvent);
       }
 
-      // Invalidate and refetch
-      queryClient.invalidateQueries({ queryKey: ['messages', projectId] });
+      // If we're expecting a webhook update, set the flag and delay invalidation
+      if ('expectingWebhookUpdate' in data && data.expectingWebhookUpdate) {
+        setStreamingState(prev => ({
+          ...prev,
+          expectingWebhookUpdate: true,
+        }));
+
+        // Start a timer to stop expecting webhook updates after a reasonable time
+        setTimeout(() => {
+          setStreamingState(prev => ({
+            ...prev,
+            expectingWebhookUpdate: false,
+          }));
+        }, 10000); // 10 second timeout
+      } else {
+        // Immediate invalidation for non-streaming messages (like image uploads)
+        queryClient.invalidateQueries({ queryKey: ['messages', projectId] });
+      }
     },
     onSettled: () => {
-      // Always invalidate when settled (success or error)
-      queryClient.invalidateQueries({ queryKey: ['messages', projectId] });
+      // Add a delay before invalidating queries to allow webhook to save data
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['messages', projectId] });
+      }, 2000); // 2 second delay to allow webhook to complete
 
       // Clean up streaming state
       setStreamingState({
         isStreaming: false,
-
+        expectingWebhookUpdate: false,
         streamingContentBlocks: [],
         streamingAssistantMessageId: null,
         streamAbortController: null,

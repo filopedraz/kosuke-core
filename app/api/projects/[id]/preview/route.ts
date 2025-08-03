@@ -1,4 +1,5 @@
 import { auth } from '@/lib/auth/server';
+import { AGENT_SERVICE_URL } from '@/lib/constants';
 import { db } from '@/lib/db/drizzle';
 import { projects } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
@@ -31,12 +32,9 @@ export async function GET(
       );
     }
 
-    console.log(`[Preview API] GET request for project ${projectId}`);
-
     // Get the project
     const [project] = await db.select().from(projects).where(eq(projects.id, projectId));
     if (!project) {
-      console.log(`[Preview API] Project ${projectId} not found`);
       return NextResponse.json(
         { error: 'Project not found' },
         { status: 404 }
@@ -45,7 +43,6 @@ export async function GET(
 
     // Check if the user has access to the project
     if (project.createdBy !== userId) {
-      console.log(`[Preview API] User ${userId} does not have access to project ${projectId}`);
       return NextResponse.json(
         { error: 'Forbidden' },
         { status: 403 }
@@ -53,8 +50,7 @@ export async function GET(
     }
 
     // Proxy request to Python agent
-    const agentUrl = process.env.AGENT_SERVICE_URL || 'http://localhost:8000';
-    const response = await fetch(`${agentUrl}/api/preview/status/${projectId}`, {
+    const response = await fetch(`${AGENT_SERVICE_URL}/api/preview/status/${projectId}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -63,17 +59,54 @@ export async function GET(
 
     if (!response.ok) {
       const error = await response.text();
-      console.error(`[Preview API] Agent error: ${error}`);
       return NextResponse.json(
         { error: 'Failed to get preview status', details: error },
         { status: response.status }
       );
     }
 
-    const result = await response.json();
-    console.log(`[Preview API] Returning preview status for project ${projectId}`, result);
+        const result = await response.json();
 
-    // Transform the response to match frontend expectations
+    // If container is not running, automatically start it
+    if (!result.running && result.url === null) {
+      try {
+        const startResponse = await fetch(`${AGENT_SERVICE_URL}/api/preview/start`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            project_id: projectId,
+            env_vars: {}, // TODO: Add environment variables from database
+          }),
+        });
+
+        if (!startResponse.ok) {
+          const startError = await startResponse.text();
+          return NextResponse.json(
+            { error: 'Failed to start preview container', details: startError },
+            { status: startResponse.status }
+          );
+        }
+
+        const startResult = await startResponse.json();
+
+        // Return the started container info
+        const transformedResult = {
+          ...startResult,
+          previewUrl: startResult.url || null,
+        };
+
+        return NextResponse.json(transformedResult);
+      } catch (startError) {
+        return NextResponse.json(
+          { error: 'Failed to start preview container', details: String(startError) },
+          { status: 500 }
+        );
+      }
+    }
+
+    // Container is already running, return status
     const transformedResult = {
       ...result,
       previewUrl: result.url || null, // Map 'url' to 'previewUrl' for frontend compatibility
@@ -81,7 +114,6 @@ export async function GET(
 
     return NextResponse.json(transformedResult);
   } catch (error: unknown) {
-    console.error('[Preview API] Error getting preview URL:', error);
 
     // Return a more detailed error message
     const errorMessage = error instanceof Error ?
@@ -143,8 +175,7 @@ export async function POST(
     }
 
     // Proxy request to Python agent
-    const agentUrl = process.env.AGENT_SERVICE_URL || 'http://localhost:8000';
-    const response = await fetch(`${agentUrl}/api/preview/start`, {
+    const response = await fetch(`${AGENT_SERVICE_URL}/api/preview/start`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -157,7 +188,6 @@ export async function POST(
 
     if (!response.ok) {
       const error = await response.text();
-      console.error(`[Preview API] Agent error: ${error}`);
       return NextResponse.json(
         { error: 'Failed to start preview', details: error },
         { status: response.status }
@@ -165,9 +195,15 @@ export async function POST(
     }
 
     const result = await response.json();
-    return NextResponse.json(result);
-  } catch (error: unknown) {
-    console.error('Error starting preview:', error);
+
+    // Transform the response to match frontend expectations
+    const transformedResult = {
+      ...result,
+      previewUrl: result.url || null, // Map 'url' to 'previewUrl' for frontend compatibility
+    };
+
+    return NextResponse.json(transformedResult);
+  } catch {
     return NextResponse.json(
       { error: 'Internal Server Error' },
       { status: 500 }
@@ -220,8 +256,7 @@ export async function DELETE(
     }
 
     // Proxy request to Python agent
-    const agentUrl = process.env.AGENT_SERVICE_URL || 'http://localhost:8000';
-    const response = await fetch(`${agentUrl}/api/preview/stop`, {
+    const response = await fetch(`${AGENT_SERVICE_URL}/api/preview/stop`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -231,7 +266,6 @@ export async function DELETE(
 
     if (!response.ok) {
       const error = await response.text();
-      console.error(`[Preview API] Agent error: ${error}`);
       return NextResponse.json(
         { error: 'Failed to stop preview', details: error },
         { status: response.status }
@@ -240,8 +274,7 @@ export async function DELETE(
 
     const result = await response.json();
     return NextResponse.json(result);
-  } catch (error: unknown) {
-    console.error('Error stopping preview:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Internal Server Error' },
       { status: 500 }

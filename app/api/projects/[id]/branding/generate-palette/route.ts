@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { applyColorPalette, generateColorPalette } from '@/lib/utils/color-palette';
 import fs from 'fs/promises';
+import { NextRequest, NextResponse } from 'next/server';
 import path from 'path';
-import { generateColorPalette, applyColorPalette } from '@/lib/llm/brand/colorPalette';
 
 /**
  * Generate a color palette for a project
@@ -10,14 +10,14 @@ import { generateColorPalette, applyColorPalette } from '@/lib/llm/brand/colorPa
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Authentication would normally be checked here
     // Since we don't know exact auth implementation, skipping for now
-    
+
     // Ensure params is fully resolved before accessing properties
-    const { id } = params;
+    const { id } = await params;
     const projectId = parseInt(id, 10);
     if (isNaN(projectId)) {
       return NextResponse.json(
@@ -29,7 +29,7 @@ export async function POST(
     // Check if we should apply the palette or just generate it
     const url = new URL(request.url);
     const shouldApply = url.searchParams.get('apply') === 'true';
-    
+
     // Extract request body
     let requestBody;
     try {
@@ -37,7 +37,7 @@ export async function POST(
     } catch {
       requestBody = {};
     }
-    
+
     // If the request body contains colors, apply those instead of generating new ones
     let colors;
     if (shouldApply && requestBody.colors && Array.isArray(requestBody.colors)) {
@@ -48,12 +48,12 @@ export async function POST(
     if (!colors) {
       // Extract keywords from request body
       const keywords = requestBody.keywords || '';
-      
+
       // Fetch existing colors
       const colorsResponse = await fetch(
         `${request.nextUrl.origin}/api/projects/${projectId}/branding/colors`,
-        { 
-          headers: { 
+        {
+          headers: {
             cookie: request.headers.get('cookie') || '',
           }
         }
@@ -71,7 +71,7 @@ export async function POST(
 
       // Fetch project home page to analyze
       const projectDir = path.join(process.cwd(), 'projects', projectId.toString());
-      
+
       // Try to find the home page file (page.tsx, index.tsx, etc.)
       let homePageContent = '';
       try {
@@ -133,14 +133,14 @@ export async function POST(
 
       if (!paletteResult.success || !paletteResult.colors) {
         return NextResponse.json(
-          { 
-            success: false, 
-            message: paletteResult.message || 'Failed to generate color palette' 
+          {
+            success: false,
+            message: paletteResult.message || 'Failed to generate color palette'
           },
           { status: 500 }
         );
       }
-      
+
       colors = paletteResult.colors;
     }
 
@@ -151,14 +151,14 @@ export async function POST(
 
       if (!applyResult.success) {
         return NextResponse.json(
-          { 
-            success: false, 
-            message: applyResult.message || 'Failed to apply color palette' 
+          {
+            success: false,
+            message: applyResult.message || 'Failed to apply color palette'
           },
           { status: 500 }
         );
       }
-      
+
       return NextResponse.json({
         success: true,
         message: 'Successfully generated and applied color palette',
@@ -175,11 +175,11 @@ export async function POST(
   } catch (error) {
     console.error('Error in generate-palette API:', error);
     return NextResponse.json(
-      { 
-        success: false, 
-        message: error instanceof Error ? error.message : 'Unknown error occurred' 
+      {
+        success: false,
+        message: error instanceof Error ? error.message : 'Unknown error occurred'
       },
       { status: 500 }
     );
   }
-} 
+}

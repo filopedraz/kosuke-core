@@ -1,7 +1,7 @@
 'use client';
 
-import { Loader2, CheckCircle2, AlertCircle, Code } from 'lucide-react';
-import { useState, useEffect, useCallback } from 'react';
+import { AlertCircle, CheckCircle2, Code, Loader2 } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -14,16 +14,16 @@ interface BuildingStatusProps {
   className?: string;
 }
 
-type BuildStatus = 
-  | 'building' 
-  | 'compiling' 
-  | 'ready' 
+type BuildStatus =
+  | 'building'
+  | 'compiling'
+  | 'ready'
   | 'error';
 
-export default function BuildingStatus({ 
-  projectId, 
+export default function BuildingStatus({
+  projectId,
   initialLoading = true,
-  className 
+  className
 }: BuildingStatusProps) {
   const [status, setStatus] = useState<BuildStatus>(initialLoading ? 'building' : 'ready');
   const [visible, setVisible] = useState(initialLoading);
@@ -39,7 +39,7 @@ export default function BuildingStatus({
         console.log(`⏳ Preview not ready yet for project ${projectId}: ${res.status} ${res.statusText}`);
         return false;
       }
-      
+
       const data = await res.json();
       if (data.previewUrl) {
         console.log(`✅ Preview is ready at ${data.previewUrl} for project ${projectId}`);
@@ -80,7 +80,7 @@ export default function BuildingStatus({
       console.log(`🔍 Moving to compiling state for project ${projectId}`);
       setStatus('compiling');
       setProgress(50);
-      
+
       // Start checking preview status periodically
       let previewCheckInterval: NodeJS.Timeout;
       const startPreviewChecks = () => {
@@ -90,26 +90,26 @@ export default function BuildingStatus({
           if (isPreviewReady) {
             console.log(`✅ Preview is ready for project ${projectId}`);
             clearInterval(previewCheckInterval);
-            
+
             setStatus('ready');
             setProgress(100);
-            
+
             // Hide after a short delay
             setTimeout(() => setVisible(false), 2000);
           }
         }, 3000); // Check every 3 seconds
       };
-      
+
       // Start checking after a brief delay
       setTimeout(startPreviewChecks, 2000);
-      
+
       return () => {
         clearInterval(previewCheckInterval);
       };
     }, 3000);
 
     return () => clearTimeout(buildingTimeout);
-  }, [projectId, initialLoading, checkPreviewStatus]);
+  }, [projectId, initialLoading]); // checkPreviewStatus is stable with useCallback
 
   if (!visible) return null;
 
@@ -149,13 +149,13 @@ export default function BuildingStatus({
           {getStatusIcon()}
           <p className="text-sm font-medium">{getStatusMessage()}</p>
         </div>
-        
+
         <Progress value={progress} className="h-1.5 w-full max-w-xs" />
-        
+
         {status === 'error' && (
-          <Button 
-            size="sm" 
-            variant="outline" 
+          <Button
+            size="sm"
+            variant="outline"
             onClick={handleRetry}
             className="w-full"
           >
@@ -165,4 +165,4 @@ export default function BuildingStatus({
       </CardContent>
     </Card>
   );
-} 
+}

@@ -162,7 +162,7 @@ export default function ColorCard({ colorVar, previewMode, onColorChange }: Colo
 
   return (
     <>
-      <Card className="overflow-hidden group">
+      <Card className="overflow-hidden group pt-0 pb-3">
         {/* Color preview with buttons on hover */}
         <div className="relative h-32 w-full">
           <div
@@ -200,7 +200,7 @@ export default function ColorCard({ colorVar, previewMode, onColorChange }: Colo
           </div>
         </div>
         
-        <CardContent className="py-4 px-3">
+        <CardContent className="py-3 px-3">
           <div className="flex items-center justify-between">
             <h3 className="font-medium text-sm" title={formatColorName(colorVar.name)}>
               {formatColorName(colorVar.name)}

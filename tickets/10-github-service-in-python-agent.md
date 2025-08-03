@@ -1,6 +1,6 @@
 # 📋 Ticket 10: GitHub Service in Python Agent
 
-**Priority:** Critical  
+**Priority:** Critical
 **Estimated Effort:** 6 hours
 
 ## Description
@@ -13,6 +13,7 @@ Create GitHub integration service in the Python agent for repository operations,
 agent/app/services/github_service.py
 agent/app/models/github.py
 agent/requirements.txt (add GitHub dependencies)
+agent/app/main.py (update to include GitHub router)
 ```
 
 ## Implementation Details
@@ -129,7 +130,7 @@ class GitHubService:
     async def import_repository(self, request: ImportRepoRequest) -> str:
         """Import/clone a GitHub repository to local project"""
         try:
-            project_path = f"{settings.PROJECTS_DIR}/{request.project_id}"
+            project_path = f"{settings.projects_dir}/{request.project_id}"
 
             # Remove existing project directory if it exists
             if os.path.exists(project_path):
@@ -179,7 +180,7 @@ class GitHubService:
             return None
 
         try:
-            project_path = f"{settings.PROJECTS_DIR}/{project_id}"
+            project_path = f"{settings.projects_dir}/{project_id}"
             repo = git.Repo(project_path)
 
             # Add all changed files

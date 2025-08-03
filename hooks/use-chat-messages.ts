@@ -16,19 +16,6 @@ const fetchMessages = async (projectId: number): Promise<FetchMessagesResult> =>
   const data = await response.json();
   const apiMessages: ApiChatMessage[] = data.messages || [];
 
-  // Enhanced debug logging
-  console.log('🔍 Messages in response:', data.messages?.length || 0);
-
-  // Log assistant messages with blocks for debugging
-  if (data.messages && Array.isArray(data.messages)) {
-    const messagesWithBlocks = data.messages.filter(
-      (m: ApiChatMessage) => m.role === 'assistant' && m.blocks && m.blocks.length > 0
-    );
-    if (messagesWithBlocks.length > 0) {
-      console.log(`✅ Found ${messagesWithBlocks.length} assistant messages with blocks`);
-    }
-  }
-
   // Convert API messages to ChatMessageProps
   const messages = apiMessages
     .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
@@ -65,13 +52,6 @@ const fetchMessages = async (projectId: number): Promise<FetchMessagesResult> =>
         hasError,
         errorType,
       };
-
-      // Debug log to confirm blocks are being passed through
-      if (msg.blocks && msg.blocks.length > 0) {
-        console.log(
-          `✅ [fetchMessages] Transformed message ${msg.id} with ${msg.blocks.length} blocks`
-        );
-      }
 
       return transformedMessage;
     });
@@ -112,31 +92,16 @@ const fetchMessages = async (projectId: number): Promise<FetchMessagesResult> =>
 export function useChatMessages(
   projectId: number,
   initialMessages: ChatMessageProps[] = [],
-  initialIsLoading = false
+  initialIsLoading = false,
+  expectingWebhookUpdate = false
 ) {
-  console.log('🚀 [useChatMessages] Hook called:', {
-    projectId,
-    initialMessagesCount: initialMessages.length,
-    initialIsLoading,
-  });
-
   return useQuery({
     queryKey: ['messages', projectId],
     queryFn: async () => {
-      console.log('🚀 [useChatMessages] TanStack Query: Fetching messages from API endpoint');
       return await fetchMessages(projectId);
     },
     initialData: (() => {
       const hasInitialData = initialMessages.length > 0;
-      console.log('🚀 [useChatMessages] TanStack Query config:', {
-        hasInitialData,
-        enabled: !initialIsLoading,
-        initialIsLoading,
-        willUseInitialData: hasInitialData,
-        note: hasInitialData
-          ? 'Using initial data - API might not be called'
-          : 'No initial data - will fetch from API',
-      });
 
       if (hasInitialData) {
         // Calculate token usage for initial messages
@@ -172,7 +137,8 @@ export function useChatMessages(
       return undefined;
     })(),
     enabled: !initialIsLoading,
-    staleTime: 0, // Always refetch for debugging - change back to 60000 later
+    staleTime: 0, // Always refetch to ensure we get latest webhook updates
     refetchOnMount: true, // Always refetch when component mounts
+    refetchInterval: expectingWebhookUpdate ? 1000 : false, // Only poll when expecting webhook updates
   });
 }

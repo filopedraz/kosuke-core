@@ -11,7 +11,7 @@ import { useUser } from '@clerk/nextjs';
 import { useChatMessages } from '@/hooks/use-chat-messages';
 import { useChatState } from '@/hooks/use-chat-state';
 import { useSendMessage } from '@/hooks/use-send-message';
-import type { ChatInterfaceProps, ChatUser } from '@/lib/types';
+import type { ChatInterfaceProps } from '@/lib/types';
 
 // Import components
 import AssistantResponse from './assistant-response';
@@ -32,11 +32,15 @@ export default function ChatInterface({
 
   // User data
   const { user: clerkUser, isLoaded } = useUser();
-  const [user, setUser] = useState<ChatUser | null>(null);
+  const [user, setUser] = useState<{
+    name?: string;
+    email?: string;
+    imageUrl?: string;
+  } | null>(null);
 
   // Custom hooks for business logic
-  const messagesQuery = useChatMessages(projectId, initialMessages, initialIsLoading);
   const sendMessageMutation = useSendMessage(projectId);
+  const messagesQuery = useChatMessages(projectId, initialMessages, initialIsLoading, sendMessageMutation.expectingWebhookUpdate);
   const chatState = useChatState(projectId);
 
   // Extract data from hooks
@@ -46,13 +50,7 @@ export default function ChatInterface({
     refetch: refetchMessages,
   } = messagesQuery;
 
-  // Debug: Add global access to refetch for manual testing
-  if (typeof window !== 'undefined') {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (window as any).refetchChatMessages = refetchMessages;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (window as any).currentMessagesData = messagesData;
-  }
+
 
   const messages = useMemo(() => messagesData?.messages || [], [messagesData?.messages]);
 
@@ -149,10 +147,7 @@ export default function ChatInterface({
         window.dispatchEvent(fileUpdatedEvent);
       }
 
-    // Log if sending an image
-    if (options?.imageFile) {
-      console.log(`Sending message with attached image: ${options.imageFile.name} (${(options.imageFile.size / 1024).toFixed(1)}KB)`);
-    }
+
 
     // Send the message
     sendMessage({ content, options });

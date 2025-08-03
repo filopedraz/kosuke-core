@@ -1,6 +1,6 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
-import type { CssVariable, PaletteGenerationRequest, PaletteGenerationResponse } from '@/lib/types';
+import type { PaletteGenerationRequest, PaletteGenerationResponse } from '@/lib/types';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 // Hook for generating color palettes
 export function useGenerateColorPalette(projectId: number) {
@@ -49,7 +49,7 @@ export function useApplyColorPalette(projectId: number) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (colors: CssVariable[]) => {
+    mutationFn: async (colors: Array<{ name: string; value: string; description?: string }>) => {
       const response = await fetch(
         `/api/projects/${projectId}/branding/generate-palette?apply=true`,
         {
