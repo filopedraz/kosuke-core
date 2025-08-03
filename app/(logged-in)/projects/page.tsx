@@ -23,14 +23,14 @@ function ProjectsLoadingSkeleton() {
         {Array.from({ length: 6 }).map((_, i) => (
           <ProjectCardSkeleton key={i} />
         ))}
-      </div>
+
     </div>
   );
 }
 
 export default function ProjectsPage() {
   const { clerkUser, dbUser, isLoading } = useUser();
-  const { data: projects, isLoading: isProjectsLoading } = useProjects({
+  const { data: projects, isLoading: isProjectsLoading, isFetching: isProjectsFetching } = useProjects({
     userId: clerkUser?.id || '',
     initialData: []
   });
@@ -55,8 +55,12 @@ export default function ProjectsPage() {
     }
   }, [queryClient, dbUser?.clerkUserId]);
 
-  // Show loading skeleton
-  if (isLoading || isProjectsLoading || !clerkUser || !dbUser) {
+  // Show loading skeleton while:
+  // 1. User auth is loading
+  // 2. Projects are loading for the first time
+  // 3. Projects are currently being fetched and we don't have data yet
+  // 4. We don't have auth context yet
+  if (isLoading || isProjectsLoading || isProjectsFetching || !clerkUser || !dbUser || projects === undefined) {
     return <ProjectsLoadingSkeleton />;
   }
 
