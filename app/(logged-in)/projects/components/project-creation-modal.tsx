@@ -41,41 +41,28 @@ export default function ProjectCreationModal({
       },
       {
                         onSuccess: (project) => {
-          console.log('🎉 Project creation success callback triggered');
-          console.log('📦 Project data received:', project);
-          console.log('🔍 Project ID:', project?.id);
-          console.log('🔍 Project type:', typeof project);
-
           // Ensure we have a valid project with ID
           if (project && typeof project === 'object' && project.id) {
-            console.log('✅ Valid project data, proceeding with store updates and redirect');
-
-            // Update store and invalidate queries (moved from hook)
-            console.log('🔄 Adding project to store...');
+            // Update store (query invalidation not needed since we're navigating away)
             addProject(project);
-            console.log('🔄 Invalidating queries...');
-            queryClient.invalidateQueries({ queryKey: ['projects'] });
 
             const targetUrl = `/projects/${project.id}?new=true`;
-            console.log('🎯 Target URL:', targetUrl);
 
             // Close modal and navigate immediately
             onOpenChange(false);
-            console.log('🚪 Modal closed, attempting navigation...');
 
             // Try immediate navigation
             router.push(targetUrl);
-            console.log('🔄 Router.push called with:', targetUrl);
 
             // Backup navigation after a short delay
             setTimeout(() => {
-              console.log('⏰ Backup navigation attempt');
               window.location.href = targetUrl;
             }, 1000);
 
           } else {
-            console.error('❌ Project created but invalid data received:', project);
-            console.log('🔧 Falling back to refresh');
+            console.error('Project created but invalid data received:', project);
+            // If project data is invalid, refresh the projects list to fetch latest data
+            queryClient.invalidateQueries({ queryKey: ['projects'] });
             onOpenChange(false);
             router.refresh();
           }
