@@ -11,14 +11,17 @@ interface ProjectGridProps {
 }
 
 export default function ProjectGrid({ userId, initialProjects }: ProjectGridProps) {
-  const { projects } = useProjectStore();
-  const { isLoading, isFetching } = useProjects({
+  const { projects: storeProjects } = useProjectStore();
+  const { data: queryProjects, isLoading, isFetching } = useProjects({
     userId,
     initialData: initialProjects,
   });
 
-  // Show skeleton during initial load or subsequent fetches
-  if (isLoading || isFetching) {
+  // Use query data as primary source, fallback to store data, then initial data
+  const projects = queryProjects ?? storeProjects ?? initialProjects;
+
+  // Show skeleton during initial load or subsequent fetches when we don't have reliable data yet
+  if (isLoading || (isFetching && !projects?.length)) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {Array.from({ length: 6 }).map((_, index) => (
