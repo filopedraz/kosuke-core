@@ -123,6 +123,7 @@ export interface ContentBlock {
   timestamp: Date;
   toolName?: string; // For tool blocks
   toolResult?: string; // For tool blocks
+  toolInput?: ToolInput; // For tool blocks - contains input parameters like file_path
 }
 
 // Webhook Data Types
@@ -201,6 +202,7 @@ export interface StreamingEvent {
 
   // Tool-related fields
   tool_name?: string; // Name of the tool being executed
+  tool_input?: ToolInput; // Tool input parameters (for tool_start events)
   result?: string; // Tool execution result
   summary?: string; // Task completion summary
 }

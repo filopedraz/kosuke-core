@@ -1,6 +1,6 @@
 # 📋 Ticket 11: GitHub API Routes in Agent
 
-**Priority:** High  
+**Priority:** High
 **Estimated Effort:** 3 hours
 
 ## Description
@@ -162,10 +162,10 @@ async def github_health():
 **agent/app/main.py** - Update to include GitHub router:
 
 ```python
-# Add this import
+# Add this import after existing route imports around line 6
 from app.api.routes import github
 
-# Add this line after existing routers
+# Add this line after existing routers around line 22
 app.include_router(github.router, prefix="/api", tags=["github"])
 ```
 

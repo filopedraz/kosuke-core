@@ -1,6 +1,6 @@
 # 📋 Ticket 9: GitHub OAuth Integration with Clerk
 
-**Priority:** High  
+**Priority:** High
 **Estimated Effort:** 1.5 hours ⬇️ _(Reduced from 4 hours using Clerk's built-in OAuth)_
 
 ## Description
@@ -296,152 +296,14 @@ export async function POST(request: NextRequest) {
 }
 ```
 
-import { NextRequest, NextResponse } from 'next/server';
-import { storeGitHubToken } from '@/lib/github/auth';
+// Note: This OAuth callback route is NOT needed when using Clerk's built-in GitHub OAuth.
+// Clerk handles the OAuth flow and stores tokens automatically via createExternalAccount().
+// The tokens are then accessible via clerkClient.users.getUser(userId).externalAccounts
 
-export async function GET(request: NextRequest) {
-try {
-const searchParams = request.nextUrl.searchParams;
-const code = searchParams.get('code');
-const state = searchParams.get('state'); // This should be the user ID
-const error = searchParams.get('error');
+```
 
-    if (error) {
-      return NextResponse.redirect(`${process.env.NEXTAUTH_URL}/settings?github_error=${error}`);
-    }
-
-    if (!code || !state) {
-      return NextResponse.redirect(
-        `${process.env.NEXTAUTH_URL}/settings?github_error=missing_params`
-      );
-    }
-
-    // Exchange code for access token
-    const tokenResponse = await fetch('https://github.com/login/oauth/access_token', {
-      method: 'POST',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        client_id: process.env.GITHUB_OAUTH_CLIENT_ID,
-        client_secret: process.env.GITHUB_OAUTH_CLIENT_SECRET,
-        code,
-      }),
-    });
-
-    const tokenData = await tokenResponse.json();
-
-    if (tokenData.error) {
-      return NextResponse.redirect(
-        `${process.env.NEXTAUTH_URL}/settings?github_error=${tokenData.error}`
-      );
-    }
-
-    // Get GitHub user info
-    const userResponse = await fetch('https://api.github.com/user', {
-      headers: {
-        Authorization: `Bearer ${tokenData.access_token}`,
-        Accept: 'application/vnd.github.v3+json',
-      },
-    });
-
-    const userData = await userResponse.json();
-
-    // Store the token
-    await storeGitHubToken(state, tokenData, userData.login);
-
-    return NextResponse.redirect(`${process.env.NEXTAUTH_URL}/settings?github_connected=true`);
-
-} catch (error) {
-console.error('Error in GitHub OAuth callback:', error);
-return NextResponse.redirect(`${process.env.NEXTAUTH_URL}/settings?github_error=server_error`);
-}
-}
-
-````
-
-**components/auth/github-connect-button.tsx** - GitHub connection UI:
-
-```tsx
-'use client';
-
-import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Github, Check, X } from 'lucide-react';
-
-interface GitHubConnectionStatus {
-  connected: boolean;
-  username?: string;
-}
-
-export function GitHubConnectButton() {
-  const [status, setStatus] = useState<GitHubConnectionStatus>({ connected: false });
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    checkGitHubConnection();
-  }, []);
-
-  async function checkGitHubConnection() {
-    try {
-      const response = await fetch('/api/auth/github/status');
-      const data = await response.json();
-      setStatus(data);
-    } catch (error) {
-      console.error('Error checking GitHub connection:', error);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function handleConnect() {
-    window.location.href = '/api/auth/github/connect';
-  }
-
-  async function handleDisconnect() {
-    try {
-      const response = await fetch('/api/auth/github/disconnect', { method: 'POST' });
-      if (response.ok) {
-        setStatus({ connected: false });
-      }
-    } catch (error) {
-      console.error('Error disconnecting GitHub:', error);
-    }
-  }
-
-  if (loading) {
-    return (
-      <Button disabled variant="outline">
-        <Github className="w-4 h-4 mr-2" />
-        Loading...
-      </Button>
-    );
-  }
-
-  if (status.connected) {
-    return (
-      <div className="flex items-center gap-2">
-        <div className="flex items-center gap-2 text-green-600">
-          <Check className="w-4 h-4" />
-          <span>Connected as @{status.username}</span>
-        </div>
-        <Button onClick={handleDisconnect} variant="outline" size="sm">
-          <X className="w-4 h-4 mr-2" />
-          Disconnect
-        </Button>
-      </div>
-    );
-  }
-
-  return (
-    <Button onClick={handleConnect} variant="outline">
-      <Github className="w-4 h-4 mr-2" />
-      Connect GitHub
-    </Button>
-  );
-}
-````
+// Note: This component is replaced by the components/settings/github-connection.tsx component above
+// which uses Clerk's built-in GitHub OAuth flow via user.createExternalAccount()
 
 ## Acceptance Criteria
 
@@ -451,3 +313,4 @@ export function GitHubConnectButton() {
 - [x] GitHub username and connection info retrieved from Clerk
 - [x] Simplified implementation with 60% less code than custom OAuth
 - [x] Seamless integration with existing Clerk authentication flow
+```

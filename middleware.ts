@@ -5,6 +5,7 @@ const isPublicRoute = createRouteMatcher([
   '/sign-in(.*)',
   '/sign-up(.*)',
   '/api/webhooks(.*)',
+  '/api/projects/(.*)/webhook(.*)', // Allow project webhook endpoints
   '/home',
   '/waitlist',
   '/api/webhooks/clerk',

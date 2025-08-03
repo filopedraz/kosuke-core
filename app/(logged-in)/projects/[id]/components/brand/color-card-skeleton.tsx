@@ -5,11 +5,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 export default function ColorCardSkeleton() {
   return (
-    <Card className="overflow-hidden group">
+    <Card className="overflow-hidden group pt-0 pb-3">
       {/* Color preview area skeleton - matches h-32 from ColorCard */}
       <Skeleton className="h-32 w-full rounded-none" />
       
-      <CardContent className="py-4 px-3">
+      <CardContent className="py-3 px-3">
         <div className="flex items-center justify-between">
           {/* Color name skeleton */}
           <Skeleton className="h-4 w-1/2" />

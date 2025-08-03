@@ -1,6 +1,6 @@
 # 📋 Ticket 14: GitHub Branch Management & Pull Request UI
 
-**Priority:** High  
+**Priority:** High
 **Estimated Effort:** 5 hours
 
 ## Description
@@ -416,18 +416,18 @@ export function PullRequestModal({
 
 ```typescript
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { auth } from '@clerk/nextjs/server';
 import { getGitHubToken } from '@/lib/github/auth';
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
+    const { userId } = auth();
+    if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const projectId = parseInt(params.id);
-    const githubToken = await getGitHubToken(session.user.id);
+    const githubToken = await getGitHubToken(userId);
 
     if (!githubToken) {
       return NextResponse.json({ error: 'GitHub not connected' }, { status: 400 });
@@ -462,19 +462,19 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 
 ```typescript
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { auth } from '@clerk/nextjs/server';
 import { getGitHubToken } from '@/lib/github/auth';
 
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
+    const { userId } = auth();
+    if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const projectId = parseInt(params.id);
     const body = await request.json();
-    const githubToken = await getGitHubToken(session.user.id);
+    const githubToken = await getGitHubToken(userId);
 
     if (!githubToken) {
       return NextResponse.json({ error: 'GitHub not connected' }, { status: 400 });

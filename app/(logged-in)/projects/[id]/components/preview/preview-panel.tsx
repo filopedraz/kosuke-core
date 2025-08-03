@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
+import { usePreviewStart } from '@/hooks/use-preview';
 import { cn } from '@/lib/utils';
 import DownloadingModal from './downloading-modal';
 
@@ -31,6 +32,7 @@ export default function PreviewPanel({
   initialLoading = false,
 }: PreviewPanelProps) {
   const { toast } = useToast();
+  const { startPreview, isStarting } = usePreviewStart(projectId);
   const [status, setStatus] = useState<PreviewStatus>(initialLoading ? 'loading' : 'loading');
   const [progress, setProgress] = useState(0);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -332,11 +334,26 @@ export default function PreviewPanel({
               )}
               {status === 'error' && (
                 <button
-                  onClick={() => handleRefresh()}
-                  className="mt-4 text-primary hover:underline"
+                  onClick={async () => {
+                    try {
+                      await startPreview({
+                        successMessage: 'Preview is starting...',
+                        onSuccess: () => {
+                          // After starting, wait a moment then refresh to get the new URL
+                          setTimeout(() => {
+                            handleRefresh();
+                          }, 2000);
+                        }
+                      });
+                    } catch (error) {
+                      // Error is already handled by the hook
+                    }
+                  }}
+                  className="mt-4 text-primary hover:underline disabled:opacity-50"
+                  disabled={isStarting}
                   data-testid="try-again-button"
                 >
-                  Try again
+                  {isStarting ? 'Starting...' : 'Try again'}
                 </button>
               )}
             </div>

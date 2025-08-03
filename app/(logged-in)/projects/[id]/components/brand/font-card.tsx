@@ -17,8 +17,8 @@ export default function FontCard({ font }: FontCardProps) {
       : font.provider;
   
   return (
-    <Card className="overflow-hidden">
-      <CardContent className="p-5">
+    <Card className="overflow-hidden pt-0 pb-3">
+      <CardContent className="p-4">
         <div className="flex justify-between items-start mb-4">
           <div>
             <h3 className="text-lg font-semibold">{font.name.replace('_', ' ')}</h3>
