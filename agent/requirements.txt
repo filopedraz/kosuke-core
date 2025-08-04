@@ -1,9 +1,8 @@
 # Core dependencies
 anthropic==0.40.0
-pydantic-ai==0.0.14
 
 # Agent functionality
-claude-code-sdk
+claude-code-sdk==0.0.19
 
 # FastAPI
 fastapi==0.112.4
@@ -16,15 +15,28 @@ sqlalchemy==2.0.36
 
 # Utilities
 aiofiles==24.1.0
-asyncio-subprocess==0.1.5
+aiohttp==3.11.12
+docker==7.1.0
 tiktoken==0.7.0
 
-# Observability (Add Langfuse)
-langfuse==3.38.4
-opentelemetry-instrumentation-anthropic==0.1.0
+# Observability
+langfuse==3.2.1
 
 # Additional dependencies
 requests==2.32.3
 psutil==6.0.0
 pydantic==2.10.3
 python-dotenv==1.0.1
+
+# GitHub dependencies
+PyGithub==2.1.1
+GitPython==3.1.40
+
+# Testing dependencies
+pytest==7.4.3
+pytest-asyncio==0.21.1
+pytest-cov==4.1.0
+mypy==1.7.1
+ruff==0.1.7
+bandit[toml]==1.7.5
+httpx==0.28.1

@@ -11,16 +11,11 @@ from collections.abc import Callable
 from functools import wraps
 from typing import Any
 
-from langfuse import get_client
+from .config import get_langfuse_client
 
 logger = logging.getLogger(__name__)
 
-# Get Langfuse client instance
-try:
-    langfuse = get_client()
-except Exception as e:
-    logger.warning(f"⚠️ Failed to initialize Langfuse client: {e}")
-    langfuse = None
+langfuse = get_langfuse_client()
 
 
 def _create_generation(operation_name: str, self, prompt: str, max_turns: int):
