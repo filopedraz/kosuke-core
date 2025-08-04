@@ -237,10 +237,6 @@ export default function ContentBlock({
               ))}
             </div>
           )}
-          {/* Streaming cursor for text blocks */}
-          {contentBlock.status === 'streaming' && contentBlock.content.trim() !== '' && (
-            <span className="inline-block w-2 h-4 bg-primary animate-pulse ml-1" />
-          )}
         </div>
       </div>
     </div>
