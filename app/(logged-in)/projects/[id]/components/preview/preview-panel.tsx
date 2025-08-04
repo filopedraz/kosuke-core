@@ -11,6 +11,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Progress } from '@/components/ui/progress';
+import { DevLoadingAnimation } from '@/components/ui/dev-loading-animation';
 import { usePreviewStart } from '@/hooks/use-preview';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -320,36 +321,37 @@ export default function PreviewPanel({
       <div className="flex-1 overflow-hidden">
         <div className="h-full w-full">
           {status !== 'ready' ? (
-            <div className="flex h-full items-center justify-center flex-col p-6">
-              {getStatusIcon()}
-              <span className="text-sm font-medium mt-4 mb-2">{getStatusMessage()}</span>
-              {status === 'loading' && (
-                <Progress value={progress} className="h-1.5 w-full max-w-xs mt-2" />
-              )}
-              {status === 'error' && (
-                <button
-                  onClick={async () => {
-                    try {
-                      await startPreview({
-                        successMessage: 'Preview is starting...',
-                        onSuccess: () => {
-                          // After starting, wait a moment then refresh to get the new URL
-                          setTimeout(() => {
-                            handleRefresh();
-                          }, 2000);
-                        }
-                      });
-                    } catch {
-                      // Error is already handled by the hook
-                    }
-                  }}
-                  className="mt-4 text-primary hover:underline disabled:opacity-50"
-                  disabled={isStarting}
-                  data-testid="try-again-button"
-                >
-                  {isStarting ? 'Starting...' : 'Try again'}
-                </button>
-              )}
+            <div className="flex h-full items-center justify-center flex-col">
+              {status === 'loading' ? (
+                <DevLoadingAnimation progress={progress} />
+              ) : status === 'error' ? (
+                <div className="flex h-full items-center justify-center flex-col p-6">
+                  {getStatusIcon()}
+                  <span className="text-sm font-medium mt-4 mb-2">{getStatusMessage()}</span>
+                  <button
+                    onClick={async () => {
+                      try {
+                        await startPreview({
+                          successMessage: 'Preview is starting...',
+                          onSuccess: () => {
+                            // After starting, wait a moment then refresh to get the new URL
+                            setTimeout(() => {
+                              handleRefresh();
+                            }, 2000);
+                          }
+                        });
+                      } catch {
+                        // Error is already handled by the hook
+                      }
+                    }}
+                    className="mt-4 text-primary hover:underline disabled:opacity-50"
+                    disabled={isStarting}
+                    data-testid="try-again-button"
+                  >
+                    {isStarting ? 'Starting...' : 'Try again'}
+                  </button>
+                </div>
+              ) : null}
             </div>
           ) : previewUrl ? (
             <iframe
