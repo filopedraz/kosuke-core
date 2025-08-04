@@ -105,31 +105,73 @@ async function handleUserCreated(clerkUser: ClerkUser) {
   const fullName = [clerkUser.first_name, clerkUser.last_name].filter(Boolean).join(' ') || null;
 
   try {
-    // Check if user already exists
-    const existingUser = await db
+    // Check if user already exists by clerkUserId
+    const existingUserByClerkId = await db
       .select()
       .from(users)
       .where(eq(users.clerkUserId, clerkUser.id))
       .limit(1);
 
-    if (existingUser.length > 0) {
+    if (existingUserByClerkId.length > 0) {
       console.log(`👤 User already exists in database: ${clerkUser.id} (${primaryEmail})`);
       return;
     }
 
-    // Create new user
-    await db.insert(users).values({
-      clerkUserId: clerkUser.id,
-      email: primaryEmail,
-      name: fullName,
-      imageUrl: clerkUser.image_url,
-      marketingEmails: false, // Default to false, user can opt-in later
-      role: 'member',
-      createdAt: new Date(clerkUser.created_at),
-      updatedAt: new Date(clerkUser.updated_at),
-    });
+    // Try to insert new user, handle email constraint gracefully
+    try {
+      await db.insert(users).values({
+        clerkUserId: clerkUser.id,
+        email: primaryEmail,
+        name: fullName,
+        imageUrl: clerkUser.image_url,
+        marketingEmails: false, // Default to false, user can opt-in later
+        role: 'member',
+        createdAt: new Date(clerkUser.created_at),
+        updatedAt: new Date(clerkUser.updated_at),
+      });
 
-    console.log(`✅ Created user in database: ${clerkUser.id} (${primaryEmail})`);
+      console.log(`✅ Created user in database: ${clerkUser.id} (${primaryEmail})`);
+    } catch (insertError: any) {
+      // Handle duplicate email constraint specifically
+      if (insertError?.code === '23505' && insertError?.constraint_name === 'users_email_unique') {
+        console.log(`⚠️ User with email ${primaryEmail} already exists, but with different Clerk ID. This is likely a recreated account.`);
+        
+        // Check if there's an existing user with this email that might be soft-deleted
+        const existingUserByEmail = await db
+          .select()
+          .from(users)
+          .where(eq(users.email, primaryEmail))
+          .limit(1);
+
+        if (existingUserByEmail.length > 0) {
+          const existingUser = existingUserByEmail[0];
+          
+          // If the existing user is soft-deleted, update it with new Clerk ID
+          if (existingUser.deletedAt) {
+            await db
+              .update(users)
+              .set({
+                clerkUserId: clerkUser.id,
+                name: fullName,
+                imageUrl: clerkUser.image_url,
+                deletedAt: null, // Restore the user
+                updatedAt: new Date(clerkUser.updated_at),
+              })
+              .where(eq(users.email, primaryEmail));
+            
+            console.log(`✅ Restored soft-deleted user and updated Clerk ID: ${clerkUser.id} (${primaryEmail})`);
+          } else {
+            console.log(`ℹ️ Active user with email ${primaryEmail} already exists with different Clerk ID. Skipping creation.`);
+          }
+        }
+        
+        // Don't throw error - webhook should succeed even if user exists
+        return;
+      }
+      
+      // For other database errors, re-throw
+      throw insertError;
+    }
   } catch (error) {
     console.error('Error creating user in database:', error);
     throw error;
