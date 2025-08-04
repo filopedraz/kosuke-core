@@ -517,14 +517,6 @@ export function useSendMessage(projectId: number) {
       }
     },
     onSuccess: data => {
-      // If request contains fileUpdated flag, update preview
-      if (data.fileUpdated) {
-        const fileUpdatedEvent = new CustomEvent('file-updated', {
-          detail: { projectId },
-        });
-        window.dispatchEvent(fileUpdatedEvent);
-      }
-
       // If we're expecting a webhook update, set the flag and delay invalidation
       if ('expectingWebhookUpdate' in data && data.expectingWebhookUpdate) {
         setStreamingState(prev => ({
@@ -550,7 +542,7 @@ export function useSendMessage(projectId: number) {
         // Invalidate and wait for the query to settle before clearing streaming state
         await queryClient.invalidateQueries({ queryKey: ['messages', projectId] });
 
-        // Trigger preview refresh after streaming completes to show reflected changes
+        // Always trigger preview refresh after streaming finishes and we fetch the assistant message
         const fileUpdatedEvent = new CustomEvent('file-updated', {
           detail: { projectId },
         });

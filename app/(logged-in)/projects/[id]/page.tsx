@@ -81,8 +81,15 @@ export default function ProjectPage({ params }: ProjectPageProps) {
     notFound();
   }
 
-  // Access control
+  // Access control - more robust check
+  console.log('Access control check:', {
+    projectCreatedBy: project.createdBy,
+    userId: user.id,
+    match: project.createdBy === user.id
+  });
+
   if (project.createdBy !== user.id) {
+    console.error('Access denied: User does not own this project');
     notFound();
   }
 

@@ -244,9 +244,9 @@ Project Guidelines & Cursor Rules
 
         import os
 
-        current_model = os.getenv("CLAUDE_MODEL", "default")
+        current_model = os.getenv("ANTHROPIC_MODEL", "default")
         logger.info(f"🤖 Model (from env): {current_model}")
-        logger.info("📝 Note: Model is configured globally in Claude Code CLI via CLAUDE_MODEL env var")
+        logger.info("📝 Note: Model is configured globally in Claude Code CLI via ANTHROPIC_MODEL env var")
 
     async def _stream_query_events(
         self, prompt: str, options: ClaudeCodeOptions

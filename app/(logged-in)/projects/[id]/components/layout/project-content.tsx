@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { usePreviewStart, usePreviewStatus } from '@/hooks/use-preview';
-import { useProjectStore, type Project } from '@/lib/stores/projectStore';
+import type { Project } from '@/lib/db/schema';
 import { cn } from '@/lib/utils';
 import BrandGuidelines from '../brand/brand-guidelines';
 import ChatInterface from '../chat/chat-interface';
@@ -24,10 +24,10 @@ export default function ProjectContent({
   project,
   initialMessages,
 }: ProjectContentProps) {
-  
-  const currentView = useProjectStore(state => state.currentView);
-  const isChatCollapsed = useProjectStore(state => state.isChatCollapsed);
-  const setCurrentProject = useProjectStore(state => state.setCurrentProject);
+
+  // Local UI state management
+  const [currentView, setCurrentView] = useState<'preview' | 'code' | 'branding'>('preview');
+  const [isChatCollapsed, setIsChatCollapsed] = useState(false);
 
   // Reference to the ChatInterface component to maintain its state
   const chatInterfaceRef = useRef<HTMLDivElement>(null);
@@ -36,12 +36,11 @@ export default function ProjectContent({
   const { startPreview } = usePreviewStart(projectId);
   const { checkPreviewStatus } = usePreviewStatus(projectId);
 
-  // Set the current project in the store when the component mounts or project changes
+  // Reset view/chat state when project changes
   useEffect(() => {
-    setCurrentProject(project);
-    // Optionally reset view/chat state when project changes
-    useProjectStore.setState({ currentView: 'preview', isChatCollapsed: false });
-  }, [project, setCurrentProject]);
+    setCurrentView('preview');
+    setIsChatCollapsed(false);
+  }, [project]);
 
   // Automatically check and start preview if not running
   useEffect(() => {
@@ -63,9 +62,8 @@ export default function ProjectContent({
       }
     };
 
-
     checkAndStartPreview();
-  }, [projectId, checkPreviewStatus, startPreview]); // Include all dependencies
+  }, [projectId]); // Only depend on projectId - functions are stable with useCallback
 
   return (
     <div className={cn('flex h-[calc(100vh-3.5rem)] w-full overflow-hidden')}>
