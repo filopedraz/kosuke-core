@@ -199,15 +199,6 @@ export default function ContentBlock({
                 </div>
               </div>
             </div>
-
-            {/* Progress bar for streaming tools */}
-            {contentBlock.status === 'streaming' && (
-              <div className="mt-2 w-full bg-muted-foreground/20 rounded-full h-1">
-                <div className="bg-muted-foreground/60 h-1 rounded-full animate-pulse" style={{ width: '60%' }}></div>
-              </div>
-            )}
-
-
           </div>
         </div>
       </div>
