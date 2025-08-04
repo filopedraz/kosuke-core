@@ -16,17 +16,15 @@ import type { ChatMessageProps } from '@/lib/types';
 interface ProjectContentProps {
   projectId: number;
   project: Project;
-  isNewProject?: boolean;
   initialMessages: ChatMessageProps[];
 }
 
 export default function ProjectContent({
   projectId,
   project,
-  isNewProject = false,
   initialMessages,
 }: ProjectContentProps) {
-  // Select individual state pieces for stability
+  
   const currentView = useProjectStore(state => state.currentView);
   const isChatCollapsed = useProjectStore(state => state.isChatCollapsed);
   const setCurrentProject = useProjectStore(state => state.setCurrentProject);
@@ -65,7 +63,7 @@ export default function ProjectContent({
       }
     };
 
-    // Check and start preview when component mounts or projectId changes
+
     checkAndStartPreview();
   }, [projectId, checkPreviewStatus, startPreview]); // Include all dependencies
 
@@ -104,7 +102,6 @@ export default function ProjectContent({
           <PreviewPanel
             projectId={projectId}
             projectName={project.name}
-            initialLoading={isNewProject}
           />
         ) : currentView === 'code' ? (
           <CodeExplorer
