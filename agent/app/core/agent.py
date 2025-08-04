@@ -12,7 +12,7 @@ from app.utils.observability import observe_agentic_workflow
 class Agent:
     """
     Agent using claude-code-sdk for repository analysis and file modification
-    
+
     Features:
     - Repository analysis and understanding
     - Intelligent file modification

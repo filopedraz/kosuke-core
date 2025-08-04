@@ -69,9 +69,7 @@ def _update_trace_metadata(operation_name: str, self):
         langfuse.update_current_trace(
             name=operation_name,
             tags=["agent", "claude-code", "agentic", f"project-{getattr(self, 'project_id', 'unknown')}"],
-            user_id=(
-                f"project-{getattr(self, 'project_id', 'unknown')}" if hasattr(self, "project_id") else None
-            ),
+            user_id=(f"project-{getattr(self, 'project_id', 'unknown')}" if hasattr(self, "project_id") else None),
             session_id=(
                 f"session-{getattr(self, 'assistant_message_id', 'unknown')}"
                 if hasattr(self, "assistant_message_id")
@@ -94,13 +92,15 @@ def _process_event(
     if event_type == "content_block_delta":
         collected_output.append(event.get("text", ""))
     elif event_type == "tool_start":
-        tool_executions.append({
-            "tool_name": event.get("tool_name"),
-            "tool_input": event.get("tool_input", {}),
-            "tool_id": event.get("tool_id"),
-            "status": "started",
-            "timestamp": time.time(),
-        })
+        tool_executions.append(
+            {
+                "tool_name": event.get("tool_name"),
+                "tool_input": event.get("tool_input", {}),
+                "tool_id": event.get("tool_id"),
+                "status": "started",
+                "timestamp": time.time(),
+            }
+        )
     elif event_type == "tool_stop":
         _update_tool_execution(event, tool_executions)
     elif event_type == "error":
@@ -115,12 +115,14 @@ def _update_tool_execution(event: dict[str, Any], tool_executions: list[dict[str
     tool_id = event.get("tool_id")
     for tool in tool_executions:
         if tool.get("tool_id") == tool_id:
-            tool.update({
-                "tool_result": event.get("tool_result", ""),
-                "is_error": event.get("is_error", False),
-                "status": "completed",
-                "duration": time.time() - tool.get("timestamp", time.time()),
-            })
+            tool.update(
+                {
+                    "tool_result": event.get("tool_result", ""),
+                    "is_error": event.get("is_error", False),
+                    "status": "completed",
+                    "duration": time.time() - tool.get("timestamp", time.time()),
+                }
+            )
             break
 
 
@@ -154,9 +156,16 @@ def _calculate_workflow_metrics(tool_executions: list[dict[str, Any]]) -> dict[s
     }
 
 
-def _update_generation_success(generation, collected_output: list[str], tool_executions: list[dict[str, Any]],
-                              self, workflow_duration: float, error_occurred: bool, error_details: str | None,
-                              token_usage: dict[str, int]):
+def _update_generation_success(
+    generation,
+    collected_output: list[str],
+    tool_executions: list[dict[str, Any]],
+    self,
+    workflow_duration: float,
+    error_occurred: bool,
+    error_details: str | None,
+    token_usage: dict[str, int],
+):
     """Update generation with successful completion data."""
     try:
         generation.update(
@@ -183,8 +192,13 @@ def _update_generation_success(generation, collected_output: list[str], tool_exe
         logger.warning(f"⚠️ Failed to update Langfuse generation: {e}")
 
 
-def _update_generation_error(generation, error_message: str, collected_output: list[str],
-                           tool_executions: list[dict[str, Any]], workflow_start_time: float):
+def _update_generation_error(
+    generation,
+    error_message: str,
+    collected_output: list[str],
+    tool_executions: list[dict[str, Any]],
+    workflow_start_time: float,
+):
     """Update generation with error information."""
     try:
         generation.update(
@@ -229,13 +243,22 @@ def _end_generation(generation, operation_name: str):
 
 class _WorkflowTracker:
     """Helper class to track workflow execution state."""
+
     def __init__(self):
         self.error_occurred = False
         self.error_details = None
 
+
 async def _execute_workflow_with_tracking(
-    func, self, prompt: str, max_turns: int, kwargs: dict, generation,
-    collected_output: list[str], tool_executions: list[dict[str, Any]], tracker: _WorkflowTracker
+    func,
+    self,
+    prompt: str,
+    max_turns: int,
+    kwargs: dict,
+    generation,
+    collected_output: list[str],
+    tool_executions: list[dict[str, Any]],
+    tracker: _WorkflowTracker,
 ):
     """Execute the workflow function and track events."""
     async for event in func(self, prompt, max_turns, **kwargs):
@@ -251,40 +274,50 @@ async def _execute_workflow_with_tracking(
 
 
 def _finalize_successful_workflow(
-    generation, collected_output: list[str], tool_executions: list[dict[str, Any]],
-    self, workflow_duration: float, error_occurred: bool, error_details: str | None,
-    token_usage: dict[str, int], operation_name: str
+    generation,
+    collected_output: list[str],
+    tool_executions: list[dict[str, Any]],
+    self,
+    workflow_duration: float,
+    error_occurred: bool,
+    error_details: str | None,
+    token_usage: dict[str, int],
+    operation_name: str,
 ):
     """Finalize a successful workflow with logging and scoring."""
     if generation:
         _update_generation_success(
-            generation, collected_output, tool_executions, self,
-            workflow_duration, error_occurred, error_details, token_usage
+            generation,
+            collected_output,
+            tool_executions,
+            self,
+            workflow_duration,
+            error_occurred,
+            error_details,
+            token_usage,
         )
         _add_workflow_scores(generation, tool_executions, error_occurred, workflow_duration)
-        logger.info(
-            f"✅ Completed Langfuse generation: {operation_name} "
-            f"(Duration: {workflow_duration:.2f}s)"
-        )
+        logger.info(f"✅ Completed Langfuse generation: {operation_name} " f"(Duration: {workflow_duration:.2f}s)")
     else:
         logger.debug(
-            f"✅ Completed workflow without observability: {operation_name} "
-            f"(Duration: {workflow_duration:.2f}s)"
+            f"✅ Completed workflow without observability: {operation_name} " f"(Duration: {workflow_duration:.2f}s)"
         )
 
 
 def _handle_workflow_error(
-    generation, error: Exception, collected_output: list[str],
-    tool_executions: list[dict[str, Any]], workflow_start_time: float, operation_name: str
+    generation,
+    error: Exception,
+    collected_output: list[str],
+    tool_executions: list[dict[str, Any]],
+    workflow_start_time: float,
+    operation_name: str,
 ):
     """Handle workflow errors with proper logging and generation updates."""
     error_message = str(error)
     logger.error(f"❌ Error in instrumented workflow {operation_name}: {error_message}")
 
     if generation:
-        _update_generation_error(
-            generation, error_message, collected_output, tool_executions, workflow_start_time
-        )
+        _update_generation_error(generation, error_message, collected_output, tool_executions, workflow_start_time)
 
 
 def observe_agentic_workflow(operation_name: str):
@@ -341,8 +374,15 @@ def observe_agentic_workflow(operation_name: str):
                 token_usage = _get_token_usage(self)
 
                 _finalize_successful_workflow(
-                    generation, collected_output, tool_executions, self,
-                    workflow_duration, tracker.error_occurred, tracker.error_details, token_usage, operation_name
+                    generation,
+                    collected_output,
+                    tool_executions,
+                    self,
+                    workflow_duration,
+                    tracker.error_occurred,
+                    tracker.error_details,
+                    token_usage,
+                    operation_name,
                 )
 
             except Exception as e:
@@ -355,6 +395,7 @@ def observe_agentic_workflow(operation_name: str):
                     _end_generation(generation, operation_name)
 
         return wrapper
+
     return decorator
 
 
