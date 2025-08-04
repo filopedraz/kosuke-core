@@ -18,16 +18,10 @@ from claude_code_sdk import ToolUseBlock
 from claude_code_sdk import UserMessage
 from claude_code_sdk import query
 
-# Add Langfuse import
-from langfuse import get_client
-
 from app.utils.config import settings
 from app.utils.token_counter import count_tokens
 
 logger = logging.getLogger(__name__)
-
-# Get Langfuse client instance
-langfuse = get_client()
 
 
 class ClaudeCodeService:
@@ -40,7 +34,7 @@ class ClaudeCodeService:
     - Project-based working directory isolation
     - Comprehensive debugging logs
     - Smart task routing and execution
-    - Langfuse observability integration
+
 
     Note:
     - Model selection is handled by the Claude Code CLI configuration, not the Python SDK
@@ -168,18 +162,6 @@ Project Guidelines & Cursor Rules
         logger.info(f"🔄 Max turns: {max_turns}")
         logger.info(f"📁 Working directory: {self.project_path}")
 
-        # Create Langfuse trace for this query
-        trace = langfuse.trace(
-            name="claude-code-agentic-query",
-            input={"prompt": prompt, "max_turns": max_turns, "project_id": self.project_id},
-            metadata={
-                "project_path": str(self.project_path),
-                "service": "claude-code-sdk",
-                "model": "claude-3-7-sonnet-20250219",  # Based on your config
-            },
-            tags=["claude-code", "agentic", f"project-{self.project_id}"],
-        )
-
         # Count input tokens from prompt and system prompt
         prompt_tokens = count_tokens(prompt)
         system_prompt = self._build_system_prompt()
@@ -194,41 +176,15 @@ Project Guidelines & Cursor Rules
         try:
             # Setup options and run query
             options = self._setup_claude_code_options(max_turns)
-            
-            # Collect output for tracing
-            collected_output = []
-            async for event in self._stream_query_events(prompt, options, trace):
-                if event.get("type") == "text":
-                    collected_output.append(event.get("text", ""))
+            async for event in self._stream_query_events(prompt, options):
                 yield event
 
-            # Update trace with final output
-            trace.update(
-                output={"response": "".join(collected_output)},
-                usage={
-                    "input_tokens": self.total_input_tokens,
-                    "output_tokens": self.total_output_tokens,
-                    "total_tokens": self.total_input_tokens + self.total_output_tokens,
-                }
-            )
-
         except (CLINotFoundError, ProcessError, ClaudeSDKError) as e:
-            trace.update(
-                output={"error": str(e), "error_type": type(e).__name__},
-                level="ERROR"
-            )
             async for error_event in self._handle_known_error(e):
                 yield error_event
         except Exception as e:
-            trace.update(
-                output={"error": str(e), "error_type": type(e).__name__},
-                level="ERROR"
-            )
             async for error_event in self._handle_unexpected_error(e):
                 yield error_event
-        finally:
-            # End the trace
-            trace.end()
 
     def _setup_claude_code_options(self, max_turns: int) -> ClaudeCodeOptions:
         """Setup claude-code options with system prompt and tools"""
@@ -311,47 +267,22 @@ Project Guidelines & Cursor Rules
         logger.info("📝 Note: Model is configured globally in Claude Code CLI via ANTHROPIC_MODEL env var")
 
     async def _stream_query_events(
-        self, prompt: str, options: ClaudeCodeOptions, trace: Any = None
+        self, prompt: str, options: ClaudeCodeOptions
     ) -> AsyncGenerator[dict[str, Any], None]:
         """Stream events from the agentic query"""
         logger.info("🚀 Starting Claude Code query stream...")
         message_count = 0
 
-        # Create a span for the query execution
-        span = None
-        if trace:
-            span = trace.span(
-                name="claude-code-query-execution",
-                input={"prompt": prompt},
-                metadata={"max_turns": options.max_turns, "tool_count": len(options.allowed_tools or [])}
-            )
+        async for message in query(prompt=prompt, options=options):
+            message_count += 1
+            logger.debug(f"📨 Received message {message_count}: {type(message).__name__}")
 
-        try:
-            async for message in query(prompt=prompt, options=options):
-                message_count += 1
-                logger.debug(f"📨 Received message {message_count}: {type(message).__name__}")
+            async for event in self._process_message(message, message_count):
+                yield event
 
-                async for event in self._process_message(message, message_count, span):
-                    yield event
+        logger.info(f"✅ Processed {message_count} messages from Claude Code stream")
 
-            logger.info(f"✅ Processed {message_count} messages from Claude Code stream")
-            
-            if span:
-                span.update(
-                    output={"message_count": message_count, "status": "completed"}
-                )
-        except Exception as e:
-            if span:
-                span.update(
-                    output={"error": str(e), "message_count": message_count},
-                    level="ERROR"
-                )
-            raise
-        finally:
-            if span:
-                span.end()
-
-    async def _process_message(self, message: Any, message_count: int, span: Any = None) -> AsyncGenerator[dict[str, Any], None]:
+    async def _process_message(self, message: Any, message_count: int) -> AsyncGenerator[dict[str, Any], None]:
         """Process a single message from the query stream"""
         if isinstance(message, AssistantMessage):
             async for event in self._process_assistant_message(message):

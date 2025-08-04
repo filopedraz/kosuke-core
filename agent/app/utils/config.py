@@ -39,10 +39,10 @@ def initialize_langfuse(settings_instance) -> bool:
 
             # Initialize OpenTelemetry instrumentation for Anthropic
             # Note: This will capture direct Anthropic SDK calls, but claude-code-sdk
-            # uses the CLI tool so requires manual instrumentation (already added to ClaudeCodeService)
+            # uses the CLI tool so requires manual instrumentation (implemented in Agent class)
             AnthropicInstrumentor().instrument()
             logger.info("🔧 Anthropic OpenTelemetry instrumentation enabled")
-            logger.info("🔧 Claude Code SDK manually instrumented in ClaudeCodeService")
+            logger.info("🔧 Claude Code SDK instrumented via Agent decorator pattern")
 
             return True
 
