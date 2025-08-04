@@ -179,18 +179,24 @@ class Agent:
         try:
             duration = time.time() - self.start_time
 
+            # Get token usage from claude-code service
+            token_usage = self.claude_code_service.get_token_usage()
+
             # Send assistant message with blocks
             async with self.webhook_service as webhook:
                 await webhook.send_assistant_message(
                     project_id=self.project_id,
                     blocks=assistant_blocks,
-                    tokens_input=0,  # Token counting handled by claude-code-sdk
-                    tokens_output=0,
-                    context_tokens=0,
+                    tokens_input=token_usage["input_tokens"],
+                    tokens_output=token_usage["output_tokens"],
+                    context_tokens=token_usage["context_tokens"],
                     assistant_message_id=self.assistant_message_id,
                 )
 
-            print(f"✅ Sent assistant message webhook: {len(assistant_blocks)} blocks")
+            print(
+                f"✅ Sent assistant message webhook: {len(assistant_blocks)} blocks, "
+                f"{token_usage['total_tokens']} tokens"
+            )
 
             # Send completion webhook
             async with self.webhook_service as webhook:
@@ -198,10 +204,13 @@ class Agent:
                     project_id=self.project_id,
                     success=success,
                     total_actions=self.total_actions,
-                    total_tokens=0,  # Token counting handled by claude-code-sdk
+                    total_tokens=token_usage["total_tokens"],
                     duration=duration,
                 )
 
-            print(f"✅ Sent completion webhook: {self.total_actions} actions, {duration:.2f}s")
+            print(
+                f"✅ Sent completion webhook: {self.total_actions} actions, {duration:.2f}s, "
+                f"{token_usage['total_tokens']} tokens"
+            )
         except Exception as e:
             print(f"❌ Failed to send webhooks: {e}")

@@ -1,4 +1,5 @@
 import json
+import logging
 from collections.abc import AsyncGenerator
 
 from fastapi import APIRouter
@@ -9,6 +10,7 @@ from app.core.agent import Agent
 from app.models.requests import ChatRequest
 from app.models.responses import ChatResponse
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
@@ -23,8 +25,8 @@ async def chat_stream(request: ChatRequest) -> StreamingResponse:
 
     async def generate_stream() -> AsyncGenerator[str, None]:
         try:
-            print(f"🚀 Starting chat stream for project {request.project_id}")
-            print(f"📝 Prompt: {request.prompt[:100]}{'...' if len(request.prompt) > 100 else ''}")
+            logger.info(f"🚀 Starting chat stream for project {request.project_id}")
+            logger.info(f"📝 Prompt: {request.prompt[:100]}{'...' if len(request.prompt) > 100 else ''}")
 
             # Create agent instance for this project
             agent = Agent(request.project_id, request.assistant_message_id)
