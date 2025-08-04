@@ -131,6 +131,96 @@ export async function GET(
 }
 
 /**
+ * POST /api/projects/[id]/preview
+ * Start a preview for a project (proxied to Python agent)
+ */
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    // Get the session
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    const { id } = await params;
+    const projectId = Number(id);
+    if (isNaN(projectId)) {
+      return NextResponse.json(
+        { error: 'Invalid project ID' },
+        { status: 400 }
+      );
+    }
+
+    // Get the project
+    const [project] = await db.select().from(projects).where(eq(projects.id, projectId));
+    if (!project) {
+      return NextResponse.json(
+        { error: 'Project not found' },
+        { status: 404 }
+      );
+    }
+
+    // Check if the user has access to the project
+    if (project.createdBy !== userId) {
+      return NextResponse.json(
+        { error: 'Forbidden' },
+        { status: 403 }
+      );
+    }
+
+    // Start preview via Python agent
+    const response = await fetch(`${AGENT_SERVICE_URL}/api/preview/start`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        project_id: projectId,
+        env_vars: {}, // TODO: Add environment variables from database
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      return NextResponse.json(
+        { error: 'Failed to start preview', details: error },
+        { status: response.status }
+      );
+    }
+
+    const result = await response.json();
+
+    // Transform result to match expected response format
+    const transformedResult = {
+      success: true,
+      url: result.url || null,
+      status: result.status || 'starting',
+      error: result.error || null,
+    };
+
+    return NextResponse.json(transformedResult);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ?
+      `${error.message}\n${error.stack}` :
+      String(error);
+
+    return NextResponse.json(
+      {
+        error: 'Internal Server Error',
+        details: errorMessage
+      },
+      { status: 500 }
+    );
+  }
+}
+
+/**
  * DELETE /api/projects/[id]/preview
  * Stop a preview for a project (proxied to Python agent)
  */

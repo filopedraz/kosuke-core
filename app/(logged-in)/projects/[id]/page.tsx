@@ -6,7 +6,7 @@ import { use, useEffect, useRef } from 'react';
 import Navbar from '@/components/ui/navbar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useChatMessages } from '@/hooks/use-chat-messages';
-import { usePreviewStart, usePreviewStatus } from '@/hooks/use-preview';
+import { usePreviewStatus, useStartPreview } from '@/hooks/use-preview-status';
 import { useProjectUIState } from '@/hooks/use-project-ui-state';
 import { useProject } from '@/hooks/use-projects';
 import { cn } from '@/lib/utils';
@@ -120,34 +120,28 @@ export default function ProjectPage({ params }: ProjectPageProps) {
   const { currentView, setCurrentView, isChatCollapsed, toggleChatCollapsed } = useProjectUIState(project);
 
   // Preview management hooks
-  const { startPreview } = usePreviewStart(projectId);
-  const { checkPreviewStatus } = usePreviewStatus(projectId);
+  const { data: previewStatus, isLoading: isPreviewLoading } = usePreviewStatus(projectId, false); // Disable polling initially
+  const { mutateAsync: startPreview } = useStartPreview(projectId);
 
   // Reference to the ChatInterface component to maintain its state
   const chatInterfaceRef = useRef<HTMLDivElement>(null);
+  // Track if we've already attempted to start preview for this project
+  const previewStartAttempted = useRef<Set<number>>(new Set());
 
-  // Automatically check and start preview if not running
+  // Automatically start preview if not running (only once per project)
   useEffect(() => {
-    const checkAndStartPreview = async () => {
-      try {
-        const status = await checkPreviewStatus();
-
-        // If no preview URL is available, automatically start the preview
-        if (!status?.previewUrl && !status?.url) {
-          console.log(`[ProjectPage] No preview URL found, starting preview for project ${projectId}`);
-          // Start preview silently (no success toast for automatic attempts)
-          await startPreview();
-        } else {
-          console.log(`[ProjectPage] Preview already running for project ${projectId}:`, status.previewUrl || status.url);
-        }
-      } catch (error) {
-        console.error(`[ProjectPage] Error checking/starting preview for project ${projectId}:`, error);
-        // Don't show error toast for automatic attempts - user didn't manually trigger this
+    if (!isPreviewLoading && previewStatus && !previewStatus.url) {
+      if (!previewStartAttempted.current.has(projectId)) {
+        previewStartAttempted.current.add(projectId);
+        console.log(`[ProjectPage] No preview URL found, starting preview for project ${projectId}`);
+        startPreview().catch((error) => {
+          console.error(`[ProjectPage] Error starting preview for project ${projectId}:`, error);
+        });
       }
-    };
-
-    checkAndStartPreview();
-  }, [projectId, checkPreviewStatus, startPreview]);
+    } else if (previewStatus?.url) {
+      console.log(`[ProjectPage] Preview already running for project ${projectId}:`, previewStatus.url);
+    }
+  }, [projectId, previewStatus, isPreviewLoading, startPreview]);
 
   // Loading state
   if (isProjectLoading || isMessagesLoading || !user) {
@@ -159,13 +153,7 @@ export default function ProjectPage({ params }: ProjectPageProps) {
     notFound();
   }
 
-  // Access control - more robust check
-  console.log('Access control check:', {
-    projectCreatedBy: project.createdBy,
-    userId: user.id,
-    match: project.createdBy === user.id
-  });
-
+  // Access control - check project ownership
   if (project.createdBy !== user.id) {
     console.error('Access denied: User does not own this project');
     notFound();

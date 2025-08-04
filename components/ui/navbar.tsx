@@ -49,12 +49,12 @@ export default function Navbar({ variant = 'standard', projectProps, className }
   const handleLogout = async () => {
     try {
       await signOut();
-      router.push('/');
+      router.push('/home');
       router.refresh();
     } catch (error) {
       console.error('Error signing out:', error);
       // Always redirect and refresh regardless of success/failure
-      router.push('/');
+      router.push('/home');
       router.refresh();
     }
   };
