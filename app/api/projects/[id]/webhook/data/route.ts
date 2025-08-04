@@ -4,7 +4,7 @@ import { eq } from 'drizzle-orm';
 
 import { db } from '@/lib/db/drizzle';
 import { chatMessages, projects } from '@/lib/db/schema';
-import type { WebhookAssistantData, GitHubWebhookData } from '@/lib/types';
+import type { GitHubWebhookData, WebhookAssistantData } from '@/lib/types';
 
 interface CompletionLogData {
   success: boolean;
@@ -210,9 +210,9 @@ async function handleAssistantMessage(
  */
 async function handleCompletion(
   projectId: number,
-  data: WebhookAssistantData & { 
-    success?: boolean; 
-    totalActions?: number; 
+  data: WebhookAssistantData & {
+    success?: boolean;
+    totalActions?: number;
     duration?: number;
     githubCommit?: GitHubWebhookData['githubCommit'];
     sessionSummary?: GitHubWebhookData['sessionSummary'];
