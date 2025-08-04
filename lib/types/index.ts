@@ -1,8 +1,9 @@
 // Re-export all types from domain-specific files
 export * from './auth';
-export * from './chat';
 export * from './branding';
-export * from './preview';
-export * from './user';
-export * from './project';
+export * from './chat';
+export * from './github';
 export * from './infrastructure';
+export * from './preview';
+export * from './project';
+export * from './user';

@@ -43,12 +43,13 @@ export default function PipelinePage() {
   const handlePipelineChange = async (value: PipelinePreference) => {
     try {
       await updatePipelinePreference(value);
-      
+
       // Show deprecation warning for Kosuke
       if (value === 'kosuke') {
         toast({
           title: 'Deprecated Agent Selected',
-          description: 'Kosuke agent is deprecated and will be removed in a future update. Consider switching to Claude Code for the latest features.',
+          description:
+            'Kosuke agent is deprecated and will be removed in a future update. Consider switching to Claude Code for the latest features.',
           variant: 'destructive',
         });
       }

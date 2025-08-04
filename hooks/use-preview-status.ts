@@ -1,17 +1,17 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type {
   PreviewStatusResponse,
+  ServerHealthOptions,
   StartPreviewResponse,
   StopPreviewResponse,
-  ServerHealthOptions,
 } from '@/lib/types';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 // Hook for fetching preview status
 export function usePreviewStatus(projectId: number, polling = true) {
   return useQuery({
     queryKey: ['preview-status', projectId],
     queryFn: async (): Promise<PreviewStatusResponse> => {
-      const response = await fetch(`/api/projects/${projectId}/preview/status`);
+      const response = await fetch(`/api/projects/${projectId}/preview`);
 
       if (!response.ok) {
         throw new Error('Failed to fetch preview status');
@@ -31,7 +31,7 @@ export function useStartPreview(projectId: number) {
 
   return useMutation({
     mutationFn: async (): Promise<StartPreviewResponse> => {
-      const response = await fetch(`/api/projects/${projectId}/preview/start`, {
+      const response = await fetch(`/api/projects/${projectId}/preview`, {
         method: 'POST',
       });
 
