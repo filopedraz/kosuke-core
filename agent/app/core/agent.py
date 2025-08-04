@@ -6,6 +6,7 @@ import time
 from collections.abc import AsyncGenerator
 
 from app.services.claude_code_service import ClaudeCodeService
+from app.services.github_service import GitHubService
 from app.services.webhook_service import WebhookService
 from app.utils.observability import observe_agentic_workflow
 
@@ -22,6 +23,7 @@ class Agent:
     - Tool-aware execution (Read, Write, Bash, Grep)
     - Automatic tool execution by claude-code-sdk
     - Comprehensive Langfuse observability
+    - GitHub integration for auto-commit functionality
     """
 
     def __init__(self, project_id: int, assistant_message_id: int | None = None):
@@ -31,19 +33,39 @@ class Agent:
         self.start_time = time.time()
         self.total_actions = 0
 
+        # GitHub integration attributes
+        self.github_service: GitHubService | None = None
+        self.current_session_id: str | None = None
+        self.github_token: str | None = None
+
         # Initialize claude-code service
         self.claude_code_service = ClaudeCodeService(project_id)
 
         logger.info(f"🚀 Agent initialized for project ID: {project_id}")
 
+    def set_github_integration(self, github_token: str, session_id: str):
+        """Enable GitHub integration for this agent session"""
+        self.github_token = github_token
+        self.github_service = GitHubService(github_token)
+        self.current_session_id = session_id
+
+        # Start sync session
+        if self.github_service:
+            self.github_service.start_sync_session(self.project_id, session_id)
+            print(f"🔗 GitHub integration enabled for session {session_id}")
+
     @observe_agentic_workflow("claude-code-agentic-pipeline")
-    async def run(self, prompt: str, max_turns: int = 25) -> AsyncGenerator[dict, None]:
+    async def run(
+        self, prompt: str, max_turns: int = 25, github_token: str | None = None, session_id: str | None = None
+    ) -> AsyncGenerator[dict, None]:
         """
         Run the claude-code agent for repository analysis and modification
 
         Args:
             prompt: User prompt/query
             max_turns: Maximum conversation turns
+            github_token: Optional GitHub token for auto-commit functionality
+            session_id: Optional session ID for GitHub tracking
 
         Yields:
             Stream of events compatible with existing chat interface
@@ -55,6 +77,10 @@ class Agent:
         text_state = {"active": False, "content": "", "all_blocks": []}
 
         try:
+            # Check if GitHub integration should be enabled
+            if github_token and session_id:
+                self.set_github_integration(github_token, session_id)
+
             # Stream events from claude-code-sdk
             async for event in self.claude_code_service.run_agentic_query(prompt, max_turns):
                 self.total_actions += 1
@@ -143,6 +169,26 @@ class Agent:
         # Update the existing tool block with the result
         self._update_tool_block(event, text_state["all_blocks"])
 
+        # Track file changes for GitHub if enabled
+        await self._track_file_changes_if_enabled(event)
+
+    async def _track_file_changes_if_enabled(self, event: dict) -> None:
+        """Track file changes for GitHub if integration is enabled"""
+        if self.github_service and self.current_session_id:
+            tool_name = event.get("tool_name", "")
+            tool_input = event.get("tool_input", {})
+
+            # Track file changes for relevant tools
+            if tool_name in ["str_replace_editor", "create_file"] and not event.get("is_error", False):
+                try:
+                    file_path = tool_input.get("path") or tool_input.get("file_path")
+                    if file_path and not file_path.startswith("/"):
+                        # Track relative file path
+                        self.github_service.track_file_change(self.current_session_id, file_path)
+                        print(f"📝 Tracked file change: {file_path}")
+                except Exception as e:
+                    print(f"⚠️ Warning: Error tracking file change for GitHub: {e}")
+
     async def _handle_error_event(self, event: dict, text_state: dict) -> AsyncGenerator[dict, None]:
         """Handle error events"""
         if text_state["active"]:
@@ -173,12 +219,44 @@ class Agent:
             self._save_text_content(text_state)
         await self._send_assistant_message_webhook(text_state["all_blocks"], success=True)
 
+        # Finalize GitHub session if enabled
+        await self.finalize_github_session()
+
     async def _handle_error(self, error: Exception, text_state: dict):
         """Handle errors during processing"""
         if text_state["active"]:
             self._save_text_content(text_state)
         logger.error(f"❌ Error in claude-code agent: {error}")
         await self._send_assistant_message_webhook(text_state["all_blocks"], success=False)
+
+        # If we have GitHub integration and session fails, mark session as failed
+        if self.github_service and self.current_session_id:
+            try:
+                session_summary = self.github_service.end_sync_session(self.current_session_id)
+                session_summary["status"] = "failed"
+                print(f"🔗 GitHub session marked as failed: {session_summary}")
+            except Exception as github_error:
+                print(f"⚠️ Warning: Error ending GitHub session: {github_error}")
+
+    async def finalize_github_session(self, commit_message: str | None = None):
+        """Finalize the GitHub session and commit changes if enabled"""
+        if self.github_service and self.current_session_id:
+            try:
+                # Commit session changes
+                commit = await self.github_service.commit_session_changes(self.current_session_id, commit_message)
+
+                # Send webhook about commit
+                if commit and self.webhook_service:
+                    async with self.webhook_service as webhook:
+                        await webhook.send_commit(self.project_id, commit.sha, commit.message, commit.files_changed)
+
+                # End session and get summary
+                session_summary = self.github_service.end_sync_session(self.current_session_id)
+
+                print(f"✅ GitHub session completed: {session_summary}")
+
+            except Exception as e:
+                print(f"❌ Error finalizing GitHub session: {e}")
 
     async def _send_assistant_message_webhook(self, assistant_blocks: list, success: bool = True):
         """Send complete assistant message with all blocks to Next.js"""
@@ -204,7 +282,23 @@ class Agent:
                 f"{token_usage['total_tokens']} tokens"
             )
 
-            # Send completion webhook
+            # Send completion webhook with GitHub info
+            github_commit = None
+            session_summary = None
+
+            if (
+                self.github_service
+                and self.current_session_id
+                and self.current_session_id in self.github_service.sync_sessions
+            ):
+                session = self.github_service.sync_sessions[self.current_session_id]
+                session_summary = {
+                    "session_id": self.current_session_id,
+                    "project_id": session["project_id"],
+                    "files_changed": len(session["files_changed"]),
+                    "status": session["status"],
+                }
+
             async with self.webhook_service as webhook:
                 await webhook.send_completion(
                     project_id=self.project_id,
@@ -212,6 +306,8 @@ class Agent:
                     total_actions=self.total_actions,
                     total_tokens=token_usage["total_tokens"],
                     duration=duration,
+                    github_commit=github_commit.dict() if github_commit else None,
+                    session_summary=session_summary,
                 )
 
             logger.info(

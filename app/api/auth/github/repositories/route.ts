@@ -25,7 +25,10 @@ export async function GET(request: NextRequest) {
     });
 
     if (!response.ok) {
-      return NextResponse.json({ error: 'Failed to fetch repositories' }, { status: response.status });
+      return NextResponse.json(
+        { error: 'Failed to fetch repositories' },
+        { status: response.status }
+      );
     }
 
     const repositories = await response.json();
