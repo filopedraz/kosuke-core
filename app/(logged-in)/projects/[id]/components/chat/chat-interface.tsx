@@ -135,19 +135,6 @@ export default function ChatInterface({
     // Save message for regeneration
     saveLastMessage(content, options);
 
-    // Trigger preview refresh if needed
-    if (content.toLowerCase().includes('update') ||
-        content.toLowerCase().includes('change') ||
-        content.toLowerCase().includes('modify') ||
-        options?.imageFile) {
-        const fileUpdatedEvent = new CustomEvent('file-updated', {
-          detail: { projectId }
-        });
-        window.dispatchEvent(fileUpdatedEvent);
-      }
-
-
-
     // Send the message
     sendMessage({ content, options });
   };
