@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useDeleteProject } from '@/hooks/use-projects';
-import { Project } from '@/lib/stores/projectStore';
+import type { Project } from '@/lib/db/schema';
 
 interface DeleteProjectDialogProps {
   project: Project;
