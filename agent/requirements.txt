@@ -18,6 +18,10 @@ asyncpg==0.29.0
 langfuse==3.0.0b2
 rich==13.9.4
 
+# GitHub dependencies
+PyGithub==2.1.1
+GitPython==3.1.40
+
 # Testing dependencies
 pytest==7.4.3
 pytest-asyncio==0.21.1
