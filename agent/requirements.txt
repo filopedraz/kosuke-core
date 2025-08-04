@@ -1,28 +1,30 @@
-fastapi==0.115.6
-uvicorn[standard]==0.32.1
-pydantic==2.10.3
-anthropic==0.60.0
-claude-code-sdk==0.0.19
-langfuse>=2.0.0
-opentelemetry-instrumentation-anthropic>=0.1.0
-aiofiles==24.1.0
-tiktoken==0.8.0
-watchdog==6.0.0
+# Core dependencies
+anthropic==0.40.0
+pydantic-ai==0.0.14
+
+# Agent functionality
+claude-code-sdk
+
+# FastAPI
+fastapi==0.112.4
+uvicorn[standard]==0.32.0
 python-multipart==0.0.12
 
-psutil==6.1.0
-requests==2.32.3
-aiohttp==3.11.10
-docker==7.1.0
-asyncpg==0.29.0
-langfuse==3.0.0b2
-rich==13.9.4
+# Database
+psycopg2-binary==2.9.9
+sqlalchemy==2.0.36
 
-# Testing dependencies
-pytest==7.4.3
-pytest-asyncio==0.21.1
-pytest-cov==4.1.0
-mypy==1.7.1
-ruff==0.1.7
-bandit[toml]==1.7.5
-httpx==0.28.1
+# Utilities
+aiofiles==24.1.0
+asyncio-subprocess==0.1.5
+tiktoken==0.7.0
+
+# Observability (Add Langfuse)
+langfuse==3.38.4
+opentelemetry-instrumentation-anthropic==0.1.0
+
+# Additional dependencies
+requests==2.32.3
+psutil==6.0.0
+pydantic==2.10.3
+python-dotenv==1.0.1
