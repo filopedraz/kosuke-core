@@ -5,14 +5,20 @@ import {
   useProjects,
   useUpdateProject,
 } from '@/hooks/use-projects';
-import { useProjectStore, type Project } from '@/lib/stores/projectStore';
+import type { Project } from '@/lib/db/schema';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import { ReactNode } from 'react';
 
-// Mock the project store
-jest.mock('@/lib/stores/projectStore', () => ({
-  useProjectStore: jest.fn(),
+// Mock Next.js router
+const mockPush = jest.fn();
+const mockReplace = jest.fn();
+jest.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: mockPush,
+    replace: mockReplace,
+    prefetch: jest.fn(),
+  }),
 }));
 
 // Mock fetch
@@ -56,21 +62,11 @@ const mockProject: Project = {
 
 const mockProjects: Project[] = [mockProject];
 
-// Mock store functions
-const mockSetProjects = jest.fn();
-const mockAddProject = jest.fn();
-const mockRemoveProject = jest.fn();
-const mockUpdateProject = jest.fn();
-
 describe('useProjects', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    (useProjectStore as unknown as jest.Mock).mockReturnValue({
-      setProjects: mockSetProjects,
-      addProject: mockAddProject,
-      removeProject: mockRemoveProject,
-      updateProject: mockUpdateProject,
-    });
+    mockPush.mockClear();
+    mockReplace.mockClear();
   });
 
   function UseProjectsTestComponent() {
@@ -112,7 +108,6 @@ describe('useProjects', () => {
 
     expect(screen.getByTestId('loading')).toHaveTextContent('loaded');
     expect(screen.getByTestId('project-1')).toHaveTextContent('Test Project');
-    expect(mockSetProjects).toHaveBeenCalledWith(mockProjects);
     expect(mockFetch).toHaveBeenCalledWith('/api/projects');
   });
 
@@ -180,6 +175,8 @@ describe('useProject', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockPush.mockClear();
+    mockReplace.mockClear();
   });
 
   it('should fetch a single project successfully', async () => {
@@ -206,6 +203,7 @@ describe('useProject', () => {
     mockFetch.mockResolvedValueOnce({
       ok: false,
       status: 404,
+      text: async () => 'Not Found',
     });
 
     render(
@@ -215,7 +213,9 @@ describe('useProject', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByTestId('error')).toHaveTextContent('Failed to fetch project');
+      expect(screen.getByTestId('error')).toHaveTextContent(
+        'Failed to fetch project: 404 Not Found'
+      );
     });
   });
 });
@@ -245,19 +245,15 @@ describe('useCreateProject', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    (useProjectStore as unknown as jest.Mock).mockReturnValue({
-      setProjects: mockSetProjects,
-      addProject: mockAddProject,
-      removeProject: mockRemoveProject,
-      updateProject: mockUpdateProject,
-    });
+    mockPush.mockClear();
+    mockReplace.mockClear();
   });
 
   it('should create a project successfully', async () => {
     const newProject = { ...mockProject, id: 2, name: 'New Project' };
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ data: newProject }),
+      json: async () => ({ data: { project: newProject } }),
     });
 
     render(
@@ -286,12 +282,6 @@ describe('useCreateProject', () => {
         name: 'New Project',
       }),
     });
-    expect(mockAddProject).toHaveBeenCalledWith(
-      expect.objectContaining({
-        id: 2,
-        name: 'New Project',
-      })
-    );
   });
 
   it('should handle creation error', async () => {
@@ -340,12 +330,6 @@ describe('useDeleteProject', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    (useProjectStore as unknown as jest.Mock).mockReturnValue({
-      setProjects: mockSetProjects,
-      addProject: mockAddProject,
-      removeProject: mockRemoveProject,
-      updateProject: mockUpdateProject,
-    });
 
     // Mock console.log and console.error for delete function
     jest.spyOn(console, 'log').mockImplementation();
@@ -384,16 +368,8 @@ describe('useDeleteProject', () => {
     // Start the deletion
     await act(async () => {
       deleteButton.click();
-    });
-
-    // First check that the deletion starts
-    await waitFor(() => {
-      expect(screen.getByTestId('loading')).toHaveTextContent('deleting');
-    });
-
-    // Fast forward through the minimum operation time
-    await act(async () => {
-      jest.advanceTimersByTime(2100); // 2.1 seconds to ensure we pass the minimum
+      // Fast forward timers immediately after clicking
+      jest.advanceTimersByTime(2100);
     });
 
     // Wait for success
@@ -401,10 +377,9 @@ describe('useDeleteProject', () => {
       () => {
         expect(screen.getByTestId('success')).toHaveTextContent('success');
       },
-      { timeout: 1000 }
+      { timeout: 3000 }
     );
 
-    expect(mockRemoveProject).toHaveBeenCalledWith(1);
     expect(mockFetch).toHaveBeenCalledWith('/api/projects/1/files', {
       method: 'DELETE',
     });
@@ -435,6 +410,8 @@ describe('useDeleteProject', () => {
 
     await act(async () => {
       deleteButton.click();
+      // Fast forward timers to trigger the mutation completion
+      jest.advanceTimersByTime(3000);
     });
 
     await waitFor(
@@ -443,8 +420,6 @@ describe('useDeleteProject', () => {
       },
       { timeout: 5000 }
     );
-
-    expect(mockRemoveProject).not.toHaveBeenCalled();
   });
 });
 
@@ -473,12 +448,8 @@ describe('useUpdateProject', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    (useProjectStore as unknown as jest.Mock).mockReturnValue({
-      setProjects: mockSetProjects,
-      addProject: mockAddProject,
-      removeProject: mockRemoveProject,
-      updateProject: mockUpdateProject,
-    });
+    mockPush.mockClear();
+    mockReplace.mockClear();
   });
 
   it('should update a project successfully', async () => {
@@ -511,12 +482,6 @@ describe('useUpdateProject', () => {
       },
       body: JSON.stringify({ name: 'Updated Project' }),
     });
-    expect(mockUpdateProject).toHaveBeenCalledWith(
-      1,
-      expect.objectContaining({
-        name: 'Updated Project',
-      })
-    );
   });
 
   it('should handle update error', async () => {

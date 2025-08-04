@@ -1,7 +1,7 @@
 'use client';
 
 import { useProjects } from '@/hooks/use-projects';
-import { Project, useProjectStore } from '@/lib/stores/projectStore';
+import type { Project } from '@/lib/db/schema';
 import ProjectCard from './project-card';
 import { ProjectCardSkeleton } from './skeletons';
 
@@ -11,14 +11,10 @@ interface ProjectGridProps {
 }
 
 export default function ProjectGrid({ userId, initialProjects }: ProjectGridProps) {
-  const { projects: storeProjects } = useProjectStore();
-  const { data: queryProjects, isLoading, isFetching } = useProjects({
+  const { data: projects, isLoading, isFetching } = useProjects({
     userId,
     initialData: initialProjects,
   });
-
-  // Use query data as primary source, fallback to store data, then initial data
-  const projects = queryProjects ?? storeProjects ?? initialProjects;
 
   // Show skeleton during initial load or subsequent fetches when we don't have reliable data yet
   if (isLoading || (isFetching && !projects?.length)) {
