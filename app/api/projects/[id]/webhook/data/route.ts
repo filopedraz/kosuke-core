@@ -4,7 +4,7 @@ import { eq } from 'drizzle-orm';
 
 import { db } from '@/lib/db/drizzle';
 import { chatMessages, projects } from '@/lib/db/schema';
-import type { WebhookAssistantData } from '@/lib/types';
+import type { WebhookAssistantData, GitHubWebhookData } from '@/lib/types';
 
 // Webhook authentication
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET || 'dev-secret-change-in-production';
@@ -17,6 +17,9 @@ interface WebhookRequest {
     success?: boolean;
     totalActions?: number;
     duration?: number;
+    // GitHub integration data
+    githubCommit?: GitHubWebhookData['githubCommit'];
+    sessionSummary?: GitHubWebhookData['sessionSummary'];
   };
 }
 
@@ -170,27 +173,75 @@ async function handleAssistantMessage(
  */
 async function handleCompletion(
   projectId: number,
-  data: WebhookAssistantData & { success?: boolean; totalActions?: number; duration?: number }
+  data: WebhookAssistantData & { 
+    success?: boolean; 
+    totalActions?: number; 
+    duration?: number;
+    githubCommit?: GitHubWebhookData['githubCommit'];
+    sessionSummary?: GitHubWebhookData['sessionSummary'];
+  }
 ): Promise<NextResponse> {
   try {
     const {
       success = true,
       totalActions = 0,
       duration = 0,
+      githubCommit,
+      sessionSummary,
     } = data;
 
-    console.log(`✅ Webhook: Chat session completed for project ${projectId}`, {
+    const logData: any = {
       success,
       totalActions,
       duration: `${duration}ms`,
-    });
+    };
+
+    // Add GitHub information to logs if available
+    if (githubCommit) {
+      logData.github = {
+        commit: {
+          sha: githubCommit.sha.substring(0, 8),
+          message: githubCommit.message,
+          filesChanged: githubCommit.files_changed,
+        },
+      };
+    }
+
+    if (sessionSummary) {
+      logData.session = {
+        sessionId: sessionSummary.session_id,
+        filesChanged: sessionSummary.files_changed,
+        status: sessionSummary.status,
+        duration: sessionSummary.duration ? `${sessionSummary.duration}s` : undefined,
+      };
+    }
+
+    console.log(`✅ Webhook: Chat session completed for project ${projectId}`, logData);
 
     // Return success - this endpoint is mainly for logging and potential future features
-    return NextResponse.json({
+    const response: any = {
       success: true,
       projectId,
       timestamp: new Date().toISOString(),
-    });
+    };
+
+    // Include GitHub data in response if available
+    if (githubCommit || sessionSummary) {
+      response.github = {
+        commit: githubCommit ? {
+          sha: githubCommit.sha,
+          message: githubCommit.message,
+          filesChanged: githubCommit.files_changed,
+        } : undefined,
+        session: sessionSummary ? {
+          sessionId: sessionSummary.session_id,
+          filesChanged: sessionSummary.files_changed,
+          status: sessionSummary.status,
+        } : undefined,
+      };
+    }
+
+    return NextResponse.json(response);
 
   } catch (error) {
     console.error('Error handling completion:', error);

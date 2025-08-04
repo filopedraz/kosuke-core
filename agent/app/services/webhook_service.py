@@ -3,7 +3,8 @@ Webhook service for sending data to Next.js endpoints
 """
 import asyncio
 import logging
-from typing import Any
+from typing import Any, Optional
+from datetime import datetime
 
 import aiohttp
 
@@ -96,6 +97,25 @@ class WebhookService:
 
         return await self._send_webhook_with_retry(endpoint, data)
 
+    async def send_commit(
+        self,
+        project_id: int,
+        commit_sha: str,
+        commit_message: str,
+        files_changed: int
+    ) -> bool:
+        """Send commit information to Next.js via webhook"""
+        endpoint = f"/api/projects/{project_id}/webhook/commit"
+        
+        data = {
+            "commit_sha": commit_sha,
+            "commit_message": commit_message,
+            "files_changed": files_changed,
+            "timestamp": datetime.now().isoformat()
+        }
+
+        return await self._send_webhook_with_retry(endpoint, data)
+
     async def send_completion(
         self,
         project_id: int,
@@ -103,8 +123,10 @@ class WebhookService:
         total_actions: int = 0,
         total_tokens: int = 0,
         duration: float = 0.0,
+        github_commit: Optional[dict] = None,
+        session_summary: Optional[dict] = None,
     ) -> bool:
-        """Send session completion to Next.js"""
+        """Send session completion to Next.js with optional GitHub data"""
         endpoint = f"/api/projects/{project_id}/webhook/data"
         data = {
             "type": "completion",
@@ -115,6 +137,13 @@ class WebhookService:
                 "duration": int(duration * 1000),  # Convert to milliseconds
             },
         }
+
+        # Add GitHub data if available
+        if github_commit:
+            data["data"]["githubCommit"] = github_commit
+
+        if session_summary:
+            data["data"]["sessionSummary"] = session_summary
 
         return await self._send_webhook_with_retry(endpoint, data)
 

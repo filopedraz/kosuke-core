@@ -41,3 +41,32 @@ export interface GitHubDisconnectResponse {
   success: boolean;
   message?: string;
 }
+
+// Webhook Types
+export interface GitHubCommitData {
+  sha: string;
+  message: string;
+  url?: string;
+  files_changed: number;
+  timestamp: string;
+}
+
+export interface GitHubSessionSummary {
+  session_id: string;
+  project_id: number;
+  files_changed: number;
+  duration?: number;
+  status: 'active' | 'completed' | 'failed';
+}
+
+export interface GitHubCommitWebhook {
+  commit_sha: string;
+  commit_message: string;
+  files_changed: number;
+  timestamp: string;
+}
+
+export interface GitHubWebhookData {
+  githubCommit?: GitHubCommitData;
+  sessionSummary?: GitHubSessionSummary;
+}
