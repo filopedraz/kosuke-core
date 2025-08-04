@@ -3,8 +3,9 @@
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useBrandGuidelines } from '@/hooks/use-brand-guidelines';
 import { useUpdateBrandColor } from '@/hooks/use-brand-colors';
+import { useBrandGuidelines } from '@/hooks/use-brand-guidelines';
+import type { FontInfo } from '@/lib/types/branding';
 import { Moon, Palette, Sun, TextQuote, Wand2 } from 'lucide-react';
 import ColorCard from './color-card';
 import ColorCardSkeleton from './color-card-skeleton';
@@ -14,7 +15,6 @@ import FontCardSkeleton from './font-card-skeleton';
 import KeywordsModal from './keywords-modal';
 import { ThemePreviewProvider } from './theme-context';
 import { getCategoryTitle, groupColorsByCategory } from './utils/color-utils';
-import type { FontInfo } from '@/lib/font-parser';
 
 interface BrandGuidelinesProps {
   projectId: number;
