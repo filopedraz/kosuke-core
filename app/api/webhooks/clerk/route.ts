@@ -14,6 +14,12 @@ if (!WEBHOOK_SECRET) {
 
 type ClerkEventType = 'user.created' | 'user.updated' | 'user.deleted';
 
+interface DatabaseError {
+  code?: string;
+  constraint_name?: string;
+  message?: string;
+}
+
 interface ClerkUser {
   id: string;
   email_addresses: Array<{
@@ -50,7 +56,7 @@ export async function POST(request: Request) {
   const payload = await request.text();
 
   // Create a new Svix instance with your secret.
-  const wh = new Webhook(WEBHOOK_SECRET);
+  const wh = new Webhook(WEBHOOK_SECRET!);
 
   let evt: ClerkEvent;
 
@@ -131,11 +137,14 @@ async function handleUserCreated(clerkUser: ClerkUser) {
       });
 
       console.log(`✅ Created user in database: ${clerkUser.id} (${primaryEmail})`);
-    } catch (insertError: any) {
+    } catch (insertError: unknown) {
       // Handle duplicate email constraint specifically
-      if (insertError?.code === '23505' && insertError?.constraint_name === 'users_email_unique') {
-        console.log(`⚠️ User with email ${primaryEmail} already exists, but with different Clerk ID. This is likely a recreated account.`);
-        
+      const dbError = insertError as DatabaseError;
+      if (dbError?.code === '23505' && dbError?.constraint_name === 'users_email_unique') {
+        console.log(
+          `⚠️ User with email ${primaryEmail} already exists, but with different Clerk ID. This is likely a recreated account.`
+        );
+
         // Check if there's an existing user with this email that might be soft-deleted
         const existingUserByEmail = await db
           .select()
@@ -145,7 +154,7 @@ async function handleUserCreated(clerkUser: ClerkUser) {
 
         if (existingUserByEmail.length > 0) {
           const existingUser = existingUserByEmail[0];
-          
+
           // If the existing user is soft-deleted, update it with new Clerk ID
           if (existingUser.deletedAt) {
             await db
@@ -158,17 +167,21 @@ async function handleUserCreated(clerkUser: ClerkUser) {
                 updatedAt: new Date(clerkUser.updated_at),
               })
               .where(eq(users.email, primaryEmail));
-            
-            console.log(`✅ Restored soft-deleted user and updated Clerk ID: ${clerkUser.id} (${primaryEmail})`);
+
+            console.log(
+              `✅ Restored soft-deleted user and updated Clerk ID: ${clerkUser.id} (${primaryEmail})`
+            );
           } else {
-            console.log(`ℹ️ Active user with email ${primaryEmail} already exists with different Clerk ID. Skipping creation.`);
+            console.log(
+              `ℹ️ Active user with email ${primaryEmail} already exists with different Clerk ID. Skipping creation.`
+            );
           }
         }
-        
+
         // Don't throw error - webhook should succeed even if user exists
         return;
       }
-      
+
       // For other database errors, re-throw
       throw insertError;
     }
