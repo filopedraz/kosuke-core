@@ -6,7 +6,8 @@ import { NextRequest, NextResponse } from 'next/server';
  * Disconnect GitHub account
  * WARNING: This will effectively sign the user out since GitHub is required for Kosuke
  */
-export async function POST(request: NextRequest) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export async function POST(_: NextRequest) {
   try {
     const { userId } = await auth();
     if (!userId) {
