@@ -107,3 +107,36 @@ export interface GitHubWebhookPayload {
     removed: string[];
   }>;
 }
+
+// Enhanced repository selection types for project creation
+export interface GitHubRepositoryOption {
+  id: number;
+  name: string;
+  full_name: string;
+  description: string | null;
+  private: boolean;
+  html_url: string;
+  language: string | null;
+  stargazers_count: number;
+  updated_at: string;
+  owner: {
+    login: string;
+    avatar_url: string;
+  };
+}
+
+export interface RepositoryCreationConfig {
+  name: string;
+  description?: string;
+  private: boolean;
+  auto_init: boolean;
+  gitignore_template?: string;
+  license_template?: string;
+}
+
+export interface ProjectGitHubSettings {
+  repositoryName: string;
+  description: string;
+  isPrivate: boolean;
+  autoInit: boolean;
+}

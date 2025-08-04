@@ -17,8 +17,14 @@ export interface ProjectListItem
 // Project Creation and Update Types
 export interface CreateProjectData {
   name: string;
-  prompt?: string;
-  description?: string;
+  prompt: string;
+  github: {
+    type: 'create' | 'import';
+    repositoryName?: string; // For create mode
+    repositoryUrl?: string; // For import mode
+    description?: string;
+    isPrivate?: boolean;
+  };
 }
 
 export interface UpdateProjectData {
@@ -85,4 +91,11 @@ export interface ProjectFile {
 export interface ProjectFilesResponse {
   files: ProjectFile[];
   totalSize: number;
+}
+
+// Project Creation Flow Types
+export interface ProjectCreationStep {
+  step: 'project-details' | 'github-setup' | 'creating' | 'complete';
+  data?: Partial<CreateProjectData>;
+  error?: string;
 }

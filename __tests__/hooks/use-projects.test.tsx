@@ -288,6 +288,7 @@ describe('useCreateProject', () => {
     mockFetch.mockResolvedValueOnce({
       ok: false,
       status: 400,
+      json: async () => ({}),
     });
 
     render(

@@ -65,7 +65,11 @@ export function useCreateProject() {
   const queryClient = useQueryClient();
   const router = useRouter();
 
-  return useMutation<Project, Error, { prompt: string; name: string }>({
+  return useMutation<
+    Project,
+    Error,
+    { prompt: string; name: string } | import('@/lib/types/project').CreateProjectData
+  >({
     mutationFn: async requestData => {
       const response = await fetch('/api/projects', {
         method: 'POST',
@@ -74,9 +78,12 @@ export function useCreateProject() {
         },
         body: JSON.stringify(requestData),
       });
+
       if (!response.ok) {
-        throw new Error('Failed to create project');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to create project');
       }
+
       const responseData = await response.json();
 
       // Handle different response structures
@@ -104,6 +111,7 @@ export function useCreateProject() {
     onSuccess: data => {
       // Invalidate projects list to refresh the cache
       queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: ['github-repositories'] });
 
       // Navigate to the project detail page
       const targetUrl = `/projects/${data.id}`;
