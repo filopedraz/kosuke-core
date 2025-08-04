@@ -19,6 +19,7 @@ from claude_code_sdk import UserMessage
 from claude_code_sdk import query
 
 from app.utils.config import settings
+from app.utils.token_counter import count_tokens
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +45,11 @@ class ClaudeCodeService:
         self.project_id = project_id
         # Use consistent project path with other services
         self.project_path = Path(settings.projects_dir) / str(project_id)
+
+        # Track token usage manually since claude-code-sdk doesn't expose it
+        self.total_input_tokens = 0
+        self.total_output_tokens = 0
+        self.total_context_tokens = 0
 
         logger.info(f"🚀 Initializing Claude Code Service for project {project_id}")
         logger.info(f"📁 Project path: {self.project_path}")
@@ -154,6 +160,17 @@ Project Guidelines & Cursor Rules
         logger.info(f"📝 Prompt: {prompt[:100]}{'...' if len(prompt) > 100 else ''}")
         logger.info(f"🔄 Max turns: {max_turns}")
         logger.info(f"📁 Working directory: {self.project_path}")
+
+        # Count input tokens from prompt and system prompt
+        prompt_tokens = count_tokens(prompt)
+        system_prompt = self._build_system_prompt()
+        system_tokens = count_tokens(system_prompt)
+
+        # Add to input tokens (context tokens include system prompt)
+        self.total_input_tokens += prompt_tokens
+        self.total_context_tokens += system_tokens
+
+        logger.info(f"📊 Input tokens: {prompt_tokens}, Context tokens: {system_tokens}")
 
         try:
             # Setup options and run query
@@ -297,6 +314,11 @@ Project Guidelines & Cursor Rules
         logger.debug(f"📝 Text block {block_idx}: {len(block.text)} chars")
         message_id = getattr(message, "id", None) or f"msg_{abs(hash(str(message)))}"
 
+        # Count output tokens from assistant response
+        output_tokens = count_tokens(block.text)
+        self.total_output_tokens += output_tokens
+        logger.debug(f"📊 Added {output_tokens} output tokens")
+
         async for text_event in self._simulate_text_streaming(block.text, message_id):
             yield text_event
 
@@ -304,6 +326,12 @@ Project Guidelines & Cursor Rules
         """Create tool start event from tool use block"""
         logger.info(f"🔧 Tool use block {block_idx}: {block.name} (id: {block.id})")
         logger.debug(f"🔧 Tool input: {str(block.input)[:200]}...")
+
+        # Count tokens from tool input as part of the conversation
+        tool_input_str = str(block.input)
+        input_tokens = count_tokens(tool_input_str)
+        self.total_input_tokens += input_tokens
+        logger.debug(f"📊 Added {input_tokens} tokens from tool input")
 
         return {
             "type": "tool_start",
@@ -327,6 +355,12 @@ Project Guidelines & Cursor Rules
         """Create tool stop event from tool result block"""
         logger.info(f"✅ Tool result block {block_idx}: tool_use_id={block.tool_use_id}")
         logger.debug(f"✅ Tool result content: {str(block.content)[:200]}...")
+
+        # Count tokens from tool result as input for the next model turn
+        tool_result_str = str(block.content)
+        result_tokens = count_tokens(tool_result_str)
+        self.total_input_tokens += result_tokens
+        logger.debug(f"📊 Added {result_tokens} tokens from tool result")
 
         return {
             "type": "tool_stop",
@@ -396,3 +430,22 @@ Project Guidelines & Cursor Rules
                 "project_files": [],
                 "error": str(e),
             }
+
+    def get_token_usage(self) -> dict[str, int]:
+        """
+        Get the total token usage for this session
+
+        Returns:
+            Dictionary with input_tokens, output_tokens, context_tokens, and total_tokens
+        """
+        total_tokens = self.total_input_tokens + self.total_output_tokens + self.total_context_tokens
+
+        token_usage = {
+            "input_tokens": self.total_input_tokens,
+            "output_tokens": self.total_output_tokens,
+            "context_tokens": self.total_context_tokens,
+            "total_tokens": total_tokens,
+        }
+
+        logger.info(f"📊 Token usage summary: {token_usage}")
+        return token_usage

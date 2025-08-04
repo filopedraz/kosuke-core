@@ -10,9 +10,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useToast } from '@/hooks/use-toast';
 import { useUser } from '@/hooks/use-user';
 import type { PipelinePreference } from '@/lib/types';
-import { Bot, Zap } from 'lucide-react';
+import { Bot, Zap, AlertTriangle } from 'lucide-react';
 
 function PipelineSkeleton() {
   return (
@@ -37,10 +38,20 @@ function PipelineSkeleton() {
 
 export default function PipelinePage() {
   const { user, isLoading, updatePipelinePreference } = useUser();
+  const { toast } = useToast();
 
   const handlePipelineChange = async (value: PipelinePreference) => {
     try {
       await updatePipelinePreference(value);
+      
+      // Show deprecation warning for Kosuke
+      if (value === 'kosuke') {
+        toast({
+          title: 'Deprecated Agent Selected',
+          description: 'Kosuke agent is deprecated and will be removed in a future update. Consider switching to Claude Code for the latest features.',
+          variant: 'destructive',
+        });
+      }
     } catch (error) {
       console.error('Error updating pipeline preference:', error);
     }
@@ -88,8 +99,8 @@ export default function PipelinePage() {
                 </SelectItem>
                 <SelectItem value="kosuke">
                   <div className="flex items-center gap-3">
-                    <Zap className="h-4 w-4" />
-                    <span>Kosuke</span>
+                    <AlertTriangle className="h-4 w-4 text-orange-500" />
+                    <span>Kosuke (deprecated)</span>
                   </div>
                 </SelectItem>
               </SelectContent>

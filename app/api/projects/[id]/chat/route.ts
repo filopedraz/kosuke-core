@@ -4,7 +4,7 @@ import { z } from 'zod';
 
 import { auth } from '@/lib/auth/server';
 import { db } from '@/lib/db/drizzle';
-import { chatMessages, projects, users } from '@/lib/db/schema';
+import { chatMessages, projects } from '@/lib/db/schema';
 import { uploadFile } from '@/lib/storage';
 import { eq } from 'drizzle-orm';
 
@@ -158,11 +158,6 @@ export async function POST(
       return new Response('Unauthorized', { status: 401 });
     }
 
-    // Fetch user's pipeline preference
-    const [user] = await db.select().from(users).where(eq(users.clerkUserId, userId)).limit(1);
-    const pipelinePreference = user?.pipelinePreference || 'claude-code'; // Default to claude-code
-    console.log(`🤖 Using pipeline: ${pipelinePreference}`);
-
     // Await params to get the id
     const { id } = await params;
     const projectId = parseInt(id);
@@ -180,8 +175,6 @@ export async function POST(
     if (project.createdBy !== userId) {
       return new Response('Forbidden', { status: 403 });
     }
-
-
 
     // Parse request body - support both JSON and FormData
     const contentType = req.headers.get('content-type') || '';
@@ -290,8 +283,8 @@ export async function POST(
     // Proxy stream directly to Python FastAPI service
     const agentServiceUrl = process.env.AGENT_SERVICE_URL || 'http://localhost:8001';
 
-    // Determine the correct endpoint based on pipeline preference
-    const endpoint = pipelinePreference === 'kosuke' ? '/api/chat/stream' : '/api/claude-code/stream';
+    // Always use the chat stream endpoint
+    const endpoint = '/api/chat/stream';
     console.log(`🚀 Routing to: ${endpoint}`);
 
     // Mark unused variables for future use
