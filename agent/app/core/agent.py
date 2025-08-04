@@ -1,12 +1,15 @@
 """
 Agent - Advanced agentic pipeline using claude-code-sdk with Langfuse observability
 """
+import logging
 import time
 from collections.abc import AsyncGenerator
 
 from app.services.claude_code_service import ClaudeCodeService
 from app.services.webhook_service import WebhookService
 from app.utils.observability import observe_agentic_workflow
+
+logger = logging.getLogger(__name__)
 
 
 class Agent:
@@ -31,7 +34,7 @@ class Agent:
         # Initialize claude-code service
         self.claude_code_service = ClaudeCodeService(project_id)
 
-        print(f"🚀 Agent initialized for project ID: {project_id}")
+        logger.info(f"🚀 Agent initialized for project ID: {project_id}")
 
     @observe_agentic_workflow("claude-code-agentic-pipeline")
     async def run(self, prompt: str, max_turns: int = 25) -> AsyncGenerator[dict, None]:
@@ -45,7 +48,7 @@ class Agent:
         Yields:
             Stream of events compatible with existing chat interface
         """
-        print(f"🤖 Processing claude-code request for project ID: {self.project_id}")
+        logger.info(f"🤖 Processing claude-code request for project ID: {self.project_id}")
         processing_start = time.time()
 
         # Initialize state for text block tracking
@@ -69,7 +72,7 @@ class Agent:
             yield {"type": "error", "message": f"Error in claude-code agent: {e}"}
 
         processing_end = time.time()
-        print(f"⏱️ Total claude-code processing time: {processing_end - processing_start:.2f}s")
+        logger.info(f"⏱️ Total claude-code processing time: {processing_end - processing_start:.2f}s")
 
     async def _process_event(self, event: dict, text_state: dict) -> AsyncGenerator[dict, None]:
         """Process a single event from the claude-code service"""
@@ -174,7 +177,7 @@ class Agent:
         """Handle errors during processing"""
         if text_state["active"]:
             self._save_text_content(text_state)
-        print(f"❌ Error in claude-code agent: {error}")
+        logger.error(f"❌ Error in claude-code agent: {error}")
         await self._send_assistant_message_webhook(text_state["all_blocks"], success=False)
 
     async def _send_assistant_message_webhook(self, assistant_blocks: list, success: bool = True):
@@ -196,7 +199,7 @@ class Agent:
                     assistant_message_id=self.assistant_message_id,
                 )
 
-            print(
+            logger.info(
                 f"✅ Sent assistant message webhook: {len(assistant_blocks)} blocks, "
                 f"{token_usage['total_tokens']} tokens"
             )
@@ -211,9 +214,9 @@ class Agent:
                     duration=duration,
                 )
 
-            print(
+            logger.info(
                 f"✅ Sent completion webhook: {self.total_actions} actions, {duration:.2f}s, "
                 f"{token_usage['total_tokens']} tokens"
             )
         except Exception as e:
-            print(f"❌ Failed to send webhooks: {e}")
+            logger.error(f"❌ Failed to send webhooks: {e}")
