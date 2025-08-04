@@ -4,7 +4,6 @@ from fastapi import APIRouter
 from fastapi import Header
 from fastapi import HTTPException
 
-from app.models.github import CommitChangesRequest
 from app.models.github import CreateRepoRequest
 from app.models.github import GitHubRepo
 from app.models.github import ImportRepoRequest
@@ -14,119 +13,111 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-def get_github_service(authorization: str = Header(None)) -> GitHubService:
-    """Create GitHub service instance from authorization header"""
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="GitHub token required in Authorization header")
-
-    token = authorization.replace("Bearer ", "")
-    return GitHubService(token)
+def get_github_service(github_token: str) -> GitHubService:
+    """Create GitHub service with token"""
+    return GitHubService(github_token)
 
 
-@router.post("/github/repositories", response_model=GitHubRepo)
-async def create_repository(request: CreateRepoRequest, authorization: str = Header(None)):
+@router.post("/github/create-repo")
+async def create_repository(
+    request: CreateRepoRequest, github_token: str = Header(..., alias="X-GitHub-Token")
+) -> GitHubRepo:
     """Create a new GitHub repository"""
     try:
-        github_service = get_github_service(authorization)
-        repo = await github_service.create_repository(request)
-        logger.info(f"Created repository: {repo.owner}/{repo.name}")
-        return repo
+        github_service = get_github_service(github_token)
+        return await github_service.create_repository(request)
     except Exception as e:
-        logger.error(f"Failed to create repository: {e}")
-        raise HTTPException(status_code=400, detail=str(e)) from e
+        logger.error(f"Error creating repository: {e}")
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
-@router.post("/github/import")
-async def import_repository(request: ImportRepoRequest, authorization: str = Header(None)):
-    """Import/clone a GitHub repository to local project"""
+@router.post("/github/import-repo")
+async def import_repository(request: ImportRepoRequest, github_token: str = Header(..., alias="X-GitHub-Token")):
+    """Import a GitHub repository to a project"""
     try:
-        github_service = get_github_service(authorization)
+        github_service = get_github_service(github_token)
         project_path = await github_service.import_repository(request)
-        logger.info(f"Imported repository to: {project_path}")
-        return {"project_path": project_path, "project_id": request.project_id}
+        return {"success": True, "project_id": request.project_id, "project_path": project_path}
     except Exception as e:
-        logger.error(f"Failed to import repository: {e}")
-        raise HTTPException(status_code=400, detail=str(e)) from e
+        logger.error(f"Error importing repository: {e}")
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
-@router.get("/github/repositories", response_model=list[GitHubRepo])
-async def get_user_repositories(page: int = 1, per_page: int = 30, authorization: str = Header(None)):
-    """Get user's GitHub repositories"""
-    try:
-        github_service = get_github_service(authorization)
-        repos = github_service.get_user_repositories(page, per_page)
-        logger.info(f"Retrieved {len(repos)} repositories for user")
-        return repos
-    except Exception as e:
-        logger.error(f"Failed to get repositories: {e}")
-        raise HTTPException(status_code=400, detail=str(e)) from e
-
-
-@router.get("/github/repositories/info", response_model=GitHubRepo)
-async def get_repository_info(repo_url: str, authorization: str = Header(None)):
-    """Get information about a GitHub repository"""
-    try:
-        github_service = get_github_service(authorization)
-        repo_info = await github_service.get_repository_info(repo_url)
-        logger.info(f"Retrieved info for repository: {repo_info.owner}/{repo_info.name}")
-        return repo_info
-    except Exception as e:
-        logger.error(f"Failed to get repository info: {e}")
-        raise HTTPException(status_code=400, detail=str(e)) from e
-
-
-@router.post("/github/sync/start")
-async def start_sync_session(project_id: int, session_id: str, authorization: str = Header(None)):
+@router.post("/github/start-session")
+async def start_sync_session(project_id: int, session_id: str, github_token: str = Header(..., alias="X-GitHub-Token")):
     """Start a new sync session for tracking changes"""
     try:
-        github_service = get_github_service(authorization)
+        github_service = get_github_service(github_token)
         github_service.start_sync_session(project_id, session_id)
-        logger.info(f"Started sync session {session_id} for project {project_id}")
-        return {"session_id": session_id, "project_id": project_id, "status": "started"}
+        return {"success": True, "session_id": session_id, "project_id": project_id}
     except Exception as e:
-        logger.error(f"Failed to start sync session: {e}")
-        raise HTTPException(status_code=400, detail=str(e)) from e
+        logger.error(f"Error starting sync session: {e}")
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
-@router.post("/github/sync/track")
-async def track_file_change(session_id: str, file_path: str, authorization: str = Header(None)):
+@router.post("/github/track-change")
+async def track_file_change(session_id: str, file_path: str, github_token: str = Header(..., alias="X-GitHub-Token")):
     """Track a file change in the current sync session"""
     try:
-        github_service = get_github_service(authorization)
+        github_service = get_github_service(github_token)
         github_service.track_file_change(session_id, file_path)
-        logger.info(f"Tracked file change: {file_path} in session {session_id}")
-        return {"session_id": session_id, "file_path": file_path, "status": "tracked"}
+        return {"success": True}
     except Exception as e:
-        logger.error(f"Failed to track file change: {e}")
-        raise HTTPException(status_code=400, detail=str(e)) from e
+        logger.error(f"Error tracking file change: {e}")
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
-@router.post("/github/sync/commit")
-async def commit_session_changes(request: CommitChangesRequest, authorization: str = Header(None)):
+@router.post("/github/commit-session")
+async def commit_session_changes(
+    session_id: str,
+    commit_message: str | None = None,
+    github_token: str = Header(..., alias="X-GitHub-Token"),
+):
     """Commit all changes from a sync session"""
     try:
-        github_service = get_github_service(authorization)
-        commit = await github_service.commit_session_changes(request.session_id, request.message)
+        github_service = get_github_service(github_token)
+        commit = await github_service.commit_session_changes(session_id, commit_message)
 
-        if commit:
-            logger.info(f"Committed changes for session {request.session_id}: {commit.sha}")
-            return {"session_id": request.session_id, "commit": commit, "status": "committed"}
-
-        logger.info(f"No changes to commit for session {request.session_id}")
-        return {"session_id": request.session_id, "status": "no_changes"}
-    except Exception as e:
-        logger.error(f"Failed to commit session changes: {e}")
-        raise HTTPException(status_code=400, detail=str(e)) from e
-
-
-@router.post("/github/sync/end")
-async def end_sync_session(session_id: str, authorization: str = Header(None)):
-    """End a sync session and return summary"""
-    try:
-        github_service = get_github_service(authorization)
+        # End the session
         summary = github_service.end_sync_session(session_id)
-        logger.info(f"Ended sync session {session_id}")
-        return summary
+
+        return {
+            "success": True,
+            "commit": commit.dict() if commit else None,
+            "session_summary": summary,
+        }
     except Exception as e:
-        logger.error(f"Failed to end sync session: {e}")
-        raise HTTPException(status_code=400, detail=str(e)) from e
+        logger.error(f"Error committing session changes: {e}")
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@router.get("/github/repo-info")
+async def get_repository_info(repo_url: str, github_token: str = Header(..., alias="X-GitHub-Token")) -> GitHubRepo:
+    """Get information about a GitHub repository"""
+    try:
+        github_service = get_github_service(github_token)
+        return await github_service.get_repository_info(repo_url)
+    except Exception as e:
+        logger.error(f"Error getting repository info: {e}")
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@router.get("/github/user-repos")
+async def get_user_repositories(
+    page: int = 1,
+    per_page: int = 30,
+    github_token: str = Header(..., alias="X-GitHub-Token"),
+) -> list[GitHubRepo]:
+    """Get user's GitHub repositories"""
+    try:
+        github_service = get_github_service(github_token)
+        return github_service.get_user_repositories(page, per_page)
+    except Exception as e:
+        logger.error(f"Error getting user repositories: {e}")
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@router.get("/github/health")
+async def github_health():
+    """GitHub service health check"""
+    return {"status": "healthy", "service": "github"}
