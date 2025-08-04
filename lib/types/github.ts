@@ -17,7 +17,7 @@ export interface GitHubStatus {
 export interface GitHubScope {
   name: string;
   description: string;
-  icon: string;
+  icon?: string;
 }
 
 export interface GitHubAccountState {
