@@ -1,10 +1,9 @@
 """
 Agent - Advanced agentic pipeline using claude-code-sdk with Langfuse observability
 """
+import logging
 import time
 from collections.abc import AsyncGenerator
-from typing import Optional
-import logging
 
 from app.services.claude_code_service import ClaudeCodeService
 from app.services.github_service import GitHubService
@@ -12,6 +11,7 @@ from app.services.webhook_service import WebhookService
 from app.utils.observability import observe_agentic_workflow
 
 logger = logging.getLogger(__name__)
+
 
 class Agent:
     """
@@ -34,14 +34,14 @@ class Agent:
         self.total_actions = 0
 
         # GitHub integration attributes
-        self.github_service: Optional[GitHubService] = None
-        self.current_session_id: Optional[str] = None
-        self.github_token: Optional[str] = None
+        self.github_service: GitHubService | None = None
+        self.current_session_id: str | None = None
+        self.github_token: str | None = None
 
         # Initialize claude-code service
         self.claude_code_service = ClaudeCodeService(project_id)
 
-        print(f"🚀 Agent initialized for project ID: {project_id}")
+        logger.info(f"🚀 Agent initialized for project ID: {project_id}")
 
     def set_github_integration(self, github_token: str, session_id: str):
         """Enable GitHub integration for this agent session"""
@@ -55,7 +55,9 @@ class Agent:
             print(f"🔗 GitHub integration enabled for session {session_id}")
 
     @observe_agentic_workflow("claude-code-agentic-pipeline")
-    async def run(self, prompt: str, max_turns: int = 25, github_token: Optional[str] = None, session_id: Optional[str] = None) -> AsyncGenerator[dict, None]:
+    async def run(
+        self, prompt: str, max_turns: int = 25, github_token: str | None = None, session_id: str | None = None
+    ) -> AsyncGenerator[dict, None]:
         """
         Run the claude-code agent for repository analysis and modification
 
@@ -68,7 +70,7 @@ class Agent:
         Yields:
             Stream of events compatible with existing chat interface
         """
-        print(f"🤖 Processing claude-code request for project ID: {self.project_id}")
+        logger.info(f"🤖 Processing claude-code request for project ID: {self.project_id}")
         processing_start = time.time()
 
         # Initialize state for text block tracking
@@ -96,7 +98,7 @@ class Agent:
             yield {"type": "error", "message": f"Error in claude-code agent: {e}"}
 
         processing_end = time.time()
-        print(f"⏱️ Total claude-code processing time: {processing_end - processing_start:.2f}s")
+        logger.info(f"⏱️ Total claude-code processing time: {processing_end - processing_start:.2f}s")
 
     async def _process_event(self, event: dict, text_state: dict) -> AsyncGenerator[dict, None]:
         """Process a single event from the claude-code service"""
@@ -175,12 +177,12 @@ class Agent:
         if self.github_service and self.current_session_id:
             tool_name = event.get("tool_name", "")
             tool_input = event.get("tool_input", {})
-            
+
             # Track file changes for relevant tools
-            if tool_name in ['str_replace_editor', 'create_file'] and not event.get("is_error", False):
+            if tool_name in ["str_replace_editor", "create_file"] and not event.get("is_error", False):
                 try:
-                    file_path = tool_input.get('path') or tool_input.get('file_path')
-                    if file_path and not file_path.startswith('/'):
+                    file_path = tool_input.get("path") or tool_input.get("file_path")
+                    if file_path and not file_path.startswith("/"):
                         # Track relative file path
                         self.github_service.track_file_change(self.current_session_id, file_path)
                         print(f"📝 Tracked file change: {file_path}")
@@ -224,7 +226,7 @@ class Agent:
         """Handle errors during processing"""
         if text_state["active"]:
             self._save_text_content(text_state)
-        print(f"❌ Error in claude-code agent: {error}")
+        logger.error(f"❌ Error in claude-code agent: {error}")
         await self._send_assistant_message_webhook(text_state["all_blocks"], success=False)
 
         # If we have GitHub integration and session fails, mark session as failed
@@ -236,25 +238,17 @@ class Agent:
             except Exception as github_error:
                 print(f"⚠️ Warning: Error ending GitHub session: {github_error}")
 
-    async def finalize_github_session(self, commit_message: Optional[str] = None):
+    async def finalize_github_session(self, commit_message: str | None = None):
         """Finalize the GitHub session and commit changes if enabled"""
         if self.github_service and self.current_session_id:
             try:
                 # Commit session changes
-                commit = await self.github_service.commit_session_changes(
-                    self.current_session_id,
-                    commit_message
-                )
+                commit = await self.github_service.commit_session_changes(self.current_session_id, commit_message)
 
                 # Send webhook about commit
                 if commit and self.webhook_service:
                     async with self.webhook_service as webhook:
-                        await webhook.send_commit(
-                            self.project_id,
-                            commit.sha,
-                            commit.message,
-                            commit.files_changed
-                        )
+                        await webhook.send_commit(self.project_id, commit.sha, commit.message, commit.files_changed)
 
                 # End session and get summary
                 session_summary = self.github_service.end_sync_session(self.current_session_id)
@@ -283,7 +277,7 @@ class Agent:
                     assistant_message_id=self.assistant_message_id,
                 )
 
-            print(
+            logger.info(
                 f"✅ Sent assistant message webhook: {len(assistant_blocks)} blocks, "
                 f"{token_usage['total_tokens']} tokens"
             )
@@ -291,17 +285,19 @@ class Agent:
             # Send completion webhook with GitHub info
             github_commit = None
             session_summary = None
-            
-            if self.github_service and self.current_session_id:
-                # Get session info if available (without ending the session)
-                if self.current_session_id in self.github_service.sync_sessions:
-                    session = self.github_service.sync_sessions[self.current_session_id]
-                    session_summary = {
-                        "session_id": self.current_session_id,
-                        "project_id": session["project_id"],
-                        "files_changed": len(session["files_changed"]),
-                        "status": session["status"],
-                    }
+
+            if (
+                self.github_service
+                and self.current_session_id
+                and self.current_session_id in self.github_service.sync_sessions
+            ):
+                session = self.github_service.sync_sessions[self.current_session_id]
+                session_summary = {
+                    "session_id": self.current_session_id,
+                    "project_id": session["project_id"],
+                    "files_changed": len(session["files_changed"]),
+                    "status": session["status"],
+                }
 
             async with self.webhook_service as webhook:
                 await webhook.send_completion(
@@ -314,9 +310,9 @@ class Agent:
                     session_summary=session_summary,
                 )
 
-            print(
+            logger.info(
                 f"✅ Sent completion webhook: {self.total_actions} actions, {duration:.2f}s, "
                 f"{token_usage['total_tokens']} tokens"
             )
         except Exception as e:
-            print(f"❌ Failed to send webhooks: {e}")
+            logger.error(f"❌ Failed to send webhooks: {e}")

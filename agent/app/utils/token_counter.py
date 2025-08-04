@@ -1,4 +1,8 @@
+import logging
+
 import tiktoken
+
+logger = logging.getLogger(__name__)
 
 
 def count_tokens(text: str) -> int:
@@ -13,7 +17,7 @@ def count_tokens(text: str) -> int:
         tokens = enc.encode(text)
         return len(tokens)
     except Exception as e:
-        print(f"Error counting tokens with tiktoken: {e}")
+        logger.warning(f"Error counting tokens with tiktoken: {e}")
         # Fallback to approximately 4 characters per token (standard approximation)
         return len(text) // 4
 

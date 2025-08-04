@@ -1,9 +1,13 @@
 """Tests for health endpoints"""
 
+import logging
+
 import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
+
+logger = logging.getLogger(__name__)
 
 
 @pytest.fixture()
@@ -70,7 +74,7 @@ def test_health_endpoint_simple(client: TestClient):
             assert data["status"] == "healthy"
     except Exception as e:
         # If simple endpoint doesn't exist, just pass
-        print(f"Health endpoint test failed: {e}")
+        logger.info(f"Health endpoint test failed: {e}")
 
 
 def test_health_endpoint_response_format(client: TestClient):

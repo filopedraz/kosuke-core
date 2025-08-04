@@ -6,6 +6,43 @@ import { db } from '@/lib/db/drizzle';
 import { chatMessages, projects } from '@/lib/db/schema';
 import type { WebhookAssistantData, GitHubWebhookData } from '@/lib/types';
 
+interface CompletionLogData {
+  success: boolean;
+  totalActions: number;
+  duration: string;
+  github?: {
+    commit: {
+      sha: string;
+      message: string;
+      filesChanged: number;
+    };
+  };
+  session?: {
+    sessionId: string;
+    filesChanged: number;
+    status: string;
+    duration?: string;
+  };
+}
+
+interface CompletionResponse {
+  success: boolean;
+  projectId: number;
+  timestamp: string;
+  github?: {
+    commit?: {
+      sha: string;
+      message: string;
+      filesChanged: number;
+    };
+    session?: {
+      sessionId: string;
+      filesChanged: number;
+      status: string;
+    };
+  };
+}
+
 // Webhook authentication
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET || 'dev-secret-change-in-production';
 
@@ -190,7 +227,7 @@ async function handleCompletion(
       sessionSummary,
     } = data;
 
-    const logData: any = {
+    const logData: CompletionLogData = {
       success,
       totalActions,
       duration: `${duration}ms`,
@@ -219,7 +256,7 @@ async function handleCompletion(
     console.log(`✅ Webhook: Chat session completed for project ${projectId}`, logData);
 
     // Return success - this endpoint is mainly for logging and potential future features
-    const response: any = {
+    const response: CompletionResponse = {
       success: true,
       projectId,
       timestamp: new Date().toISOString(),

@@ -57,10 +57,10 @@ export async function getGitHubToken(userId: string): Promise<string | null> {
       } else {
         return null;
       }
-    } catch (_tokenError) {
+    } catch {
       return null;
     }
-  } catch (_error) {
+  } catch {
     return null;
   }
 }
@@ -91,7 +91,7 @@ export async function getUserGitHubInfo(userId: string): Promise<{
       githubId: githubAccount.externalId,
       connectedAt: new Date(githubAccount.verification?.expireAt || Date.now()),
     };
-  } catch (_error) {
+  } catch {
     return null;
   }
 }
@@ -116,7 +116,7 @@ export async function disconnectGitHub(userId: string): Promise<void> {
         externalAccountId: githubAccount.id,
       });
     }
-  } catch (_error) {
+  } catch {
     throw new Error('Failed to disconnect GitHub account');
   }
 }
@@ -155,7 +155,7 @@ export async function hasRequiredGitHubScopes(userId: string): Promise<boolean> 
     } else {
       return false;
     }
-  } catch (_error) {
+  } catch {
     return false;
   }
 }

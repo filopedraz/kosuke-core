@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter
 from fastapi import HTTPException
 from fastapi import Path
@@ -8,6 +10,7 @@ from app.models.branding import ColorPaletteRequest
 from app.models.branding import ColorPaletteResponse
 from app.services.color_palette_service import color_palette_service
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
@@ -23,10 +26,10 @@ async def generate_color_palette(
     to generate a cohesive, accessible color palette for both light and dark modes.
     """
     try:
-        print(f"🎨 Color palette generation request for project {project_id}")
-        print(f"📋 Keywords: '{request.keywords}'")
-        print(f"🎯 Apply immediately: {request.apply_immediately}")
-        print(f"📊 Existing colors: {len(request.existing_colors)}")
+        logger.info(f"🎨 Color palette generation request for project {project_id}")
+        logger.info(f"📋 Keywords: '{request.keywords}'")
+        logger.info(f"🎯 Apply immediately: {request.apply_immediately}")
+        logger.info(f"📊 Existing colors: {len(request.existing_colors)}")
 
         # Generate color palette using the service
         result = await color_palette_service.generate_color_palette(
@@ -36,11 +39,11 @@ async def generate_color_palette(
             apply_immediately=request.apply_immediately,
         )
 
-        print(f"✅ Color palette generation {'successful' if result.success else 'failed'}")
+        logger.info(f"✅ Color palette generation {'successful' if result.success else 'failed'}")
         return result
 
     except Exception as error:
-        print(f"❌ Error in generate_color_palette endpoint: {error}")
+        logger.error(f"❌ Error in generate_color_palette endpoint: {error}")
         raise HTTPException(status_code=500, detail=f"Failed to generate color palette: {error!s}") from error
 
 
@@ -56,17 +59,17 @@ async def apply_color_palette(
     project's CSS files, maintaining proper light/dark mode structure.
     """
     try:
-        print(f"🎨 Color palette application request for project {project_id}")
-        print(f"📊 Colors to apply: {len(request.colors)}")
+        logger.info(f"🎨 Color palette application request for project {project_id}")
+        logger.info(f"📊 Colors to apply: {len(request.colors)}")
 
         # Apply colors using the service
         result = await color_palette_service.apply_color_palette(project_id=project_id, colors=request.colors)
 
-        print(f"✅ Color palette application {'successful' if result.success else 'failed'}")
+        logger.info(f"✅ Color palette application {'successful' if result.success else 'failed'}")
         return result
 
     except Exception as error:
-        print(f"❌ Error in apply_color_palette endpoint: {error}")
+        logger.error(f"❌ Error in apply_color_palette endpoint: {error}")
         raise HTTPException(status_code=500, detail=f"Failed to apply color palette: {error!s}") from error
 
 
@@ -79,12 +82,12 @@ async def get_existing_colors(project_id: int = Path(..., description="Project I
     all CSS custom properties (color variables) for both light and dark modes.
     """
     try:
-        print(f"🔍 Getting existing colors for project {project_id}")
+        logger.info(f"🔍 Getting existing colors for project {project_id}")
 
         # Extract existing colors
         existing_colors = await color_palette_service._extract_existing_colors(project_id)
 
-        print(f"📊 Found {len(existing_colors)} existing colors")
+        logger.info(f"📊 Found {len(existing_colors)} existing colors")
 
         return {
             "success": True,
@@ -102,5 +105,5 @@ async def get_existing_colors(project_id: int = Path(..., description="Project I
         }
 
     except Exception as error:
-        print(f"❌ Error in get_existing_colors endpoint: {error}")
+        logger.error(f"❌ Error in get_existing_colors endpoint: {error}")
         raise HTTPException(status_code=500, detail=f"Failed to get existing colors: {error!s}") from error

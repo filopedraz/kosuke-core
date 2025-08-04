@@ -13,7 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { useUser } from '@/hooks/use-user';
 import type { PipelinePreference } from '@/lib/types';
-import { Bot, Zap, AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Bot } from 'lucide-react';
 
 function PipelineSkeleton() {
   return (
