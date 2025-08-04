@@ -1,6 +1,6 @@
 'use client';
 
-import { Bell, Bot, Palette, Shield, User } from 'lucide-react';
+import { Bell, Bot, Github, Palette, Shield, User } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Suspense } from 'react';
 
@@ -38,6 +38,10 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
             <TabsTrigger value="security" className="flex items-center gap-2">
               <Shield className="h-4 w-4" />
               <span>Security</span>
+            </TabsTrigger>
+            <TabsTrigger value="github" className="flex items-center gap-2">
+              <Github className="h-4 w-4" />
+              <span>GitHub</span>
             </TabsTrigger>
             <TabsTrigger value="pipeline" className="flex items-center gap-2">
               <Bot className="h-4 w-4" />
