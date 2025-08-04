@@ -4,6 +4,23 @@
 
 This document explains the integration between claude-code-sdk and Langfuse observability platform using a clean decorator pattern approach.
 
+### 🗂️ **File Structure**
+```
+agent/
+├── app/
+│   ├── core/
+│   │   └── agent.py              # Agent class with @observe_agentic_workflow
+│   ├── services/
+│   │   └── claude_code_service.py # Pure business logic, no observability
+│   ├── utils/
+│   │   ├── config.py             # Langfuse configuration
+│   │   └── observability.py     # 🆕 Observability utilities & decorators
+│   └── ...
+├── docs/
+│   └── langfuse-integration.md   # This documentation
+└── requirements.txt              # Updated with langfuse dependency
+```
+
 ## Why Agent-Level Instrumentation?
 
 ### 🏗️ **Better Architecture**
@@ -13,6 +30,9 @@ This document explains the integration between claude-code-sdk and Langfuse obse
 
 ### 🔧 **Implementation Pattern**
 ```python
+# Import the decorator from observability utils
+from app.utils.observability import observe_agentic_workflow
+
 @observe_agentic_workflow("claude-code-agentic-pipeline")
 async def run(self, prompt: str, max_turns: int = 25) -> AsyncGenerator[dict, None]:
     # Agent workflow logic here
@@ -86,6 +106,7 @@ opentelemetry-instrumentation-anthropic==0.1.0
 2. **Reusable**: Can be applied to any async generator method
 3. **Non-Intrusive**: Original method signature unchanged
 4. **Maintainable**: Easy to modify or remove instrumentation
+5. **Centralized**: All observability utilities in `app.utils.observability`
 
 ### ✅ **Why Agent-Level vs Service-Level?**
 1. **Full Context**: Agent has project, user, and webhook context
@@ -99,6 +120,47 @@ opentelemetry-instrumentation-anthropic==0.1.0
 - Manual approach provides better control over trace structure
 - Can capture tool usage and workflow-specific metrics
 
+## Observability Utilities
+
+The `app.utils.observability` module provides several utilities for comprehensive observability:
+
+### 🎯 **Core Decorator**
+```python
+from app.utils.observability import observe_agentic_workflow
+
+@observe_agentic_workflow("my-custom-workflow")
+async def my_workflow(self, prompt: str, max_turns: int = 25):
+    # Your agentic workflow logic
+    async for event in some_ai_service.run(prompt):
+        yield event
+```
+
+### 🔧 **Custom Traces**
+```python
+from app.utils.observability import create_custom_trace, add_trace_score
+
+# Create a custom trace for specific operations
+trace = create_custom_trace(
+    name="data-processing-pipeline",
+    input_data={"dataset": "user_data.csv", "operation": "analysis"},
+    tags=["data", "processing"],
+    metadata={"version": "1.0"}
+)
+
+# Add custom scores to evaluate performance
+add_trace_score(trace.id, "data-quality", 0.95, "High quality dataset")
+```
+
+### 🔍 **Availability Check**
+```python
+from app.utils.observability import is_observability_enabled
+
+if is_observability_enabled():
+    print("✅ Langfuse observability is active")
+else:
+    print("⚠️ Running without observability")
+```
+
 ## Usage Examples
 
 ### Basic Integration
@@ -108,6 +170,19 @@ agent = Agent(project_id=123, assistant_message_id=456)
 async for event in agent.run("Analyze this codebase"):
     # Events are automatically traced to Langfuse
     yield event
+```
+
+### Custom Service Integration
+```python
+from app.utils.observability import observe_agentic_workflow
+
+class CustomAIService:
+    @observe_agentic_workflow("custom-ai-pipeline")
+    async def process_request(self, prompt: str, max_turns: int = 10):
+        # Your custom AI processing logic
+        for i in range(max_turns):
+            result = await some_ai_call(prompt)
+            yield {"type": "progress", "step": i, "result": result}
 ```
 
 ### Advanced Analysis in Langfuse
@@ -120,7 +195,9 @@ traces = langfuse.get_traces(
 # Analyze tool usage patterns
 for trace in traces:
     tool_executions = trace.output.get("tool_executions", [])
-    success_rate = sum(1 for t in tool_executions if not t.get("is_error")) / len(tool_executions)
+    if tool_executions:
+        success_rate = sum(1 for t in tool_executions if not t.get("is_error")) / len(tool_executions)
+        print(f"Trace {trace.id}: {success_rate:.1%} tool success rate")
 ```
 
 ## Future Enhancements
