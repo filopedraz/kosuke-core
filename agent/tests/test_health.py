@@ -1,6 +1,7 @@
 """Tests for health endpoints"""
 
 import logging
+
 import pytest
 from fastapi.testclient import TestClient
 
