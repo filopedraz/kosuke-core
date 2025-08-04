@@ -5,12 +5,19 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 
-def initialize_langfuse(settings_instance) -> bool:
+_langfuse_client = None
+
+
+def initialize_langfuse(settings_instance):
     """
     Initialize Langfuse observability for native Anthropic SDK.
 
     Uses OpenTelemetry instrumentation for Anthropic API calls.
+
+    Returns:
+        Langfuse client or None if not available
     """
+    global _langfuse_client  # noqa: PLW0603
     # Check if Langfuse settings are configured
     public_key = settings_instance.langfuse_public_key
     secret_key = settings_instance.langfuse_secret_key
@@ -18,41 +25,42 @@ def initialize_langfuse(settings_instance) -> bool:
 
     if not public_key or not secret_key:
         logger.info("📊 Langfuse observability disabled (missing credentials)")
-        return False
+        return None
 
     try:
-        # Set environment variables for Langfuse SDK
-        os.environ["LANGFUSE_PUBLIC_KEY"] = public_key
-        os.environ["LANGFUSE_SECRET_KEY"] = secret_key
-        os.environ["LANGFUSE_HOST"] = host
+        from langfuse import Langfuse
 
-        # Import required dependencies
-        from langfuse import get_client
-        from opentelemetry.instrumentation.anthropic import AnthropicInstrumentor
-
-        # Initialize Langfuse client
-        langfuse = get_client()
-
-        # Verify connection
-        if langfuse.auth_check():
-            logger.info(f"✅ Langfuse client authenticated - {host}")
-
-            # Initialize OpenTelemetry instrumentation for Anthropic
-            AnthropicInstrumentor().instrument()
-            logger.info("🔧 Anthropic OpenTelemetry instrumentation enabled")
-
-            return True
-
-        logger.warning("❌ Langfuse authentication failed. Please check your credentials and host.")
-        return False
+        logger.info(f"🔧 Creating Langfuse client for {host}")
+        _langfuse_client = Langfuse(
+            public_key=public_key,
+            secret_key=secret_key,
+            host=host,
+        )
+        logger.info("✅ Langfuse client created")
+        return _langfuse_client
 
     except ImportError as e:
-        logger.warning(f"⚠️ Missing dependencies for Langfuse integration: {e}")
-        logger.warning("💡 Install with: pip install langfuse opentelemetry-instrumentation-anthropic")
-        return False
+        logger.warning(f"⚠️ Missing Langfuse: {e}")
+        logger.warning("💡 Install with: pip install langfuse")
+        return None
     except Exception as e:
-        logger.warning(f"⚠️ Failed to initialize Langfuse: {e}")
-        return False
+        logger.error("❌ Langfuse initialization failed:")
+        logger.error(f"   Error: {e}")
+        logger.error(f"   Type: {type(e).__name__}")
+        logger.error(f"   Module: {getattr(type(e), '__module__', 'unknown')}")
+
+        if hasattr(e, "args") and e.args:
+            logger.error(f"   Args: {e.args}")
+        if hasattr(e, "__dict__"):
+            error_dict = {k: v for k, v in e.__dict__.items() if not k.startswith("_")}
+            logger.error(f"   Attributes: {error_dict}")
+
+        return None
+
+
+def get_langfuse_client():
+    """Get the initialized Langfuse client instance."""
+    return _langfuse_client
 
 
 class Settings:
@@ -139,7 +147,7 @@ class Settings:
 settings = Settings()
 
 # Initialize Langfuse observability
-langfuse_enabled = initialize_langfuse(settings)
+_langfuse_client = initialize_langfuse(settings)
 
 # Validate settings on import
 try:
@@ -150,7 +158,7 @@ try:
     print(f"   - Projects directory: {settings.projects_dir}")
     print(f"   - Model: {settings.model_name}")
     print(f"   - Preview image: {settings.preview_default_image}")
-    print(f"   - Langfuse observability: {'enabled' if langfuse_enabled else 'disabled'}")
+    print(f"   - Langfuse observability: {'enabled' if _langfuse_client else 'disabled'}")
 except ValueError as e:
     print(f"❌ Configuration error: {e}")
     print("   Please check your environment variables in config.env or .env")

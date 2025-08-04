@@ -1,7 +1,7 @@
 services:
   postgres:
     image: postgres:16.4-alpine
-    container_name: next_saas_starter_postgres
+    container_name: kosuke_postgres
     env_file:
       - .env
     ports:
@@ -13,7 +13,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: next_saas_starter_nextjs
+    container_name: kosuke_nextjs
     env_file:
       - .env
     environment:
@@ -32,7 +32,7 @@ services:
     build:
       context: ./agent
       dockerfile: Dockerfile
-    container_name: agentic_coding_pipeline
+    container_name: kosuke_agent
     ports:
       - '8001:8000'
     volumes:
