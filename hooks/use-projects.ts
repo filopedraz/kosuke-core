@@ -1,7 +1,8 @@
 'use client';
 
-import { useProjectStore, type Project } from '@/lib/stores/projectStore';
+import type { Project } from '@/lib/db/schema';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useRouter } from 'next/navigation';
 
 interface UseProjectsOptions {
   userId: string;
@@ -9,8 +10,6 @@ interface UseProjectsOptions {
 }
 
 export function useProjects({ userId, initialData }: UseProjectsOptions) {
-  const { setProjects } = useProjectStore();
-
   return useQuery<Project[]>({
     queryKey: ['projects', userId],
     queryFn: async () => {
@@ -23,9 +22,6 @@ export function useProjects({ userId, initialData }: UseProjectsOptions) {
 
         // The data is returned directly as an array, not as { projects: [] }
         const projects = await response.json();
-
-        // Update the global store
-        setProjects(projects);
         return projects;
       } catch (error) {
         console.error('Failed to fetch projects', error);
@@ -34,9 +30,9 @@ export function useProjects({ userId, initialData }: UseProjectsOptions) {
       }
     },
     placeholderData: initialData,
-    staleTime: 1000 * 60, // Consider data stale after 1 minute
-    refetchOnWindowFocus: true, // Refetch when window gets focus
-    refetchOnMount: true, // Always refetch when component mounts
+    staleTime: 1000 * 60 * 2, // Consider data stale after 2 minutes
+    refetchOnWindowFocus: false, // Don't refetch on window focus to reduce glitches
+    refetchOnMount: false, // Don't always refetch on mount - let staleTime control this
   });
 }
 
@@ -45,23 +41,29 @@ export function useProject(projectId: number) {
     queryKey: ['project', projectId],
     queryFn: async () => {
       const response = await fetch(`/api/projects/${projectId}`);
+
       if (!response.ok) {
-        throw new Error('Failed to fetch project');
+        const errorText = await response.text();
+        console.error('useProject: Failed to fetch project:', errorText);
+        throw new Error(`Failed to fetch project: ${response.status} ${errorText}`);
       }
-      const { data } = await response.json();
+
+      const responseData = await response.json();
+      const { data } = responseData;
+
       return {
         ...data,
         createdAt: new Date(data.createdAt),
         updatedAt: new Date(data.updatedAt),
       };
     },
-    staleTime: 1000 * 60, // Consider data stale after 1 minute
+    staleTime: 1000 * 60 * 2, // Consider data stale after 2 minutes
   });
 }
 
 export function useCreateProject() {
   const queryClient = useQueryClient();
-  const { addProject } = useProjectStore();
+  const router = useRouter();
 
   return useMutation<Project, Error, { prompt: string; name: string }>({
     mutationFn: async requestData => {
@@ -89,6 +91,7 @@ export function useCreateProject() {
 
       // Validate project data
       if (!project || !project.id) {
+        console.error('Invalid project data:', { project, responseData });
         throw new Error('Invalid project data received from server');
       }
 
@@ -99,27 +102,33 @@ export function useCreateProject() {
       };
     },
     onSuccess: data => {
-      addProject(data);
+      // Invalidate projects list to refresh the cache
       queryClient.invalidateQueries({ queryKey: ['projects'] });
+
+      // Navigate to the project detail page
+      const targetUrl = `/projects/${data.id}`;
+
+      // Small delay to ensure any UI updates complete
+      setTimeout(() => {
+        router.replace(targetUrl);
+      }, 100);
+    },
+    onError: error => {
+      console.error('Failed to create project:', error);
     },
   });
 }
 
 export function useDeleteProject() {
   const queryClient = useQueryClient();
-  const { removeProject } = useProjectStore();
 
   return useMutation<number, Error, number>({
     mutationFn: async projectId => {
       // Allow more time for deletion to complete
       const timeoutDuration = 30000; // 30 seconds
 
-      // Track stages to ensure a proper UX
-      console.log('Starting project deletion process...');
-
       // First, try to delete the project folder with a timeout
       try {
-        console.log('Step 1: Deleting project folder...');
         const fileDeletePromise = new Promise<boolean>(async resolve => {
           try {
             const folderResponse = await fetch(`/api/projects/${projectId}/files`, {
@@ -127,7 +136,6 @@ export function useDeleteProject() {
             });
 
             if (folderResponse.ok) {
-              console.log('File deletion API call succeeded');
               resolve(true);
             } else {
               console.error('Error from file deletion API:', await folderResponse.text());
@@ -142,7 +150,6 @@ export function useDeleteProject() {
         // Add a timeout to ensure we don't wait indefinitely
         const timeoutPromise = new Promise<boolean>(resolve => {
           setTimeout(() => {
-            console.log('File deletion timed out, proceeding with project deletion');
             resolve(false);
           }, timeoutDuration);
         });
@@ -157,7 +164,6 @@ export function useDeleteProject() {
       const startTime = Date.now();
       const minOperationTime = 2000; // 2 seconds minimum operation time
 
-      console.log('Step 2: Deleting project from database...');
       // Always proceed with project deletion even if file deletion failed
       const response = await fetch(`/api/projects/${projectId}`, {
         method: 'DELETE',
@@ -173,15 +179,9 @@ export function useDeleteProject() {
         await new Promise(resolve => setTimeout(resolve, minOperationTime - operationTime));
       }
 
-      console.log('Project deletion completed successfully');
       return projectId;
     },
     onSuccess: projectId => {
-      // First update the store
-      removeProject(projectId);
-
-      console.log('Project removed from store, invalidating queries...');
-
       // Invalidate all relevant queries with proper scope
       queryClient.invalidateQueries({
         queryKey: ['projects'],
@@ -210,7 +210,6 @@ export function useDeleteProject() {
 
 export function useUpdateProject() {
   const queryClient = useQueryClient();
-  const { updateProject } = useProjectStore();
 
   return useMutation<Project, Error, { projectId: number; updates: Partial<Project> }>({
     mutationFn: async ({ projectId, updates }) => {
@@ -232,7 +231,6 @@ export function useUpdateProject() {
       };
     },
     onSuccess: data => {
-      updateProject(data.id, data);
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       queryClient.invalidateQueries({ queryKey: ['project', data.id] });
     },

@@ -1,16 +1,13 @@
 'use client';
 
-import { useQueryClient } from '@tanstack/react-query';
 import { ArrowRight, Folder, Loader2 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useCreateProject } from '@/hooks/use-projects';
-import { useProjectStore } from '@/lib/stores/projectStore';
 
 interface ProjectCreationModalProps {
   open: boolean;
@@ -25,53 +22,23 @@ export default function ProjectCreationModal({
   initialProjectName = '',
   prompt = '',
 }: ProjectCreationModalProps) {
-  const [projectName, setProjectName] = useState(initialProjectName);
-  const router = useRouter();
-  const queryClient = useQueryClient();
-  const { addProject } = useProjectStore();
+    const [projectName, setProjectName] = useState(initialProjectName);
   const createProjectMutation = useCreateProject();
+
+  // Close modal when project creation is successful
+  useEffect(() => {
+    if (createProjectMutation.isSuccess) {
+      onOpenChange(false);
+    }
+  }, [createProjectMutation.isSuccess, onOpenChange]);
 
   const handleCreateProject = async () => {
     if (!projectName.trim()) return;
 
-    createProjectMutation.mutate(
-      {
-        name: projectName.trim(),
-        prompt: prompt || projectName.trim(),
-      },
-      {
-                        onSuccess: (project) => {
-          // Ensure we have a valid project with ID
-          if (project && typeof project === 'object' && project.id) {
-            // Update store (query invalidation not needed since we're navigating away)
-            addProject(project);
-
-            const targetUrl = `/projects/${project.id}`;
-
-            // Close modal and navigate immediately
-            onOpenChange(false);
-
-            // Try immediate navigation
-            router.push(targetUrl);
-
-            // Backup navigation after a short delay
-            setTimeout(() => {
-              window.location.href = targetUrl;
-            }, 1000);
-
-          } else {
-            console.error('Project created but invalid data received:', project);
-            // If project data is invalid, refresh the projects list to fetch latest data
-            queryClient.invalidateQueries({ queryKey: ['projects'] });
-            onOpenChange(false);
-            router.refresh();
-          }
-        },
-        onError: (error) => {
-          console.error('Error creating project:', error);
-        },
-      }
-    );
+        createProjectMutation.mutate({
+      name: projectName.trim(),
+      prompt: prompt || projectName.trim(),
+    });
   };
 
   return (

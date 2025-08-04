@@ -1,35 +1,43 @@
 'use client';
 
+import { useParams } from 'next/navigation';
+import { useState } from 'react';
+
 import Navbar from '@/components/ui/navbar';
-import { useProjectStore } from '@/lib/stores/projectStore';
+import { useProject } from '@/hooks/use-projects';
 
 export default function ProjectNavbar() {
-  // Select individual state pieces for stability
-  const currentProject = useProjectStore(state => state.currentProject);
-  const currentView = useProjectStore(state => state.currentView);
-  const isChatCollapsed = useProjectStore(state => state.isChatCollapsed);
-  const setCurrentView = useProjectStore(state => state.setCurrentView);
-  const toggleChatCollapsed = useProjectStore(state => state.toggleChatCollapsed);
+  // Get project ID from URL params
+  const params = useParams();
+  const projectId = Number(params.id);
 
-  // Handle potential null project - Navbar might need defaults or conditional rendering
-  const projectName = currentProject?.name || 'Loading Project...'; // Provide a default name
+  // Fetch project data
+  const { data: project } = useProject(projectId);
 
-  // Refresh handler (can be implemented or passed from store if needed)
+  // Local UI state
+  const [currentView, setCurrentView] = useState<'preview' | 'code' | 'branding'>('preview');
+  const [isChatCollapsed, setIsChatCollapsed] = useState(false);
+
+  // Handlers
   const handleRefresh = () => {
-    console.log('Refresh functionality not implemented in ProjectNavbarClient');
-    // Potentially trigger a refetch action in the store if required
+    // Refresh could trigger a page reload or refetch project data
+    window.location.reload();
   };
 
-    return (
+  const toggleChatCollapsed = () => {
+    setIsChatCollapsed(prev => !prev);
+  };
+
+  return (
     <Navbar
       variant="project"
       projectProps={{
-        projectName: projectName,
+        projectName: project?.name || 'Loading Project...',
         currentView: currentView,
-        onViewChange: setCurrentView, // Directly pass the store action
-        onRefresh: handleRefresh,      // Pass the local handler
+        onViewChange: setCurrentView,
+        onRefresh: handleRefresh,
         isChatCollapsed: isChatCollapsed,
-        onToggleChat: toggleChatCollapsed, // Directly pass the store action
+        onToggleChat: toggleChatCollapsed,
       }}
     />
   );

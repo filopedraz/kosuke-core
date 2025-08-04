@@ -44,23 +44,25 @@ export default function ProjectsPage() {
     }
   }, [isLoading, clerkUser]);
 
-  // Ensure project data is fresh when the page is visited
+  // Only refetch projects if data is stale (don't force refetch on every mount)
   useEffect(() => {
     if (dbUser?.clerkUserId) {
-      // Refetch projects data when the component mounts
-      queryClient.invalidateQueries({
-        queryKey: ['projects', dbUser.clerkUserId],
-        refetchType: 'active'
-      });
+      // Only invalidate if we don't have fresh data
+      const queryState = queryClient.getQueryState(['projects', dbUser.clerkUserId]);
+      const isStale = !queryState?.data || Date.now() - (queryState?.dataUpdatedAt || 0) > 60000; // 1 minute
+
+      if (isStale) {
+        queryClient.invalidateQueries({
+          queryKey: ['projects', dbUser.clerkUserId],
+          refetchType: 'active'
+        });
+      }
     }
   }, [queryClient, dbUser?.clerkUserId]);
 
-  // Show loading skeleton while:
-  // 1. User auth is loading
-  // 2. Projects are loading for the first time
-  // 3. Projects are currently being fetched and we don't have data yet
-  // 4. We don't have auth context yet
-  if (isLoading || isProjectsLoading || isProjectsFetching || !clerkUser || !dbUser || projects === undefined) {
+  // Show loading skeleton only during initial load or when we don't have auth
+  // Don't show skeleton during background refetches (isFetching) when we already have data
+  if (isLoading || isProjectsLoading || !clerkUser || !dbUser || projects === undefined) {
     return <ProjectsLoadingSkeleton />;
   }
 
@@ -70,6 +72,7 @@ export default function ProjectsPage() {
         <ProjectsHeader
           hasProjects={(projects?.length ?? 0) > 0}
           onCreateClick={() => setIsModalOpen(true)}
+          isRefreshing={isProjectsFetching}
         />
 
         <Suspense fallback={<ProjectsLoadingSkeleton />}>
