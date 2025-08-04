@@ -48,10 +48,12 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.json({
-      connected: isConnected,
-      hasValidScopes,
-      apiConnected: apiTest.success,
-      ...githubInfo,
+      data: {
+        connected: isConnected,
+        hasValidScopes,
+        apiConnected: apiTest.success,
+        ...githubInfo,
+      },
     });
   } catch (error) {
     console.error('Error checking GitHub status:', error);

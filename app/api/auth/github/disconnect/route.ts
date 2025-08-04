@@ -20,8 +20,10 @@ export async function POST(request: NextRequest) {
     // 1. Remove the user's GitHub connection
     // 2. Force them to sign in again (redirect handled on frontend)
     return NextResponse.json({
-      success: true,
-      message: 'GitHub account disconnected. Please sign in again.',
+      data: {
+        success: true,
+        message: 'GitHub account disconnected. Please sign in again.',
+      },
     });
   } catch (error) {
     console.error('Error disconnecting GitHub:', error);
