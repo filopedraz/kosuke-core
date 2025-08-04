@@ -66,7 +66,44 @@ export interface GitHubCommitWebhook {
   timestamp: string;
 }
 
-export interface GitHubWebhookData {
-  githubCommit?: GitHubCommitData;
-  sessionSummary?: GitHubSessionSummary;
+export interface GitHubRepository {
+  id: number;
+  name: string;
+  full_name: string;
+  description: string | null;
+  private: boolean;
+  html_url: string;
+  clone_url: string;
+  default_branch: string;
+  language: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateRepositoryData {
+  name: string;
+  description?: string;
+  private: boolean;
+  auto_init?: boolean;
+}
+
+export interface ImportRepositoryData {
+  repository_url: string;
+  access_token?: string;
+}
+
+export interface GitHubWebhookPayload {
+  action: string;
+  repository: GitHubRepository;
+  commits?: Array<{
+    id: string;
+    message: string;
+    author: {
+      name: string;
+      email: string;
+    };
+    modified: string[];
+    added: string[];
+    removed: string[];
+  }>;
 }

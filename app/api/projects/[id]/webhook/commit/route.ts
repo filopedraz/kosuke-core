@@ -12,7 +12,7 @@ const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET || 'dev-secret-change-in-produ
 /**
  * GitHub Commit Webhook Endpoint
  * POST /api/projects/[id]/webhook/commit
- * 
+ *
  * Receives commit notifications from the Python agent when files are
  * automatically committed to GitHub during AI sessions.
  */
