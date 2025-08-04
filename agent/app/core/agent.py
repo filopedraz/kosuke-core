@@ -1,22 +1,24 @@
 """
-Agent - Advanced agentic pipeline using claude-code-sdk
+Agent - Advanced agentic pipeline using claude-code-sdk with Langfuse observability
 """
 import time
 from collections.abc import AsyncGenerator
 
 from app.services.claude_code_service import ClaudeCodeService
 from app.services.webhook_service import WebhookService
+from app.utils.observability import observe_agentic_workflow
 
 
 class Agent:
     """
     Agent using claude-code-sdk for repository analysis and file modification
 
-    This agent provides:
+    Features:
     - Repository analysis and understanding
     - Intelligent file modification
     - Tool-aware execution (Read, Write, Bash, Grep)
     - Automatic tool execution by claude-code-sdk
+    - Comprehensive Langfuse observability
     """
 
     def __init__(self, project_id: int, assistant_message_id: int | None = None):
@@ -31,6 +33,7 @@ class Agent:
 
         print(f"🚀 Agent initialized for project ID: {project_id}")
 
+    @observe_agentic_workflow("claude-code-agentic-pipeline")
     async def run(self, prompt: str, max_turns: int = 25) -> AsyncGenerator[dict, None]:
         """
         Run the claude-code agent for repository analysis and modification

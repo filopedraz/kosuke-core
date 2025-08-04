@@ -35,6 +35,7 @@ class ClaudeCodeService:
     - Comprehensive debugging logs
     - Smart task routing and execution
 
+
     Note:
     - Model selection is handled by the Claude Code CLI configuration, not the Python SDK
     - Project directories must exist before using this service (no auto-creation)
