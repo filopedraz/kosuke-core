@@ -46,7 +46,7 @@ export default function ProjectCreationModal({
             // Update store (query invalidation not needed since we're navigating away)
             addProject(project);
 
-            const targetUrl = `/projects/${project.id}?new=true`;
+            const targetUrl = `/projects/${project.id}`;
 
             // Close modal and navigate immediately
             onOpenChange(false);

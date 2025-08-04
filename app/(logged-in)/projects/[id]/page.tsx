@@ -13,7 +13,6 @@ interface ProjectPageProps {
   params: Promise<{
     id: string;
   }>;
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
 function ProjectLoadingSkeleton() {
@@ -58,13 +57,11 @@ function ProjectLoadingSkeleton() {
   );
 }
 
-export default function ProjectPage({ params, searchParams }: ProjectPageProps) {
+export default function ProjectPage({ params }: ProjectPageProps) {
   // Unwrap promises using React.use()
   const { id } = use(params);
-  const searchParamsData = use(searchParams);
 
   const projectId = Number(id);
-  const isNewProject = searchParamsData?.new === 'true';
 
   if (isNaN(projectId)) {
     notFound();
@@ -96,7 +93,6 @@ export default function ProjectPage({ params, searchParams }: ProjectPageProps) 
     <ProjectContent
       projectId={projectId}
       project={project}
-      isNewProject={isNewProject}
       initialMessages={initialMessages}
     />
   );

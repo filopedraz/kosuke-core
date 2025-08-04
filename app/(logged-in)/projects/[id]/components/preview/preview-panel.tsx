@@ -20,7 +20,6 @@ interface PreviewPanelProps {
   projectId: number;
   projectName: string;
   className?: string;
-  initialLoading?: boolean;
 }
 
 type PreviewStatus = 'loading' | 'ready' | 'error';
@@ -29,11 +28,10 @@ export default function PreviewPanel({
   projectId,
   projectName,
   className,
-  initialLoading = false,
 }: PreviewPanelProps) {
   const { toast } = useToast();
   const { startPreview, isStarting } = usePreviewStart(projectId);
-  const [status, setStatus] = useState<PreviewStatus>(initialLoading ? 'loading' : 'loading');
+  const [status, setStatus] = useState<PreviewStatus>('loading');
   const [progress, setProgress] = useState(0);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -125,24 +123,20 @@ export default function PreviewPanel({
     setError(null);
 
     try {
-      console.log(`[Preview Panel] Fetching preview URL for project ${projectId}${forceStart ? ' (forcing start)' : ''}`);
+      console.log(`[Preview Panel] Fetching preview URL for project ${projectId}${forceStart ? ' (forcing refresh)' : ''}`);
 
-      // For new projects or when forcing start, call POST to start the container
-      // Otherwise, call GET to check status
-      const method = forceStart || initialLoading ? 'POST' : 'GET';
+      // Always use GET - it will auto-start if the preview is not running
       const response = await fetch(`/api/projects/${projectId}/preview`, {
-        method,
-        headers: method === 'POST' ? { 'Content-Type': 'application/json' } : undefined,
-        body: method === 'POST' ? JSON.stringify({}) : undefined,
+        method: 'GET',
       });
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || `Failed to ${method === 'POST' ? 'start' : 'fetch'} preview: ${response.statusText}`);
+        throw new Error(data.error || `Failed to fetch preview: ${response.statusText}`);
       }
 
       const data = await response.json();
-      console.log(`[Preview Panel] Preview ${method === 'POST' ? 'start' : 'status'} response:`, data);
+      console.log(`[Preview Panel] Preview status response:`, data);
 
       if (data.previewUrl || data.url) {
         // Use the direct preview URL (handle both previewUrl and url for compatibility)
@@ -156,13 +150,13 @@ export default function PreviewPanel({
         throw new Error('No preview URL returned');
       }
     } catch (error) {
-      console.error('[Preview Panel] Error fetching preview URL:', error);
-      setError(error instanceof Error ? error.message : 'Unknown error');
+      console.error(`[Preview Panel] Error fetching preview for project ${projectId}:`, error);
+      setError(error instanceof Error ? error.message : 'Failed to load preview');
       setStatus('error');
     } finally {
       setIsRequestInProgress(false);
     }
-  }, [projectId, pollServerUntilReady, initialLoading]);
+  }, [projectId, pollServerUntilReady]);
 
   // Update ref when fetchPreviewUrl changes
   useEffect(() => {
