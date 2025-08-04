@@ -1,3 +1,4 @@
+import logging
 import os
 import shutil
 from pathlib import Path
@@ -6,6 +7,8 @@ from typing import Any
 import aiofiles
 
 from app.utils.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 class FileSystemService:
@@ -38,7 +41,7 @@ class FileSystemService:
             async with aiofiles.open(file_path, "r", encoding="utf-8") as f:
                 return await f.read()
         except Exception as error:
-            print(f"Failed to read file {file_path}: {error}")
+            logger.error(f"Failed to read file {file_path}: {error}")
             raise error
 
     async def create_file(self, file_path: str, content: str) -> None:
@@ -55,7 +58,7 @@ class FileSystemService:
             async with aiofiles.open(file_path, "w", encoding="utf-8") as f:
                 await f.write(content)
         except Exception as error:
-            print(f"Failed to create file {file_path}: {error}")
+            logger.error(f"Failed to create file {file_path}: {error}")
             raise error
 
     async def update_file(self, file_path: str, content: str) -> None:
@@ -68,7 +71,7 @@ class FileSystemService:
             async with aiofiles.open(file_path, "w", encoding="utf-8") as f:
                 await f.write(content)
         except Exception as error:
-            print(f"Failed to update file {file_path}: {error}")
+            logger.error(f"Failed to update file {file_path}: {error}")
             raise error
 
     async def delete_file(self, file_path: str) -> None:
@@ -80,7 +83,7 @@ class FileSystemService:
         try:
             Path(file_path).unlink()
         except Exception as error:
-            print(f"Failed to delete file {file_path}: {error}")
+            logger.error(f"Failed to delete file {file_path}: {error}")
             raise error
 
     async def create_directory(self, dir_path: str) -> None:
@@ -88,7 +91,7 @@ class FileSystemService:
         try:
             Path(dir_path).mkdir(parents=True, exist_ok=True)
         except Exception as error:
-            print(f"Failed to create directory {dir_path}: {error}")
+            logger.error(f"Failed to create directory {dir_path}: {error}")
             raise error
 
     async def delete_directory(self, dir_path: str) -> None:
@@ -100,7 +103,7 @@ class FileSystemService:
         try:
             shutil.rmtree(dir_path)
         except Exception as error:
-            print(f"Failed to delete directory {dir_path}: {error}")
+            logger.error(f"Failed to delete directory {dir_path}: {error}")
             raise error
 
     async def list_files(self, dir_path: str) -> list[str]:
@@ -112,7 +115,7 @@ class FileSystemService:
         try:
             return list(os.listdir(dir_path))
         except Exception as error:
-            print(f"Failed to list files in directory {dir_path}: {error}")
+            logger.error(f"Failed to list files in directory {dir_path}: {error}")
             raise error
 
     async def list_files_recursively(self, dir_path: str) -> list[str]:
@@ -143,7 +146,7 @@ class FileSystemService:
 
             return files
         except Exception as error:
-            print(f"Failed to list files recursively in directory {dir_path}: {error}")
+            logger.error(f"Failed to list files recursively in directory {dir_path}: {error}")
             raise error
 
     def list_files_recursively_sync(self, dir_path: str) -> list[str]:
@@ -174,7 +177,7 @@ class FileSystemService:
 
             return files
         except Exception as error:
-            print(f"Failed to list files recursively in directory {dir_path}: {error}")
+            logger.error(f"Failed to list files recursively in directory {dir_path}: {error}")
             raise error
 
     async def copy_file(self, source_path: str, destination_path: str) -> None:
@@ -191,7 +194,7 @@ class FileSystemService:
             # Copy the file
             shutil.copy2(source_path, destination_path)
         except Exception as error:
-            print(f"Failed to copy file from {source_path} to {destination_path}: {error}")
+            logger.error(f"Failed to copy file from {source_path} to {destination_path}: {error}")
             raise error
 
     async def copy_directory(self, source_dir: str, destination_dir: str) -> None:
@@ -203,7 +206,7 @@ class FileSystemService:
         try:
             shutil.copytree(source_dir, destination_dir, dirs_exist_ok=True)
         except Exception as error:
-            print(f"Failed to copy directory from {source_dir} to {destination_dir}: {error}")
+            logger.error(f"Failed to copy directory from {source_dir} to {destination_dir}: {error}")
             raise error
 
     async def get_file_content(self, project_id: int, file_path: str) -> str:
@@ -222,7 +225,7 @@ class FileSystemService:
 
             return await self.read_file(str(full_path))
         except Exception as error:
-            print(f"Error reading file {file_path} in project {project_id}: {error}")
+            logger.error(f"Error reading file {file_path} in project {project_id}: {error}")
             raise error
 
     def get_project_files_sync(self, project_id: int) -> list[dict[str, Any]]:
@@ -235,12 +238,12 @@ class FileSystemService:
             project_dir = self.get_project_path(project_id)
 
             if not project_dir.exists():
-                print(f"Project directory not found: {project_dir}")
+                logger.warning(f"Project directory not found: {project_dir}")
                 return []
 
             return self._read_directory_recursive(project_dir, "")
         except Exception as error:
-            print(f"Error getting project files for project {project_id}: {error}")
+            logger.error(f"Error getting project files for project {project_id}: {error}")
             return []
 
     def _read_directory_recursive(self, base_path: Path, relative_path: str) -> list[dict[str, Any]]:

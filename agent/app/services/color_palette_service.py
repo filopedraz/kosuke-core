@@ -1,4 +1,5 @@
 import json
+import logging
 import re
 from pathlib import Path
 
@@ -9,6 +10,8 @@ from app.models.branding import ColorPaletteResponse
 from app.models.branding import ColorVariable
 from app.services.fs_service import fs_service
 from app.utils.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 class ColorPaletteService:
@@ -30,7 +33,7 @@ class ColorPaletteService:
         Generate a color palette for a project using Claude
         """
         try:
-            print(f"🎨 Generating color palette for project {project_id}")
+            logger.info(f"🎨 Generating color palette for project {project_id}")
 
             # Analyze project content
             project_content = await self._analyze_project_content(project_id)
@@ -39,8 +42,8 @@ class ColorPaletteService:
             if existing_colors is None:
                 existing_colors = await self._extract_existing_colors(project_id)
 
-            print(f"📊 Found {len(existing_colors)} existing colors")
-            print(f"🔍 Project content length: {len(project_content)} characters")
+            logger.info(f"📊 Found {len(existing_colors)} existing colors")
+            logger.info(f"🔍 Project content length: {len(project_content)} characters")
 
             # Generate colors using Claude
             generated_colors = await self._generate_colors_with_claude(
@@ -62,7 +65,7 @@ class ColorPaletteService:
             )
 
         except Exception as error:
-            print(f"❌ Error generating color palette: {error}")
+            logger.error(f"❌ Error generating color palette: {error}")
             return ColorPaletteResponse(
                 success=False, message=f"Failed to generate color palette: {error!s}", colors=[], applied=False
             )
@@ -72,7 +75,7 @@ class ColorPaletteService:
         Apply a color palette to the project's globals.css file
         """
         try:
-            print(f"🎨 Applying {len(colors)} colors to project {project_id}")
+            logger.info(f"🎨 Applying {len(colors)} colors to project {project_id}")
 
             # Find and update globals.css
             globals_path = await self._find_globals_css(project_id)
@@ -90,7 +93,7 @@ class ColorPaletteService:
             # Write updated CSS back to file
             await fs_service.update_file(str(globals_path), updated_css)
 
-            print(f"✅ Successfully applied {len(colors)} colors to globals.css")
+            logger.info(f"✅ Successfully applied {len(colors)} colors to globals.css")
 
             return ApplyPaletteResponse(
                 success=True,
@@ -99,7 +102,7 @@ class ColorPaletteService:
             )
 
         except Exception as error:
-            print(f"❌ Error applying color palette: {error}")
+            logger.error(f"❌ Error applying color palette: {error}")
             return ApplyPaletteResponse(
                 success=False, message=f"Failed to apply color palette: {error!s}", applied_colors=0
             )
@@ -135,13 +138,13 @@ class ColorPaletteService:
                             content = content[:1000] + "..."
                         combined_content.append(f"=== {file_path} ===\n{content}\n")
                     except Exception as e:
-                        print(f"⚠️ Could not read {file_path}: {e}")
+                        logger.warning(f"⚠️ Could not read {file_path}: {e}")
                         continue
 
             return "\n".join(combined_content)
 
         except Exception as error:
-            print(f"⚠️ Error analyzing project content: {error}")
+            logger.warning(f"⚠️ Error analyzing project content: {error}")
             return ""
 
     async def _extract_existing_colors(self, project_id: int) -> list[ColorVariable]:
@@ -184,7 +187,7 @@ class ColorPaletteService:
             return colors
 
         except Exception as error:
-            print(f"⚠️ Error extracting existing colors: {error}")
+            logger.warning(f"⚠️ Error extracting existing colors: {error}")
             return []
 
     def _parse_css_variables(self, css_block: str, scope: str) -> list[ColorVariable]:
@@ -329,7 +332,7 @@ class ColorPaletteService:
         )
 
         try:
-            print("🤖 Calling Claude for color generation...")
+            logger.info("🤖 Calling Claude for color generation...")
 
             response = await self.client.messages.create(
                 model="claude-3-7-sonnet-20250219",
@@ -340,7 +343,7 @@ class ColorPaletteService:
             )
 
             response_text = response.content[0].text
-            print(f"📝 Claude response length: {len(response_text)} characters")
+            logger.info(f"📝 Claude response length: {len(response_text)} characters")
 
             # Extract JSON from response
             json_match = re.search(r"\[\s*\{[\s\S]*\}\s*\]", response_text)
@@ -363,11 +366,11 @@ class ColorPaletteService:
                     )
                 )
 
-            print(f"✅ Successfully generated {len(colors)} colors")
+            logger.info(f"✅ Successfully generated {len(colors)} colors")
             return colors
 
         except Exception as error:
-            print(f"❌ Error calling Claude: {error}")
+            logger.error(f"❌ Error calling Claude: {error}")
             raise error
 
     async def _find_globals_css(self, project_id: int) -> Path | None:

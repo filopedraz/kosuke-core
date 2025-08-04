@@ -38,7 +38,7 @@ async def chat_stream(request: ChatRequest) -> StreamingResponse:
                 yield f"data: {data}\n\n"
 
         except Exception as e:
-            print(f"❌ Error in chat stream: {e}")
+            logger.error(f"❌ Error in chat stream: {e}")
             # Send error as final message
             error_data = {
                 "type": "error",
@@ -74,8 +74,8 @@ async def chat_simple(request: ChatRequest):
     Useful for testing the agent workflow without streaming complexity.
     """
     try:
-        print(f"🚀 Starting simple chat for project {request.project_id}")
-        print(f"📝 Prompt: {request.prompt[:100]}{'...' if len(request.prompt) > 100 else ''}")
+        logger.info(f"🚀 Starting simple chat for project {request.project_id}")
+        logger.info(f"📝 Prompt: {request.prompt[:100]}{'...' if len(request.prompt) > 100 else ''}")
 
         # Create agent instance for this project
         agent = Agent(request.project_id)
@@ -87,15 +87,15 @@ async def chat_simple(request: ChatRequest):
 
             # Safety limit to prevent memory issues
             if len(updates) > 1000:
-                print("⚠️ Update limit reached, stopping collection")
+                logger.warning("⚠️ Update limit reached, stopping collection")
                 break
 
-        print(f"✅ Collected {len(updates)} updates")
+        logger.info(f"✅ Collected {len(updates)} updates")
 
         return ChatResponse(updates=updates, success=True)
 
     except Exception as e:
-        print(f"❌ Error in simple chat: {e}")
+        logger.error(f"❌ Error in simple chat: {e}")
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
