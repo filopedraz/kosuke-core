@@ -338,8 +338,8 @@ export async function POST(
     // Proxy stream directly to Python FastAPI service
     const agentServiceUrl = process.env.AGENT_SERVICE_URL || 'http://localhost:8001';
 
-    // Use the session-aware chat endpoint
-    const endpoint = '/api/chat/session';
+    // Use the session-aware chat stream endpoint
+    const endpoint = '/api/chat/stream';
     console.log(`🚀 Routing to: ${endpoint} for session ${targetChatSession.sessionId}`);
 
     // Mark unused variables for future use
