@@ -4,8 +4,10 @@ from datetime import datetime
 from pathlib import Path
 
 import git
+import requests
 from github import Github
 
+from app.models.github import CloneRepoRequest
 from app.models.github import CreateRepoRequest
 from app.models.github import GitHubCommit
 from app.models.github import GitHubRepo
@@ -17,40 +19,180 @@ logger = logging.getLogger(__name__)
 
 class GitHubService:
     def __init__(self, github_token: str):
+        self.github_token = github_token
         self.github = Github(github_token)
         self.user = self.github.get_user()
+        # Store sync sessions for tracking changes across commits
         self.sync_sessions: dict[str, dict] = {}
 
     async def create_repository(self, request: CreateRepoRequest) -> GitHubRepo:
-        """Create a new GitHub repository"""
+        """Create a new GitHub repository from Kosuke template"""
         try:
-            # Check if template repo should be used
-            if request.template_repo:
-                # Use template repository
-                template = self.github.get_repo(request.template_repo)
-                repo = self.user.create_repo_from_template(
-                    template, request.name, description=request.description, private=request.private
-                )
-            else:
-                # Create empty repository
-                repo = self.user.create_repo(
-                    request.name,
-                    description=request.description,
-                    private=request.private,
-                    auto_init=True,
-                    gitignore_template="Node",
-                )
+            template_repo = request.template_repo or settings.template_repository
+            logger.info(f"Creating repository '{request.name}' from template: {template_repo}")
+
+            # Validate template and user permissions
+            self._validate_template_repository(template_repo)
+            user_info = self._validate_user_permissions()
+            self._check_repository_name_availability(request.name)
+
+            # Create repository via GitHub API
+            return await self._create_repository_from_template(request, template_repo, user_info)
+
+        except Exception as e:
+            logger.error(f"Error creating repository '{request.name}': {e}")
+            self._reraise_meaningful_error(e)
+
+    def _validate_template_repository(self, template_repo: str) -> None:
+        """Validate that the template repository exists and is accessible"""
+        try:
+            template = self.github.get_repo(template_repo)
+            logger.info(f"Template repository found: {template.full_name}, is_template: {template.is_template}")
+
+            if not template.is_template:
+                raise Exception(f"Repository {template_repo} is not marked as a template repository")
+
+        except Exception as template_error:
+            logger.error(f"Failed to access template repository '{template_repo}': {template_error}")
+            raise Exception(
+                f"Template repository '{template_repo}' is not accessible. "
+                f"Please verify it exists and is marked as a template."
+            ) from template_error
+
+    def _validate_user_permissions(self):
+        """Validate user permissions and return user info"""
+        try:
+            user_info = self.user
+            logger.info(f"GitHub user: {user_info.login} (ID: {user_info.id})")
+            return user_info
+        except Exception as user_error:
+            logger.error(f"Failed to get user info: {user_error}")
+            raise Exception("Invalid GitHub token or insufficient permissions") from user_error
+
+    def _check_repository_name_availability(self, repo_name: str) -> None:
+        """Check if repository name is available"""
+        try:
+            existing_repo = self.user.get_repo(repo_name)
+            if existing_repo:
+                raise Exception(f"Repository '{repo_name}' already exists in your account")
+        except Exception as check_error:
+            # This is expected if repo doesn't exist
+            logger.debug(f"Repository check (expected if doesn't exist): {check_error}")
+
+    async def _create_repository_from_template(
+        self, request: CreateRepoRequest, template_repo: str, user_info
+    ) -> GitHubRepo:
+        """Create repository from template using GitHub REST API"""
+        try:
+            # Parse template repository
+            if "/" not in template_repo:
+                raise Exception(f"Invalid template repository format: {template_repo}. Expected 'owner/repo'")
+
+            template_owner, template_name = template_repo.split("/", 1)
+
+            # Prepare API request
+            headers = self._get_api_headers()
+            payload = self._build_repository_payload(request, user_info)
+            api_url = f"https://api.github.com/repos/{template_owner}/{template_name}/generate"
+
+            logger.info(f"Making API call to: {api_url}")
+            logger.debug(f"Payload: {payload}")
+
+            # Make API call
+            response = requests.post(api_url, json=payload, headers=headers, timeout=30)
+            return self._handle_api_response(response, template_repo)
+
+        except requests.exceptions.RequestException as req_error:
+            logger.error(f"Request error: {req_error}")
+            raise Exception(f"Failed to connect to GitHub API: {req_error}") from req_error
+        except Exception as create_error:
+            self._handle_creation_error(create_error)
+
+    def _get_api_headers(self) -> dict:
+        """Get GitHub API headers"""
+        return {
+            "Authorization": f"token {self.github_token}",
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+        }
+
+    def _build_repository_payload(self, request: CreateRepoRequest, user_info) -> dict:
+        """Build payload for repository creation API"""
+        return {
+            "owner": user_info.login,
+            "name": request.name,
+            "description": request.description or "",
+            "private": request.private or False,
+            "include_all_branches": False,
+        }
+
+    def _handle_api_response(self, response: requests.Response, template_repo: str) -> GitHubRepo:
+        """Handle GitHub API response"""
+        if response.status_code == 201:
+            repo_data = response.json()
+            logger.info(f"Successfully created repository: {repo_data['full_name']}")
 
             return GitHubRepo(
-                name=repo.name,
-                owner=repo.owner.login,
-                url=repo.clone_url,
-                private=repo.private,
-                description=repo.description,
+                name=repo_data["name"],
+                owner=repo_data["owner"]["login"],
+                url=repo_data["clone_url"],
+                private=repo_data["private"],
+                description=repo_data["description"],
             )
-        except Exception as e:
-            logger.error(f"Error creating repository: {e}")
-            raise Exception(f"Failed to create repository: {e!s}") from e
+
+        # Handle error responses
+        error_msg = f"HTTP {response.status_code}: {response.text}"
+        logger.error(f"Failed to create repository from template: {error_msg}")
+
+        if response.status_code == 422:
+            self._handle_validation_error(response)
+        elif response.status_code == 403:
+            raise Exception("Insufficient GitHub permissions. Ensure your token has 'repo' scope.") from None
+        elif response.status_code == 404:
+            raise Exception(f"Template repository '{template_repo}' not found or not accessible") from None
+
+        raise Exception(f"GitHub API error: {error_msg}") from None
+
+    def _handle_validation_error(self, response: requests.Response) -> None:
+        """Handle 422 validation errors from GitHub API"""
+        error_data = response.json()
+        if "errors" in error_data:
+            for error in error_data["errors"]:
+                if "already exists" in error.get("message", "").lower():
+                    raise Exception("Repository name is already taken") from None
+        error_message = error_data.get("message", "Unknown validation error")
+        raise Exception(f"Validation error: {error_message}") from None
+
+    def _handle_creation_error(self, create_error: Exception) -> None:
+        """Handle errors during repository creation"""
+        meaningful_error_prefixes = (
+            "Repository name",
+            "Validation error",
+            "Insufficient GitHub permissions",
+            "Template repository",
+            "GitHub API error",
+            "Failed to connect to GitHub API",
+        )
+        if isinstance(create_error, Exception) and str(create_error).startswith(meaningful_error_prefixes):
+            raise create_error
+        logger.error(f"Failed to create repository from template: {create_error}")
+        raise Exception(f"Unexpected error creating repository: {create_error}") from create_error
+
+    def _reraise_meaningful_error(self, e: Exception) -> None:
+        """Re-raise meaningful errors without wrapping"""
+        meaningful_errors = (
+            "Template repository",
+            "Repository name",
+            "GitHub API error",
+            "Invalid GitHub token",
+            "Insufficient GitHub permissions",
+            "Validation error",
+            "Failed to connect to GitHub API",
+            "Unexpected error creating repository",
+        )
+        if str(e).startswith(meaningful_errors):
+            raise e
+        raise Exception(f"Failed to create repository: {e!s}") from e
 
     async def import_repository(self, request: ImportRepoRequest) -> str:
         """Import/clone a GitHub repository to local project"""
@@ -62,13 +204,41 @@ class GitHubService:
                 shutil.rmtree(project_path)
 
             # Clone repository
+            logger.info(f"Importing repository {request.repo_url} to project {request.project_id}")
             git.Repo.clone_from(request.repo_url, project_path)
+
+            # Keep repository on main branch after cloning
+            # Branches will be created per chat session, not per project
+            logger.info("Repository cloned and ready for chat-based branching")
 
             logger.info(f"Successfully imported repository to project {request.project_id}")
             return str(project_path)
         except Exception as e:
             logger.error(f"Error importing repository: {e}")
             raise Exception(f"Failed to import repository: {e!s}") from e
+
+    async def clone_repository(self, request: CloneRepoRequest) -> str:
+        """Clone a GitHub repository to local project directory"""
+        try:
+            project_path = Path(settings.projects_dir) / str(request.project_id)
+
+            # Remove existing project directory if it exists
+            if project_path.exists():
+                shutil.rmtree(project_path)
+
+            # Clone repository
+            logger.info(f"Cloning repository {request.repo_url} to project {request.project_id}")
+            git.Repo.clone_from(request.repo_url, project_path)
+
+            # Keep repository on main branch after cloning
+            # Branches will be created per chat session, not per project
+            logger.info("Repository cloned and ready for chat-based branching")
+
+            logger.info(f"Successfully cloned repository to project {request.project_id}")
+            return str(project_path)
+        except Exception as e:
+            logger.error(f"Error cloning repository: {e}")
+            raise Exception(f"Failed to clone repository: {e!s}") from e
 
     def start_sync_session(self, project_id: int, session_id: str) -> None:
         """Start a new sync session for tracking changes"""
@@ -88,12 +258,11 @@ class GitHubService:
                 session["files_changed"].append(file_path)
 
     async def commit_session_changes(self, session_id: str, commit_message: str | None = None) -> GitHubCommit | None:
-        """Commit all changes from a sync session"""
+        """Commit all changes from a sync session to development branch"""
         if session_id not in self.sync_sessions:
             raise Exception(f"Sync session {session_id} not found")
 
         session = self.sync_sessions[session_id]
-        project_id = session["project_id"]
         files_changed = session["files_changed"]
 
         if not files_changed:
@@ -101,50 +270,100 @@ class GitHubService:
             return None
 
         try:
-            project_path = Path(settings.projects_dir) / str(project_id)
+            project_path = self._get_project_path(session["project_id"])
             repo = git.Repo(project_path)
+            branch_name = f"kosuke-chat-{session_id}"
 
-            # Add all changed files
-            for file_path in files_changed:
-                full_path = project_path / file_path
-                if full_path.exists():
-                    repo.index.add([file_path])
+            # Manage branch creation and switching
+            self._manage_chat_branch(repo, branch_name)
 
-            # Generate commit message if not provided
-            if not commit_message:
-                commit_message = f"Auto-commit: {len(files_changed)} files changed"
-                if len(files_changed) <= 3:
-                    commit_message += f" ({', '.join(files_changed)})"
+            # Add changed files to index
+            self._add_changed_files(repo, project_path, files_changed)
 
-            # Commit changes
-            commit = repo.index.commit(commit_message)
+            # Generate commit message and commit
+            final_commit_message = self._generate_commit_message(commit_message, files_changed, session_id)
+            commit = repo.index.commit(final_commit_message)
 
             # Push to remote
-            origin = repo.remote(name="origin")
-            origin.push()
+            self._push_to_remote(repo, branch_name)
 
-            # Mark session as completed
-            session["status"] = "completed"
-            session["commit_sha"] = commit.hexsha
-
-            # Get remote URL for commit
-            remote_url = origin.url.replace(".git", f"/commit/{commit.hexsha}")
-
-            github_commit = GitHubCommit(
-                sha=commit.hexsha,
-                message=commit.message,
-                url=remote_url,
-                files_changed=len(files_changed),
-                timestamp=datetime.fromtimestamp(commit.committed_date),
-            )
-
-            logger.info(f"Successfully committed {len(files_changed)} files for session {session_id}")
-            return github_commit
+            # Update session and create response
+            self._update_session_completion(session, commit, branch_name)
+            return self._create_github_commit_response(commit, repo, files_changed)
 
         except Exception as e:
             session["status"] = "failed"
             logger.error(f"Error committing changes for session {session_id}: {e}")
             raise Exception(f"Failed to commit changes: {e!s}") from e
+
+    def _get_project_path(self, project_id: int) -> Path:
+        """Get the project directory path"""
+        return Path(settings.projects_dir) / str(project_id)
+
+    def _manage_chat_branch(self, repo: git.Repo, branch_name: str) -> None:
+        """Create or switch to chat session branch"""
+        try:
+            repo.git.checkout(branch_name)
+            logger.info(f"Switched to existing chat branch: {branch_name}")
+        except git.exc.GitCommandError:
+            # Branch doesn't exist, create it from main
+            repo.git.checkout("main")  # Ensure we're on main first
+            repo.git.checkout("-b", branch_name)
+            logger.info(f"Created new chat branch: {branch_name}")
+
+    def _add_changed_files(self, repo: git.Repo, project_path: Path, files_changed: list[str]) -> None:
+        """Add all changed files to the git index"""
+        for file_path in files_changed:
+            full_path = project_path / file_path
+            if full_path.exists():
+                repo.index.add([file_path])
+
+    def _generate_commit_message(self, commit_message: str | None, files_changed: list[str], session_id: str) -> str:
+        """Generate meaningful commit message for versioning"""
+        if commit_message:
+            return commit_message
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        if len(files_changed) <= 3:
+            file_summary = ", ".join(files_changed)
+            message = f"kosuke-chat-{timestamp}: Modified {file_summary}"
+        else:
+            message = f"kosuke-chat-{timestamp}: Modified {len(files_changed)} files"
+
+        # Add session ID for traceability
+        return f"{message} (chat: {session_id[:8]})"
+
+    def _push_to_remote(self, repo: git.Repo, branch_name: str) -> None:
+        """Push branch to remote repository"""
+        origin = repo.remote(name="origin")
+        try:
+            origin.push(branch_name)
+            logger.info(f"Pushed to chat branch: {branch_name}")
+        except git.exc.GitCommandError:
+            # If branch doesn't exist on remote, push with upstream
+            origin.push("--set-upstream", "origin", branch_name)
+            logger.info(f"Created and pushed new chat branch: {branch_name}")
+
+    def _update_session_completion(self, session: dict, commit: git.Commit, branch_name: str) -> None:
+        """Update session with completion details"""
+        session["status"] = "completed"
+        session["commit_sha"] = commit.hexsha
+        session["branch_name"] = branch_name
+
+    def _create_github_commit_response(
+        self, commit: git.Commit, repo: git.Repo, files_changed: list[str]
+    ) -> GitHubCommit:
+        """Create GitHubCommit response object"""
+        origin = repo.remote(name="origin")
+        remote_url = origin.url.replace(".git", f"/commit/{commit.hexsha}")
+
+        return GitHubCommit(
+            sha=commit.hexsha,
+            message=commit.message,
+            url=remote_url,
+            files_changed=len(files_changed),
+            timestamp=datetime.fromtimestamp(commit.committed_date),
+        )
 
     def end_sync_session(self, session_id: str) -> dict:
         """End a sync session and return summary"""

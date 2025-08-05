@@ -82,10 +82,13 @@ class Settings:
 
         # Preview settings
         self.preview_default_image: str = os.getenv(
-            "PREVIEW_DEFAULT_IMAGE", "ghcr.io/filopedraz/kosuke-template:v0.0.76"
+            "PREVIEW_DEFAULT_IMAGE", "ghcr.io/filopedraz/kosuke-template:v0.0.78"
         )
         self.preview_port_range_start: int = int(os.getenv("PREVIEW_PORT_RANGE_START", "3001"))
         self.preview_port_range_end: int = int(os.getenv("PREVIEW_PORT_RANGE_END", "3100"))
+
+        # Template repository settings
+        self.template_repository: str = os.getenv("TEMPLATE_REPOSITORY", "filopedraz/kosuke-template")
 
         # Database settings
         self.postgres_host: str = os.getenv("POSTGRES_HOST", "localhost")
@@ -127,6 +130,7 @@ class Settings:
             "model_name": self.model_name,
             "anthropic_api_key": "***" if self.anthropic_api_key else "",
             "preview_default_image": self.preview_default_image,
+            "template_repository": self.template_repository,
             "preview_port_range_start": self.preview_port_range_start,
             "preview_port_range_end": self.preview_port_range_end,
             "postgres_host": self.postgres_host,
@@ -158,6 +162,7 @@ try:
     logger.info(f"   - Projects directory: {settings.projects_dir}")
     logger.info(f"   - Model: {settings.model_name}")
     logger.info(f"   - Preview image: {settings.preview_default_image}")
+    logger.info(f"   - Template repository: {settings.template_repository}")
     logger.info(f"   - Langfuse observability: {'enabled' if _langfuse_client else 'disabled'}")
 except ValueError as e:
     logger.error(f"❌ Configuration error: {e}")

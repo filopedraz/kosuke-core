@@ -86,7 +86,27 @@ async function createGitHubRepository(
     throw new Error(`Failed to create repository: ${error}`);
   }
 
-  return await response.json();
+  const repoData = await response.json();
+
+  // After creating repository, clone it locally for preview
+  const cloneResponse = await fetch(`${agentUrl}/api/github/clone-repo`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-GitHub-Token': githubToken,
+    },
+    body: JSON.stringify({
+      repo_url: repoData.url,
+      project_id: projectId,
+    }),
+  });
+
+  if (!cloneResponse.ok) {
+    const cloneError = await cloneResponse.text();
+    throw new Error(`Failed to clone repository locally: ${cloneError}`);
+  }
+
+  return repoData;
 }
 
 /**

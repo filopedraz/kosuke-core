@@ -4,6 +4,7 @@ from fastapi import APIRouter
 from fastapi import Header
 from fastapi import HTTPException
 
+from app.models.github import CloneRepoRequest
 from app.models.github import CreateRepoRequest
 from app.models.github import GitHubRepo
 from app.models.github import ImportRepoRequest
@@ -40,6 +41,18 @@ async def import_repository(request: ImportRepoRequest, github_token: str = Head
         return {"success": True, "project_id": request.project_id, "project_path": project_path}
     except Exception as e:
         logger.error(f"Error importing repository: {e}")
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@router.post("/github/clone-repo")
+async def clone_repository(request: CloneRepoRequest, github_token: str = Header(..., alias="X-GitHub-Token")):
+    """Clone a GitHub repository to local project directory"""
+    try:
+        github_service = get_github_service(github_token)
+        project_path = await github_service.clone_repository(request)
+        return {"success": True, "project_id": request.project_id, "project_path": project_path}
+    except Exception as e:
+        logger.error(f"Error cloning repository: {e}")
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -115,6 +128,42 @@ async def get_user_repositories(
     except Exception as e:
         logger.error(f"Error getting user repositories: {e}")
         raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@router.get("/github/template-status")
+async def check_template_status(github_token: str = Header(..., alias="X-GitHub-Token")):
+    """Check if the Kosuke template repository is accessible and properly configured"""
+    try:
+        from app.utils.config import settings
+
+        github_service = get_github_service(github_token)
+        template_repo = settings.template_repository
+
+        # Try to access the template repository
+        github_client = github_service.github
+        template = github_client.get_repo(template_repo)
+
+        # Get user info
+        user = github_client.get_user()
+        return {
+            "template_repository": template_repo,
+            "template_exists": True,
+            "template_is_template": template.is_template,
+            "template_name": template.full_name,
+            "template_description": template.description,
+            "template_private": template.private,
+            "user_login": user.login,
+            "user_id": user.id,
+            "status": "accessible" if template.is_template else "not_a_template",
+        }
+    except Exception as e:
+        logger.error(f"Error checking template status: {e}")
+        return {
+            "template_repository": getattr(settings, "template_repository", "unknown"),
+            "template_exists": False,
+            "error": str(e),
+            "status": "error",
+        }
 
 
 @router.get("/github/health")

@@ -297,15 +297,6 @@ export default function ProjectCreationModal({
                 )}
               </TabsContent>
 
-              {/* Error Display */}
-              {currentStep.error && (
-                <Card className="border-destructive/50 bg-destructive/5">
-                  <CardContent className="pt-4">
-                    <p className="text-sm text-destructive">{currentStep.error}</p>
-                  </CardContent>
-                </Card>
-              )}
-
               {/* Actions */}
               <div className="flex justify-end items-center gap-3 pt-3">
                 <Button

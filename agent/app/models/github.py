@@ -31,6 +31,11 @@ class ImportRepoRequest(BaseModel):
     project_id: int
 
 
+class CloneRepoRequest(BaseModel):
+    repo_url: str
+    project_id: int
+
+
 class CommitChangesRequest(BaseModel):
     project_id: int
     session_id: str
