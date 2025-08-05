@@ -7,6 +7,7 @@ import { use, useEffect, useRef, useState } from 'react';
 import Navbar from '@/components/ui/navbar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useChatMessages } from '@/hooks/use-chat-messages';
+import { useChatSessions } from '@/hooks/use-chat-sessions';
 import { usePreviewStatus, useStartPreview } from '@/hooks/use-preview-status';
 import { useProjectUIState } from '@/hooks/use-project-ui-state';
 import { useProject } from '@/hooks/use-projects';
@@ -138,6 +139,7 @@ export default function ProjectPage({ params }: ProjectPageProps) {
   const { user } = useUser();
   const { data: project, isLoading: isProjectLoading, error: projectError } = useProject(projectId);
   const { data: messagesData, isLoading: isMessagesLoading } = useChatMessages(projectId, [], false);
+  const { data: sessions = [] } = useChatSessions(projectId);
 
     // UI state management
   const { currentView, setCurrentView, isChatCollapsed, toggleChatCollapsed } = useProjectUIState(project);
@@ -145,6 +147,10 @@ export default function ProjectPage({ params }: ProjectPageProps) {
   // Chat session state management
   const [activeChatSessionId, setActiveChatSessionId] = useState<number | null>(null);
   const [showSidebar, setShowSidebar] = useState(true); // Start with sidebar visible
+
+  // Get current session branch information
+  const currentSession = sessions.find(session => session.id === activeChatSessionId);
+  const currentBranch = currentSession?.githubBranchName;
 
   // Preview management hooks
   const { data: previewStatus, isLoading: isPreviewLoading } = usePreviewStatus(projectId, false); // Disable polling initially
@@ -185,9 +191,6 @@ export default function ProjectPage({ params }: ProjectPageProps) {
     console.error('Access denied: User does not own this project');
     notFound();
   }
-
-  // Process messages from the hook
-  const initialMessages = messagesData?.messages || [];
 
   // Handlers
   const handleRefresh = () => {
@@ -248,8 +251,10 @@ export default function ProjectPage({ params }: ProjectPageProps) {
               <div className="w-full flex flex-col">
                 <ChatInterface
                   projectId={projectId}
-                  initialMessages={initialMessages}
-                  isLoading={false} // Explicitly set to false since we have initial data
+                  initialMessages={messagesData?.messages || []}
+                  isLoading={isMessagesLoading}
+                  activeChatSessionId={activeChatSessionId}
+                  currentBranch={currentBranch}
                 />
               </div>
             )}

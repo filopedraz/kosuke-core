@@ -25,6 +25,8 @@ export default function ChatInterface({
   initialMessages = [],
   className,
   isLoading: initialIsLoading = false,
+  activeChatSessionId,
+  currentBranch,
 }: ChatInterfaceProps) {
 
   // Refs
@@ -178,7 +180,10 @@ export default function ChatInterface({
 
   return (
     <div className={cn('flex flex-col h-full', className)} data-testid="chat-interface">
-      <ModelBanner />
+      <ModelBanner
+        currentBranch={currentBranch}
+        chatSessionId={activeChatSessionId}
+      />
 
       <ScrollArea className="flex-1 overflow-y-auto">
         <div className="flex flex-col">

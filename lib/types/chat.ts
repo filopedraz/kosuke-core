@@ -110,6 +110,8 @@ export interface ChatInterfaceProps {
   initialMessages?: Omit<ChatMessageProps, 'isLoading' | 'className'>[];
   className?: string;
   isLoading?: boolean;
+  activeChatSessionId?: number | null;
+  currentBranch?: string;
 }
 
 // Content Block Types (for streaming UI state)
