@@ -148,14 +148,32 @@ export default function ProjectPage({ params }: ProjectPageProps) {
   const [activeChatSessionId, setActiveChatSessionId] = useState<number | null>(null);
   const [showSidebar, setShowSidebar] = useState(true); // Start with sidebar visible
 
+  // Auto-select default session when sessions are loaded
+  useEffect(() => {
+    if (sessions.length > 0 && activeChatSessionId === null) {
+      // Find default session or use the first session
+      const defaultSession = sessions.find(session => session.isDefault) || sessions[0];
+      if (defaultSession) {
+        setActiveChatSessionId(defaultSession.id);
+      }
+    }
+  }, [sessions, activeChatSessionId]);
+
   // Get current session branch information
   const currentSession = sessions.find(session => session.id === activeChatSessionId);
   const currentBranch = currentSession?.githubBranchName;
   const sessionId = currentSession?.sessionId;
 
-  // Preview management hooks
-  const { data: previewStatus, isLoading: isPreviewLoading } = usePreviewStatus(projectId, false); // Disable polling initially
-  const { mutateAsync: startPreview } = useStartPreview(projectId);
+  // Preview should use session only when in chat interface view, not in sidebar list view
+  const previewSessionId = showSidebar ? null : (sessionId || null);
+
+    // Preview management hooks - use null when in sidebar view (main branch)
+  const { data: previewStatus, isLoading: isPreviewLoading } = usePreviewStatus(
+    projectId,
+    previewSessionId,
+    false // Disable polling initially
+  );
+  const { mutateAsync: startPreview } = useStartPreview(projectId, previewSessionId);
 
   // Reference to the ChatInterface component to maintain its state
   const chatInterfaceRef = useRef<HTMLDivElement>(null);
@@ -276,6 +294,7 @@ export default function ProjectPage({ params }: ProjectPageProps) {
             <PreviewPanel
               projectId={projectId}
               projectName={project.name}
+              sessionId={previewSessionId}
             />
           ) : currentView === 'code' ? (
             <CodeExplorer

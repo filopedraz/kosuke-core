@@ -43,7 +43,7 @@ export default function ChatInterface({
   } | null>(null);
 
   // Custom hooks for business logic
-  const sendMessageMutation = useSendMessage(projectId, activeChatSessionId);
+  const sendMessageMutation = useSendMessage(projectId, activeChatSessionId, sessionId);
 
   // Use session-specific messages if we have a sessionId, otherwise use project-wide messages
   const sessionMessagesQuery = useChatSessionMessages(projectId, sessionId || '');
@@ -61,14 +61,9 @@ export default function ChatInterface({
 
 
   const messages = useMemo(() => {
-    if (sessionId) {
-      // Session-specific messages response
-      return messagesData?.messages || [];
-    } else {
-      // Project-wide messages response
-      return messagesData?.messages || [];
-    }
-  }, [messagesData?.messages, sessionId]);
+    const msgs = messagesData?.messages || [];
+    return msgs;
+  }, [messagesData?.messages]);
 
   const {
     sendMessage,
@@ -143,6 +138,8 @@ export default function ChatInterface({
   ) => {
     if (!content.trim() && !options?.imageFile) return;
 
+
+
     // Show immediate loading state
     setIsGenerating(true);
 
@@ -216,7 +213,7 @@ export default function ChatInterface({
                   blocks={message.blocks}
                   role={message.role}
                   timestamp={message.timestamp}
-                  isLoading={message.isLoading}
+                  isLoading={(message as { isLoading?: boolean }).isLoading || false}
                   user={user ? {
                     name: user.name || undefined,
                     email: user.email,

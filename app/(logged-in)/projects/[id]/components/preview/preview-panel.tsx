@@ -5,13 +5,13 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Progress } from '@/components/ui/progress';
-import { usePreviewStart } from '@/hooks/use-preview';
+import { useStartPreview } from '@/hooks/use-preview-status';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import DownloadingModal from './downloading-modal';
@@ -19,6 +19,7 @@ import DownloadingModal from './downloading-modal';
 interface PreviewPanelProps {
   projectId: number;
   projectName: string;
+  sessionId: string | null;
   className?: string;
 }
 
@@ -27,10 +28,16 @@ type PreviewStatus = 'loading' | 'ready' | 'error';
 export default function PreviewPanel({
   projectId,
   projectName,
+  sessionId,
   className,
 }: PreviewPanelProps) {
   const { toast } = useToast();
-  const { startPreview, isStarting } = usePreviewStart(projectId);
+
+    // Initialize hooks - use null when no session is selected to fallback to main branch
+  const { mutateAsync: startPreview, isPending: isStarting } = useStartPreview(
+    projectId,
+    sessionId
+  );
   const [status, setStatus] = useState<PreviewStatus>('loading');
   const [progress, setProgress] = useState(0);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -123,10 +130,16 @@ export default function PreviewPanel({
     setError(null);
 
     try {
-      console.log(`[Preview Panel] Fetching preview URL for project ${projectId}${forceStart ? ' (forcing refresh)' : ''}`);
+      // Use main branch API when no session is selected
+      const sessionText = sessionId ? `session ${sessionId}` : 'main branch';
+      console.log(`[Preview Panel] Fetching preview URL for project ${projectId} ${sessionText}${forceStart ? ' (forcing refresh)' : ''}`);
 
-      // Always use GET - it will auto-start if the preview is not running
-      const response = await fetch(`/api/projects/${projectId}/preview`, {
+      // Use session-specific or main branch API
+      const url = sessionId
+        ? `/api/projects/${projectId}/chat-sessions/${sessionId}/preview`
+        : `/api/projects/${projectId}/preview`;
+
+      const response = await fetch(url, {
         method: 'GET',
       });
 
@@ -150,24 +163,26 @@ export default function PreviewPanel({
         throw new Error('No preview URL returned');
       }
     } catch (error) {
-      console.error(`[Preview Panel] Error fetching preview for project ${projectId}:`, error);
+      const sessionText = sessionId ? `session ${sessionId}` : 'main branch';
+      console.error(`[Preview Panel] Error fetching preview for project ${projectId} ${sessionText}:`, error);
       setError(error instanceof Error ? error.message : 'Failed to load preview');
       setStatus('error');
     } finally {
       setIsRequestInProgress(false);
     }
-  }, [projectId, pollServerUntilReady]);
+  }, [projectId, sessionId, pollServerUntilReady]);
 
   // Update ref when fetchPreviewUrl changes
   useEffect(() => {
     fetchPreviewUrlRef.current = fetchPreviewUrl;
   }, [fetchPreviewUrl]);
 
-  // Fetch the preview URL on component mount
+  // Fetch the preview URL on component mount and when session changes
   useEffect(() => {
-    console.log(`[Preview Panel] Initializing preview for project ${projectId}`);
+    const sessionText = sessionId ? `session ${sessionId}` : 'main branch';
+    console.log(`[Preview Panel] Initializing preview for project ${projectId} ${sessionText}`);
     fetchPreviewUrlRef.current?.();
-  }, [projectId]); // Only depend on projectId to avoid circular dependencies
+  }, [projectId, sessionId]); // Depend on both projectId and sessionId
 
   // Function to refresh the preview
   const handleRefresh = useCallback(async (forceStart: boolean = false) => {
@@ -181,8 +196,16 @@ export default function PreviewPanel({
     console.log('[Preview Panel] Setting up refresh event listener for real-time updates');
 
     const handleRefreshPreview = (event: CustomEvent) => {
-      if (event.detail.projectId === projectId) {
-        console.log('[Preview Panel] Received refresh event from chat streaming');
+      // Handle both session-specific and main branch refresh events
+      const eventSessionId = event.detail.sessionId;
+      const isMainBranchEvent = !eventSessionId || eventSessionId === 'main';
+      const isCurrentSession = eventSessionId === sessionId;
+      const isMainBranchActive = !sessionId;
+
+      if (event.detail.projectId === projectId &&
+          (isCurrentSession || (isMainBranchEvent && isMainBranchActive))) {
+        const sessionText = sessionId ? `session ${sessionId}` : 'main branch';
+        console.log(`[Preview Panel] Received refresh event from chat streaming for ${sessionText}`);
         // Use ref to avoid circular dependencies
         fetchPreviewUrlRef.current?.();
       }
@@ -195,7 +218,7 @@ export default function PreviewPanel({
       console.log('[Preview Panel] Cleaning up refresh event listener');
       window.removeEventListener('refresh-preview', handleRefreshPreview as EventListener);
     };
-  }, [projectId]); // Only depend on projectId to avoid circular dependencies
+  }, [projectId, sessionId]); // Depend on both projectId and sessionId
 
   // Function to open the preview in a new tab
   const openInNewTab = () => {
@@ -330,17 +353,21 @@ export default function PreviewPanel({
                 <button
                   onClick={async () => {
                     try {
-                      await startPreview({
-                        successMessage: 'Preview is starting...',
-                        onSuccess: () => {
-                          // After starting, wait a moment then refresh to get the new URL
-                          setTimeout(() => {
-                            handleRefresh();
-                          }, 2000);
-                        }
+                      await startPreview();
+                      toast({
+                        title: 'Success',
+                        description: 'Preview is starting...',
                       });
-                    } catch {
-                      // Error is already handled by the hook
+                      // After starting, wait a moment then refresh to get the new URL
+                      setTimeout(() => {
+                        handleRefresh();
+                      }, 2000);
+                    } catch (error) {
+                      toast({
+                        variant: 'destructive',
+                        title: 'Error',
+                        description: error instanceof Error ? error.message : 'Failed to start preview',
+                      });
                     }
                   }}
                   className="mt-4 text-primary hover:underline disabled:opacity-50"

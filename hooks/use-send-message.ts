@@ -379,7 +379,11 @@ const sendMessage = async (
 };
 
 // Hook for sending messages with streaming support
-export function useSendMessage(projectId: number, chatSessionId?: number | null) {
+export function useSendMessage(
+  projectId: number,
+  chatSessionId?: number | null,
+  sessionId?: string | null
+) {
   const queryClient = useQueryClient();
 
   // Streaming state (minimal React state for real-time updates)
@@ -445,8 +449,15 @@ export function useSendMessage(projectId: number, chatSessionId?: number | null)
       );
     },
     onMutate: async newMessage => {
-      // Cancel any outgoing refetches
+      // Cancel any outgoing refetches for both project-wide and session-specific queries
       await queryClient.cancelQueries({ queryKey: ['messages', projectId] });
+      if (chatSessionId && sessionId) {
+        // Also cancel session-specific queries if we're in a session
+        await queryClient.cancelQueries({
+          queryKey: ['chat-session-messages', projectId, sessionId],
+        });
+        await queryClient.cancelQueries({ queryKey: ['chat-sessions', projectId] });
+      }
 
       // Snapshot the previous value
       const previousMessages = queryClient.getQueryData(['messages', projectId]);
@@ -537,6 +548,13 @@ export function useSendMessage(projectId: number, chatSessionId?: number | null)
       } else {
         // Immediate invalidation for non-streaming messages (like image uploads)
         queryClient.invalidateQueries({ queryKey: ['messages', projectId] });
+        if (chatSessionId && sessionId) {
+          // Also invalidate session-specific queries
+          queryClient.invalidateQueries({
+            queryKey: ['chat-session-messages', projectId, sessionId],
+          });
+          queryClient.invalidateQueries({ queryKey: ['chat-sessions', projectId] });
+        }
       }
     },
     onSettled: () => {
@@ -544,6 +562,13 @@ export function useSendMessage(projectId: number, chatSessionId?: number | null)
       setTimeout(async () => {
         // Invalidate and wait for the query to settle before clearing streaming state
         await queryClient.invalidateQueries({ queryKey: ['messages', projectId] });
+        if (chatSessionId && sessionId) {
+          // Also invalidate session-specific queries
+          await queryClient.invalidateQueries({
+            queryKey: ['chat-session-messages', projectId, sessionId],
+          });
+          await queryClient.invalidateQueries({ queryKey: ['chat-sessions', projectId] });
+        }
 
         // Always trigger preview refresh after streaming finishes and we fetch the assistant message
         const fileUpdatedEvent = new CustomEvent('file-updated', {

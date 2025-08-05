@@ -87,13 +87,30 @@ export default function ChatSidebar({
   const handleCreateChat = async () => {
     if (!newChatTitle.trim()) return;
 
-    await createChatSession.mutateAsync({
-      title: newChatTitle.trim(),
-    });
+    try {
+      const newSession = await createChatSession.mutateAsync({
+        title: newChatTitle.trim(),
+      });
 
-    // Reset form and close modal
-    setNewChatTitle('');
-    setIsNewChatModalOpen(false);
+      // Trigger session container creation immediately
+      console.log(`[Chat Sidebar] Creating container for new session: ${newSession.session.sessionId}`);
+
+      // Use a simple fetch call to trigger container creation without waiting for response
+      // This allows the user to continue while the container starts in the background
+      fetch(`/api/projects/${projectId}/chat-sessions/${newSession.session.sessionId}/preview`, {
+        method: 'POST',
+      }).catch(error => {
+        console.warn(`[Chat Sidebar] Failed to start container for session ${newSession.session.sessionId}:`, error);
+        // Don't throw error - container creation failure shouldn't prevent session creation
+      });
+
+      // Reset form and close modal
+      setNewChatTitle('');
+      setIsNewChatModalOpen(false);
+    } catch (error) {
+      console.error('[Chat Sidebar] Failed to create chat session:', error);
+      // Error is already handled by the mutation hook
+    }
   };
 
   // Handle session update
