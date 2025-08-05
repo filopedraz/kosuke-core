@@ -20,6 +20,10 @@ class ChatRequest(BaseModel):
     chat_history: list[ChatMessage] | None = []
     assistant_message_id: int | None = Field(None, description="Assistant message ID for webhook updates")
 
+    # GitHub integration fields (optional)
+    github_token: str | None = Field(None, description="GitHub token for auto-commit functionality")
+    session_id: str | None = Field(None, description="Session ID for GitHub tracking")
+
     @validator("prompt")
     def validate_prompt(cls, v):  # noqa: N805
         if not v or not v.strip():
@@ -36,5 +40,7 @@ class ChatRequest(BaseModel):
                     {"role": "user", "content": "Previous message"},
                     {"role": "assistant", "content": "Previous response"},
                 ],
+                "github_token": "ghp_xxxxxxxxxxxxxxxxxxxx",
+                "session_id": "chat-session-12345",
             }
         }

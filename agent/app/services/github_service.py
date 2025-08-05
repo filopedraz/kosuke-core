@@ -258,30 +258,32 @@ class GitHubService:
                 session["files_changed"].append(file_path)
 
     async def commit_session_changes(self, session_id: str, commit_message: str | None = None) -> GitHubCommit | None:
-        """Commit all changes from a sync session to development branch"""
+        """Commit all changes in the working directory to development branch"""
         if session_id not in self.sync_sessions:
             raise Exception(f"Sync session {session_id} not found")
 
         session = self.sync_sessions[session_id]
-        files_changed = session["files_changed"]
-
-        if not files_changed:
-            logger.info(f"No changes to commit for session {session_id}")
-            return None
 
         try:
             project_path = self._get_project_path(session["project_id"])
             repo = git.Repo(project_path)
             branch_name = f"kosuke-chat-{session_id}"
 
-            # Manage branch creation and switching
+            # Detect all changes BEFORE switching branches
+            changed_files = self._detect_all_changes(repo)
+
+            if not changed_files:
+                logger.info(f"No changes detected in working directory for session {session_id}")
+                return None
+
+            # Now manage branch creation and switching (preserving changes)
             self._manage_chat_branch(repo, branch_name)
 
-            # Add changed files to index
-            self._add_changed_files(repo, project_path, files_changed)
+            # Add all changes to index (on the chat branch)
+            self._add_all_changes(repo, changed_files)
 
             # Generate commit message and commit
-            final_commit_message = self._generate_commit_message(commit_message, files_changed, session_id)
+            final_commit_message = self._generate_commit_message(commit_message, changed_files, session_id)
             commit = repo.index.commit(final_commit_message)
 
             # Push to remote
@@ -289,7 +291,11 @@ class GitHubService:
 
             # Update session and create response
             self._update_session_completion(session, commit, branch_name)
-            return self._create_github_commit_response(commit, repo, files_changed)
+
+            # Update session with actual files changed
+            session["files_changed"] = changed_files
+
+            return self._create_github_commit_response(commit, repo, changed_files)
 
         except Exception as e:
             session["status"] = "failed"
@@ -303,16 +309,87 @@ class GitHubService:
     def _manage_chat_branch(self, repo: git.Repo, branch_name: str) -> None:
         """Create or switch to chat session branch"""
         try:
-            repo.git.checkout(branch_name)
-            logger.info(f"Switched to existing chat branch: {branch_name}")
-        except git.exc.GitCommandError:
-            # Branch doesn't exist, create it from main
-            repo.git.checkout("main")  # Ensure we're on main first
-            repo.git.checkout("-b", branch_name)
-            logger.info(f"Created new chat branch: {branch_name}")
+            # Check if branch exists locally
+            if branch_name in [head.name for head in repo.heads]:
+                # Branch exists, switch to it
+                repo.heads[branch_name].checkout()
+                logger.info(f"Switched to existing chat branch: {branch_name}")
+            else:
+                # Branch doesn't exist, create it from current state (don't switch to main)
+                # This preserves any uncommitted changes that the agent made
+                new_branch = repo.create_head(branch_name)
+                new_branch.checkout()
+                logger.info(f"Created new chat branch: {branch_name} from current state")
+        except Exception as e:
+            # Fallback to git commands if the above fails
+            logger.warning(f"Using fallback git commands due to: {e}")
+            try:
+                repo.git.checkout(branch_name)
+                logger.info(f"Switched to existing chat branch: {branch_name}")
+            except git.exc.GitCommandError:
+                # Branch doesn't exist, create it from current HEAD (preserving changes)
+                repo.git.checkout("-b", branch_name)
+                logger.info(f"Created new chat branch: {branch_name} from current state")
+
+    def _detect_all_changes(self, repo: git.Repo) -> list[str]:
+        """Detect all changes in the working directory using Git status"""
+        try:
+            # Get all modified, added, and untracked files
+            changed_files = []
+
+            # Modified files (already tracked)
+            for item in repo.index.diff(None):
+                changed_files.append(item.a_path)
+
+            # Staged files (added to index)
+            for item in repo.index.diff("HEAD"):
+                if item.a_path not in changed_files:
+                    changed_files.append(item.a_path)
+
+            # Untracked files
+            untracked = repo.untracked_files
+            for file_path in untracked:
+                # Skip common ignore patterns
+                if not self._should_ignore_file(file_path):
+                    changed_files.append(file_path)
+
+            logger.info(f"Detected {len(changed_files)} changed files: {changed_files}")
+            return changed_files
+
+        except Exception as e:
+            logger.error(f"Error detecting changes: {e}")
+            return []
+
+    def _should_ignore_file(self, file_path: str) -> bool:
+        """Check if file should be ignored (common patterns)"""
+        ignore_patterns = [
+            ".git/",
+            "__pycache__/",
+            "node_modules/",
+            ".next/",
+            "dist/",
+            "build/",
+            ".env",
+            ".env.local",
+            ".DS_Store",
+            "*.pyc",
+            "*.log",
+        ]
+        return any(pattern in file_path for pattern in ignore_patterns)
+
+    def _add_all_changes(self, repo: git.Repo, changed_files: list[str]) -> None:
+        """Add all changed files to the git index"""
+        try:
+            if changed_files:
+                # Add all files at once
+                repo.index.add(changed_files)
+                logger.info(f"Added {len(changed_files)} files to git index")
+        except Exception as e:
+            logger.error(f"Error adding files to index: {e}")
+            raise
 
     def _add_changed_files(self, repo: git.Repo, project_path: Path, files_changed: list[str]) -> None:
-        """Add all changed files to the git index"""
+        """Add all changed files to the git index (legacy method)"""
         for file_path in files_changed:
             full_path = project_path / file_path
             if full_path.exists():
@@ -334,15 +411,50 @@ class GitHubService:
         return f"{message} (chat: {session_id[:8]})"
 
     def _push_to_remote(self, repo: git.Repo, branch_name: str) -> None:
-        """Push branch to remote repository"""
-        origin = repo.remote(name="origin")
+        """Push branch to remote repository using GitHub token"""
         try:
-            origin.push(branch_name)
-            logger.info(f"Pushed to chat branch: {branch_name}")
-        except git.exc.GitCommandError:
-            # If branch doesn't exist on remote, push with upstream
-            origin.push("--set-upstream", "origin", branch_name)
-            logger.info(f"Created and pushed new chat branch: {branch_name}")
+            origin = repo.remote(name="origin")
+
+            # Get the original remote URL and modify it to include the token
+            original_url = origin.url
+            logger.info(f"Original remote URL: {original_url}")
+
+            # Create authenticated URL with username:token format
+            if original_url.startswith("https://github.com/"):
+                # Convert to username:token authenticated URL
+                authenticated_url = original_url.replace(
+                    "https://github.com/", f"https://oauth2:{self.github_token}@github.com/"
+                )
+            elif original_url.startswith("git@github.com:"):
+                # Convert SSH to HTTPS with username:token format
+                repo_path = original_url.replace("git@github.com:", "").replace(".git", "")
+                authenticated_url = f"https://oauth2:{self.github_token}@github.com/{repo_path}.git"
+            else:
+                authenticated_url = original_url
+                logger.warning(f"Unexpected remote URL format: {original_url}")
+
+            # Temporarily update the remote URL for pushing
+            origin.set_url(authenticated_url)
+
+            try:
+                # Try to push the branch first
+                try:
+                    origin.push(branch_name)
+                    logger.info(f"Pushed to chat branch: {branch_name}")
+                except git.exc.GitCommandError:
+                    # If branch doesn't exist on remote, push with upstream tracking
+                    logger.info(f"Branch {branch_name} doesn't exist on remote, creating it...")
+                    origin.push(f"{branch_name}:{branch_name}", set_upstream=True)
+                    logger.info(f"Created and pushed new chat branch: {branch_name}")
+
+            finally:
+                # Restore the original remote URL (without token)
+                origin.set_url(original_url)
+                logger.debug("Restored original remote URL")
+
+        except Exception as e:
+            logger.error(f"Error pushing to remote: {e}")
+            raise
 
     def _update_session_completion(self, session: dict, commit: git.Commit, branch_name: str) -> None:
         """Update session with completion details"""

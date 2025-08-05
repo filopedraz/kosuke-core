@@ -1,10 +1,12 @@
 
+import crypto from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { auth } from '@/lib/auth/server';
 import { db } from '@/lib/db/drizzle';
 import { chatMessages, projects } from '@/lib/db/schema';
+import { getGitHubToken } from '@/lib/github/auth';
 import { uploadFile } from '@/lib/storage';
 import { eq } from 'drizzle-orm';
 
@@ -291,6 +293,23 @@ export async function POST(
     void includeContext;
     void contextFiles;
 
+    // Get GitHub token for the user (optional for GitHub integration)
+    let githubToken: string | null = null;
+    let sessionId: string | null = null;
+
+    try {
+      githubToken = await getGitHubToken(userId);
+      if (githubToken) {
+        // Generate a unique session ID for this chat
+        sessionId = `chat-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
+        console.log(`🔗 GitHub integration enabled for session: ${sessionId}`);
+      } else {
+        console.log(`⚪ GitHub integration disabled: no token found for user ${userId}`);
+      }
+    } catch (error) {
+      console.log(`⚠️ GitHub token retrieval failed: ${error}`);
+    }
+
     const response = await fetch(`${agentServiceUrl}${endpoint}`, {
       method: 'POST',
       headers: {
@@ -300,6 +319,8 @@ export async function POST(
         project_id: projectId,
         prompt: messageContent,
         assistant_message_id: assistantMessage.id,
+        github_token: githubToken,
+        session_id: sessionId,
       }),
     });
 

@@ -78,8 +78,15 @@ class Agent:
 
         try:
             # Check if GitHub integration should be enabled
+            logger.info(
+                f"🔍 GitHub integration check: token={'✓' if github_token else '✗'}, "
+                f"session={'✓' if session_id else '✗'}"
+            )
             if github_token and session_id:
+                logger.info(f"🔗 Enabling GitHub integration for session {session_id}")
                 self.set_github_integration(github_token, session_id)
+            else:
+                logger.info("⚪ GitHub integration disabled (missing token or session_id)")
 
             # Stream events from claude-code-sdk
             async for event in self.claude_code_service.run_agentic_query(prompt, max_turns):
@@ -173,21 +180,15 @@ class Agent:
         await self._track_file_changes_if_enabled(event)
 
     async def _track_file_changes_if_enabled(self, event: dict) -> None:
-        """Track file changes for GitHub if integration is enabled"""
+        """Log tool events for debugging (file changes are now auto-detected by Git)"""
         if self.github_service and self.current_session_id:
             tool_name = event.get("tool_name", "")
-            tool_input = event.get("tool_input", {})
 
-            # Track file changes for relevant tools
-            if tool_name in ["str_replace_editor", "create_file"] and not event.get("is_error", False):
-                try:
-                    file_path = tool_input.get("path") or tool_input.get("file_path")
-                    if file_path and not file_path.startswith("/"):
-                        # Track relative file path
-                        self.github_service.track_file_change(self.current_session_id, file_path)
-                        print(f"📝 Tracked file change: {file_path}")
-                except Exception as e:
-                    print(f"⚠️ Warning: Error tracking file change for GitHub: {e}")
+            # Log file modification tools for debugging
+            file_modification_tools = ["Edit", "Write", "MultiEdit", "str_replace_editor", "create_file"]
+            if tool_name in file_modification_tools and not event.get("is_error", False):
+                print(f"🔧 File modification tool executed: {tool_name}")
+                # Note: Actual file changes will be auto-detected by Git when committing
 
     async def _handle_error_event(self, event: dict, text_state: dict) -> AsyncGenerator[dict, None]:
         """Handle error events"""

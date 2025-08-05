@@ -32,7 +32,9 @@ async def chat_stream(request: ChatRequest) -> StreamingResponse:
             agent = Agent(request.project_id, request.assistant_message_id)
 
             # Stream native Anthropic events directly with forced flushing
-            async for event in agent.run(request.prompt):
+            async for event in agent.run(
+                request.prompt, github_token=request.github_token, session_id=request.session_id
+            ):
                 # Forward event as Server-Sent Event with immediate flush
                 data = json.dumps(event, default=str)
                 yield f"data: {data}\n\n"
