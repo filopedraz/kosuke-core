@@ -28,6 +28,7 @@
     "@clerk/nextjs": "^6.28.1",
     "@clerk/themes": "^2.4.4",
     "@hookform/resolvers": "^5.2.1",
+    "@octokit/rest": "^22.0.0",
     "@opentelemetry/api-logs": "^0.200.0",
     "@opentelemetry/instrumentation": "^0.200.0",
     "@opentelemetry/sdk-logs": "^0.200.0",

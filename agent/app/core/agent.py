@@ -7,6 +7,7 @@ from collections.abc import AsyncGenerator
 
 from app.services.claude_code_service import ClaudeCodeService
 from app.services.github_service import GitHubService
+from app.services.session_manager import SessionManager
 from app.services.webhook_service import WebhookService
 from app.utils.observability import observe_agentic_workflow
 
@@ -26,37 +27,43 @@ class Agent:
     - GitHub integration for auto-commit functionality
     """
 
-    def __init__(self, project_id: int, assistant_message_id: int | None = None):
+    def __init__(self, project_id: int, session_id: str, assistant_message_id: int | None = None):
         self.project_id = project_id
+        self.session_id = session_id
         self.assistant_message_id = assistant_message_id
         self.webhook_service = WebhookService()
         self.start_time = time.time()
         self.total_actions = 0
 
+        # Session management
+        self.session_manager = SessionManager()
+
+        # Get session-specific working directory
+        self.working_directory = self.session_manager.get_session_path(project_id, session_id)
+
         # GitHub integration attributes
         self.github_service: GitHubService | None = None
-        self.current_session_id: str | None = None
         self.github_token: str | None = None
 
-        # Initialize claude-code service
-        self.claude_code_service = ClaudeCodeService(project_id)
+        # Initialize claude-code service with session directory
+        self.claude_code_service = ClaudeCodeService(project_id=project_id, working_directory=self.working_directory)
 
-        logger.info(f"🚀 Agent initialized for project ID: {project_id}")
+        logger.info(f"🚀 Agent initialized for project ID: {project_id}, session: {session_id}")
+        logger.info(f"📁 Working directory: {self.working_directory}")
 
-    def set_github_integration(self, github_token: str, session_id: str):
+    def set_github_integration(self, github_token: str):
         """Enable GitHub integration for this agent session"""
         self.github_token = github_token
         self.github_service = GitHubService(github_token)
-        self.current_session_id = session_id
 
         # Start sync session
         if self.github_service:
-            self.github_service.start_sync_session(self.project_id, session_id)
-            print(f"🔗 GitHub integration enabled for session {session_id}")
+            self.github_service.start_sync_session(self.project_id, self.session_id)
+            print(f"🔗 GitHub integration enabled for session {self.session_id}")
 
     @observe_agentic_workflow("claude-code-agentic-pipeline")
     async def run(
-        self, prompt: str, max_turns: int = 25, github_token: str | None = None, session_id: str | None = None
+        self, prompt: str, max_turns: int = 25, github_token: str | None = None
     ) -> AsyncGenerator[dict, None]:
         """
         Run the claude-code agent for repository analysis and modification
@@ -65,7 +72,6 @@ class Agent:
             prompt: User prompt/query
             max_turns: Maximum conversation turns
             github_token: Optional GitHub token for auto-commit functionality
-            session_id: Optional session ID for GitHub tracking
 
         Yields:
             Stream of events compatible with existing chat interface
@@ -79,14 +85,13 @@ class Agent:
         try:
             # Check if GitHub integration should be enabled
             logger.info(
-                f"🔍 GitHub integration check: token={'✓' if github_token else '✗'}, "
-                f"session={'✓' if session_id else '✗'}"
+                f"🔍 GitHub integration check: token={'✓' if github_token else '✗'}, " f"session={self.session_id}"
             )
-            if github_token and session_id:
-                logger.info(f"🔗 Enabling GitHub integration for session {session_id}")
-                self.set_github_integration(github_token, session_id)
+            if github_token:
+                logger.info(f"🔗 Enabling GitHub integration for session {self.session_id}")
+                self.set_github_integration(github_token)
             else:
-                logger.info("⚪ GitHub integration disabled (missing token or session_id)")
+                logger.info("⚪ GitHub integration disabled (missing token)")
 
             # Stream events from claude-code-sdk
             async for event in self.claude_code_service.run_agentic_query(prompt, max_turns):
@@ -181,7 +186,7 @@ class Agent:
 
     async def _track_file_changes_if_enabled(self, event: dict) -> None:
         """Log tool events for debugging (file changes are now auto-detected by Git)"""
-        if self.github_service and self.current_session_id:
+        if self.github_service and self.session_id:
             tool_name = event.get("tool_name", "")
 
             # Log file modification tools for debugging
@@ -231,9 +236,9 @@ class Agent:
         await self._send_assistant_message_webhook(text_state["all_blocks"], success=False)
 
         # If we have GitHub integration and session fails, mark session as failed
-        if self.github_service and self.current_session_id:
+        if self.github_service and self.session_id:
             try:
-                session_summary = self.github_service.end_sync_session(self.current_session_id)
+                session_summary = self.github_service.end_sync_session(self.session_id)
                 session_summary["status"] = "failed"
                 print(f"🔗 GitHub session marked as failed: {session_summary}")
             except Exception as github_error:
@@ -241,10 +246,12 @@ class Agent:
 
     async def finalize_github_session(self, commit_message: str | None = None):
         """Finalize the GitHub session and commit changes if enabled"""
-        if self.github_service and self.current_session_id:
+        if self.github_service and self.session_id:
             try:
-                # Commit session changes
-                commit = await self.github_service.commit_session_changes(self.current_session_id, commit_message)
+                # Commit session changes with session-specific working directory
+                commit = await self.github_service.commit_session_changes(
+                    session_path=self.working_directory, session_id=self.session_id, commit_message=commit_message
+                )
 
                 # Send webhook about commit
                 if commit and self.webhook_service:
@@ -252,7 +259,7 @@ class Agent:
                         await webhook.send_commit(self.project_id, commit.sha, commit.message, commit.files_changed)
 
                 # End session and get summary
-                session_summary = self.github_service.end_sync_session(self.current_session_id)
+                session_summary = self.github_service.end_sync_session(self.session_id)
 
                 print(f"✅ GitHub session completed: {session_summary}")
 
@@ -287,14 +294,10 @@ class Agent:
             github_commit = None
             session_summary = None
 
-            if (
-                self.github_service
-                and self.current_session_id
-                and self.current_session_id in self.github_service.sync_sessions
-            ):
-                session = self.github_service.sync_sessions[self.current_session_id]
+            if self.github_service and self.session_id and self.session_id in self.github_service.sync_sessions:
+                session = self.github_service.sync_sessions[self.session_id]
                 session_summary = {
-                    "session_id": self.current_session_id,
+                    "session_id": self.session_id,
                     "project_id": session["project_id"],
                     "files_changed": len(session["files_changed"]),
                     "status": session["status"],

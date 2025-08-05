@@ -1,12 +1,15 @@
 'use client';
 
 import { cn } from '@/lib/utils';
+import { GitBranch } from 'lucide-react';
 
 interface ModelBannerProps {
   className?: string;
+  currentBranch?: string; // NEW: Display current branch
+  chatSessionId?: number | null; // NEW: Track active session
 }
 
-export default function ModelBanner({ className }: ModelBannerProps) {
+export default function ModelBanner({ className, currentBranch, chatSessionId }: ModelBannerProps) {
   // Get model name from environment variable
   const model = process.env.NEXT_PUBLIC_DEFAULT_MODEL || 'claude-3-7-sonnet-20250219';
 
@@ -21,12 +24,26 @@ export default function ModelBanner({ className }: ModelBannerProps) {
 
   const modelName = getModelDisplayName(model);
 
+  // Determine branch to display
+  const displayBranch = currentBranch || 'main';
+
   return (
     <div className={cn('px-4', className)}>
-      <div className="flex items-center w-full px-4 py-2.5 rounded-md bg-gradient-to-r from-primary/5 to-background">
+      <div className="flex items-center justify-between w-full px-4 py-2.5 rounded-md bg-gradient-to-r from-primary/5 to-background">
         <div className="flex items-center gap-1.5">
           <span className="text-xs text-muted-foreground">Powered by:</span>
           <span className="text-xs font-medium">{modelName}</span>
+        </div>
+
+        {/* Branch Display */}
+        <div className="flex items-center gap-1.5">
+          <GitBranch className="h-3 w-3 text-muted-foreground" />
+          <span className="text-xs font-medium text-muted-foreground">
+            {displayBranch}
+          </span>
+          {!chatSessionId && (
+            <span className="text-xs text-muted-foreground/70">(default)</span>
+          )}
         </div>
       </div>
     </div>

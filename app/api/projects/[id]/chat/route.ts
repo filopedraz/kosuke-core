@@ -1,24 +1,25 @@
 
-import crypto from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { auth } from '@/lib/auth/server';
 import { db } from '@/lib/db/drizzle';
-import { chatMessages, projects } from '@/lib/db/schema';
+import { chatMessages, chatSessions, projects } from '@/lib/db/schema';
 import { getGitHubToken } from '@/lib/github/auth';
 import { uploadFile } from '@/lib/storage';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 
-// Schema for sending a message - support both formats
+// Schema for sending a message - support both formats with chat session
 const sendMessageSchema = z.union([
   z.object({
     message: z.object({
       content: z.string()
     }),
+    chat_session_id: z.number().optional(),
   }),
   z.object({
-    content: z.string()
+    content: z.string(),
+    chat_session_id: z.number().optional(),
   })
 ]);
 
@@ -183,6 +184,7 @@ export async function POST(
     let messageContent: string;
     let includeContext = false;
     let contextFiles: string[] = [];
+    let chatSessionId: number | null = null;
 
     if (contentType.includes('multipart/form-data')) {
       // Process FormData request (for image uploads) - return JSON response like before
@@ -238,11 +240,13 @@ export async function POST(
 
       // Extract content based on the format received
       if ('message' in parseResult.data) {
-        // Format: { message: { content } }
+        // Format: { message: { content }, chat_session_id }
         messageContent = parseResult.data.message.content;
+        chatSessionId = parseResult.data.chat_session_id || null;
       } else {
-        // Format: { content }
+        // Format: { content, chat_session_id }
         messageContent = parseResult.data.content;
+        chatSessionId = parseResult.data.chat_session_id || null;
       }
 
       // Extract options if present
@@ -256,9 +260,57 @@ export async function POST(
 
     console.log(`Received message content: "${messageContent.substring(0, 50)}${messageContent.length > 50 ? '...' : ''}"`);
 
+    // Handle chat session - get or create default session if none provided
+    let targetChatSession;
+    if (chatSessionId) {
+      // Use provided chat session
+      const [session] = await db
+        .select()
+        .from(chatSessions)
+        .where(eq(chatSessions.id, chatSessionId));
+
+      if (!session || session.projectId !== projectId) {
+        return new Response('Chat session not found', { status: 404 });
+      }
+
+      targetChatSession = session;
+    } else {
+      // Get or create default chat session
+      let [defaultSession] = await db
+        .select()
+        .from(chatSessions)
+        .where(
+          and(
+            eq(chatSessions.projectId, projectId),
+            eq(chatSessions.isDefault, true)
+          )
+        );
+
+      if (!defaultSession) {
+        // Create default session if it doesn't exist
+        const sessionId = `session_${projectId}_${Date.now()}`;
+        [defaultSession] = await db
+          .insert(chatSessions)
+          .values({
+            projectId,
+            userId,
+            title: 'Main Conversation',
+            sessionId,
+            githubBranchName: `kosuke-chat-${sessionId}`,
+            status: 'active',
+            isDefault: true,
+            messageCount: 0,
+          })
+          .returning();
+      }
+
+      targetChatSession = defaultSession;
+    }
+
     // Save user message immediately
     const [userMessage] = await db.insert(chatMessages).values({
       projectId,
+      chatSessionId: targetChatSession.id,
       userId: userId,
       content: messageContent,
       role: 'user',
@@ -273,6 +325,7 @@ export async function POST(
     // Create assistant message placeholder for streaming
     const [assistantMessage] = await db.insert(chatMessages).values({
       projectId,
+      chatSessionId: targetChatSession.id,
       userId: userId,
       content: null, // Will be populated by webhook
       role: 'assistant',
@@ -285,9 +338,9 @@ export async function POST(
     // Proxy stream directly to Python FastAPI service
     const agentServiceUrl = process.env.AGENT_SERVICE_URL || 'http://localhost:8001';
 
-    // Always use the chat stream endpoint
-    const endpoint = '/api/chat/stream';
-    console.log(`🚀 Routing to: ${endpoint}`);
+    // Use the session-aware chat endpoint
+    const endpoint = '/api/chat/session';
+    console.log(`🚀 Routing to: ${endpoint} for session ${targetChatSession.sessionId}`);
 
     // Mark unused variables for future use
     void includeContext;
@@ -295,14 +348,11 @@ export async function POST(
 
     // Get GitHub token for the user (optional for GitHub integration)
     let githubToken: string | null = null;
-    let sessionId: string | null = null;
 
     try {
       githubToken = await getGitHubToken(userId);
       if (githubToken) {
-        // Generate a unique session ID for this chat
-        sessionId = `chat-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
-        console.log(`🔗 GitHub integration enabled for session: ${sessionId}`);
+        console.log(`🔗 GitHub integration enabled for session: ${targetChatSession.sessionId}`);
       } else {
         console.log(`⚪ GitHub integration disabled: no token found for user ${userId}`);
       }
@@ -320,7 +370,7 @@ export async function POST(
         prompt: messageContent,
         assistant_message_id: assistantMessage.id,
         github_token: githubToken,
-        session_id: sessionId,
+        session_id: targetChatSession.sessionId,
       }),
     });
 

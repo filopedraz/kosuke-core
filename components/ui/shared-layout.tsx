@@ -5,12 +5,18 @@ import Navbar from '@/components/ui/navbar';
 type SharedLayoutProps = {
   children: React.ReactNode;
   showNavbar?: boolean;
-  variant?: 'standard' | 'project';
+  variant?: 'standard' | 'project' | 'waitlist';
   projectProps?: {
     projectName: string;
-    currentView: 'preview' | 'code';
-    onViewChange: (view: 'preview' | 'code') => void;
+    currentView: 'preview' | 'code' | 'branding' | 'settings';
+    onViewChange: (view: 'preview' | 'code' | 'branding' | 'settings') => void;
     onRefresh?: () => void;
+    isChatCollapsed?: boolean;
+    onToggleChat?: () => void;
+    activeChatSessionId?: number | null;
+    onCreatePullRequest?: () => void;
+    showSidebar?: boolean;
+    onToggleSidebar?: () => void;
   };
 };
 

@@ -18,6 +18,10 @@ Implement a multi-chat interface that allows users to create and manage multiple
 - 🎯 Easy chat session creation and switching
 - 🎯 Chat session management (rename, delete, archive)
 - 🎯 GitHub branch integration per chat session
+- 🎯 **NEW:** Settings tab with default branch configuration
+- 🎯 **NEW:** Create Pull Request button in navbar
+- 🎯 **NEW:** Branch display in model banner
+- 🎯 **NEW:** Isolated file system per chat session
 
 ---
 
@@ -90,6 +94,17 @@ AND cs.is_default = TRUE
 AND chat_messages.chat_session_id IS NULL;
 ```
 
+### **Update Table: `projects`**
+
+```sql
+-- Add default branch configuration to projects table
+ALTER TABLE projects
+ADD COLUMN default_branch VARCHAR(100) DEFAULT 'main';
+
+-- Create index for performance
+CREATE INDEX idx_projects_default_branch ON projects(default_branch);
+```
+
 ---
 
 ## **Backend API Endpoints**
@@ -136,6 +151,55 @@ interface ChatRequest {
   chat_session_id: number; // NEW: Required field
   prompt: string;
   github_token?: string;
+}
+```
+
+### **NEW: Project Settings API**
+
+```typescript
+// GET /api/projects/[id]/settings/default-branch
+// Get project default branch setting
+interface DefaultBranchResponse {
+  default_branch: string;
+  available_branches: string[];
+}
+
+// PUT /api/projects/[id]/settings/default-branch
+// Update project default branch
+interface UpdateDefaultBranchRequest {
+  default_branch: string;
+}
+
+// GET /api/projects/[id]/github/branches
+// Get available GitHub branches for project
+interface GitHubBranchesResponse {
+  branches: GitHubBranch[];
+}
+
+interface GitHubBranch {
+  name: string;
+  commit_sha: string;
+  is_default: boolean;
+}
+```
+
+### **NEW: Pull Request Management API**
+
+```typescript
+// POST /api/projects/[id]/chat-sessions/[sessionId]/pull-request
+// Create pull request from chat session branch
+interface CreatePullRequestRequest {
+  title?: string;
+  description?: string;
+  target_branch?: string; // Defaults to project default_branch
+}
+
+interface CreatePullRequestResponse {
+  pull_request_url: string;
+  pull_request_number: number;
+  title: string;
+  source_branch: string;
+  target_branch: string;
 }
 ```
 
@@ -188,17 +252,76 @@ interface NewChatModalProps {
 }
 ```
 
+#### **NEW: 4. Settings Components**
+
+```typescript
+// components/settings/default-branch-settings.tsx
+interface DefaultBranchSettingsProps {
+  projectId: number;
+}
+
+// Features:
+// - Dropdown to select default branch from GitHub repository
+// - Display current default branch
+// - Save/cancel functionality
+// - Loading states while fetching branches
+```
+
+#### **NEW: 5. Updated Navbar Component**
+
+```typescript
+// components/ui/navbar.tsx - Extended projectProps
+interface NavbarProps {
+  variant?: 'standard' | 'project' | 'waitlist';
+  projectProps?: {
+    projectName: string;
+    currentView: 'preview' | 'code' | 'branding' | 'settings'; // Added settings
+    onViewChange: (view: 'preview' | 'code' | 'branding' | 'settings') => void;
+    onRefresh?: () => void;
+    isChatCollapsed?: boolean;
+    onToggleChat?: () => void;
+    // NEW: Pull Request functionality
+    activeChatSessionId?: number | null;
+    onCreatePullRequest?: () => void;
+  };
+}
+
+// Features:
+// - Add Settings tab button
+// - Add Create Pull Request button (left of avatar)
+// - Disable PR button when no active chat session
+```
+
+#### **NEW: 6. Updated Model Banner Component**
+
+```typescript
+// components/chat/model-banner.tsx
+interface ModelBannerProps {
+  className?: string;
+  currentBranch?: string; // NEW: Display current branch
+  chatSessionId?: number | null; // NEW: Track active session
+}
+
+// Features:
+// - Display current branch name on the right side
+// - Show "main" when no active chat session
+// - Responsive design for branch name display
+```
+
 ### **Updated Page Layout**
 
 ```typescript
 // app/(logged-in)/projects/[id]/page.tsx
-// Three-column layout:
-// [ChatSidebar] [ChatInterface] [ProjectDetails]
+// Four-column layout with settings:
+// [ChatSidebar] [ChatInterface] [ProjectDetails] [Settings]
+
+// Tab-based interface:
+// Preview | Code | Branding | Settings
 
 // Responsive behavior:
 // Mobile: Stack vertically, collapsible sidebar
 // Tablet: Two-column, sidebar overlay
-// Desktop: Three-column fixed layout
+// Desktop: Multi-column flexible layout
 ```
 
 ---
@@ -239,6 +362,110 @@ interface ChatState {
 
 ---
 
+## **NEW: Container Isolation Architecture**
+
+### **Isolation Overview**
+
+Each chat session operates in its own isolated file system environment with separate directory checkouts. This ensures complete isolation between sessions and prevents conflicts.
+
+### **Directory Structure**
+
+```bash
+/projects/{project_id}/
+├── main/                           # Main project directory (existing)
+│   ├── .git/
+│   ├── package.json
+│   └── ... (project files)
+└── sessions/                       # NEW: Session isolation directory
+    ├── session_abc123/             # Chat session 1 environment
+    │   ├── .git/                   # Independent git state
+    │   ├── package.json
+    │   └── ... (branch-specific files)
+    ├── session_def456/             # Chat session 2 environment
+    │   ├── .git/
+    │   ├── package.json
+    │   └── ... (branch-specific files)
+    └── session_ghi789/             # Chat session 3 environment
+        ├── .git/
+        ├── package.json
+        └── ... (branch-specific files)
+```
+
+### **Session Lifecycle Management**
+
+```python
+# agent/app/services/session_manager.py
+class SessionManager:
+    """Manages isolated session environments"""
+
+    def create_session_environment(self, project_id: int, session_id: str, base_branch: str) -> str:
+        """
+        Create isolated environment for chat session
+        1. Create session directory: /projects/{project_id}/sessions/{session_id}/
+        2. Clone repository to session directory
+        3. Checkout base_branch (from project.default_branch)
+        4. Create session branch: kosuke-chat-{session_id}
+        5. Return session directory path
+        """
+
+    def cleanup_session_environment(self, project_id: int, session_id: str) -> bool:
+        """
+        Clean up session environment when session ends
+        1. Remove session directory
+        2. Free up disk space
+        3. Update session status to 'cleaned'
+        """
+
+    def get_session_path(self, project_id: int, session_id: str) -> str:
+        """Get the file system path for a session"""
+        return f"/projects/{project_id}/sessions/{session_id}/"
+```
+
+### **Agent Service Integration**
+
+```python
+# agent/app/core/agent.py - Updated for session isolation
+class Agent:
+    def __init__(self, project_id: int, session_id: str, assistant_message_id: int | None = None):
+        self.project_id = project_id
+        self.session_id = session_id
+        self.session_manager = SessionManager()
+
+        # Get session-specific working directory
+        self.working_directory = self.session_manager.get_session_path(project_id, session_id)
+
+        # Initialize claude-code service with session directory
+        self.claude_code_service = ClaudeCodeService(
+            project_id=project_id,
+            working_directory=self.working_directory
+        )
+```
+
+### **Updated GitHub Service**
+
+```python
+# agent/app/services/github_service.py - Session-aware operations
+class GitHubService:
+    def create_session_branch(self, session_path: str, session_id: str, base_branch: str) -> str:
+        """
+        Create branch for chat session in isolated environment
+        1. Navigate to session directory
+        2. Ensure on base_branch
+        3. Create kosuke-chat-{session_id} branch
+        4. Return branch name
+        """
+
+    def commit_session_changes(self, session_path: str, session_id: str, commit_message: str | None = None) -> GitHubCommit | None:
+        """
+        Commit changes in session-specific directory
+        - All operations happen in session directory
+        - No conflicts with other sessions
+        - Independent git state
+        """
+```
+
+---
+
 ## **GitHub Integration Updates**
 
 ### **Session ID Generation**
@@ -267,7 +494,7 @@ function generateSessionId(): string {
 
 ### **Left Sidebar Layout**
 
-```
+```text
 ┌─────────────────┐
 │ 📁 Project Name │
 ├─────────────────┤
@@ -482,11 +709,12 @@ function generateSessionId(): string {
 
 - [ ] Create migration script for `chat_sessions` table
 - [ ] Update `chat_messages` table schema
+- [ ] Add `default_branch` column to `projects` table
 - [ ] Run data migration for existing projects
 - [ ] Add proper indexes and constraints
 - [ ] Test migration on staging environment
 
-### **Backend**
+### **Backend - Core Chat Sessions**
 
 - [ ] Implement chat session management API
 - [ ] Update chat API to use session IDs
@@ -494,7 +722,24 @@ function generateSessionId(): string {
 - [ ] Update agent service integration
 - [ ] Add session-based authentication checks
 
-### **Frontend**
+### **Backend - NEW: Container Isolation**
+
+- [ ] Create SessionManager service
+- [ ] Implement session environment creation
+- [ ] Update Agent class for session-specific directories
+- [ ] Modify GitHubService for session isolation
+- [ ] Add session cleanup mechanisms
+- [ ] Update ClaudeCodeService for working directory support
+
+### **Backend - NEW: Settings & Pull Requests**
+
+- [ ] Implement default branch settings API
+- [ ] Add GitHub branches listing endpoint
+- [ ] Implement pull request creation API
+- [ ] Add project settings management
+- [ ] Add GitHub API integration for PR creation
+
+### **Frontend - Core Components**
 
 - [ ] Create ChatSidebar component
 - [ ] Implement chat session state management
@@ -503,13 +748,33 @@ function generateSessionId(): string {
 - [ ] Implement responsive design
 - [ ] Add session management features
 
-### **Integration**
+### **Frontend - NEW: UI Updates**
+
+- [ ] Add Settings tab to navbar
+- [ ] Implement default branch settings component
+- [ ] Add Create Pull Request button to navbar
+- [ ] Update model banner with branch display
+- [ ] Extend project page layout for settings tab
+- [ ] Add pull request creation modal/flow
+
+### **Frontend - NEW: Session Integration**
+
+- [ ] Update useSendMessage for session-specific requests
+- [ ] Add session ID tracking in chat state
+- [ ] Implement session switching without conflicts
+- [ ] Add branch display in chat interface
+- [ ] Update project state management for default branch
+
+### **Integration & Testing**
 
 - [ ] Test GitHub branch per session
 - [ ] Validate agent commits to correct branches
-- [ ] Test session isolation
-- [ ] Verify message persistence
+- [ ] Test session isolation and directory separation
+- [ ] Verify message persistence across sessions
 - [ ] Test concurrent session handling
+- [ ] Test pull request creation flow
+- [ ] Validate settings persistence
+- [ ] Test branch switching and display
 
 ### **Documentation**
 
@@ -517,6 +782,8 @@ function generateSessionId(): string {
 - [ ] Database schema documentation
 - [ ] User guide for multi-chat interface
 - [ ] Developer guide for session management
+- [ ] Container isolation architecture documentation
+- [ ] Settings and PR management guides
 
 ---
 
@@ -525,10 +792,40 @@ function generateSessionId(): string {
 ### **Core Functionality**
 
 1. Users can create multiple chat sessions within a project
-2. Each chat session has its own GitHub branch
+2. Each chat session has its own GitHub branch and isolated environment
 3. Messages are properly isolated between sessions
 4. Session switching preserves message history
 5. Chat sessions can be renamed, archived, and deleted
+
+### **NEW: Settings & Configuration**
+
+1. Settings tab is accessible from project navigation
+2. Users can configure default branch from dropdown of GitHub branches
+3. Default branch setting persists and applies to new chat sessions
+4. Settings interface integrates with existing environment variables tab
+
+### **NEW: Pull Request Management**
+
+1. Create Pull Request button is visible in navbar (left of avatar)
+2. Button is disabled when no active chat session exists
+3. Clicking button creates PR from active session branch to default branch
+4. Created PR opens in new tab/window for user review
+5. PR creation handles errors gracefully
+
+### **NEW: Branch Display**
+
+1. Model banner shows current branch name on the right side
+2. Branch display updates when switching between chat sessions
+3. Shows project default branch when no active chat session
+4. Branch name is clearly readable and doesn't interfere with model info
+
+### **NEW: Container Isolation**
+
+1. Each chat session operates in its own isolated directory
+2. File changes in one session don't affect other sessions
+3. Sessions can run concurrently without conflicts
+4. Session cleanup removes isolated directories when sessions end
+5. Agent operations target correct session-specific directories
 
 ### **UI/UX Requirements**
 
@@ -537,6 +834,8 @@ function generateSessionId(): string {
 3. New chat button is easily accessible
 4. Session management actions are intuitive
 5. Interface is responsive across all device sizes
+6. Settings tab integrates seamlessly with existing tabs
+7. PR button placement doesn't interfere with existing navbar elements
 
 ### **Technical Requirements**
 
@@ -545,6 +844,9 @@ function generateSessionId(): string {
 3. GitHub branch creation is automatic per session
 4. Agent commits to correct branch based on session
 5. Performance meets specified metrics
+6. Session isolation doesn't significantly impact performance
+7. GitHub integration works reliably for PR creation
+8. Default branch configuration persists correctly
 
 ### **Quality Assurance**
 
@@ -553,6 +855,48 @@ function generateSessionId(): string {
 3. Cross-browser compatibility verified
 4. Accessibility standards met (WCAG 2.1 AA)
 5. Security review completed and approved
+6. Container isolation security tested
+7. GitHub token permissions validated for PR creation
+
+---
+
+## **NEW: Architectural Summary**
+
+### **Key Changes Overview**
+
+This expanded ticket introduces significant architectural enhancements that transform Kosuke into a multi-session development environment:
+
+| **Feature**            | **Current State**              | **New State**                  | **Impact**                          |
+| ---------------------- | ------------------------------ | ------------------------------ | ----------------------------------- |
+| **Chat Sessions**      | Single session per project     | Multiple isolated sessions     | ✅ Parallel development workflows   |
+| **File System**        | Shared project directory       | Session-specific directories   | ✅ Complete isolation, no conflicts |
+| **GitHub Integration** | Project-level branching        | Session-level branching        | ✅ Granular version control         |
+| **UI Navigation**      | 3 tabs (Preview/Code/Branding) | 4 tabs + PR management         | ✅ Enhanced project management      |
+| **Settings**           | Environment variables only     | + Default branch configuration | ✅ Flexible project setup           |
+
+### **Benefits for Users**
+
+1. **Parallel Development**: Work on multiple features simultaneously without conflicts
+2. **Branch Management**: Each conversation creates its own Git branch automatically
+3. **Pull Request Workflow**: Direct PR creation from chat sessions
+4. **Flexible Configuration**: Set custom default branches per project
+5. **Complete Isolation**: Session changes don't affect other sessions
+6. **Visual Clarity**: Always know which branch you're working on
+
+### **Benefits for Developers**
+
+1. **Clean Architecture**: Session isolation prevents cross-session contamination
+2. **Scalable Design**: Support for unlimited concurrent sessions per project
+3. **GitHub Integration**: Seamless PR workflow with proper branch management
+4. **Resource Management**: Automatic cleanup of session environments
+5. **Extensible Framework**: Easy to add new session-specific features
+
+### **Migration Path**
+
+**Phase 1** (Weeks 1-2): Database schema and session isolation
+**Phase 2** (Weeks 3-4): Frontend UI updates and settings integration
+**Phase 3** (Weeks 5-6): Pull request management and advanced features
+**Phase 4** (Week 7): Performance optimization and cleanup
 
 ---
 

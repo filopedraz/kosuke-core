@@ -5,8 +5,11 @@ import {
   CircleIcon,
   Code,
   Eye,
+  GitPullRequest,
   LayoutDashboard,
   LogOut,
+  Menu,
+  MessageCircle,
   PanelLeftClose,
   PanelLeftOpen,
   Settings,
@@ -32,17 +35,23 @@ type NavbarProps = {
   variant?: 'standard' | 'project' | 'waitlist';
   projectProps?: {
     projectName: string;
-    currentView: 'preview' | 'code' | 'branding';
-    onViewChange: (view: 'preview' | 'code' | 'branding') => void;
+    currentView: 'preview' | 'code' | 'branding' | 'settings';
+    onViewChange: (view: 'preview' | 'code' | 'branding' | 'settings') => void;
     onRefresh?: () => void;
     isChatCollapsed?: boolean;
     onToggleChat?: () => void;
+    // NEW: Pull Request functionality
+    activeChatSessionId?: number | null;
+    onCreatePullRequest?: () => void;
+    // Floating toggle functionality
+    showSidebar?: boolean;
+    onToggleSidebar?: () => void;
   };
   className?: string;
 };
 
 export default function Navbar({ variant = 'standard', projectProps, className }: NavbarProps) {
-  const { clerkUser, isLoaded, isSignedIn, imageUrl, displayName, initials } = useUser();
+  const { clerkUser, dbUser, isLoaded, isSignedIn, imageUrl, displayName, initials } = useUser();
   const { signOut } = useClerk();
   const router = useRouter();
 
@@ -82,9 +91,7 @@ export default function Navbar({ variant = 'standard', projectProps, className }
             <div className="flex items-center justify-start gap-2 p-2">
               <div className="flex flex-col space-y-0.5">
                 <p className="text-sm font-medium">{displayName}</p>
-                <p className="text-xs text-muted-foreground">
-                  {clerkUser?.emailAddresses[0]?.emailAddress}
-                </p>
+                <p className="text-xs text-muted-foreground">{dbUser?.email}</p>
               </div>
             </div>
             <DropdownMenuSeparator />
@@ -164,6 +171,24 @@ export default function Navbar({ variant = 'standard', projectProps, className }
                 </Link>
               </div>
 
+              {/* Floating toggle button positioned to the left of collapse toggle */}
+              {projectProps.onToggleSidebar && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={projectProps.onToggleSidebar}
+                  className="absolute right-12 mr-2 h-8 w-8 bg-background border border-border rounded-md shadow-md hover:bg-accent transition-colors"
+                  aria-label={projectProps.showSidebar ? 'Show Chat' : 'Show Sessions'}
+                  title={projectProps.showSidebar ? 'Show Chat' : 'Show Sessions'}
+                >
+                  {projectProps.showSidebar ? (
+                    <MessageCircle className="h-4 w-4" />
+                  ) : (
+                    <Menu className="h-4 w-4" />
+                  )}
+                </Button>
+              )}
+
               {/* Toggle button positioned at the right edge of chat width */}
               {projectProps.onToggleChat && (
                 <Button
@@ -218,10 +243,34 @@ export default function Navbar({ variant = 'standard', projectProps, className }
                     <Sparkles className="h-4 w-4 mr-1" />
                     Branding
                   </Button>
+                  <Button
+                    variant={projectProps.currentView === 'settings' ? 'secondary' : 'ghost'}
+                    size="sm"
+                    className="rounded-none px-3 h-8"
+                    onClick={() => projectProps.onViewChange('settings')}
+                  >
+                    <Settings className="h-4 w-4 mr-1" />
+                    Settings
+                  </Button>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 px-4">{renderUserSection()}</div>
+              <div className="flex items-center gap-2 px-4">
+                {/* Create Pull Request Button */}
+                {projectProps.onCreatePullRequest && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={projectProps.onCreatePullRequest}
+                    disabled={!projectProps.activeChatSessionId}
+                    className="mr-2"
+                  >
+                    <GitPullRequest className="h-4 w-4 mr-1" />
+                    Create PR
+                  </Button>
+                )}
+                {renderUserSection()}
+              </div>
             </div>
           </div>
         </header>

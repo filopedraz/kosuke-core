@@ -1,223 +1,132 @@
-# 📋 Ticket 16: Checkpoint Revert System
+# 📋 Ticket 16: Assistant Message Revert System
 
-**Priority:** High  
-**Estimated Effort:** 6 hours
+**Priority:** High
+**Estimated Effort:** 4 hours
 
 ## Description
 
-Implement a checkpoint/revert system that allows users to view all previous AI sessions (checkpoints) and revert the project to any previous state. Each AI session creates a checkpoint, and users can roll back through the chat interface.
+Implement a message-level revert system that allows users to revert to any previous assistant message state within the current chat session. Each assistant message that results in code changes creates a Git commit, and users can revert to any of these states by clicking on the assistant message in the chat interface.
 
 ## Files to Create/Update
 
-```
+```bash
 app/(logged-in)/projects/[id]/components/chat/
-├── checkpoint-panel.tsx
-├── checkpoint-modal.tsx
-├── revert-confirmation.tsx
-└── skeletons/
-    ├── checkpoint-panel-skeleton.tsx
-    ├── checkpoint-list-skeleton.tsx
-    └── checkpoint-card-skeleton.tsx
-app/(logged-in)/projects/[id]/components/layout/project-content.tsx (update)
-app/api/projects/[id]/checkpoints/route.ts
-app/api/projects/[id]/revert/route.ts
-hooks/use-checkpoints.ts
-hooks/use-checkpoint-operations.ts
-lib/types/checkpoints.ts (centralized checkpoint types)
-agent/app/api/routes/checkpoints.py
-agent/app/services/checkpoint_service.py
-agent/app/models/checkpoint.py
-lib/db/schema.ts (add checkpoint tables)
+├── message-revert-button.tsx
+├── revert-confirmation-modal.tsx
+└── assistant-message.tsx (update)
+app/api/projects/[id]/chat-sessions/[sessionId]/revert/route.ts
+hooks/use-message-operations.ts
+lib/types/chat.ts (update existing)
+agent/app/api/routes/revert.py
+agent/app/services/git_service.py (update)
+lib/db/schema.ts (update chat_messages table)
 ```
 
 ## Implementation Details
 
-**lib/types/checkpoints.ts** - Centralized checkpoint types:
+### Integration with Multi-Session Architecture
+
+This ticket builds on **Ticket #20: Multiple Chat Sessions** and integrates with the session-based branching system. Each chat session operates on its own Git branch (`kosuke-chat-{session_id}`), and users can revert to any assistant message within the current active session.
+
+**lib/types/chat.ts** - Update existing chat types:
 
 ```typescript
-export interface ProjectCheckpoint {
+// Update existing ChatMessage interface
+export interface ChatMessage {
   id: number;
   project_id: number;
-  session_id: string;
-  checkpoint_name: string | null;
-  description: string | null;
-  files_snapshot: string[]; // Array of file paths
-  commit_sha: string | null;
+  chat_session_id: number; // From ticket #20
+  role: 'user' | 'assistant';
+  content: string;
+  blocks?: MessageBlock[];
+  tokens_input?: number;
+  tokens_output?: number;
+  context_tokens?: number;
+  commit_sha?: string; // NEW: Git commit SHA for revert functionality
   created_at: string;
-  created_by: string;
-  file_count: number;
-  size_bytes: number;
+  updated_at: string;
 }
 
-export interface CheckpointFile {
-  id: number;
-  checkpoint_id: number;
-  file_path: string;
-  file_content: string;
-  file_type: string;
-  created_at: string;
+// NEW: Revert operation types
+export interface RevertToMessageRequest {
+  message_id: number;
+  create_backup_commit?: boolean;
 }
 
-export interface CreateCheckpointData {
-  session_id: string;
-  checkpoint_name?: string;
-  description?: string;
-  files_to_backup: string[];
-}
-
-export interface RevertToCheckpointData {
-  checkpoint_id: number;
-  create_backup: boolean;
-  backup_name?: string;
-}
-
-export interface CheckpointComparison {
-  added_files: string[];
-  modified_files: string[];
-  deleted_files: string[];
-  total_changes: number;
-}
-
-export interface CheckpointStats {
-  total_checkpoints: number;
-  total_size_bytes: number;
-  oldest_checkpoint: string;
-  newest_checkpoint: string;
+export interface RevertToMessageResponse {
+  success: boolean;
+  reverted_to_commit: string;
+  backup_commit?: string;
+  message: string;
 }
 ```
 
-**hooks/use-checkpoints.ts** - TanStack Query hook for checkpoints:
+**lib/db/schema.ts** - Update chat_messages table:
 
 ```typescript
-import { useQuery } from '@tanstack/react-query';
-import type { ProjectCheckpoint, CheckpointStats } from '@/lib/types/checkpoints';
-import type { ApiResponse } from '@/lib/api';
+// Update existing chat_messages table
+export const chatMessages = pgTable('chat_messages', {
+  id: serial('id').primaryKey(),
+  projectId: integer('project_id')
+    .notNull()
+    .references(() => projects.id, { onDelete: 'cascade' }),
+  chatSessionId: integer('chat_session_id')
+    .notNull()
+    .references(() => chatSessions.id, { onDelete: 'cascade' }), // From ticket #20
+  role: text('role').notNull(), // 'user' | 'assistant'
+  content: text('content').notNull(),
+  blocks: text('blocks'), // JSON string of MessageBlock[]
+  tokensInput: integer('tokens_input'),
+  tokensOutput: integer('tokens_output'),
+  contextTokens: integer('context_tokens'),
+  commitSha: text('commit_sha'), // NEW: Git commit SHA for revert functionality
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
 
-export function useCheckpoints(projectId: number) {
-  return useQuery({
-    queryKey: ['checkpoints', projectId],
-    queryFn: async (): Promise<ProjectCheckpoint[]> => {
-      const response = await fetch(`/api/projects/${projectId}/checkpoints`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch checkpoints');
-      }
-      const data: ApiResponse<{ checkpoints: ProjectCheckpoint[] }> = await response.json();
-      return data.data.checkpoints;
-    },
-    staleTime: 1000 * 30, // 30 seconds (frequently updated)
-    retry: 2,
-  });
-}
-
-export function useCheckpointStats(projectId: number) {
-  return useQuery({
-    queryKey: ['checkpoint-stats', projectId],
-    queryFn: async (): Promise<CheckpointStats> => {
-      const response = await fetch(`/api/projects/${projectId}/checkpoints/stats`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch checkpoint stats');
-      }
-      const data: ApiResponse<CheckpointStats> = await response.json();
-      return data.data;
-    },
-    staleTime: 1000 * 60 * 5, // 5 minutes
-    retry: 2,
-  });
-}
-
-export function useCheckpointDetails(checkpointId: number | null) {
-  return useQuery({
-    queryKey: ['checkpoint-details', checkpointId],
-    queryFn: async (): Promise<ProjectCheckpoint> => {
-      if (!checkpointId) throw new Error('No checkpoint ID provided');
-
-      const response = await fetch(`/api/checkpoints/${checkpointId}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch checkpoint details');
-      }
-      const data: ApiResponse<ProjectCheckpoint> = await response.json();
-      return data.data;
-    },
-    enabled: !!checkpointId,
-    staleTime: 1000 * 60 * 10, // 10 minutes
-    retry: 2,
-  });
-}
+// Add index for performance
+CREATE INDEX idx_chat_messages_commit_sha ON chat_messages(commit_sha);
 ```
 
-**hooks/use-checkpoint-operations.ts** - TanStack Query mutations for checkpoint operations:
+**hooks/use-message-operations.ts** - TanStack Query mutations for message revert operations:
 
 ```typescript
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
-import type {
-  CreateCheckpointData,
-  RevertToCheckpointData,
-  ProjectCheckpoint,
-} from '@/lib/types/checkpoints';
+import type { RevertToMessageRequest, RevertToMessageResponse } from '@/lib/types/chat';
 import type { ApiResponse } from '@/lib/api';
 
-export function useCreateCheckpoint(projectId: number) {
+export function useRevertToMessage(projectId: number, chatSessionId: number) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: CreateCheckpointData): Promise<ProjectCheckpoint> => {
-      const response = await fetch(`/api/projects/${projectId}/checkpoints`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) {
-        const error = await response.text();
-        throw new Error(error || 'Failed to create checkpoint');
-      }
-
-      const result: ApiResponse<ProjectCheckpoint> = await response.json();
-      return result.data;
-    },
-    onSuccess: checkpoint => {
-      queryClient.invalidateQueries({ queryKey: ['checkpoints', projectId] });
-      queryClient.invalidateQueries({ queryKey: ['checkpoint-stats', projectId] });
-      toast({
-        title: 'Checkpoint Created',
-        description: `Created checkpoint: ${checkpoint.checkpoint_name || 'Unnamed'}`,
-      });
-    },
-    onError: error => {
-      toast({
-        title: 'Failed to Create Checkpoint',
-        description: error.message,
-        variant: 'destructive',
-      });
-    },
-  });
-}
-
-export function useRevertToCheckpoint(projectId: number) {
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (data: RevertToCheckpointData): Promise<void> => {
+    mutationFn: async (data: RevertToMessageRequest): Promise<RevertToMessageResponse> => {
       const response = await fetch(
-        `/api/projects/${projectId}/checkpoints/${data.checkpoint_id}/revert`,
+        `/api/projects/${projectId}/chat-sessions/${chatSessionId}/revert`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(data),
         }
       );
-      if (!response.ok) throw new Error('Failed to revert to checkpoint');
+
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(error || 'Failed to revert to message state');
+      }
+
+      const result: ApiResponse<RevertToMessageResponse> = await response.json();
+      return result.data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['checkpoints', projectId] });
+    onSuccess: result => {
+      // Invalidate relevant queries to refresh UI
+      queryClient.invalidateQueries({ queryKey: ['chat-messages', projectId, chatSessionId] });
       queryClient.invalidateQueries({ queryKey: ['project-files', projectId] });
-      queryClient.invalidateQueries({ queryKey: ['project', projectId] });
+
       toast({
-        title: 'Checkpoint Restored',
-        description: 'Successfully reverted to the selected checkpoint.',
+        title: 'Reverted Successfully',
+        description: `Reverted to commit ${result.reverted_to_commit.slice(0, 7)}`,
       });
     },
     onError: error => {
@@ -229,415 +138,362 @@ export function useRevertToCheckpoint(projectId: number) {
     },
   });
 }
-
-export function useDeleteCheckpoint(projectId: number) {
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (checkpointId: number): Promise<void> => {
-      const response = await fetch(`/api/projects/${projectId}/checkpoints/${checkpointId}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        const error = await response.text();
-        throw new Error(error || 'Failed to delete checkpoint');
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['checkpoints', projectId] });
-      queryClient.invalidateQueries({ queryKey: ['checkpoint-stats', projectId] });
-      toast({
-        title: 'Checkpoint Deleted',
-        description: 'The checkpoint has been deleted successfully.',
-      });
-    },
-    onError: error => {
-      toast({
-        title: 'Failed to Delete Checkpoint',
-        description: error.message,
-        variant: 'destructive',
-      });
-    },
-  });
-}
 ```
 
-**app/(logged-in)/projects/[id]/components/chat/skeletons/checkpoint-panel-skeleton.tsx** - Skeleton for checkpoint panel:
-
-```tsx
-import { Skeleton } from '@/components/ui/skeleton';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
-
-export function CheckpointPanelSkeleton() {
-  return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div className="space-y-2">
-            <Skeleton className="h-6 w-32" />
-            <Skeleton className="h-4 w-48" />
-          </div>
-          <Skeleton className="h-8 w-8" />
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-3 gap-4">
-          <div className="text-center space-y-1">
-            <Skeleton className="h-6 w-8 mx-auto" />
-            <Skeleton className="h-3 w-16 mx-auto" />
-          </div>
-          <div className="text-center space-y-1">
-            <Skeleton className="h-6 w-12 mx-auto" />
-            <Skeleton className="h-3 w-20 mx-auto" />
-          </div>
-          <div className="text-center space-y-1">
-            <Skeleton className="h-6 w-10 mx-auto" />
-            <Skeleton className="h-3 w-16 mx-auto" />
-          </div>
-        </div>
-
-        <div className="space-y-3">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="p-3 border rounded-lg">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Skeleton className="h-8 w-8 rounded-full" />
-                  <div className="space-y-1">
-                    <Skeleton className="h-4 w-32" />
-                    <Skeleton className="h-3 w-48" />
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <Skeleton className="h-6 w-6" />
-                  <Skeleton className="h-6 w-6" />
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-```
-
-**app/(logged-in)/projects/[id]/components/chat/skeletons/checkpoint-list-skeleton.tsx** - Skeleton for checkpoint list:
-
-```tsx
-import { Skeleton } from '@/components/ui/skeleton';
-
-export function CheckpointListSkeleton() {
-  return (
-    <div className="space-y-3">
-      {Array.from({ length: 5 }).map((_, i) => (
-        <div key={i} className="p-4 border rounded-lg space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Skeleton className="h-10 w-10 rounded-full" />
-              <div className="space-y-1">
-                <Skeleton className="h-4 w-40" />
-                <Skeleton className="h-3 w-24" />
-              </div>
-            </div>
-            <Skeleton className="h-8 w-20" />
-          </div>
-
-          <div className="space-y-2">
-            <Skeleton className="h-3 w-full" />
-            <Skeleton className="h-3 w-3/4" />
-          </div>
-
-          <div className="flex justify-between items-center">
-            <div className="flex gap-2">
-              <Skeleton className="h-5 w-16" />
-              <Skeleton className="h-5 w-20" />
-            </div>
-            <div className="flex gap-2">
-              <Skeleton className="h-8 w-20" />
-              <Skeleton className="h-8 w-16" />
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-```
-
-**app/(logged-in)/projects/[id]/components/chat/skeletons/checkpoint-card-skeleton.tsx** - Skeleton for individual checkpoint card:
-
-```tsx
-import { Skeleton } from '@/components/ui/skeleton';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
-
-export function CheckpointCardSkeleton() {
-  return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Skeleton className="h-12 w-12 rounded-full" />
-            <div className="space-y-2">
-              <Skeleton className="h-5 w-32" />
-              <Skeleton className="h-4 w-48" />
-            </div>
-          </div>
-          <Skeleton className="h-6 w-16" />
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-2">
-          <Skeleton className="h-4 w-full" />
-          <Skeleton className="h-4 w-2/3" />
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-1">
-            <Skeleton className="h-3 w-16" />
-            <Skeleton className="h-4 w-12" />
-          </div>
-          <div className="space-y-1">
-            <Skeleton className="h-3 w-12" />
-            <Skeleton className="h-4 w-16" />
-          </div>
-        </div>
-
-        <div className="flex justify-between items-center">
-          <Skeleton className="h-6 w-24" />
-          <div className="flex gap-2">
-            <Skeleton className="h-8 w-16" />
-            <Skeleton className="h-8 w-20" />
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-```
-
-**lib/db/schema.ts** - Add checkpoint tracking:
-
-```typescript
-// Add to existing schema
-export const projectCheckpoints = pgTable('project_checkpoints', {
-  id: serial('id').primaryKey(),
-  projectId: integer('project_id')
-    .notNull()
-    .references(() => projects.id, { onDelete: 'cascade' }),
-  sessionId: text('session_id').notNull(),
-  checkpointName: text('checkpoint_name'),
-  description: text('description'),
-  filesSnapshot: text('files_snapshot'), // JSON array of file paths at this checkpoint
-  commitSha: text('commit_sha'),
-  createdAt: timestamp('created_at').defaultNow(),
-  createdBy: text('created_by').notNull(), // user ID
-});
-
-export const projectCheckpointFiles = pgTable('project_checkpoint_files', {
-  id: serial('id').primaryKey(),
-  checkpointId: integer('checkpoint_id')
-    .notNull()
-    .references(() => projectCheckpoints.id, { onDelete: 'cascade' }),
-  filePath: text('file_path').notNull(),
-  fileContent: text('file_content').notNull(),
-  fileHash: text('file_hash').notNull(),
-});
-```
-
-**app/(logged-in)/projects/[id]/components/chat/checkpoint-panel.tsx** - Checkpoint UI:
+**app/(logged-in)/projects/[id]/components/chat/message-revert-button.tsx** - Revert button for assistant messages:
 
 ```tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Badge } from '@/components/ui/badge';
-import { History, RotateCcw, Clock, GitCommit } from 'lucide-react';
-import { CheckpointModal } from './checkpoint-modal';
-import { RevertConfirmation } from './revert-confirmation';
-import { formatDistanceToNow } from 'date-fns';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { RotateCcw, GitCommit } from 'lucide-react';
+import { RevertConfirmationModal } from './revert-confirmation-modal';
+import type { ChatMessage } from '@/lib/types/chat';
 
-interface Checkpoint {
-  id: number;
-  session_id: string;
-  checkpoint_name: string;
-  description: string;
-  commit_sha?: string;
-  created_at: string;
-  files_count: number;
-  is_current: boolean;
+interface MessageRevertButtonProps {
+  message: ChatMessage;
+  projectId: number;
+  chatSessionId: number;
+  className?: string;
 }
 
-interface CheckpointPanelProps {
+export function MessageRevertButton({
+  message,
+  projectId,
+  chatSessionId,
+  className,
+}: MessageRevertButtonProps) {
+  const [showConfirmation, setShowConfirmation] = useState(false);
+
+  // Only show revert button for assistant messages with commit SHA
+  if (message.role !== 'assistant' || !message.commit_sha) {
+    return null;
+  }
+
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            className={`h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity ${className}`}
+            onClick={() => setShowConfirmation(true)}
+          >
+            <RotateCcw className="h-4 w-4" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
+          <div className="flex items-center gap-2">
+            <GitCommit className="h-3 w-3" />
+            <span>Revert to this state ({message.commit_sha?.slice(0, 7)})</span>
+          </div>
+        </TooltipContent>
+      </Tooltip>
+
+      <RevertConfirmationModal
+        message={message}
+        projectId={projectId}
+        chatSessionId={chatSessionId}
+        isOpen={showConfirmation}
+        onClose={() => setShowConfirmation(false)}
+      />
+    </TooltipProvider>
+  );
+}
+```
+
+**app/(logged-in)/projects/[id]/components/chat/revert-confirmation-modal.tsx** - Confirmation modal for reverting:
+
+```tsx
+'use client';
+
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { RotateCcw, AlertTriangle, GitCommit } from 'lucide-react';
+import { useRevertToMessage } from '@/hooks/use-message-operations';
+import { formatDistanceToNow } from 'date-fns';
+import type { ChatMessage } from '@/lib/types/chat';
+
+interface RevertConfirmationModalProps {
+  message: ChatMessage;
   projectId: number;
+  chatSessionId: number;
   isOpen: boolean;
   onClose: () => void;
 }
 
-export function CheckpointPanel({ projectId, isOpen, onClose }: CheckpointPanelProps) {
-  const [checkpoints, setCheckpoints] = useState<Checkpoint[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedCheckpoint, setSelectedCheckpoint] = useState<Checkpoint | null>(null);
-  const [showRevertModal, setShowRevertModal] = useState(false);
+export function RevertConfirmationModal({
+  message,
+  projectId,
+  chatSessionId,
+  isOpen,
+  onClose,
+}: RevertConfirmationModalProps) {
+  const revertMutation = useRevertToMessage(projectId, chatSessionId);
 
-  useEffect(() => {
-    if (isOpen) {
-      fetchCheckpoints();
-    }
-  }, [isOpen, projectId]);
-
-  async function fetchCheckpoints() {
-    try {
-      const response = await fetch(`/api/projects/${projectId}/checkpoints`);
-      if (response.ok) {
-        const data = await response.json();
-        setCheckpoints(data.checkpoints);
+  const handleRevert = () => {
+    revertMutation.mutate(
+      { message_id: message.id },
+      {
+        onSuccess: () => {
+          onClose();
+        },
       }
-    } catch (error) {
-      console.error('Error fetching checkpoints:', error);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  function handleRevert(checkpoint: Checkpoint) {
-    setSelectedCheckpoint(checkpoint);
-    setShowRevertModal(true);
-  }
-
-  async function confirmRevert() {
-    if (!selectedCheckpoint) return;
-
-    try {
-      const response = await fetch(`/api/projects/${projectId}/revert`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          checkpoint_id: selectedCheckpoint.id,
-          session_id: selectedCheckpoint.session_id,
-        }),
-      });
-
-      if (response.ok) {
-        // Refresh checkpoints and close modals
-        await fetchCheckpoints();
-        setShowRevertModal(false);
-        setSelectedCheckpoint(null);
-        // Optionally trigger a page refresh or emit event
-        window.location.reload();
-      }
-    } catch (error) {
-      console.error('Error reverting to checkpoint:', error);
-    }
-  }
-
-  if (!isOpen) return null;
+    );
+  };
 
   return (
-    <div className="fixed inset-y-0 right-0 w-80 bg-gray-900 border-l border-gray-800 z-50">
-      <div className="flex items-center justify-between p-4 border-b border-gray-800">
-        <div className="flex items-center gap-2">
-          <History className="w-5 h-5" />
-          <h3 className="font-semibold">Checkpoints</h3>
-        </div>
-        <Button variant="ghost" size="sm" onClick={onClose}>
-          ×
-        </Button>
-      </div>
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[500px]">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <RotateCcw className="w-5 h-5" />
+            Revert to Assistant Message
+          </DialogTitle>
+        </DialogHeader>
 
-      <ScrollArea className="h-full p-4">
-        {loading ? (
-          <div className="text-center text-muted-foreground">Loading checkpoints...</div>
-        ) : checkpoints.length === 0 ? (
-          <div className="text-center text-muted-foreground">No checkpoints yet</div>
-        ) : (
-          <div className="space-y-3">
-            {checkpoints.map(checkpoint => (
-              <div
-                key={checkpoint.id}
-                className={`p-3 rounded-lg border ${
-                  checkpoint.is_current
-                    ? 'border-blue-500 bg-blue-500/10'
-                    : 'border-gray-700 bg-gray-800/50'
-                }`}
-              >
-                <div className="flex items-start justify-between mb-2">
-                  <div className="flex-1 min-w-0">
-                    <h4 className="font-medium truncate">
-                      {checkpoint.checkpoint_name || 'Unnamed Session'}
-                    </h4>
-                    {checkpoint.description && (
-                      <p className="text-sm text-muted-foreground mt-1">{checkpoint.description}</p>
-                    )}
-                  </div>
-                  {checkpoint.is_current && (
-                    <Badge variant="default" className="text-xs">
-                      Current
-                    </Badge>
-                  )}
-                </div>
+        <div className="space-y-4">
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              This will revert your project to the state when this assistant message was created.
+              Any changes made after this point will remain in Git history but won't be visible in
+              your working directory.
+            </AlertDescription>
+          </Alert>
 
-                <div className="flex items-center gap-4 text-xs text-muted-foreground mb-3">
-                  <div className="flex items-center gap-1">
-                    <Clock className="w-3 h-3" />
-                    {formatDistanceToNow(new Date(checkpoint.created_at), { addSuffix: true })}
-                  </div>
-                  <div>{checkpoint.files_count} files</div>
-                  {checkpoint.commit_sha && (
-                    <div className="flex items-center gap-1">
-                      <GitCommit className="w-3 h-3" />
-                      {checkpoint.commit_sha.slice(0, 7)}
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => setSelectedCheckpoint(checkpoint)}
-                  >
-                    View Details
-                  </Button>
-                  {!checkpoint.is_current && (
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => handleRevert(checkpoint)}
-                    >
-                      <RotateCcw className="w-3 h-3 mr-1" />
-                      Revert
-                    </Button>
-                  )}
-                </div>
+          <div className="bg-muted p-4 rounded-lg">
+            <h4 className="font-medium mb-2 flex items-center gap-2">
+              <GitCommit className="h-4 w-4" />
+              Commit Details
+            </h4>
+            <div className="space-y-1 text-sm text-muted-foreground">
+              <div>
+                <strong>Commit SHA:</strong> {message.commit_sha}
               </div>
-            ))}
+              <div>
+                <strong>Created:</strong>{' '}
+                {formatDistanceToNow(new Date(message.created_at), { addSuffix: true })}
+              </div>
+              <div>
+                <strong>Message Preview:</strong> {message.content.slice(0, 100)}...
+              </div>
+            </div>
           </div>
-        )}
-      </ScrollArea>
 
-      <CheckpointModal
-        checkpoint={selectedCheckpoint}
-        isOpen={!!selectedCheckpoint && !showRevertModal}
-        onClose={() => setSelectedCheckpoint(null)}
-      />
-
-      <RevertConfirmation
-        checkpoint={selectedCheckpoint}
-        isOpen={showRevertModal}
-        onConfirm={confirmRevert}
-        onCancel={() => {
-          setShowRevertModal(false);
-          setSelectedCheckpoint(null);
-        }}
-      />
-    </div>
+          <div className="flex gap-2 pt-2">
+            <Button
+              variant="outline"
+              onClick={onClose}
+              className="flex-1"
+              disabled={revertMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleRevert}
+              className="flex-1"
+              disabled={revertMutation.isPending}
+            >
+              {revertMutation.isPending ? (
+                <>
+                  <RotateCcw className="w-4 h-4 mr-2 animate-spin" />
+                  Reverting...
+                </>
+              ) : (
+                <>
+                  <RotateCcw className="w-4 h-4 mr-2" />
+                  Revert Project
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
+```
+
+**app/api/projects/[id]/chat-sessions/[sessionId]/revert/route.ts** - API endpoint for reverting to message state:
+
+```typescript
+import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@/lib/auth/server';
+import { db } from '@/lib/db/drizzle';
+import { chatMessages, chatSessions } from '@/lib/db/schema';
+import { eq, and } from 'drizzle-orm';
+import type { RevertToMessageRequest } from '@/lib/types/chat';
+
+export async function POST(
+  request: NextRequest,
+  { params }: { params: { id: string; sessionId: string } }
+) {
+  try {
+    const { userId } = auth();
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const projectId = parseInt(params.id);
+    const sessionId = parseInt(params.sessionId);
+    const body: RevertToMessageRequest = await request.json();
+
+    // Verify the message exists and belongs to this session
+    const message = await db
+      .select()
+      .from(chatMessages)
+      .where(
+        and(
+          eq(chatMessages.id, body.message_id),
+          eq(chatMessages.projectId, projectId),
+          eq(chatMessages.chatSessionId, sessionId)
+        )
+      )
+      .limit(1);
+
+    if (!message[0] || !message[0].commitSha) {
+      return NextResponse.json(
+        { error: 'Message not found or no commit associated' },
+        { status: 404 }
+      );
+    }
+
+    // Get session info for branch name
+    const session = await db
+      .select()
+      .from(chatSessions)
+      .where(eq(chatSessions.id, sessionId))
+      .limit(1);
+
+    if (!session[0]) {
+      return NextResponse.json({ error: 'Chat session not found' }, { status: 404 });
+    }
+
+    // Send revert request to agent service
+    const agentUrl = process.env.AGENT_SERVICE_URL || 'http://localhost:8000';
+    const response = await fetch(`${agentUrl}/api/revert`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        project_id: projectId,
+        session_id: session[0].sessionId,
+        commit_sha: message[0].commitSha,
+        create_backup: body.create_backup_commit || false,
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      return NextResponse.json(
+        { error: 'Failed to revert', details: error },
+        { status: response.status }
+      );
+    }
+
+    const result = await response.json();
+    return NextResponse.json({
+      success: true,
+      data: {
+        success: true,
+        reverted_to_commit: message[0].commitSha,
+        message: `Reverted to commit ${message[0].commitSha?.slice(0, 7)}`,
+      },
+    });
+  } catch (error) {
+    console.error('Error reverting to message:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+```
+
+**agent/app/api/routes/revert.py** - Agent-side revert endpoint:
+
+```python
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+import logging
+from typing import Optional
+
+from app.services.session_manager import SessionManager
+from app.services.git_service import GitService
+
+logger = logging.getLogger(__name__)
+router = APIRouter()
+
+class RevertRequest(BaseModel):
+    project_id: int
+    session_id: str
+    commit_sha: str
+    create_backup: bool = False
+
+class RevertResponse(BaseModel):
+    success: bool
+    reverted_to_commit: str
+    backup_commit: Optional[str] = None
+    message: str
+
+@router.post("/revert", response_model=RevertResponse)
+async def revert_to_commit(request: RevertRequest):
+    """
+    Revert session to specific commit SHA
+    """
+    try:
+        logger.info(f"Reverting project {request.project_id} session {request.session_id} to commit {request.commit_sha}")
+
+        session_manager = SessionManager()
+        git_service = GitService()
+
+        # Get session path
+        session_path = session_manager.get_session_path(request.project_id, request.session_id)
+        if not session_path.exists():
+            raise HTTPException(
+                status_code=404,
+                detail=f"Session environment not found for {request.session_id}"
+            )
+
+        # Create backup commit if requested
+        backup_commit = None
+        if request.create_backup:
+            backup_commit = git_service.create_backup_commit(
+                session_path,
+                f"Backup before reverting to {request.commit_sha[:7]}"
+            )
+
+        # Perform git revert operation
+        success = git_service.checkout_commit(
+            session_path,
+            request.commit_sha
+        )
+
+        if not success:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Failed to revert to commit {request.commit_sha}"
+            )
+
+        logger.info(f"✅ Successfully reverted to commit {request.commit_sha}")
+
+        return RevertResponse(
+            success=True,
+            reverted_to_commit=request.commit_sha,
+            backup_commit=backup_commit,
+            message=f"Reverted to commit {request.commit_sha[:7]}"
+        )
+
+    except Exception as e:
+        logger.error(f"❌ Error reverting to commit: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to revert: {str(e)}"
+        )
 ```
 
 **app/(logged-in)/projects/[id]/components/chat/revert-confirmation.tsx** - Revert confirmation:
@@ -768,313 +624,195 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 }
 ```
 
-**app/api/projects/[id]/revert/route.ts** - Revert functionality:
+**agent/app/services/git_service.py** - Updated GitService with revert functionality:
 
-```typescript
-import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+```python
+import subprocess
+import logging
+from pathlib import Path
+from typing import Optional
 
-export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
-  try {
-    const { userId } = auth();
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+logger = logging.getLogger(__name__)
 
-    const projectId = parseInt(params.id);
-    const body = await request.json();
+class GitService:
+    """Enhanced GitService with revert functionality for session management"""
 
-    // Proxy to Python agent for revert operation
-    const agentUrl = process.env.AGENT_SERVICE_URL || 'http://localhost:8000';
-    const response = await fetch(`${agentUrl}/api/checkpoints/revert`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        project_id: projectId,
-        checkpoint_id: body.checkpoint_id,
-        session_id: body.session_id,
-      }),
-    });
+    def checkout_commit(self, session_path: Path, commit_sha: str) -> bool:
+        """
+        Checkout specific commit in session directory
 
-    if (!response.ok) {
-      const error = await response.text();
-      return NextResponse.json(
-        { error: 'Failed to revert to checkpoint', details: error },
-        { status: response.status }
-      );
-    }
+        Args:
+            session_path: Path to session directory
+            commit_sha: Git commit SHA to checkout
 
-    const result = await response.json();
-    return NextResponse.json(result);
-  } catch (error) {
-    console.error('Error reverting to checkpoint:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-  }
-}
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            logger.info(f"Checking out commit {commit_sha} in {session_path}")
+
+            # Ensure we're in the right directory
+            if not (session_path / '.git').exists():
+                logger.error(f"No git repository found in {session_path}")
+                return False
+
+            # Checkout the specific commit (detached HEAD state)
+            result = subprocess.run(
+                ['git', 'checkout', commit_sha],
+                cwd=session_path,
+                capture_output=True,
+                text=True
+            )
+
+            if result.returncode != 0:
+                logger.error(f"Git checkout failed: {result.stderr}")
+                return False
+
+            logger.info(f"✅ Successfully checked out commit {commit_sha}")
+            return True
+
+        except Exception as e:
+            logger.error(f"❌ Error during git checkout: {e}")
+            return False
+
+    def create_backup_commit(self, session_path: Path, message: str) -> Optional[str]:
+        """
+        Create a backup commit before reverting
+
+        Args:
+            session_path: Path to session directory
+            message: Commit message for backup
+
+        Returns:
+            Optional[str]: Commit SHA if successful, None otherwise
+        """
+        try:
+            # Check if there are any changes to commit
+            status_result = subprocess.run(
+                ['git', 'status', '--porcelain'],
+                cwd=session_path,
+                capture_output=True,
+                text=True
+            )
+
+            if not status_result.stdout.strip():
+                logger.info("No changes to backup")
+                return None
+
+            # Add all changes
+            subprocess.run(
+                ['git', 'add', '.'],
+                cwd=session_path,
+                capture_output=True
+            )
+
+            # Create backup commit
+            commit_result = subprocess.run(
+                ['git', 'commit', '-m', message],
+                cwd=session_path,
+                capture_output=True,
+                text=True
+            )
+
+            if commit_result.returncode != 0:
+                logger.error(f"Backup commit failed: {commit_result.stderr}")
+                return None
+
+            # Get the new commit SHA
+            sha_result = subprocess.run(
+                ['git', 'rev-parse', 'HEAD'],
+                cwd=session_path,
+                capture_output=True,
+                text=True
+            )
+
+            backup_sha = sha_result.stdout.strip()
+            logger.info(f"✅ Created backup commit: {backup_sha}")
+            return backup_sha
+
+        except Exception as e:
+            logger.error(f"❌ Error creating backup commit: {e}")
+            return None
+
+    def get_current_commit_sha(self, session_path: Path) -> Optional[str]:
+        """
+        Get current commit SHA in session directory
+
+        Args:
+            session_path: Path to session directory
+
+        Returns:
+            Optional[str]: Current commit SHA or None if error
+        """
+        try:
+            result = subprocess.run(
+                ['git', 'rev-parse', 'HEAD'],
+                cwd=session_path,
+                capture_output=True,
+                text=True
+            )
+
+            if result.returncode == 0:
+                return result.stdout.strip()
+            else:
+                logger.error(f"Failed to get current commit: {result.stderr}")
+                return None
+
+        except Exception as e:
+            logger.error(f"❌ Error getting current commit: {e}")
+            return None
 ```
+
+**Webhook Service Integration** - Update to include commit SHA linking:
+
+Update the existing `webhook_service.py` to link assistant messages with commit SHAs:
+
+```python
+# agent/app/services/webhook_service.py - Update send_assistant_message method
+
+async def send_assistant_message_with_commit(
+    self,
+    project_id: int,
+    chat_session_id: int,
+    content: str | None = None,
+    blocks: list[dict[str, Any]] | None = None,
+    tokens_input: int = 0,
+    tokens_output: int = 0,
+    context_tokens: int = 0,
+    assistant_message_id: int | None = None,
+    commit_sha: str | None = None,  # NEW: Commit SHA to link with message
+) -> bool:
+    """Send assistant message with commit SHA for revert functionality"""
+    endpoint = f"/api/projects/{project_id}/webhook/data"
+    data = {
+        "type": "assistant_message_with_commit",
+        "data": {
+            "chatSessionId": chat_session_id,
+            "content": content,
+            "blocks": blocks,
+            "tokensInput": tokens_input,
+            "tokensOutput": tokens_output,
+            "contextTokens": context_tokens,
+            "assistantMessageId": assistant_message_id,
+            "commitSha": commit_sha,  # NEW: Include commit SHA
+        },
+    }
+
+    return await self._send_webhook_with_retry(endpoint, data)
+```
+
+This requires updating the Next.js webhook handler to process the `commitSha` field and store it in the `chat_messages` table.
 
 ## Test Cases
 
-\***\*tests**/hooks/use-checkpoints.test.ts\*\* - Tests for checkpoint query hooks:
-
-```typescript
-import { renderHook, waitFor } from '@testing-library/react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ReactNode } from 'react';
-import { useCheckpoints, useCheckpointStats, useCheckpointDetails } from '@/hooks/use-checkpoints';
-import type { ProjectCheckpoint, CheckpointStats } from '@/lib/types/checkpoints';
-
-// Mock fetch globally
-global.fetch = jest.fn();
-
-const createWrapper = () => {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: { retry: false },
-      mutations: { retry: false },
-    },
-  });
-
-  return ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-  );
-};
-
-const mockCheckpoints: ProjectCheckpoint[] = [
-  {
-    id: 1,
-    project_id: 123,
-    session_id: 'session-1',
-    checkpoint_name: 'Initial Setup',
-    description: 'First checkpoint',
-    files_snapshot: ['package.json', 'src/index.ts'],
-    commit_sha: 'abc123',
-    created_at: '2024-01-01T00:00:00Z',
-    created_by: 'user-1',
-    file_count: 2,
-    size_bytes: 1024,
-  },
-  {
-    id: 2,
-    project_id: 123,
-    session_id: 'session-2',
-    checkpoint_name: 'Added Components',
-    description: 'Added React components',
-    files_snapshot: ['package.json', 'src/index.ts', 'src/components/Button.tsx'],
-    commit_sha: 'def456',
-    created_at: '2024-01-02T00:00:00Z',
-    created_by: 'user-1',
-    file_count: 3,
-    size_bytes: 2048,
-  },
-];
-
-const mockCheckpointStats: CheckpointStats = {
-  total_checkpoints: 5,
-  total_size_bytes: 10240,
-  oldest_checkpoint: '2024-01-01T00:00:00Z',
-  newest_checkpoint: '2024-01-05T00:00:00Z',
-};
-
-describe('useCheckpoints', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
-  it('fetches checkpoints successfully', async () => {
-    (fetch as jest.Mock).mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        success: true,
-        data: { checkpoints: mockCheckpoints },
-      }),
-    });
-
-    const { result } = renderHook(() => useCheckpoints(123), {
-      wrapper: createWrapper(),
-    });
-
-    await waitFor(() => {
-      expect(result.current.isSuccess).toBe(true);
-    });
-
-    expect(result.current.data).toEqual(mockCheckpoints);
-    expect(fetch).toHaveBeenCalledWith('/api/projects/123/checkpoints');
-  });
-
-  it('handles fetch error', async () => {
-    (fetch as jest.Mock).mockResolvedValueOnce({
-      ok: false,
-      status: 500,
-    });
-
-    const { result } = renderHook(() => useCheckpoints(123), {
-      wrapper: createWrapper(),
-    });
-
-    await waitFor(() => {
-      expect(result.current.isError).toBe(true);
-    });
-
-    expect(result.current.error).toEqual(new Error('Failed to fetch checkpoints'));
-  });
-
-  it('handles network error', async () => {
-    (fetch as jest.Mock).mockRejectedValueOnce(new Error('Network error'));
-
-    const { result } = renderHook(() => useCheckpoints(123), {
-      wrapper: createWrapper(),
-    });
-
-    await waitFor(() => {
-      expect(result.current.isError).toBe(true);
-    });
-
-    expect(result.current.error).toEqual(new Error('Network error'));
-  });
-
-  it('uses correct query key and stale time', () => {
-    const { result } = renderHook(() => useCheckpoints(123), {
-      wrapper: createWrapper(),
-    });
-
-    expect(result.current.dataUpdatedAt).toBeDefined();
-    // Query should be configured with staleTime of 30 seconds
-  });
-});
-
-describe('useCheckpointStats', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
-  it('fetches checkpoint stats successfully', async () => {
-    (fetch as jest.Mock).mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        success: true,
-        data: mockCheckpointStats,
-      }),
-    });
-
-    const { result } = renderHook(() => useCheckpointStats(123), {
-      wrapper: createWrapper(),
-    });
-
-    await waitFor(() => {
-      expect(result.current.isSuccess).toBe(true);
-    });
-
-    expect(result.current.data).toEqual(mockCheckpointStats);
-    expect(fetch).toHaveBeenCalledWith('/api/projects/123/checkpoints/stats');
-  });
-
-  it('handles stats fetch error', async () => {
-    (fetch as jest.Mock).mockResolvedValueOnce({
-      ok: false,
-      status: 404,
-    });
-
-    const { result } = renderHook(() => useCheckpointStats(123), {
-      wrapper: createWrapper(),
-    });
-
-    await waitFor(() => {
-      expect(result.current.isError).toBe(true);
-    });
-
-    expect(result.current.error).toEqual(new Error('Failed to fetch checkpoint stats'));
-  });
-});
-
-describe('useCheckpointDetails', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
-  it('fetches checkpoint details when ID provided', async () => {
-    const mockCheckpoint = mockCheckpoints[0];
-
-    (fetch as jest.Mock).mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        success: true,
-        data: mockCheckpoint,
-      }),
-    });
-
-    const { result } = renderHook(() => useCheckpointDetails(1), {
-      wrapper: createWrapper(),
-    });
-
-    await waitFor(() => {
-      expect(result.current.isSuccess).toBe(true);
-    });
-
-    expect(result.current.data).toEqual(mockCheckpoint);
-    expect(fetch).toHaveBeenCalledWith('/api/checkpoints/1');
-  });
-
-  it('does not fetch when ID is null', () => {
-    const { result } = renderHook(() => useCheckpointDetails(null), {
-      wrapper: createWrapper(),
-    });
-
-    expect(result.current.isFetching).toBe(false);
-    expect(fetch).not.toHaveBeenCalled();
-  });
-
-  it('handles checkpoint details fetch error', async () => {
-    (fetch as jest.Mock).mockResolvedValueOnce({
-      ok: false,
-      status: 404,
-    });
-
-    const { result } = renderHook(() => useCheckpointDetails(999), {
-      wrapper: createWrapper(),
-    });
-
-    await waitFor(() => {
-      expect(result.current.isError).toBe(true);
-    });
-
-    expect(result.current.error).toEqual(new Error('Failed to fetch checkpoint details'));
-  });
-
-  it('handles missing checkpoint ID error', async () => {
-    (fetch as jest.Mock).mockImplementationOnce(() => {
-      throw new Error('No checkpoint ID provided');
-    });
-
-    const { result } = renderHook(() => useCheckpointDetails(0), {
-      wrapper: createWrapper(),
-    });
-
-    await waitFor(() => {
-      expect(result.current.isError).toBe(true);
-    });
-  });
-});
-```
-
-\***\*tests**/hooks/use-checkpoint-operations.test.ts\*\* - Tests for checkpoint mutation hooks:
+**\_\_tests\_\_/hooks/use-message-operations.test.ts** - Tests for message revert operations:
 
 ```typescript
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactNode } from 'react';
-import {
-  useCreateCheckpoint,
-  useRevertToCheckpoint,
-  useDeleteCheckpoint,
-} from '@/hooks/use-checkpoint-operations';
-import type {
-  CreateCheckpointData,
-  RevertToCheckpointData,
-  ProjectCheckpoint,
-} from '@/lib/types/checkpoints';
+import { useRevertToMessage } from '@/hooks/use-message-operations';
+import type { RevertToMessageRequest, RevertToMessageResponse } from '@/lib/types/chat';
 
 // Mock dependencies
 jest.mock('@/hooks/use-toast', () => ({
@@ -1098,21 +836,13 @@ const createWrapper = () => {
   );
 };
 
-const mockCheckpoint: ProjectCheckpoint = {
-  id: 1,
-  project_id: 123,
-  session_id: 'session-1',
-  checkpoint_name: 'Test Checkpoint',
-  description: 'Test description',
-  files_snapshot: ['package.json', 'src/index.ts'],
-  commit_sha: 'abc123',
-  created_at: '2024-01-01T00:00:00Z',
-  created_by: 'user-1',
-  file_count: 2,
-  size_bytes: 1024,
+const mockRevertResponse: RevertToMessageResponse = {
+  success: true,
+  reverted_to_commit: 'abc123def456',
+  message: 'Reverted to commit abc123d',
 };
 
-describe('useCreateCheckpoint', () => {
+describe('useRevertToMessage', () => {
   const mockToast = jest.fn();
 
   beforeEach(() => {
@@ -1120,282 +850,153 @@ describe('useCreateCheckpoint', () => {
     require('@/hooks/use-toast').useToast.mockReturnValue({ toast: mockToast });
   });
 
-  it('creates checkpoint successfully', async () => {
+  it('reverts to message successfully', async () => {
     (fetch as jest.Mock).mockResolvedValueOnce({
       ok: true,
       json: async () => ({
         success: true,
-        data: mockCheckpoint,
+        data: mockRevertResponse,
       }),
     });
 
-    const { result } = renderHook(() => useCreateCheckpoint(123), {
+    const { result } = renderHook(() => useRevertToMessage(123, 456), {
       wrapper: createWrapper(),
     });
 
-    const createData: CreateCheckpointData = {
-      session_id: 'session-1',
-      checkpoint_name: 'Test Checkpoint',
-      description: 'Test description',
-      files_to_backup: ['package.json', 'src/index.ts'],
-    };
-
-    await act(async () => {
-      await result.current.mutateAsync(createData);
-    });
-
-    expect(fetch).toHaveBeenCalledWith('/api/projects/123/checkpoints', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(createData),
-    });
-
-    expect(mockToast).toHaveBeenCalledWith({
-      title: 'Checkpoint Created',
-      description: 'Created checkpoint: Test Checkpoint',
-    });
-  });
-
-  it('handles create checkpoint error', async () => {
-    (fetch as jest.Mock).mockResolvedValueOnce({
-      ok: false,
-      text: async () => 'Failed to create checkpoint',
-    });
-
-    const { result } = renderHook(() => useCreateCheckpoint(123), {
-      wrapper: createWrapper(),
-    });
-
-    const createData: CreateCheckpointData = {
-      session_id: 'session-1',
-      files_to_backup: ['package.json'],
-    };
-
-    await act(async () => {
-      try {
-        await result.current.mutateAsync(createData);
-      } catch (error) {
-        expect(error).toEqual(new Error('Failed to create checkpoint'));
-      }
-    });
-
-    expect(mockToast).toHaveBeenCalledWith({
-      title: 'Failed to Create Checkpoint',
-      description: 'Failed to create checkpoint',
-      variant: 'destructive',
-    });
-  });
-
-  it('handles network error during create', async () => {
-    (fetch as jest.Mock).mockRejectedValueOnce(new Error('Network error'));
-
-    const { result } = renderHook(() => useCreateCheckpoint(123), {
-      wrapper: createWrapper(),
-    });
-
-    const createData: CreateCheckpointData = {
-      session_id: 'session-1',
-      files_to_backup: ['package.json'],
-    };
-
-    await act(async () => {
-      try {
-        await result.current.mutateAsync(createData);
-      } catch (error) {
-        expect(error).toEqual(new Error('Network error'));
-      }
-    });
-  });
-
-  it('creates checkpoint with unnamed session', async () => {
-    const unnamedCheckpoint = { ...mockCheckpoint, checkpoint_name: null };
-
-    (fetch as jest.Mock).mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        success: true,
-        data: unnamedCheckpoint,
-      }),
-    });
-
-    const { result } = renderHook(() => useCreateCheckpoint(123), {
-      wrapper: createWrapper(),
-    });
-
-    const createData: CreateCheckpointData = {
-      session_id: 'session-1',
-      files_to_backup: ['package.json'],
-    };
-
-    await act(async () => {
-      await result.current.mutateAsync(createData);
-    });
-
-    expect(mockToast).toHaveBeenCalledWith({
-      title: 'Checkpoint Created',
-      description: 'Created checkpoint: Unnamed',
-    });
-  });
-});
-
-describe('useRevertToCheckpoint', () => {
-  const mockToast = jest.fn();
-
-  beforeEach(() => {
-    jest.clearAllMocks();
-    require('@/hooks/use-toast').useToast.mockReturnValue({ toast: mockToast });
-  });
-
-  it('reverts to checkpoint successfully', async () => {
-    (fetch as jest.Mock).mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ success: true }),
-    });
-
-    const { result } = renderHook(() => useRevertToCheckpoint(123), {
-      wrapper: createWrapper(),
-    });
-
-    const revertData: RevertToCheckpointData = {
-      checkpoint_id: 1,
-      create_backup: true,
-      backup_name: 'Pre-revert backup',
+    const revertData: RevertToMessageRequest = {
+      message_id: 789,
+      create_backup_commit: true,
     };
 
     await act(async () => {
       await result.current.mutateAsync(revertData);
     });
 
-    expect(fetch).toHaveBeenCalledWith('/api/projects/123/checkpoints/1/revert', {
+    expect(fetch).toHaveBeenCalledWith('/api/projects/123/chat-sessions/456/revert', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(revertData),
     });
 
     expect(mockToast).toHaveBeenCalledWith({
-      title: 'Checkpoint Restored',
-      description: 'Successfully reverted to the selected checkpoint.',
+      title: 'Reverted Successfully',
+      description: 'Reverted to commit abc123d',
     });
   });
 
   it('handles revert error', async () => {
     (fetch as jest.Mock).mockResolvedValueOnce({
       ok: false,
-      text: async () => 'Revert failed',
+      text: async () => 'Message not found',
     });
 
-    const { result } = renderHook(() => useRevertToCheckpoint(123), {
+    const { result } = renderHook(() => useRevertToMessage(123, 456), {
       wrapper: createWrapper(),
     });
 
-    const revertData: RevertToCheckpointData = {
-      checkpoint_id: 1,
-      create_backup: false,
+    const revertData: RevertToMessageRequest = {
+      message_id: 999,
     };
 
     await act(async () => {
       try {
         await result.current.mutateAsync(revertData);
       } catch (error) {
-        expect(error).toEqual(new Error('Failed to revert to checkpoint'));
+        expect(error).toEqual(new Error('Message not found'));
       }
     });
 
     expect(mockToast).toHaveBeenCalledWith({
       title: 'Revert Failed',
-      description: 'Failed to revert to checkpoint',
+      description: 'Message not found',
       variant: 'destructive',
     });
   });
-});
 
-describe('useDeleteCheckpoint', () => {
-  const mockToast = jest.fn();
+  it('invalidates correct queries after successful revert', async () => {
+    const queryClient = new QueryClient();
+    const invalidateQueriesSpy = jest.spyOn(queryClient, 'invalidateQueries');
 
-  beforeEach(() => {
-    jest.clearAllMocks();
-    require('@/hooks/use-toast').useToast.mockReturnValue({ toast: mockToast });
-  });
-
-  it('deletes checkpoint successfully', async () => {
     (fetch as jest.Mock).mockResolvedValueOnce({
       ok: true,
-      text: async () => '',
+      json: async () => ({
+        success: true,
+        data: mockRevertResponse,
+      }),
     });
 
-    const { result } = renderHook(() => useDeleteCheckpoint(123), {
-      wrapper: createWrapper(),
-    });
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    );
 
-    await act(async () => {
-      await result.current.mutateAsync(1);
-    });
-
-    expect(fetch).toHaveBeenCalledWith('/api/projects/123/checkpoints/1', {
-      method: 'DELETE',
-    });
-
-    expect(mockToast).toHaveBeenCalledWith({
-      title: 'Checkpoint Deleted',
-      description: 'The checkpoint has been deleted successfully.',
-    });
-  });
-
-  it('handles delete error', async () => {
-    (fetch as jest.Mock).mockResolvedValueOnce({
-      ok: false,
-      text: async () => 'Delete failed',
-    });
-
-    const { result } = renderHook(() => useDeleteCheckpoint(123), {
-      wrapper: createWrapper(),
-    });
+    const { result } = renderHook(() => useRevertToMessage(123, 456), { wrapper });
 
     await act(async () => {
-      try {
-        await result.current.mutateAsync(1);
-      } catch (error) {
-        expect(error).toEqual(new Error('Delete failed'));
-      }
+      await result.current.mutateAsync({ message_id: 789 });
     });
 
-    expect(mockToast).toHaveBeenCalledWith({
-      title: 'Failed to Delete Checkpoint',
-      description: 'Delete failed',
-      variant: 'destructive',
-    });
-  });
-
-  it('handles delete error with fallback message', async () => {
-    (fetch as jest.Mock).mockResolvedValueOnce({
-      ok: false,
-      text: async () => '',
-    });
-
-    const { result } = renderHook(() => useDeleteCheckpoint(123), {
-      wrapper: createWrapper(),
-    });
-
-    await act(async () => {
-      try {
-        await result.current.mutateAsync(1);
-      } catch (error) {
-        expect(error).toEqual(new Error('Failed to delete checkpoint'));
-      }
-    });
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ['chat-messages', 123, 456] });
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ['project-files', 123] });
   });
 });
 ```
 
+## Integration Requirements
+
+### **Session-Aware Architecture**
+
+This ticket integrates seamlessly with **Ticket #20: Multiple Chat Sessions** by:
+
+1. **Session Isolation**: Each chat session operates in its own Git branch and directory
+2. **Message-Level Granularity**: Users can revert to any assistant message within the current session
+3. **Branch Context**: Revert operations work within the session's Git branch (`kosuke-chat-{session_id}`)
+4. **UI Integration**: Revert buttons appear on assistant messages in the chat interface
+
+### **Workflow Integration**
+
+1. **Agent Creates Commit**: After each assistant message with code changes, agent commits to session branch
+2. **Webhook Updates Database**: Commit SHA is linked to the assistant message in `chat_messages` table
+3. **UI Shows Revert Options**: Assistant messages with commits display revert buttons on hover
+4. **Revert Process**: Clicking revert checks out the specific commit in the session's isolated directory
+
 ## Acceptance Criteria
 
-- [x] Checkpoint panel showing all previous AI sessions
-- [x] Visual indicators for current checkpoint and file counts
-- [x] Revert confirmation dialog with warning
-- [x] Complete project state restoration from checkpoint
-- [x] Checkpoint creation on each AI session completion
-- [x] Comprehensive test coverage for all checkpoint query hooks
-- [x] Comprehensive test coverage for all checkpoint mutation hooks
-- [x] Error handling tests for network failures and API errors
-- [x] Toast notification tests for user feedback
-- [x] Query invalidation tests for cache management
+### **Core Functionality**
+
+- [ ] Assistant messages with code changes display revert buttons on hover
+- [ ] Revert buttons only appear for assistant messages with associated commit SHAs
+- [ ] Clicking revert button opens confirmation modal with commit details
+- [ ] Revert operation checks out specific commit in session's isolated directory
+- [ ] Reverted state is immediately reflected in project file system
+
+### **Session Integration**
+
+- [ ] Revert operations work within current chat session only
+- [ ] Each session's revert operations are completely isolated
+- [ ] Agent commits include commit SHA in webhook data
+- [ ] Database stores commit SHA in `chat_messages.commit_sha` field
+- [ ] UI displays current branch info in model banner
+
+### **Technical Requirements**
+
+- [ ] Database migration adds `commit_sha` column to `chat_messages` table
+- [ ] Webhook service updated to include commit SHA in assistant message data
+- [ ] Agent service handles revert API with session isolation
+- [ ] Git operations target correct session directory
+- [ ] Error handling for missing commits or session directories
+
+### **UI/UX Requirements**
+
+- [ ] Revert buttons use consistent styling with tooltip showing commit SHA
+- [ ] Confirmation modal clearly explains revert operation and consequences
+- [ ] Loading states during revert operation
+- [ ] Success/error toast notifications
+- [ ] Graceful handling of failed revert operations
+
+### **Quality Assurance**
+
+- [ ] Comprehensive test coverage for revert hook functionality
+- [ ] Integration tests with session isolation
+- [ ] Git operation tests for checkout functionality
+- [ ] Error handling tests for edge cases
+- [ ] Cross-browser compatibility for UI components

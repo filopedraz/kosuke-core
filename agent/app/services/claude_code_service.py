@@ -42,10 +42,13 @@ class ClaudeCodeService:
     - Supports up to 25 conversation turns by default
     """
 
-    def __init__(self, project_id: int):
+    def __init__(self, project_id: int, working_directory: str | None = None):
         self.project_id = project_id
-        # Use consistent project path with other services
-        self.project_path = Path(settings.projects_dir) / str(project_id)
+        # Use session-specific working directory if provided, otherwise use main project path
+        if working_directory:
+            self.project_path = Path(working_directory)
+        else:
+            self.project_path = Path(settings.projects_dir) / str(project_id)
 
         # Track token usage manually since claude-code-sdk doesn't expose it
         self.total_input_tokens = 0

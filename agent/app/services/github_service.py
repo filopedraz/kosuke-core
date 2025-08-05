@@ -257,16 +257,18 @@ class GitHubService:
             if file_path not in session["files_changed"]:
                 session["files_changed"].append(file_path)
 
-    async def commit_session_changes(self, session_id: str, commit_message: str | None = None) -> GitHubCommit | None:
-        """Commit all changes in the working directory to development branch"""
+    async def commit_session_changes(
+        self, session_path: str, session_id: str, commit_message: str | None = None
+    ) -> GitHubCommit | None:
+        """Commit all changes in the session-specific working directory to development branch"""
         if session_id not in self.sync_sessions:
             raise Exception(f"Sync session {session_id} not found")
 
         session = self.sync_sessions[session_id]
 
         try:
-            project_path = self._get_project_path(session["project_id"])
-            repo = git.Repo(project_path)
+            # Use the provided session path instead of the main project path
+            repo = git.Repo(session_path)
             branch_name = f"kosuke-chat-{session_id}"
 
             # Detect all changes BEFORE switching branches
@@ -295,7 +297,7 @@ class GitHubService:
             # Update session with actual files changed
             session["files_changed"] = changed_files
 
-            return self._create_github_commit_response(commit, repo, changed_files)
+            return self._create_github_commit_response(commit, repo, changed_files, session_path)
 
         except Exception as e:
             session["status"] = "failed"
@@ -463,7 +465,7 @@ class GitHubService:
         session["branch_name"] = branch_name
 
     def _create_github_commit_response(
-        self, commit: git.Commit, repo: git.Repo, files_changed: list[str]
+        self, commit: git.Commit, repo: git.Repo, files_changed: list[str], session_path: str
     ) -> GitHubCommit:
         """Create GitHubCommit response object"""
         origin = repo.remote(name="origin")

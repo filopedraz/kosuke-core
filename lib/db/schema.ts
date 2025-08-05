@@ -61,6 +61,27 @@ export const projects = pgTable('projects', {
   githubBranch: text('github_branch').default('main'),
   autoCommit: boolean('auto_commit').default(true),
   lastGithubSync: timestamp('last_github_sync'),
+  defaultBranch: varchar('default_branch', { length: 100 }).default('main'),
+});
+
+export const chatSessions = pgTable('chat_sessions', {
+  id: serial('id').primaryKey(),
+  projectId: integer('project_id')
+    .references(() => projects.id, { onDelete: 'cascade' })
+    .notNull(),
+  userId: text('user_id')
+    .references(() => users.clerkUserId)
+    .notNull(),
+  title: varchar('title', { length: 100 }).notNull(),
+  description: text('description'),
+  sessionId: varchar('session_id', { length: 50 }).unique().notNull(),
+  githubBranchName: varchar('github_branch_name', { length: 100 }),
+  status: varchar('status', { length: 20 }).default('active'), // active, archived, completed
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  lastActivityAt: timestamp('last_activity_at').notNull().defaultNow(),
+  messageCount: integer('message_count').default(0),
+  isDefault: boolean('is_default').default(false),
 });
 
 export const chatMessages = pgTable('chat_messages', {
@@ -68,6 +89,9 @@ export const chatMessages = pgTable('chat_messages', {
   projectId: integer('project_id')
     .references(() => projects.id)
     .notNull(),
+  chatSessionId: integer('chat_session_id').references(() => chatSessions.id, {
+    onDelete: 'cascade',
+  }),
   userId: text('user_id').references(() => users.clerkUserId),
   role: varchar('role', { length: 20 }).notNull(), // 'user' or 'assistant'
   content: text('content'), // For user messages (nullable for assistant messages)
@@ -153,15 +177,32 @@ export const projectsRelations = relations(projects, ({ one, many }) => ({
     references: [users.clerkUserId],
   }),
   chatMessages: many(chatMessages),
+  chatSessions: many(chatSessions),
   diffs: many(diffs),
   commits: many(projectCommits),
   githubSyncSessions: many(githubSyncSessions),
+}));
+
+export const chatSessionsRelations = relations(chatSessions, ({ one, many }) => ({
+  project: one(projects, {
+    fields: [chatSessions.projectId],
+    references: [projects.id],
+  }),
+  user: one(users, {
+    fields: [chatSessions.userId],
+    references: [users.clerkUserId],
+  }),
+  messages: many(chatMessages),
 }));
 
 export const chatMessagesRelations = relations(chatMessages, ({ one, many }) => ({
   project: one(projects, {
     fields: [chatMessages.projectId],
     references: [projects.id],
+  }),
+  chatSession: one(chatSessions, {
+    fields: [chatMessages.chatSessionId],
+    references: [chatSessions.id],
   }),
   user: one(users, {
     fields: [chatMessages.userId],
@@ -220,6 +261,8 @@ export enum ActivityType {
 
 export type Project = typeof projects.$inferSelect;
 export type NewProject = typeof projects.$inferInsert;
+export type ChatSession = typeof chatSessions.$inferSelect;
+export type NewChatSession = typeof chatSessions.$inferInsert;
 export type ChatMessage = typeof chatMessages.$inferSelect;
 export type NewChatMessage = typeof chatMessages.$inferInsert;
 export type Diff = typeof diffs.$inferSelect;
