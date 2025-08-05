@@ -1,6 +1,6 @@
 # 📋 Ticket 22: Traefik Reverse Proxy Integration
 
-**Priority:** Critical  
+**Priority:** Critical
 **Estimated Effort:** 6 hours
 
 ## Description
@@ -169,9 +169,9 @@ accessLog:
 
 ```python
 import docker
+import re
 from datetime import datetime
 from typing import Optional, Dict, List
-from app.models.domain import ProjectDomain, DomainRouting
 from app.utils.config import settings
 import logging
 
@@ -181,60 +181,36 @@ class DomainService:
     def __init__(self):
         self.docker_client = docker.from_env()
 
-    async def create_project_domain(self, project_id: int, subdomain: str) -> ProjectDomain:
-        """Create a custom domain for a project"""
-        # Note: Domain creation is handled by Next.js database operations
-        # This method is called after the domain is already created in the database
+    def generate_subdomain(self, project_id: int, branch_name: str) -> str:
+        """Generate subdomain based on project ID and branch name"""
+        # Sanitize branch name for URL usage
+        sanitized_branch = re.sub(r'[^a-zA-Z0-9-]', '-', branch_name.lower())
+        sanitized_branch = re.sub(r'-+', '-', sanitized_branch)
+        sanitized_branch = sanitized_branch.strip('-')
+
+        # Limit length and ensure it's valid
+        if len(sanitized_branch) > 20:
+            sanitized_branch = sanitized_branch[:20].rstrip('-')
+
+        # Create subdomain: project-{id}-{branch}
+        subdomain = f"project-{project_id}-{sanitized_branch}"
         full_domain = f"{subdomain}.{settings.BASE_DOMAIN}"
 
-        logger.info(f"Domain {full_domain} configured for project {project_id}")
+        logger.info(f"Generated subdomain: {full_domain} for project {project_id}, branch: {branch_name}")
+        return full_domain
 
-        # Return domain info (this would typically come from Next.js)
-        return ProjectDomain(
-            id=0,  # Will be provided by Next.js
-            project_id=project_id,
-            subdomain=subdomain,
-            full_domain=full_domain,
-            is_active=True,
-            created_at=datetime.now()
-        )
-
-    async def update_container_routing(self, project_id: int, container_name: str, port: int, domain: str = None) -> None:
+    async def update_container_routing(self, project_id: int, container_name: str, port: int, branch_name: str) -> str:
         """Update container routing when container starts"""
-        # Domain information is passed from Next.js when known
-        if domain:
-            logger.info(f"Updating routing for container {container_name} to domain {domain}")
-            # Update Traefik labels on container would happen during container creation
-        else:
-            logger.info(f"No domain configured for project {project_id}, using local port routing")
+        full_domain = self.generate_subdomain(project_id, branch_name)
+        logger.info(f"Configuring routing for container {container_name} to domain {full_domain}")
+        return full_domain
 
-    async def _update_container_labels(self, container_name: str, domain: str, port: int) -> None:
-        """Update container with Traefik labels for routing"""
-        try:
-            container = self.docker_client.containers.get(container_name)
-
-            # Traefik labels for dynamic routing
-            labels = {
-                "traefik.enable": "true",
-                f"traefik.http.routers.{container_name}.rule": f"Host(`{domain}`)",
-                f"traefik.http.routers.{container_name}.tls.certresolver": "letsencrypt",
-                f"traefik.http.services.{container_name}.loadbalancer.server.port": str(port),
-                "traefik.docker.network": "kosuke_network"
-            }
-
-            # Update container labels (requires container recreation)
-            # For now, we'll handle this in the container creation process
-            logger.info(f"Would update container {container_name} with labels for domain {domain}")
-
-        except Exception as e:
-            logger.error(f"Error updating container labels: {e}")
-
-    async def get_domain_routing(self, domain: str) -> Optional[DomainRouting]:
+    async def get_domain_routing(self, domain: str) -> Optional[str]:
         """Get routing information for a domain"""
         # Note: In production, this would be handled by Traefik automatically
         # based on container labels. This method is kept for compatibility.
         logger.info(f"Domain routing for {domain} handled by Traefik")
-        return None
+        return domain
 ```
 
 **agent/app/services/docker_service.py** - Update with domain integration:
@@ -251,8 +227,8 @@ class DockerService:
         self.environment_service = EnvironmentService()
         self.domain_service = DomainService()
 
-    async def start_preview(self, project_id: int, env_vars: Dict[str, str] = None, custom_domain: str = None) -> str:
-        """Start preview container for project with domain routing"""
+    async def start_preview(self, project_id: int, branch_name: str, env_vars: Dict[str, str] = None) -> str:
+        """Start preview container for project with automatic subdomain routing"""
         if env_vars is None:
             env_vars = {}
 
@@ -260,48 +236,39 @@ class DockerService:
 
         # ... existing container creation logic ...
 
-        # Get project domain for Traefik labels (passed from Next.js)
-        project_domain = custom_domain
+        # Generate automatic subdomain based on project ID and branch name
+        project_domain = self.domain_service.generate_subdomain(project_id, branch_name)
 
-        # Add Traefik labels if domain exists
-        labels = {}
-        if project_domain:
-            labels.update({
-                "traefik.enable": "true",
-                f"traefik.http.routers.{container_name}.rule": f"Host(`{project_domain}`)",
-                f"traefik.http.routers.{container_name}.tls.certresolver": "letsencrypt",
-                f"traefik.http.services.{container_name}.loadbalancer.server.port": "3000",
-                "traefik.docker.network": "kosuke_network"
-            })
+        # Add Traefik labels for automatic routing
+        labels = {
+            "traefik.enable": "true",
+            f"traefik.http.routers.{container_name}.rule": f"Host(`{project_domain}`)",
+            f"traefik.http.routers.{container_name}.tls.certresolver": "letsencrypt",
+            f"traefik.http.services.{container_name}.loadbalancer.server.port": "3000",
+            "traefik.docker.network": "kosuke_network"
+        }
 
         container = self.client.containers.run(
             image=settings.PREVIEW_DEFAULT_IMAGE,
             name=container_name,
             command=["sh", "-c", "cd /app && npm run dev -- -H 0.0.0.0"],
-            ports={'3000/tcp': host_port} if not project_domain else {},  # No port mapping in prod
+            ports={},  # No port mapping in production - Traefik handles routing
             volumes={project_path: {'bind': '/app', 'mode': 'rw'}},
             working_dir='/app',
             environment=environment,
-            networks=['kosuke_network'] if project_domain else ['kosuke_default'],
+            networks=['kosuke_network'],
             labels=labels,
             detach=True,
             auto_remove=False
         )
 
-        # Update domain routing
-        if project_domain:
-            await self.domain_service.update_container_routing(project_id, container_name, 3000, project_domain)
-            url = f"https://{project_domain}"
-        else:
-            url = f"http://localhost:{host_port}"
+        # Confirm domain routing setup
+        await self.domain_service.update_container_routing(project_id, container_name, 3000, branch_name)
+        url = f"https://{project_domain}"
 
         # ... rest of existing logic ...
 
         return url
-
-    async def _get_project_domain(self, project_id: int, custom_domain: str = None) -> Optional[str]:
-        """Get project's custom domain - passed from Next.js"""
-        return custom_domain
 ```
 
 ## Acceptance Criteria
