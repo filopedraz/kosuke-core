@@ -29,7 +29,7 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogFooter,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -43,13 +43,11 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Textarea } from '@/components/ui/textarea';
+
 import { cn } from '@/lib/utils';
 
 interface ChatSidebarProps {
   projectId: number;
-  projectName: string;
   activeChatSessionId: number | null;
   onChatSessionChange: (sessionId: number) => void;
   className?: string;
@@ -57,7 +55,6 @@ interface ChatSidebarProps {
 
 export default function ChatSidebar({
   projectId,
-  projectName,
   activeChatSessionId,
   onChatSessionChange,
   className,
@@ -65,11 +62,11 @@ export default function ChatSidebar({
   const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
   const [editingSession, setEditingSession] = useState<ChatSession | null>(null);
   const [newChatTitle, setNewChatTitle] = useState('');
-  const [newChatDescription, setNewChatDescription] = useState('');
+
   const [showArchived, setShowArchived] = useState(false);
 
   // Hooks
-  const { data: sessions = [], isLoading } = useChatSessions(projectId);
+  const { data: sessions = [] } = useChatSessions(projectId);
   const createChatSession = useCreateChatSession(projectId);
   const updateChatSession = useUpdateChatSession(projectId);
   const deleteChatSession = useDeleteChatSession(projectId);
@@ -92,12 +89,10 @@ export default function ChatSidebar({
 
     await createChatSession.mutateAsync({
       title: newChatTitle.trim(),
-      description: newChatDescription.trim() || undefined,
     });
 
     // Reset form and close modal
     setNewChatTitle('');
-    setNewChatDescription('');
     setIsNewChatModalOpen(false);
   };
 
@@ -144,36 +139,12 @@ export default function ChatSidebar({
   const activeSessions = sessions.filter(s => s.status === 'active');
   const archivedSessions = sessions.filter(s => s.status === 'archived');
 
-  if (isLoading) {
-    return (
-      <div className={cn('w-full h-full', className)}>
-        <div className="p-4 border-b">
-          <Skeleton className="h-9 w-full" />
-        </div>
-        <div className="p-4 space-y-3">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="space-y-2">
-              <Skeleton className="h-4 w-3/4" />
-              <Skeleton className="h-3 w-1/2" />
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
+
 
   return (
     <div className={cn('flex flex-col h-full', className)}>
       {/* Project Header */}
-      <div className="p-4 border-b">
-        <div className="flex items-center gap-2 mb-3">
-          <div className="h-6 w-6 bg-primary rounded flex items-center justify-center">
-            <span className="text-xs font-semibold text-primary-foreground">
-              {projectName.charAt(0).toUpperCase()}
-            </span>
-          </div>
-          <h2 className="font-semibold text-sm truncate">{projectName}</h2>
-        </div>
+      <div className="p-4">
         <Button
           onClick={() => setIsNewChatModalOpen(true)}
           className="w-full"
@@ -418,46 +389,57 @@ export default function ChatSidebar({
 
       {/* New Chat Modal */}
       <Dialog open={isNewChatModalOpen} onOpenChange={setIsNewChatModalOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Create New Chat Session</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="title">Title</Label>
-              <Input
-                id="title"
-                value={newChatTitle}
-                onChange={(e) => setNewChatTitle(e.target.value)}
-                placeholder="Enter chat session title"
-                maxLength={100}
-              />
+        <DialogContent
+          className="p-0 overflow-hidden border border-border bg-card shadow-lg rounded-md"
+          style={{ maxWidth: '512px' }}
+        >
+          <DialogTitle className="sr-only">Create New Chat Session</DialogTitle>
+          <DialogDescription className="sr-only">
+            Create a new chat session for this project
+          </DialogDescription>
+
+          <div className="p-4">
+            <div className="flex items-center space-x-3 mb-4">
+              <MessageCircle className="h-5 w-5 text-primary" />
+              <h3 className="text-lg font-semibold">New Chat Session</h3>
             </div>
-            <div>
-              <Label htmlFor="description">Description (optional)</Label>
-              <Textarea
-                id="description"
-                value={newChatDescription}
-                onChange={(e) => setNewChatDescription(e.target.value)}
-                placeholder="Brief description of this chat session"
-                rows={3}
-              />
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="title" className="text-sm font-medium">
+                  Title
+                </Label>
+                <Input
+                  id="title"
+                  value={newChatTitle}
+                  onChange={(e) => setNewChatTitle(e.target.value)}
+                  className="h-11"
+                  placeholder="Enter chat session title"
+                  maxLength={100}
+                  disabled={createChatSession.isPending}
+                />
+              </div>
+
+              {/* Actions */}
+              <div className="flex justify-end items-center gap-3 pt-3">
+                <Button
+                  variant="ghost"
+                  onClick={() => setIsNewChatModalOpen(false)}
+                  disabled={createChatSession.isPending}
+                  className="h-10"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleCreateChat}
+                  disabled={!newChatTitle.trim() || createChatSession.isPending}
+                  className="h-10 min-w-[120px]"
+                >
+                  {createChatSession.isPending ? 'Creating...' : 'Create Chat'}
+                </Button>
+              </div>
             </div>
           </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setIsNewChatModalOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleCreateChat}
-              disabled={!newChatTitle.trim() || createChatSession.isPending}
-            >
-              {createChatSession.isPending ? 'Creating...' : 'Create Chat'}
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
 

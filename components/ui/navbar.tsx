@@ -177,7 +177,6 @@ export default function Navbar({ variant = 'standard', projectProps, className }
                   variant="ghost"
                   size="icon"
                   onClick={projectProps.onToggleSidebar}
-                  className="absolute right-12 mr-2 h-8 w-8 bg-background border border-border rounded-md shadow-md hover:bg-accent transition-colors"
                   aria-label={projectProps.showSidebar ? 'Show Chat' : 'Show Sessions'}
                   title={projectProps.showSidebar ? 'Show Chat' : 'Show Sessions'}
                 >

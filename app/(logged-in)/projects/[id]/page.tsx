@@ -35,11 +35,15 @@ function ProjectLoadingSkeleton() {
         <header className="w-full h-14 flex items-center bg-background">
           <div className="flex w-full h-full">
             {/* Left section - matches chat width */}
-            <div className="flex items-center h-full w-full md:w-1/3 lg:w-1/4 border-r border-transparent relative">
+            <div className="flex items-center h-full w-full md:w-1/4 lg:w-1/4 border-r border-transparent relative">
               <div className="px-4 flex items-center">
                 <Skeleton className="h-6 w-6 rounded-full" />
               </div>
-              {/* Toggle button skeleton */}
+
+              {/* Sidebar/Chat toggle button skeleton */}
+              <Skeleton className="h-8 w-8 rounded-md" />
+
+              {/* Collapse toggle button skeleton */}
               <div className="absolute right-0 mr-2">
                 <Skeleton className="h-8 w-8 rounded-md" />
               </div>
@@ -54,6 +58,7 @@ function ProjectLoadingSkeleton() {
                   <Skeleton className="h-8 w-20 rounded-none" />
                   <Skeleton className="h-8 w-16 rounded-none" />
                   <Skeleton className="h-8 w-20 rounded-none" />
+                  <Skeleton className="h-8 w-20 rounded-none" />
                 </div>
               </div>
 
@@ -65,36 +70,41 @@ function ProjectLoadingSkeleton() {
         </header>
       </div>
 
-            {/* Content Skeleton */}
+      {/* Content Skeleton */}
       <div className="flex h-[calc(100vh-3.5rem)] w-full overflow-hidden">
-        {/* Left Panel Skeleton - Chat Area */}
-        <div className="h-full overflow-hidden w-full md:w-1/3 lg:w-1/3">
-          <div className="relative flex h-full w-full border border-border rounded-md">
-            {/* Chat Interface Skeleton (default view) */}
-            <div className="w-full flex flex-col p-4 space-y-4">
-              <Skeleton className="h-10 w-3/4" />
-              <div className="flex-1 space-y-4">
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} className="flex gap-3">
-                    <Skeleton className="h-8 w-8 rounded-full" />
-                    <div className="space-y-2 flex-1">
-                      <Skeleton className="h-4 w-full" />
-                      <Skeleton className="h-4 w-2/3" />
+        {/* Left Panel Skeleton - Chat Sidebar */}
+        <div className="h-full overflow-hidden w-full md:w-1/4 lg:w-1/4">
+          <div className="relative flex h-full w-full rounded-md">
+            <div className="flex flex-col h-full w-full">
+              {/* New Chat Button Skeleton */}
+              <div className="p-4">
+                <Skeleton className="h-9 w-full rounded-md" />
+              </div>
+
+              {/* Chat Sessions List Skeleton */}
+              <div className="flex-1 p-4 space-y-2">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="rounded-lg border p-3 space-y-2">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Skeleton className="h-4 w-4 rounded-full" />
+                      <Skeleton className="h-4 w-3/4" />
+                      <Skeleton className="h-4 w-12 rounded-full" />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Skeleton className="h-3 w-3 rounded-full" />
+                      <Skeleton className="h-3 w-16" />
+                      <Skeleton className="h-3 w-1" />
+                      <Skeleton className="h-3 w-20" />
                     </div>
                   </div>
                 ))}
               </div>
             </div>
-
-            {/* Toggle button skeleton */}
-            <div className="absolute top-4 left-4 z-10">
-              <Skeleton className="h-8 w-8 rounded-md" />
-            </div>
           </div>
         </div>
 
         {/* Right Panel Skeleton - Preview/Code Explorer */}
-        <div className="hidden md:flex md:w-2/3 lg:w-2/3 h-full flex-col overflow-hidden border border-border rounded-md">
+        <div className="hidden md:flex md:w-3/4 lg:w-3/4 h-full flex-col overflow-hidden border border-border rounded-md">
           <div className="flex items-center justify-between p-4 border-b">
             <Skeleton className="h-6 w-32" />
             <div className="flex gap-2">
@@ -226,7 +236,6 @@ export default function ProjectPage({ params }: ProjectPageProps) {
               <div className="w-full">
                 <ChatSidebar
                   projectId={projectId}
-                  projectName={project?.name || 'Loading...'}
                   activeChatSessionId={activeChatSessionId}
                   onChatSessionChange={(sessionId) => {
                     setActiveChatSessionId(sessionId);
