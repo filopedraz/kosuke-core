@@ -112,6 +112,7 @@ export interface ChatInterfaceProps {
   isLoading?: boolean;
   activeChatSessionId?: number | null;
   currentBranch?: string;
+  sessionId?: string; // Session ID for fetching session-specific messages
 }
 
 // Content Block Types (for streaming UI state)

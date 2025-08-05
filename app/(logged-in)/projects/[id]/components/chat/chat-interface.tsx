@@ -9,6 +9,7 @@ import { useUser } from '@clerk/nextjs';
 
 // Import types and hooks
 import { useChatMessages } from '@/hooks/use-chat-messages';
+import { useChatSessionMessages } from '@/hooks/use-chat-sessions';
 import { useChatState } from '@/hooks/use-chat-state';
 import { useSendMessage } from '@/hooks/use-send-message';
 import type { ChatInterfaceProps } from '@/lib/types';
@@ -27,6 +28,7 @@ export default function ChatInterface({
   isLoading: initialIsLoading = false,
   activeChatSessionId,
   currentBranch,
+  sessionId,
 }: ChatInterfaceProps) {
 
   // Refs
@@ -41,8 +43,13 @@ export default function ChatInterface({
   } | null>(null);
 
   // Custom hooks for business logic
-  const sendMessageMutation = useSendMessage(projectId);
-  const messagesQuery = useChatMessages(projectId, initialMessages, initialIsLoading, sendMessageMutation.expectingWebhookUpdate);
+  const sendMessageMutation = useSendMessage(projectId, activeChatSessionId);
+
+  // Use session-specific messages if we have a sessionId, otherwise use project-wide messages
+  const sessionMessagesQuery = useChatSessionMessages(projectId, sessionId || '');
+  const projectMessagesQuery = useChatMessages(projectId, initialMessages, initialIsLoading, sendMessageMutation.expectingWebhookUpdate);
+
+  const messagesQuery = sessionId ? sessionMessagesQuery : projectMessagesQuery;
   const chatState = useChatState(projectId);
 
   // Extract data from hooks
@@ -53,7 +60,15 @@ export default function ChatInterface({
 
 
 
-  const messages = useMemo(() => messagesData?.messages || [], [messagesData?.messages]);
+  const messages = useMemo(() => {
+    if (sessionId) {
+      // Session-specific messages response
+      return messagesData?.messages || [];
+    } else {
+      // Project-wide messages response
+      return messagesData?.messages || [];
+    }
+  }, [messagesData?.messages, sessionId]);
 
   const {
     sendMessage,

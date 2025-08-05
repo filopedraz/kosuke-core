@@ -26,7 +26,8 @@ const sendMessage = async (
   options?: MessageOptions,
   contentBlockCallback?: (contentBlocks: ContentBlock[]) => void,
   setAssistantIdCallback?: (id: number) => void,
-  abortController?: AbortController
+  abortController?: AbortController,
+  chatSessionId?: number | null
 ): Promise<{
   message: ApiChatMessage;
   success: boolean;
@@ -77,6 +78,7 @@ const sendMessage = async (
         content,
         includeContext: options?.includeContext || false,
         contextFiles: options?.contextFiles || [],
+        chat_session_id: chatSessionId,
       });
 
       const response = await fetch(`/api/projects/${projectId}/chat`, {
@@ -377,7 +379,7 @@ const sendMessage = async (
 };
 
 // Hook for sending messages with streaming support
-export function useSendMessage(projectId: number) {
+export function useSendMessage(projectId: number, chatSessionId?: number | null) {
   const queryClient = useQueryClient();
 
   // Streaming state (minimal React state for real-time updates)
@@ -438,7 +440,8 @@ export function useSendMessage(projectId: number) {
         args.options,
         contentBlockCallback,
         setAssistantIdCallback,
-        abortController
+        abortController,
+        chatSessionId
       );
     },
     onMutate: async newMessage => {

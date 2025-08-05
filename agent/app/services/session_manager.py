@@ -29,7 +29,7 @@ class SessionManager:
         1. Create session directory: /projects/{project_id}/sessions/{session_id}/
         2. Clone repository to session directory
         3. Checkout base_branch (from project.default_branch)
-        4. Create session branch: kosuke-chat-{session_id}
+        4. Create session branch: kosuke/chat-{session_id}
         5. Return session directory path
 
         Args:
@@ -81,7 +81,7 @@ class SessionManager:
                 logger.warning(f"Failed to checkout {base_branch}, using current branch: {e}")
 
             # Create session-specific branch
-            session_branch_name = f"kosuke-chat-{session_id}"
+            session_branch_name = f"kosuke/chat-{session_id}"
             logger.info(f"Creating session branch: {session_branch_name}")
 
             try:

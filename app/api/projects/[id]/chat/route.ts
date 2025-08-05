@@ -288,7 +288,7 @@ export async function POST(
 
       if (!defaultSession) {
         // Create default session if it doesn't exist
-        const sessionId = `session_${projectId}_${Date.now()}`;
+        const sessionId = Math.random().toString(36).substr(2, 6);
         [defaultSession] = await db
           .insert(chatSessions)
           .values({
@@ -296,7 +296,7 @@ export async function POST(
             userId,
             title: 'Main Conversation',
             sessionId,
-            githubBranchName: `kosuke-chat-${sessionId}`,
+            githubBranchName: `kosuke/chat-${sessionId}`,
             status: 'active',
             isDefault: true,
             messageCount: 0,

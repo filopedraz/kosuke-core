@@ -137,9 +137,9 @@ export async function POST(
 
     const { title, description } = parseResult.data;
 
-    // Generate unique session ID
-    const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const githubBranchName = `kosuke-chat-${sessionId}`;
+    // Generate unique session ID (max 6 characters)
+    const sessionId = Math.random().toString(36).substr(2, 6);
+    const githubBranchName = `kosuke/chat-${sessionId}`;
 
     // Create chat session
     const [newSession] = await db

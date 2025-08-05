@@ -151,6 +151,7 @@ export default function ProjectPage({ params }: ProjectPageProps) {
   // Get current session branch information
   const currentSession = sessions.find(session => session.id === activeChatSessionId);
   const currentBranch = currentSession?.githubBranchName;
+  const sessionId = currentSession?.sessionId;
 
   // Preview management hooks
   const { data: previewStatus, isLoading: isPreviewLoading } = usePreviewStatus(projectId, false); // Disable polling initially
@@ -223,7 +224,7 @@ export default function ProjectPage({ params }: ProjectPageProps) {
           className={cn(
             "h-full overflow-hidden",
             // Balanced width for chat area - more than original but not too much
-            isChatCollapsed ? "w-0 opacity-0" : "w-full md:w-1/4 lg:w-1/4"
+            isChatCollapsed ? "w-0 opacity-0" : "w-full sm:w-1/4 md:w-1/4 lg:w-1/4"
           )}
           style={{
             // Use visibility instead of conditional rendering
@@ -255,6 +256,7 @@ export default function ProjectPage({ params }: ProjectPageProps) {
                   isLoading={isMessagesLoading}
                   activeChatSessionId={activeChatSessionId}
                   currentBranch={currentBranch}
+                  sessionId={sessionId}
                 />
               </div>
             )}
@@ -267,7 +269,7 @@ export default function ProjectPage({ params }: ProjectPageProps) {
           className={cn(
             "h-full flex-col overflow-hidden border rounded-md border-border",
             // Balanced width for preview panel - maintains good visibility
-            isChatCollapsed ? "w-full" : "hidden md:flex md:w-3/4 lg:w-3/4"
+            isChatCollapsed ? "w-full" : "hidden md:flex sm:w-3/4 md:w-3/4 lg:w-3/4"
           )}
         >
           {currentView === 'preview' ? (

@@ -269,7 +269,7 @@ class GitHubService:
         try:
             # Use the provided session path instead of the main project path
             repo = git.Repo(session_path)
-            branch_name = f"kosuke-chat-{session_id}"
+            branch_name = f"kosuke/chat-{session_id}"
 
             # Detect all changes BEFORE switching branches
             changed_files = self._detect_all_changes(repo)
@@ -405,9 +405,9 @@ class GitHubService:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         if len(files_changed) <= 3:
             file_summary = ", ".join(files_changed)
-            message = f"kosuke-chat-{timestamp}: Modified {file_summary}"
+            message = f"kosuke/chat-{timestamp}: Modified {file_summary}"
         else:
-            message = f"kosuke-chat-{timestamp}: Modified {len(files_changed)} files"
+            message = f"kosuke/chat-{timestamp}: Modified {len(files_changed)} files"
 
         # Add session ID for traceability
         return f"{message} (chat: {session_id[:8]})"
