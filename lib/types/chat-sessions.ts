@@ -76,3 +76,40 @@ export interface GitHubBranch {
   commit_sha: string;
   is_default: boolean;
 }
+
+// Chat Sidebar Hook Types
+export interface UseChatSidebarOptions {
+  projectId: number;
+  activeChatSessionId: number | null;
+  onChatSessionChange: (sessionId: number) => void;
+}
+
+export interface UseChatSidebarReturn {
+  // State
+  sessions: ChatSession[];
+  activeSessions: ChatSession[];
+  archivedSessions: ChatSession[];
+  isNewChatModalOpen: boolean;
+  editingSession: ChatSession | null;
+  newChatTitle: string;
+  showArchived: boolean;
+
+  // Actions
+  setIsNewChatModalOpen: (open: boolean) => void;
+  setEditingSession: (session: ChatSession | null) => void;
+  setNewChatTitle: (title: string) => void;
+  setShowArchived: (show: boolean) => void;
+  handleCreateChat: () => Promise<void>;
+  handleUpdateSession: (session: ChatSession, updates: Partial<ChatSession>) => Promise<void>;
+  handleDeleteSession: (session: ChatSession) => Promise<void>;
+  handleDuplicateSession: (session: ChatSession) => Promise<void>;
+  handleViewGitHubBranch: (session: ChatSession) => void;
+
+  // Utilities
+  formatRelativeTime: (dateString: string) => string;
+
+  // Loading states
+  isCreating: boolean;
+  isUpdating: boolean;
+  isDeleting: boolean;
+}
