@@ -149,6 +149,7 @@ export async function POST(
       }
 
       // Create pull request
+      const prTitle = title || `Updates from chat session: ${session.title}`;
       const { data: pullRequest } = await github.rest.pulls.create({
         owner: project.githubOwner,
         repo: project.githubRepoName,
