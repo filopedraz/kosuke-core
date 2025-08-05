@@ -2,6 +2,7 @@
 
 import { CheckCircle, Download, ExternalLink, Github, Loader2, RefreshCw, XCircle } from 'lucide-react';
 
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -18,6 +19,7 @@ interface PreviewPanelProps {
   projectId: number;
   projectName: string;
   sessionId: string | null;
+  branch?: string;
   className?: string;
 }
 
@@ -25,6 +27,7 @@ export default function PreviewPanel({
   projectId,
   projectName,
   sessionId,
+  branch,
   className,
 }: PreviewPanelProps) {
   const {
@@ -62,10 +65,18 @@ export default function PreviewPanel({
     }
   };
 
+  // Determine branch name to display
+  const displayBranch = branch || (sessionId ? 'chat-session' : 'main');
+
   return (
     <div className={cn('flex flex-col h-full w-full overflow-hidden', className)} data-testid="preview-panel">
       <div className="flex items-center justify-between px-4 py-2 border-b">
-        <h3 className="text-sm font-medium">Preview</h3>
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-medium">Preview</h3>
+          <Badge variant="secondary" className="text-xs">
+            {displayBranch}
+          </Badge>
+        </div>
         <div className="flex items-center space-x-1">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
