@@ -14,10 +14,8 @@ import {
   Plus,
   Trash2,
 } from 'lucide-react';
-import { useState } from 'react';
 
-import { useChatSessions, useCreateChatSession, useDeleteChatSession, useUpdateChatSession } from '@/hooks/use-chat-sessions';
-import type { ChatSession } from '@/lib/types';
+import { useChatSidebar } from '@/hooks/use-chat-sidebar';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -59,87 +57,36 @@ export default function ChatSidebar({
   onChatSessionChange,
   className,
 }: ChatSidebarProps) {
-  const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
-  const [editingSession, setEditingSession] = useState<ChatSession | null>(null);
-  const [newChatTitle, setNewChatTitle] = useState('');
+  const {
+    // State
+    activeSessions,
+    archivedSessions,
+    isNewChatModalOpen,
+    editingSession,
+    newChatTitle,
+    showArchived,
 
-  const [showArchived, setShowArchived] = useState(false);
+    // Actions
+    setIsNewChatModalOpen,
+    setEditingSession,
+    setNewChatTitle,
+    setShowArchived,
+    handleCreateChat,
+    handleUpdateSession,
+    handleDeleteSession,
+    handleDuplicateSession,
+    handleViewGitHubBranch,
 
-  // Hooks
-  const { data: sessions = [] } = useChatSessions(projectId);
-  const createChatSession = useCreateChatSession(projectId);
-  const updateChatSession = useUpdateChatSession(projectId);
-  const deleteChatSession = useDeleteChatSession(projectId);
+    // Utilities
+    formatRelativeTime,
 
-  // Format relative time
-  const formatRelativeTime = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
-
-    if (diffInHours < 1) return 'Just now';
-    if (diffInHours < 24) return `${diffInHours}h ago`;
-    if (diffInHours < 168) return `${Math.floor(diffInHours / 24)}d ago`;
-    return date.toLocaleDateString();
-  };
-
-  // Handle new chat creation
-  const handleCreateChat = async () => {
-    if (!newChatTitle.trim()) return;
-
-    await createChatSession.mutateAsync({
-      title: newChatTitle.trim(),
-    });
-
-    // Reset form and close modal
-    setNewChatTitle('');
-    setIsNewChatModalOpen(false);
-  };
-
-  // Handle session update
-  const handleUpdateSession = async (session: ChatSession, updates: Partial<ChatSession>) => {
-    await updateChatSession.mutateAsync({
-      sessionId: session.sessionId,
-      data: updates,
-    });
-    setEditingSession(null);
-  };
-
-  // Handle session deletion
-  const handleDeleteSession = async (session: ChatSession) => {
-    if (session.isDefault) return; // Prevent deletion of default session
-
-    const confirmed = window.confirm(
-      `Are you sure you want to delete "${session.title}"? This action cannot be undone.`
-    );
-
-    if (confirmed) {
-      await deleteChatSession.mutateAsync(session.sessionId);
-    }
-  };
-
-  // Handle session duplication
-  const handleDuplicateSession = async (session: ChatSession) => {
-    await createChatSession.mutateAsync({
-      title: `${session.title} (Copy)`,
-      description: session.description,
-    });
-  };
-
-  // Handle view GitHub branch
-  const handleViewGitHubBranch = (session: ChatSession) => {
-    if (session.githubBranchName) {
-      // This would need to be implemented with actual GitHub URL
-      const githubUrl = `https://github.com/owner/repo/tree/${session.githubBranchName}`;
-      window.open(githubUrl, '_blank');
-    }
-  };
-
-  // Separate sessions by status
-  const activeSessions = sessions.filter(s => s.status === 'active');
-  const archivedSessions = sessions.filter(s => s.status === 'archived');
-
-
+    // Loading states
+    isCreating,
+  } = useChatSidebar({
+    projectId,
+    activeChatSessionId,
+    onChatSessionChange,
+  });
 
   return (
     <div className={cn('flex flex-col h-full', className)}>
@@ -406,7 +353,7 @@ export default function ChatSidebar({
                   className="h-11"
                   placeholder="Enter chat session title"
                   maxLength={100}
-                  disabled={createChatSession.isPending}
+                  disabled={isCreating}
                 />
               </div>
 
@@ -415,17 +362,17 @@ export default function ChatSidebar({
                 <Button
                   variant="ghost"
                   onClick={() => setIsNewChatModalOpen(false)}
-                  disabled={createChatSession.isPending}
+                  disabled={isCreating}
                   className="h-10"
                 >
                   Cancel
                 </Button>
                 <Button
                   onClick={handleCreateChat}
-                  disabled={!newChatTitle.trim() || createChatSession.isPending}
+                  disabled={!newChatTitle.trim() || isCreating}
                   className="h-10 min-w-[120px]"
                 >
-                  {createChatSession.isPending ? 'Creating...' : 'Create Chat'}
+                  {isCreating ? 'Creating...' : 'Create Chat'}
                 </Button>
               </div>
             </div>

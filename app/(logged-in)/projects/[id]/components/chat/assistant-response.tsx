@@ -17,6 +17,8 @@ export default function AssistantResponse({
   response,
   className,
 }: AssistantResponseProps) {
+
+
   // Track user's explicit choices for each block (blockId -> isCollapsed)
   const [userChoices, setUserChoices] = useState<Map<string, boolean>>(new Map());
   // Track which blocks user has manually interacted with

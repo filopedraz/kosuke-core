@@ -64,6 +64,7 @@ export interface DownloadProgress {
 export interface PreviewStatusResponse {
   status: PreviewStatus;
   url?: string;
+  previewUrl?: string;
   progress?: number;
   error?: string;
 }
@@ -71,10 +72,39 @@ export interface PreviewStatusResponse {
 export interface StartPreviewResponse {
   success: boolean;
   url?: string;
+  previewUrl?: string;
   error?: string;
 }
 
 export interface StopPreviewResponse {
   success: boolean;
   error?: string;
+}
+
+// Preview Panel Hook Types
+export interface UsePreviewPanelOptions {
+  projectId: number;
+  sessionId: string | null;
+  projectName: string;
+}
+
+export interface UsePreviewPanelReturn {
+  // State
+  status: PreviewStatus;
+  progress: number;
+  previewUrl: string | null;
+  error: string | null;
+  iframeKey: number;
+  isDownloading: boolean;
+  isStarting: boolean;
+
+  // Actions
+  handleRefresh: (forceStart?: boolean) => Promise<void>;
+  openInNewTab: () => void;
+  handleDownloadZip: () => Promise<void>;
+  handleTryAgain: () => Promise<void>;
+
+  // Status helpers
+  getStatusMessage: () => string;
+  getStatusIconType: () => 'ready' | 'error' | 'loading';
 }

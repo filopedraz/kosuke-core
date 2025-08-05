@@ -7,11 +7,16 @@ import type {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 // Hook for fetching preview status
-export function usePreviewStatus(projectId: number, polling = true) {
+export function usePreviewStatus(projectId: number, sessionId: string | null, polling = true) {
   return useQuery({
-    queryKey: ['preview-status', projectId],
+    queryKey: ['preview-status', projectId, sessionId || 'main'],
     queryFn: async (): Promise<PreviewStatusResponse> => {
-      const response = await fetch(`/api/projects/${projectId}/preview`);
+      // Use main branch API when no session is selected
+      const url = sessionId
+        ? `/api/projects/${projectId}/chat-sessions/${sessionId}/preview`
+        : `/api/projects/${projectId}/preview`;
+
+      const response = await fetch(url);
 
       if (!response.ok) {
         throw new Error('Failed to fetch preview status');
@@ -26,12 +31,17 @@ export function usePreviewStatus(projectId: number, polling = true) {
 }
 
 // Hook for starting preview
-export function useStartPreview(projectId: number) {
+export function useStartPreview(projectId: number, sessionId: string | null) {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (): Promise<StartPreviewResponse> => {
-      const response = await fetch(`/api/projects/${projectId}/preview`, {
+      // Use main branch API when no session is selected
+      const url = sessionId
+        ? `/api/projects/${projectId}/chat-sessions/${sessionId}/preview`
+        : `/api/projects/${projectId}/preview`;
+
+      const response = await fetch(url, {
         method: 'POST',
       });
 
@@ -43,19 +53,26 @@ export function useStartPreview(projectId: number) {
     },
     onSuccess: () => {
       // Invalidate and refetch preview status
-      queryClient.invalidateQueries({ queryKey: ['preview-status', projectId] });
+      queryClient.invalidateQueries({
+        queryKey: ['preview-status', projectId, sessionId || 'main'],
+      });
     },
   });
 }
 
 // Hook for stopping preview
-export function useStopPreview(projectId: number) {
+export function useStopPreview(projectId: number, sessionId: string | null) {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (): Promise<StopPreviewResponse> => {
-      const response = await fetch(`/api/projects/${projectId}/preview/stop`, {
-        method: 'POST',
+      // Use main branch API when no session is selected
+      const url = sessionId
+        ? `/api/projects/${projectId}/chat-sessions/${sessionId}/preview`
+        : `/api/projects/${projectId}/preview`;
+
+      const response = await fetch(url, {
+        method: 'DELETE',
       });
 
       if (!response.ok) {
@@ -66,7 +83,9 @@ export function useStopPreview(projectId: number) {
     },
     onSuccess: () => {
       // Invalidate and refetch preview status
-      queryClient.invalidateQueries({ queryKey: ['preview-status', projectId] });
+      queryClient.invalidateQueries({
+        queryKey: ['preview-status', projectId, sessionId || 'main'],
+      });
     },
   });
 }

@@ -162,6 +162,11 @@ class SessionManager:
         Returns:
             str: Path to session directory
         """
+        # Special case: "main" session uses main project directory
+        if session_id == "main":
+            main_project_path = Path(settings.projects_dir) / str(project_id)
+            return str(main_project_path)
+
         session_path = Path(settings.projects_dir) / str(project_id) / "sessions" / session_id
         return str(session_path)
 
@@ -244,10 +249,16 @@ class SessionManager:
             # Check if it's a git repository
             try:
                 git.Repo(session_path)
-                logger.debug(f"Session directory is valid git repository: {session_path}")
+                if session_id == "main":
+                    logger.debug(f"Main project directory is valid git repository: {session_path}")
+                else:
+                    logger.debug(f"Session directory is valid git repository: {session_path}")
                 return True
             except git.exc.InvalidGitRepositoryError:
-                logger.error(f"Session directory is not a valid git repository: {session_path}")
+                if session_id == "main":
+                    logger.error(f"Main project directory is not a valid git repository: {session_path}")
+                else:
+                    logger.error(f"Session directory is not a valid git repository: {session_path}")
                 return False
 
         except Exception as e:
