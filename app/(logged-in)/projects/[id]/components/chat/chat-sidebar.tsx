@@ -174,22 +174,12 @@ export default function ChatSidebar({
               <div className="flex items-start justify-between">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <MessageCircle className="h-4 w-4 text-muted-foreground" />
                     <h3 className={cn(
                       'text-sm font-medium truncate',
                       activeChatSessionId === session.id && 'font-semibold'
                     )}>
                       {session.title}
                     </h3>
-                    {session.isDefault && (
-                      <Badge variant="secondary" className="text-xs px-1 py-0">
-                        Main
-                      </Badge>
-                    )}
-                    {/* GitHub Branch Indicator */}
-                    {session.githubBranchName && (
-                      <GitBranch className="h-3 w-3 text-muted-foreground" />
-                    )}
                   </div>
 
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -205,7 +195,7 @@ export default function ChatSidebar({
 
                   {/* GitHub Branch Name */}
                   {session.githubBranchName && (
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
                       <GitBranch className="h-3 w-3" />
                       <span className="truncate">{session.githubBranchName}</span>
                     </div>

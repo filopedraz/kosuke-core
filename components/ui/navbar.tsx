@@ -2,14 +2,13 @@
 
 import { useClerk } from '@clerk/nextjs';
 import {
+  ArrowLeft,
   CircleIcon,
   Code,
   Eye,
   GitPullRequest,
   LayoutDashboard,
   LogOut,
-  Menu,
-  MessageCircle,
   PanelLeftClose,
   PanelLeftOpen,
   Settings,
@@ -172,19 +171,16 @@ export default function Navbar({ variant = 'standard', projectProps, className }
               </div>
 
               {/* Floating toggle button positioned to the left of collapse toggle */}
-              {projectProps.onToggleSidebar && (
+              {/* Only show toggle when in chat interface (showSidebar is false) */}
+              {projectProps.onToggleSidebar && !projectProps.showSidebar && (
                 <Button
                   variant="ghost"
                   size="icon"
                   onClick={projectProps.onToggleSidebar}
-                  aria-label={projectProps.showSidebar ? 'Show Chat' : 'Show Sessions'}
-                  title={projectProps.showSidebar ? 'Show Chat' : 'Show Sessions'}
+                  aria-label="Back to Sessions"
+                  title="Back to Sessions"
                 >
-                  {projectProps.showSidebar ? (
-                    <MessageCircle className="h-4 w-4" />
-                  ) : (
-                    <Menu className="h-4 w-4" />
-                  )}
+                  <ArrowLeft className="h-4 w-4" />
                 </Button>
               )}
 
