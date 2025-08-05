@@ -144,7 +144,26 @@ const sendMessage = async (
                 break;
               }
 
-              const data: StreamingEvent = JSON.parse(rawData);
+              // Skip empty or invalid data
+              if (!rawData.trim() || rawData.trim() === '{}' || rawData.startsWith('{,')) {
+                continue;
+              }
+
+              // Parse JSON data directly (backend now sends proper JSON)
+              let data: StreamingEvent;
+              try {
+                data = JSON.parse(rawData);
+              } catch (parseError) {
+                const errorMessage =
+                  parseError instanceof Error ? parseError.message : 'Unknown parsing error';
+                console.warn(
+                  'Failed to parse streaming JSON:',
+                  errorMessage,
+                  'Data:',
+                  rawData.substring(0, 200) + '...'
+                );
+                continue;
+              }
 
               // Handle content block lifecycle events
               if (data.type === 'content_block_start') {
@@ -330,7 +349,7 @@ const sendMessage = async (
                 break;
               } else if (data.type === 'error') {
                 // Handle errors
-                console.error('❌ Streaming error');
+                console.error('Streaming error');
                 isStreamActive = false;
                 throw new Error('Streaming error');
               } else if (data.type === 'completed') {
@@ -338,8 +357,10 @@ const sendMessage = async (
                 isStreamActive = false;
                 break;
               }
-            } catch (parseError) {
-              console.warn('Failed to parse streaming data:', parseError);
+            } catch (outerError) {
+              // This catches any unexpected errors in the streaming processing
+              console.warn('Unexpected streaming error:', outerError);
+              continue;
             }
           }
         }
@@ -414,6 +435,7 @@ export function useSendMessage(
     mutationFn: (args: { content: string; options?: MessageOptions }) => {
       // Set up streaming state and callback
       const abortController = new AbortController();
+
       setStreamingState(prev => ({
         ...prev,
         isStreaming: true,
@@ -459,30 +481,79 @@ export function useSendMessage(
         await queryClient.cancelQueries({ queryKey: ['chat-sessions', projectId] });
       }
 
-      // Snapshot the previous value
+      // Snapshot the previous values
       const previousMessages = queryClient.getQueryData(['messages', projectId]);
+      const previousSessionMessages =
+        chatSessionId && sessionId
+          ? queryClient.getQueryData(['chat-session-messages', projectId, sessionId])
+          : null;
 
       // Create optimistic content that includes image information if present
       const optimisticContent = newMessage.content;
 
-      // Optimistically update to the new value (just add user message)
+      // Create optimistic user message
+      const newUserMessage: ChatMessageProps = {
+        id: Date.now(),
+        content: optimisticContent,
+        role: 'user',
+        timestamp: new Date(),
+        isLoading: false,
+      };
+
+      // Optimistically update the project-wide query
       queryClient.setQueryData(['messages', projectId], (old: unknown) => {
         if (!old || typeof old !== 'object' || !('messages' in old)) return old;
         const typedOld = old as { messages: ChatMessageProps[] };
-
-        const newUserMessage: ChatMessageProps = {
-          id: Date.now(),
-          content: optimisticContent,
-          role: 'user',
-          timestamp: new Date(),
-          isLoading: false,
-        };
 
         return {
           ...typedOld,
           messages: [...typedOld.messages, newUserMessage],
         };
       });
+
+      // If we're in a session, also optimistically update the session-specific query
+      if (chatSessionId && sessionId) {
+        queryClient.setQueryData(
+          ['chat-session-messages', projectId, sessionId],
+          (old: unknown) => {
+            if (!old || typeof old !== 'object' || !('messages' in old)) {
+              // If no previous session data, create a new structure
+              return {
+                messages: [newUserMessage],
+                sessionInfo: {
+                  id: chatSessionId,
+                  sessionId: sessionId,
+                  title: 'Chat Session',
+                  status: 'active',
+                  messageCount: 1,
+                },
+              };
+            }
+
+            const typedOld = old as {
+              messages: ChatMessageProps[];
+              sessionInfo?: {
+                id: number;
+                sessionId: string;
+                title: string;
+                status: string;
+                messageCount: number;
+              };
+            };
+
+            return {
+              ...typedOld,
+              messages: [...typedOld.messages, newUserMessage],
+              sessionInfo: typedOld.sessionInfo
+                ? {
+                    ...typedOld.sessionInfo,
+                    messageCount: typedOld.messages.length + 1,
+                  }
+                : undefined,
+            };
+          }
+        );
+      }
 
       // If there's an image, generate its data URL and update the optimistic message
       if (newMessage.options?.imageFile) {
@@ -521,13 +592,24 @@ export function useSendMessage(
         }
       }
 
-      // Return a context object with the snapshot
-      return { previousMessages };
+      // Return a context object with the snapshots
+      return {
+        previousMessages,
+        previousSessionMessages: previousSessionMessages,
+      };
     },
     onError: (error, _, context) => {
       // If there's an error, roll back to the previous state
       if (context?.previousMessages) {
         queryClient.setQueryData(['messages', projectId], context.previousMessages);
+      }
+
+      // Also roll back session-specific query if applicable
+      if (context?.previousSessionMessages && chatSessionId && sessionId) {
+        queryClient.setQueryData(
+          ['chat-session-messages', projectId, sessionId],
+          context.previousSessionMessages
+        );
       }
     },
     onSuccess: data => {

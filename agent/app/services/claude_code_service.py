@@ -1,7 +1,6 @@
 """
 Claude Code Service - Wrapper for claude-code-sdk agentic pipeline
 """
-import asyncio
 import logging
 from collections.abc import AsyncGenerator
 from pathlib import Path
@@ -82,46 +81,6 @@ class ClaudeCodeService:
         except Exception as e:
             logger.error(f"❌ Failed to list directory contents: {e}")
             raise
-
-    async def _simulate_text_streaming(self, text: str, message_id: str) -> AsyncGenerator[dict[str, Any], None]:
-        """
-        Simulate streaming by splitting text into words and yielding them progressively
-
-        Args:
-            text: Complete text to stream
-            message_id: Message identifier
-
-        Yields:
-            Streaming text events
-        """
-        if not text.strip():
-            return
-
-        # Split text into words while preserving spacing
-        words = text.split(" ")
-        current_chunk = ""
-
-        for i, word in enumerate(words):
-            # Add word to current chunk
-            if current_chunk:
-                current_chunk += " " + word
-            else:
-                current_chunk = word
-
-            # Yield chunk every 2-4 words or at punctuation
-            should_yield = (
-                i > 0
-                and (i + 1) % 3 == 0  # Every 3 words
-                or word.endswith((".", "!", "?", ";", ":", "\n"))  # At sentence boundaries and line breaks
-                or i == len(words) - 1  # Last word
-            )
-
-            if should_yield:
-                yield {"type": "text", "text": current_chunk, "message_id": message_id}
-                current_chunk = ""
-
-                # Small delay to simulate streaming (adjust as needed)
-                await asyncio.sleep(0.05)  # 50ms delay between chunks
 
     def _get_cursor_rules(self) -> str:
         """
@@ -323,8 +282,9 @@ Project Guidelines & Cursor Rules
         self.total_output_tokens += output_tokens
         logger.debug(f"📊 Added {output_tokens} output tokens")
 
-        async for text_event in self._simulate_text_streaming(block.text, message_id):
-            yield text_event
+        # Yield the complete text directly without streaming simulation
+        if block.text.strip():
+            yield {"type": "text", "text": block.text, "message_id": message_id}
 
     def _create_tool_start_event(self, block: ToolUseBlock, block_idx: int) -> dict[str, Any]:
         """Create tool start event from tool use block"""

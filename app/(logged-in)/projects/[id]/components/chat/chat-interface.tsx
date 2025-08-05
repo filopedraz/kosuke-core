@@ -75,6 +75,8 @@ export default function ChatInterface({
     cancelStream,
   } = sendMessageMutation;
 
+
+
   const {
     isError,
     errorMessage,
@@ -259,7 +261,7 @@ export default function ChatInterface({
               )}
 
                             {/* Real-time streaming assistant response - use same layout as stored messages */}
-              {isStreaming && streamingAssistantMessageId && streamingContentBlocks && streamingContentBlocks.length > 0 && (
+              {isStreaming && streamingAssistantMessageId && (
                 <div className="animate-in fade-in-0 duration-300">
                   <div className="flex w-full max-w-[95%] mx-auto gap-3 p-4" role="listitem">
                     {/* Avatar column - same as ChatMessage */}
@@ -279,14 +281,26 @@ export default function ChatInterface({
                       </div>
 
                       {/* Full-width assistant response */}
-                      <AssistantResponse
-                        response={{
-                          id: streamingAssistantMessageId,
-                          contentBlocks: streamingContentBlocks,
-                          timestamp: new Date(),
-                          status: 'streaming',
-                        }}
-                      />
+                      {streamingContentBlocks && streamingContentBlocks.length > 0 ? (
+                        <AssistantResponse
+                          response={{
+                            id: streamingAssistantMessageId!,
+                            contentBlocks: streamingContentBlocks,
+                            timestamp: new Date(),
+                            status: 'streaming',
+                          }}
+                        />
+                      ) : (
+                        // Show loading state when streaming but no content blocks yet
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <div className="flex space-x-1">
+                            <div className="w-2 h-2 bg-primary rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                            <div className="w-2 h-2 bg-primary rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                            <div className="w-2 h-2 bg-primary rounded-full animate-bounce"></div>
+                          </div>
+                          <span className="animate-pulse">Processing request...</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

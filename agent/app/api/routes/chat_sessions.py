@@ -1,6 +1,7 @@
 """
 Chat Sessions API - Handles session-aware chat requests
 """
+import json
 import logging
 from collections.abc import AsyncGenerator
 
@@ -71,15 +72,17 @@ async def chat_with_session(request: ChatSessionRequest):
         async def stream_response() -> AsyncGenerator[str, None]:
             try:
                 async for chunk in agent.run(request.prompt):
-                    # Format as Server-Sent Events
-                    yield f"data: {chunk}\n\n"
+                    # Format as Server-Sent Events with proper JSON serialization
+                    data = json.dumps(chunk, default=str)
+                    yield f"data: {data}\n\n"
 
                 # Send completion marker
                 yield "data: [DONE]\n\n"
 
             except Exception as stream_error:
                 logger.error(f"❌ Error in stream processing: {stream_error}")
-                yield f"data: {{'type': 'error', 'message': 'Stream processing error: {stream_error}'}}\n\n"
+                error_data = {"type": "error", "message": f"Stream processing error: {stream_error}"}
+                yield f"data: {json.dumps(error_data)}\n\n"
 
         return StreamingResponse(
             stream_response(),
