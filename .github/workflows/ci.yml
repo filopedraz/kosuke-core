@@ -9,7 +9,7 @@ on:
 jobs:
   test-nextjs:
     name: Test and Lint Next.js
-    runs-on: blacksmith-2vcpu-ubuntu-2204
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -40,7 +40,7 @@ jobs:
 
   test-agent:
     name: Test Python Agent
-    runs-on: blacksmith-2vcpu-ubuntu-2204
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
