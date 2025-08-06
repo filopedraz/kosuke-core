@@ -11,7 +11,6 @@ from fastapi.responses import StreamingResponse
 
 from app.core.agent import Agent
 from app.models.requests import ChatSessionRequest
-from app.models.responses import ChatResponse
 from app.services.session_manager import SessionManager
 
 logger = logging.getLogger(__name__)
