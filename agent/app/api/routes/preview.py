@@ -6,6 +6,8 @@ from fastapi import Depends
 from fastapi import HTTPException
 
 from app.models.preview import PreviewStatus
+from app.models.preview import PullRequest
+from app.models.preview import PullResponse
 from app.models.preview import StartPreviewRequest
 from app.models.preview import StopPreviewRequest
 from app.services.docker_service import DockerService
@@ -114,6 +116,35 @@ async def stop_all_previews(docker_service: Annotated[DockerService, Depends(get
     except Exception as e:
         logger.error(f"Error stopping all previews: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to stop all previews: {e!s}") from e
+
+
+@router.post("/preview/pull")
+async def pull_project(
+    request: PullRequest, docker_service: Annotated[DockerService, Depends(get_docker_service)]
+) -> PullResponse:
+    """Pull latest changes for a project or session"""
+    try:
+        # Use "main" as default session_id for main branch pulls
+        session_id = request.session_id or "main"
+
+        git_status = await docker_service.pull_branch(request.project_id, session_id, force=request.force)
+
+        # Check if we need to restart the container to apply changes
+        container_restarted = False
+        if git_status.get("success") and git_status.get("commits_pulled", 0) > 0:
+            # Restart container if it's running and there were changes
+            container_running = await docker_service.is_container_running(request.project_id, session_id)
+            if container_running:
+                await docker_service.restart_preview_container(request.project_id, session_id)
+                container_restarted = True
+
+        return PullResponse(
+            success=git_status.get("success", False), git_status=git_status, container_restarted=container_restarted
+        )
+    except Exception as e:
+        session_id = request.session_id or "main"
+        logger.error(f"Error pulling project {request.project_id} session {session_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to pull: {e!s}") from e
 
 
 @router.get("/preview/health")

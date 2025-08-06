@@ -41,3 +41,15 @@ class StartPreviewRequest(BaseModel):
 class StopPreviewRequest(BaseModel):
     project_id: int
     session_id: str | None = None  # Optional for main branch
+
+
+class PullRequest(BaseModel):
+    project_id: int
+    session_id: str | None = None  # Optional for main branch
+    force: bool = False  # Force pull (ignore cache)
+
+
+class PullResponse(BaseModel):
+    success: bool
+    git_status: GitUpdateStatus
+    container_restarted: bool = False

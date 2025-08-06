@@ -258,12 +258,6 @@ class DockerService:
                 logger.info(f"Creating session environment for {session_id}")
                 self.session_manager.create_session_environment(project_id, session_id)
 
-            # Update main branch if this is a main session
-            if session_id == "main":
-                logger.info(f"Updating main branch for project {project_id} before starting preview")
-                git_status = await self.session_manager.update_main_branch(project_id)
-                logger.info(f"Git update status for project {project_id}: {git_status}")
-
         except Exception as e:
             logger.error(f"Failed to create/validate session environment: {e}")
             raise Exception(f"Session environment setup failed: {e}") from e
@@ -459,16 +453,8 @@ class DockerService:
             # Try to detect existing Docker container
             existing = await self._get_existing_container(self._get_container_name(project_id, session_id))
             if existing:
-                # For main branch containers, check for git updates even when recovering
+                # Skip automatic git update for recovered containers - user will manually pull when needed
                 git_status = None
-                if session_id == "main":
-                    try:
-                        git_status_dict = await self.session_manager.update_main_branch(project_id)
-                        if git_status_dict:
-                            git_status = GitUpdateStatus(**git_status_dict)
-                    except Exception as e:
-                        logger.error(f"Failed to get git status for recovered container: {e}")
-
                 # Restore container info to memory
                 container_info = ContainerInfo(
                     project_id=project_id,
@@ -519,3 +505,66 @@ class DockerService:
         tasks = [self.stop_preview(project_id, session_id) for project_id, session_id in container_keys]
         if tasks:
             await asyncio.gather(*tasks, return_exceptions=True)
+
+    async def pull_branch(self, project_id: int, session_id: str, force: bool = False) -> dict:
+        """Pull latest changes for a project branch or session branch"""
+        try:
+            if session_id == "main":
+                # For main branch, use the session manager's pull method but remove caching
+                return await self.session_manager.pull_main_branch(project_id, force=force)
+            # For session branches, pull the specific session branch
+            return await self.session_manager.pull_session_branch(project_id, session_id, force=force)
+        except Exception as e:
+            logger.error(f"Error pulling branch for project {project_id} session {session_id}: {e}")
+            raise
+
+    async def is_container_running(self, project_id: int, session_id: str) -> bool:
+        """Check if a container is currently running"""
+        container_key = (project_id, session_id)
+        if container_key not in self.containers:
+            return False
+
+        container_info = self.containers[container_key]
+        try:
+            loop = asyncio.get_event_loop()
+            container = await asyncio.wait_for(
+                loop.run_in_executor(None, self.client.containers.get, container_info.container_id), timeout=5.0
+            )
+            return container.status == "running"
+        except (NotFound, asyncio.TimeoutError):
+            return False
+        except Exception as e:
+            logger.error(f"Error checking container status: {e}")
+            return False
+
+    async def restart_preview_container(self, project_id: int, session_id: str) -> None:
+        """Restart a preview container to apply pulled changes"""
+        container_key = (project_id, session_id)
+        if container_key not in self.containers:
+            logger.warning(f"Container not found for project {project_id} session {session_id}")
+            return
+
+        container_info = self.containers[container_key]
+        try:
+            loop = asyncio.get_event_loop()
+            container = await asyncio.wait_for(
+                loop.run_in_executor(None, self.client.containers.get, container_info.container_id), timeout=5.0
+            )
+
+            # Restart the container to apply changes
+            logger.info(f"Restarting container for project {project_id} session {session_id}")
+            await asyncio.wait_for(loop.run_in_executor(None, container.restart), timeout=30.0)
+
+            # Reset compilation status since container restarted
+            self.containers[container_key].compilation_complete = False
+
+            # Start monitoring compilation again
+            _monitor_task = asyncio.create_task(self._monitor_compilation_async(project_id, session_id))
+
+            logger.info(f"Container restarted successfully for project {project_id} session {session_id}")
+
+        except (NotFound, asyncio.TimeoutError):
+            logger.error(f"Container not found or timeout when restarting project {project_id} session {session_id}")
+        except Exception as e:
+            logger.error(f"Error restarting container for project {project_id} session {session_id}: {e}")
+            raise

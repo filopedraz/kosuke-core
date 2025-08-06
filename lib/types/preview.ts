@@ -3,13 +3,25 @@
 // Git Update Status Types
 export interface GitUpdateStatus {
   success: boolean;
-  action: 'cached' | 'pulled' | 'error';
+  action: 'cached' | 'pulled' | 'error' | 'no_remote';
   message: string;
   commits_pulled: number;
   last_pull_time?: string;
   previous_commit?: string;
   new_commit?: string;
   error?: string;
+  branch_name?: string;
+}
+
+// Pull Operation Types
+export interface PullRequest {
+  force?: boolean;
+}
+
+export interface PullResponse {
+  success: boolean;
+  git_status: GitUpdateStatus;
+  container_restarted: boolean;
 }
 
 // Preview Status Types

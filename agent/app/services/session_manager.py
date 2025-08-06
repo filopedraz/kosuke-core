@@ -26,6 +26,106 @@ class SessionManager:
         self.PULL_CACHE_MINUTES = 60
         logger.info("SessionManager initialized")
 
+    async def pull_main_branch(self, project_id: int, force: bool = False, default_branch: str = "main") -> dict:
+        """
+        Pull latest changes for main project directory (manual operation).
+        Always performs pull when called, ignoring cache unless force=False.
+
+        Args:
+            project_id: Project identifier
+            force: If True, always pull. If False, respect cache
+            default_branch: Default branch to pull from
+
+        Returns:
+            dict: Update status with success/error information and commit count
+        """
+        try:
+            main_project_path = Path(settings.projects_dir) / str(project_id)
+
+            # Check cache only if force=False
+            if not force:
+                last_pull = self.last_main_pull.get(project_id)
+                now = datetime.now()
+
+                if last_pull and (now - last_pull) < timedelta(minutes=self.PULL_CACHE_MINUTES):
+                    minutes_since_pull = int((now - last_pull).total_seconds() / 60)
+                    logger.info(
+                        f"Skipping git pull for project {project_id} - last pulled {minutes_since_pull} minutes ago"
+                    )
+                    return {
+                        "success": True,
+                        "action": "cached",
+                        "message": f"Using cached version from {minutes_since_pull} minutes ago",
+                        "commits_pulled": 0,
+                        "last_pull_time": last_pull.isoformat(),
+                    }
+
+            # Ensure main project exists
+            if not main_project_path.exists():
+                raise Exception(f"Main project directory does not exist: {main_project_path}")
+
+            # Initialize git repo
+            repo = git.Repo(main_project_path)
+
+            # Get current commit hash before pull
+            current_commit = repo.head.commit.hexsha
+
+            logger.info(f"Pulling main branch for project {project_id} from {default_branch}")
+
+            try:
+                # Fetch latest changes
+                logger.info(f"Fetching latest changes for project {project_id}")
+                repo.remotes.origin.fetch()
+
+                # Always use hard reset for manual pulls
+                logger.info(f"Performing hard reset for project {project_id}")
+                repo.git.reset("--hard", f"origin/{default_branch}")
+
+            except git.exc.GitCommandError as e:
+                logger.error(f"Hard reset failed for project {project_id}: {e}")
+                raise Exception(f"Failed to pull: {e}") from e
+
+            # Get new commit hash and count commits pulled
+            new_commit = repo.head.commit.hexsha
+            commits_pulled = 0
+
+            if current_commit != new_commit:
+                # Count commits between old and new
+                try:
+                    commits = list(repo.iter_commits(f"{current_commit}..{new_commit}"))
+                    commits_pulled = len(commits)
+                    logger.info(f"Pulled {commits_pulled} new commits for project {project_id}")
+                except git.exc.GitCommandError:
+                    # If we can't count commits, at least we know something changed
+                    commits_pulled = 1
+                    logger.info(f"Updated project {project_id} (commit count unavailable)")
+            else:
+                logger.info(f"No new commits for project {project_id}")
+
+            # Update cache
+            now = datetime.now()
+            self.last_main_pull[project_id] = now
+
+            return {
+                "success": True,
+                "action": "pulled",
+                "message": f"Updated with {commits_pulled} new commits" if commits_pulled > 0 else "Already up to date",
+                "commits_pulled": commits_pulled,
+                "last_pull_time": now.isoformat(),
+                "previous_commit": current_commit[:8],
+                "new_commit": new_commit[:8],
+            }
+
+        except Exception as e:
+            logger.error(f"❌ Failed to pull main branch for project {project_id}: {e}")
+            return {
+                "success": False,
+                "action": "error",
+                "message": f"Failed to pull: {e}",
+                "commits_pulled": 0,
+                "error": str(e),
+            }
+
     async def update_main_branch(self, project_id: int, default_branch: str = "main") -> dict:
         """
         Update main project directory with latest changes from remote.
@@ -374,3 +474,101 @@ class SessionManager:
         except Exception as e:
             logger.error(f"Error validating session directory: {e}")
             return False
+
+    async def pull_session_branch(self, project_id: int, session_id: str, force: bool = False) -> dict:
+        """
+        Pull latest changes for a session branch from its remote branch.
+
+        Args:
+            project_id: Project identifier
+            session_id: Session identifier
+            force: If True, always pull (ignored for now, sessions always pull)
+
+        Returns:
+            dict: Update status with success/error information and commit count
+        """
+        try:
+            session_path = Path(self.get_session_path(project_id, session_id))
+
+            # Ensure session directory exists
+            if not session_path.exists():
+                raise Exception(f"Session directory does not exist: {session_path}")
+
+            # Initialize git repo
+            repo = git.Repo(session_path)
+
+            # Get the session branch name
+            session_branch_name = f"kosuke/chat-{session_id}"
+
+            # Get current commit hash before pull
+            current_commit = repo.head.commit.hexsha
+
+            logger.info(f"Pulling session branch {session_branch_name} for project {project_id}")
+
+            # Fetch latest changes from remote
+            logger.info(f"Fetching latest changes for session {session_id}")
+            repo.remotes.origin.fetch()
+
+            # Check if remote branch exists
+            remote_branch = f"origin/{session_branch_name}"
+            try:
+                repo.commit(remote_branch)
+                remote_exists = True
+            except git.exc.BadName:
+                remote_exists = False
+                logger.info(f"Remote branch {session_branch_name} doesn't exist, no changes to pull")
+
+            if remote_exists:
+                # Hard reset to remote session branch
+                logger.info(f"Performing hard reset to {remote_branch}")
+                repo.git.reset("--hard", remote_branch)
+            else:
+                # No remote branch exists yet, this is normal for new sessions
+                logger.info(f"No remote branch {session_branch_name} found, session is up to date")
+                return {
+                    "success": True,
+                    "action": "no_remote",
+                    "message": "No remote branch found, session is up to date",
+                    "commits_pulled": 0,
+                    "last_pull_time": datetime.now().isoformat(),
+                }
+
+            # Get new commit hash and count commits pulled
+            new_commit = repo.head.commit.hexsha
+            commits_pulled = 0
+
+            if current_commit != new_commit:
+                # Count commits between old and new
+                try:
+                    commits = list(repo.iter_commits(f"{current_commit}..{new_commit}"))
+                    commits_pulled = len(commits)
+                    logger.info(f"Pulled {commits_pulled} new commits for session {session_id}")
+                except git.exc.GitCommandError:
+                    # If we can't count commits, at least we know something changed
+                    commits_pulled = 1
+                    logger.info(f"Updated session {session_id} (commit count unavailable)")
+            else:
+                logger.info(f"No new commits for session {session_id}")
+
+            now = datetime.now()
+            return {
+                "success": True,
+                "action": "pulled",
+                "message": f"Updated with {commits_pulled} new commits" if commits_pulled > 0 else "Already up to date",
+                "commits_pulled": commits_pulled,
+                "last_pull_time": now.isoformat(),
+                "previous_commit": current_commit[:8],
+                "new_commit": new_commit[:8],
+                "branch_name": session_branch_name,
+            }
+
+        except Exception as e:
+            logger.error(f"❌ Failed to pull session branch for project {project_id} session {session_id}: {e}")
+            return {
+                "success": False,
+                "action": "error",
+                "message": f"Failed to pull session branch: {e}",
+                "commits_pulled": 0,
+                "error": str(e),
+                "branch_name": f"kosuke/chat-{session_id}",
+            }

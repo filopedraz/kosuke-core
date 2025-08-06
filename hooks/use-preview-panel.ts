@@ -2,10 +2,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useToast } from '@/hooks/use-toast';
 import type {
+  GitUpdateStatus,
   PreviewStatus,
   UsePreviewPanelOptions,
   UsePreviewPanelReturn,
-  GitUpdateStatus,
 } from '@/lib/types';
 import { useStartPreview } from './use-preview-status';
 
@@ -151,24 +151,13 @@ export function usePreviewPanel({
         const data = await response.json();
         console.log(`[Preview Panel] Preview status response:`, data);
 
-        // Handle git status information for main branch
+        // Handle git status information (for manual pulls only now)
         if (data.git_status && (!sessionId || sessionId === 'main')) {
           setGitStatus(data.git_status);
           console.log('[Preview Panel] Git status:', data.git_status);
 
-          // Show toast for git updates
-          if (data.git_status.action === 'pulled' && data.git_status.commits_pulled > 0) {
-            toast({
-              title: 'Updated to latest version',
-              description: `Pulled ${data.git_status.commits_pulled} new commit${data.git_status.commits_pulled === 1 ? '' : 's'}`,
-            });
-          } else if (data.git_status.action === 'error') {
-            toast({
-              variant: 'destructive',
-              title: 'Git update failed',
-              description: data.git_status.message,
-            });
-          }
+          // Note: Toast notifications for git updates are now handled by the pull hook
+          // since we removed automatic pulling
         }
 
         if (data.previewUrl || data.url) {
@@ -297,17 +286,6 @@ export function usePreviewPanel({
 
   // Get the status message based on current status
   const getStatusMessage = useCallback(() => {
-    // Show git status message when updating main branch
-    if (status === 'loading' && gitStatus) {
-      if (gitStatus.action === 'pulled') {
-        return gitStatus.commits_pulled > 0
-          ? `Updated with ${gitStatus.commits_pulled} new commit${gitStatus.commits_pulled === 1 ? '' : 's'}`
-          : 'Already up to date';
-      } else if (gitStatus.action === 'cached') {
-        return 'Using cached version, loading preview...';
-      }
-    }
-
     switch (status) {
       case 'ready':
         return 'Preview is ready!';
@@ -316,7 +294,7 @@ export function usePreviewPanel({
       case 'error':
         return error || 'Error loading preview.';
     }
-  }, [status, error, gitStatus]);
+  }, [status, error]);
 
   // Get the status icon type based on current status
   const getStatusIconType = useCallback(() => {
