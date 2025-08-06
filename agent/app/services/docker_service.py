@@ -8,6 +8,7 @@ import docker
 from docker.errors import NotFound
 
 from app.models.preview import ContainerInfo
+from app.models.preview import GitUpdateStatus
 from app.models.preview import PreviewStatus
 from app.services.session_manager import SessionManager
 from app.utils.config import settings
@@ -194,18 +195,28 @@ class DockerService:
 
         return None
 
-    async def _handle_existing_container(self, project_id: int, session_id: str, container_name: str) -> str | None:
+    async def _handle_existing_container(
+        self, project_id: int, session_id: str, container_name: str, git_status: dict | None = None
+    ) -> str | None:
         """Handle existing container if found"""
         container_key = (project_id, session_id)
 
         # Check if container already exists in memory
         if container_key in self.containers:
             container_info = self.containers[container_key]
+            # Update git status for existing container in memory
+            if git_status:
+                container_info.git_status = GitUpdateStatus(**git_status)
             return container_info.url
 
         # Check for existing Docker container
         existing = await self._get_existing_container(container_name)
         if existing:
+            # Convert git_status dict to GitUpdateStatus model if present
+            git_update_status = None
+            if git_status:
+                git_update_status = GitUpdateStatus(**git_status)
+
             container_info = ContainerInfo(
                 project_id=project_id,
                 session_id=session_id,
@@ -214,6 +225,7 @@ class DockerService:
                 port=existing["host_port"],
                 url=existing["url"],
                 compilation_complete=True,
+                git_status=git_update_status,  # Include git status for existing containers
             )
             self.containers[container_key] = container_info
             return existing["url"]
@@ -228,8 +240,13 @@ class DockerService:
         # For chat sessions, use the session subdirectory
         return Path(self.host_projects_dir) / str(project_id) / "sessions" / session_id
 
-    async def _ensure_session_environment(self, project_id: int, session_id: str) -> None:
-        """Ensure session environment exists"""
+    async def _ensure_session_environment(self, project_id: int, session_id: str) -> dict | None:
+        """
+        Ensure session environment exists and update main branch if needed.
+        Returns git pull status for main branch updates.
+        """
+        git_status = None
+
         try:
             session_path = self.session_manager.get_session_path(project_id, session_id)
             if not self.session_manager.validate_session_directory(project_id, session_id):
@@ -240,12 +257,20 @@ class DockerService:
                 # For chat sessions, create the session environment
                 logger.info(f"Creating session environment for {session_id}")
                 self.session_manager.create_session_environment(project_id, session_id)
+
         except Exception as e:
             logger.error(f"Failed to create/validate session environment: {e}")
             raise Exception(f"Session environment setup failed: {e}") from e
 
+        return git_status
+
     async def _create_new_container(
-        self, project_id: int, session_id: str, container_name: str, env_vars: dict[str, str]
+        self,
+        project_id: int,
+        session_id: str,
+        container_name: str,
+        env_vars: dict[str, str],
+        git_status: dict | None = None,
     ) -> str:
         """Create a new container for the session"""
         host_port = self._get_random_port()
@@ -279,6 +304,12 @@ class DockerService:
         )
 
         url = f"http://localhost:{host_port}"
+
+        # Convert git_status dict to GitUpdateStatus model if present
+        git_update_status = None
+        if git_status:
+            git_update_status = GitUpdateStatus(**git_status)
+
         container_info = ContainerInfo(
             project_id=project_id,
             session_id=session_id,
@@ -287,6 +318,7 @@ class DockerService:
             port=host_port,
             url=url,
             compilation_complete=False,
+            git_status=git_update_status,
         )
 
         container_key = (project_id, session_id)
@@ -297,7 +329,7 @@ class DockerService:
 
         return url
 
-    async def _handle_container_conflict(self, project_id: int, session_id: str, container_name: str) -> str:
+    async def _handle_container_conflict(self, project_id: int, session_id: str, container_name: str) -> str | None:
         """Handle container name conflict by trying to recover existing container"""
         logger.info(
             f"Container name conflict for project {project_id} session {session_id}, "
@@ -314,6 +346,7 @@ class DockerService:
                 port=existing["host_port"],
                 url=existing["url"],
                 compilation_complete=True,
+                git_status=None,  # No git status for conflict recovery
             )
             container_key = (project_id, session_id)
             self.containers[container_key] = container_info
@@ -327,19 +360,21 @@ class DockerService:
 
         container_name = self._get_container_name(project_id, session_id)
 
-        # Check for existing containers first
-        existing_url = await self._handle_existing_container(project_id, session_id, container_name)
+        # Always ensure session environment and get git status (even for existing containers)
+        git_status = await self._ensure_session_environment(project_id, session_id)
+
+        # Check for existing containers
+        existing_url = await self._handle_existing_container(project_id, session_id, container_name, git_status)
         if existing_url:
             return existing_url
-
-        # Ensure session environment exists
-        await self._ensure_session_environment(project_id, session_id)
 
         # Ensure session database (don't wait for it to complete)
         _db_task = asyncio.create_task(self._ensure_session_database(project_id, session_id))
 
         try:
-            return await self._create_new_container(project_id, session_id, container_name, env_vars)
+            return await self._create_new_container(
+                project_id, session_id, container_name, env_vars, git_status=git_status
+            )
         except asyncio.TimeoutError:
             logger.error(f"Container creation timeout for project {project_id} session {session_id}")
             raise Exception("Container creation timeout") from None
@@ -418,6 +453,8 @@ class DockerService:
             # Try to detect existing Docker container
             existing = await self._get_existing_container(self._get_container_name(project_id, session_id))
             if existing:
+                # Skip automatic git update for recovered containers - user will manually pull when needed
+                git_status = None
                 # Restore container info to memory
                 container_info = ContainerInfo(
                     project_id=project_id,
@@ -427,6 +464,7 @@ class DockerService:
                     port=existing["host_port"],
                     url=existing["url"],
                     compilation_complete=True,  # Assume running container is compiled
+                    git_status=git_status,  # Include git status for main branch
                 )
                 self.containers[container_key] = container_info
 
@@ -438,10 +476,13 @@ class DockerService:
                     url=existing["url"],
                     compilation_complete=True,
                     is_responding=is_responding,
+                    git_status=git_status,
                 )
 
             # No container found
-            return PreviewStatus(running=False, url=None, compilation_complete=False, is_responding=False)
+            return PreviewStatus(
+                running=False, url=None, compilation_complete=False, is_responding=False, git_status=None
+            )
 
         container_info = self.containers[container_key]
 
@@ -453,6 +494,7 @@ class DockerService:
             url=container_info.url,
             compilation_complete=container_info.compilation_complete,
             is_responding=is_responding,
+            git_status=container_info.git_status,
         )
 
     async def stop_all_previews(self) -> None:
@@ -463,3 +505,66 @@ class DockerService:
         tasks = [self.stop_preview(project_id, session_id) for project_id, session_id in container_keys]
         if tasks:
             await asyncio.gather(*tasks, return_exceptions=True)
+
+    async def pull_branch(self, project_id: int, session_id: str, force: bool = False) -> dict:
+        """Pull latest changes for a project branch or session branch"""
+        try:
+            if session_id == "main":
+                # For main branch, use the session manager's pull method but remove caching
+                return await self.session_manager.pull_main_branch(project_id, force=force)
+            # For session branches, pull the specific session branch
+            return await self.session_manager.pull_session_branch(project_id, session_id, force=force)
+        except Exception as e:
+            logger.error(f"Error pulling branch for project {project_id} session {session_id}: {e}")
+            raise
+
+    async def is_container_running(self, project_id: int, session_id: str) -> bool:
+        """Check if a container is currently running"""
+        container_key = (project_id, session_id)
+        if container_key not in self.containers:
+            return False
+
+        container_info = self.containers[container_key]
+        try:
+            loop = asyncio.get_event_loop()
+            container = await asyncio.wait_for(
+                loop.run_in_executor(None, self.client.containers.get, container_info.container_id), timeout=5.0
+            )
+            return container.status == "running"
+        except (NotFound, asyncio.TimeoutError):
+            return False
+        except Exception as e:
+            logger.error(f"Error checking container status: {e}")
+            return False
+
+    async def restart_preview_container(self, project_id: int, session_id: str) -> None:
+        """Restart a preview container to apply pulled changes"""
+        container_key = (project_id, session_id)
+        if container_key not in self.containers:
+            logger.warning(f"Container not found for project {project_id} session {session_id}")
+            return
+
+        container_info = self.containers[container_key]
+        try:
+            loop = asyncio.get_event_loop()
+            container = await asyncio.wait_for(
+                loop.run_in_executor(None, self.client.containers.get, container_info.container_id), timeout=5.0
+            )
+
+            # Restart the container to apply changes
+            logger.info(f"Restarting container for project {project_id} session {session_id}")
+            await asyncio.wait_for(loop.run_in_executor(None, container.restart), timeout=30.0)
+
+            # Reset compilation status since container restarted
+            self.containers[container_key].compilation_complete = False
+
+            # Start monitoring compilation again
+            _monitor_task = asyncio.create_task(self._monitor_compilation_async(project_id, session_id))
+
+            logger.info(f"Container restarted successfully for project {project_id} session {session_id}")
+
+        except (NotFound, asyncio.TimeoutError):
+            logger.error(f"Container not found or timeout when restarting project {project_id} session {session_id}")
+        except Exception as e:
+            logger.error(f"Error restarting container for project {project_id} session {session_id}: {e}")
+            raise

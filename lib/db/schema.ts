@@ -82,6 +82,11 @@ export const chatSessions = pgTable('chat_sessions', {
   lastActivityAt: timestamp('last_activity_at').notNull().defaultNow(),
   messageCount: integer('message_count').default(0),
   isDefault: boolean('is_default').default(false),
+  // GitHub merge status
+  branchMergedAt: timestamp('branch_merged_at'),
+  branchMergedBy: varchar('branch_merged_by', { length: 100 }),
+  mergeCommitSha: varchar('merge_commit_sha', { length: 40 }),
+  pullRequestNumber: integer('pull_request_number'),
 });
 
 export const chatMessages = pgTable('chat_messages', {

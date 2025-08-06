@@ -1,5 +1,29 @@
 // Preview Panel and Project Preview Types
 
+// Git Update Status Types
+export interface GitUpdateStatus {
+  success: boolean;
+  action: 'cached' | 'pulled' | 'error' | 'no_remote';
+  message: string;
+  commits_pulled: number;
+  last_pull_time?: string;
+  previous_commit?: string;
+  new_commit?: string;
+  error?: string;
+  branch_name?: string;
+}
+
+// Pull Operation Types
+export interface PullRequest {
+  force?: boolean;
+}
+
+export interface PullResponse {
+  success: boolean;
+  git_status: GitUpdateStatus;
+  container_restarted: boolean;
+}
+
 // Preview Status Types
 export type PreviewStatus = 'loading' | 'ready' | 'error';
 export type BuildStatus = 'building' | 'compiling' | 'ready' | 'error';
@@ -13,6 +37,7 @@ export interface PreviewPanelState {
   iframeKey: number;
   isDownloading: boolean;
   isRequestInProgress: boolean;
+  gitStatus?: GitUpdateStatus | null;
 }
 
 // Server Health Check Types
@@ -67,6 +92,10 @@ export interface PreviewStatusResponse {
   previewUrl?: string;
   progress?: number;
   error?: string;
+  running?: boolean;
+  compilation_complete?: boolean;
+  is_responding?: boolean;
+  git_status?: GitUpdateStatus;
 }
 
 export interface StartPreviewResponse {
@@ -74,6 +103,11 @@ export interface StartPreviewResponse {
   url?: string;
   previewUrl?: string;
   error?: string;
+  project_id?: number;
+  session_id?: string;
+  compilation_complete?: boolean;
+  is_responding?: boolean;
+  git_status?: GitUpdateStatus;
 }
 
 export interface StopPreviewResponse {
@@ -97,6 +131,7 @@ export interface UsePreviewPanelReturn {
   iframeKey: number;
   isDownloading: boolean;
   isStarting: boolean;
+  gitStatus?: GitUpdateStatus | null;
 
   // Actions
   handleRefresh: (forceStart?: boolean) => Promise<void>;

@@ -1,6 +1,6 @@
 'use client';
 
-import { CheckCircle, Download, ExternalLink, Github, Loader2, RefreshCw, XCircle } from 'lucide-react';
+import { CheckCircle, Download, ExternalLink, GitBranch, Github, GitPullRequest, Loader2, RefreshCw, XCircle } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,14 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Progress } from '@/components/ui/progress';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { usePreviewPanel } from '@/hooks/use-preview-panel';
+import { usePullBranch } from '@/hooks/use-pull-branch';
 import { cn } from '@/lib/utils';
 import DownloadingModal from './downloading-modal';
 
@@ -38,6 +45,7 @@ export default function PreviewPanel({
     iframeKey,
     isDownloading,
     isStarting,
+    gitStatus,
     // Actions
     handleRefresh,
     openInNewTab,
@@ -52,6 +60,28 @@ export default function PreviewPanel({
     projectName,
   });
 
+  // Pull branch hook
+  const { mutateAsync: pullBranch, isPending: isPulling } = usePullBranch({
+    projectId,
+    sessionId: sessionId || undefined,
+    onSuccess: () => {
+      // Refresh preview after successful pull
+      setTimeout(() => {
+        handleRefresh();
+      }, 1000);
+    },
+  });
+
+  // Handle pull branch
+  const handlePullBranch = async () => {
+    try {
+      await pullBranch({ force: true });
+    } catch (error) {
+      // Error handling is done in the hook
+      console.error('Pull failed:', error);
+    }
+  };
+
   // Render status icon based on status type
   const renderStatusIcon = () => {
     const iconType = getStatusIconType();
@@ -65,18 +95,69 @@ export default function PreviewPanel({
     }
   };
 
+  // Render git status badge for main branch previews
+  const renderGitStatus = () => {
+    if (!gitStatus || sessionId) return null; // Only show for main branch
+
+    return (
+      <div className="flex items-center space-x-1 text-xs text-muted-foreground">
+        <GitBranch className="h-3 w-3" />
+        <span>
+          {gitStatus.action === 'pulled' && gitStatus.commits_pulled > 0
+            ? `${gitStatus.commits_pulled} new commit${gitStatus.commits_pulled === 1 ? '' : 's'}`
+            : gitStatus.action === 'cached'
+            ? 'cached'
+            : gitStatus.action === 'error'
+            ? 'git error'
+            : 'up to date'
+          }
+        </span>
+      </div>
+    );
+  };
   // Determine branch name to display
   const displayBranch = branch || (sessionId ? 'chat-session' : 'main');
 
+  // Get tooltip message based on branch type and state
+  const getTooltipMessage = () => {
+    if (isPulling) {
+      return sessionId
+        ? `Pulling latest changes from kosuke/chat-${sessionId} branch...`
+        : 'Pulling latest changes from main branch...';
+    }
+    return sessionId
+      ? `Pull latest changes from kosuke/chat-${sessionId} branch`
+      : 'Pull latest changes from main branch';
+  };
+
   return (
-    <div className={cn('flex flex-col h-full w-full overflow-hidden', className)} data-testid="preview-panel">
-      <div className="flex items-center justify-between px-4 py-2 border-b">
-        <div className="flex items-center gap-2">
-          <h3 className="text-sm font-medium">Preview</h3>
-          <Badge variant="secondary" className="text-xs">
-            {displayBranch}
-          </Badge>
-        </div>
+    <TooltipProvider>
+      <div className={cn('flex flex-col h-full w-full overflow-hidden', className)} data-testid="preview-panel">
+        <div className="flex items-center justify-between px-4 py-2 border-b">
+          <div className="flex items-center gap-2">
+            <h3 className="text-sm font-medium">Preview</h3>
+            <Badge variant="secondary" className="text-xs">
+              {displayBranch}
+              {renderGitStatus()}
+            </Badge>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handlePullBranch}
+                  disabled={isPulling || status === 'loading'}
+                  aria-label="Pull latest changes"
+                  className="h-6 px-2"
+                >
+                  <GitPullRequest className={cn("h-3 w-3", isPulling && "animate-spin")} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{getTooltipMessage()}</p>
+              </TooltipContent>
+            </Tooltip>
+          </div>
         <div className="flex items-center space-x-1">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -176,6 +257,7 @@ export default function PreviewPanel({
         </div>
       </div>
       <DownloadingModal open={isDownloading} />
-    </div>
+      </div>
+    </TooltipProvider>
   );
 }

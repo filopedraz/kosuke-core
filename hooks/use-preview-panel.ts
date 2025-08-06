@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useToast } from '@/hooks/use-toast';
-import type { PreviewStatus, UsePreviewPanelOptions, UsePreviewPanelReturn } from '@/lib/types';
+import type {
+  GitUpdateStatus,
+  PreviewStatus,
+  UsePreviewPanelOptions,
+  UsePreviewPanelReturn,
+} from '@/lib/types';
 import { useStartPreview } from './use-preview-status';
 
 export function usePreviewPanel({
@@ -25,6 +30,7 @@ export function usePreviewPanel({
   const [iframeKey, setIframeKey] = useState(0);
   const [isDownloading, setIsDownloading] = useState(false);
   const [isRequestInProgress, setIsRequestInProgress] = useState(false);
+  const [gitStatus, setGitStatus] = useState<GitUpdateStatus | null>(null);
 
   // Check if the preview server is ready
   const checkServerHealth = useCallback(async (url: string): Promise<boolean> => {
@@ -119,6 +125,7 @@ export function usePreviewPanel({
       setStatus('loading');
       setProgress(0);
       setError(null);
+      setGitStatus(null); // Reset git status on new fetch
 
       try {
         // Use main branch API when no session is selected
@@ -144,6 +151,15 @@ export function usePreviewPanel({
         const data = await response.json();
         console.log(`[Preview Panel] Preview status response:`, data);
 
+        // Handle git status information (for manual pulls only now)
+        if (data.git_status && (!sessionId || sessionId === 'main')) {
+          setGitStatus(data.git_status);
+          console.log('[Preview Panel] Git status:', data.git_status);
+
+          // Note: Toast notifications for git updates are now handled by the pull hook
+          // since we removed automatic pulling
+        }
+
         if (data.previewUrl || data.url) {
           // Use the direct preview URL (handle both previewUrl and url for compatibility)
           const url = data.previewUrl || data.url;
@@ -167,7 +183,7 @@ export function usePreviewPanel({
         setIsRequestInProgress(false);
       }
     },
-    [projectId, sessionId, pollServerUntilReady]
+    [projectId, sessionId, pollServerUntilReady, toast]
   );
 
   // Update ref when fetchPreviewUrl changes
@@ -322,6 +338,7 @@ export function usePreviewPanel({
     iframeKey,
     isDownloading,
     isStarting,
+    gitStatus,
 
     // Actions
     handleRefresh,

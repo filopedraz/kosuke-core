@@ -9,6 +9,7 @@ import {
   Edit,
   ExternalLink,
   GitBranch,
+  GitMerge,
   MessageCircle,
   MoreVertical,
   Plus,
@@ -127,6 +128,12 @@ export default function ChatSidebar({
                     )}>
                       {session.title}
                     </h3>
+                    {session.branchMergedAt && (
+                      <Badge className="text-xs px-2 py-0">
+                        <GitMerge className="h-3 w-3 mr-1" />
+                        merged
+                      </Badge>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -242,6 +249,12 @@ export default function ChatSidebar({
                           {session.isDefault && (
                             <Badge variant="secondary" className="text-xs px-1 py-0">
                               Main
+                            </Badge>
+                          )}
+                          {session.branchMergedAt && (
+                            <Badge variant="secondary" className="text-xs px-2 py-0 bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                              <GitMerge className="h-3 w-3 mr-1" />
+                              Merged
                             </Badge>
                           )}
                           {/* GitHub Branch Indicator */}
