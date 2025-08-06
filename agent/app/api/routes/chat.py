@@ -23,14 +23,12 @@ router = APIRouter()
 async def chat_stream(request: ChatSessionRequest) -> StreamingResponse:
     """
     Stream agent responses with session isolation
-    
+
     This endpoint provides Server-Sent Events streaming for the agentic workflow
     with isolated session environments for each chat session.
     """
     try:
-        logger.info(
-            f"🤖 Processing session chat stream for project {request.project_id}, session {request.session_id}"
-        )
+        logger.info(f"🤖 Processing session chat stream for project {request.project_id}, session {request.session_id}")
 
         # Initialize session manager
         session_manager = SessionManager()
@@ -91,7 +89,7 @@ async def chat_stream(request: ChatSessionRequest) -> StreamingResponse:
             media_type="text/event-stream",
             headers={
                 "Cache-Control": "no-cache, no-store, must-revalidate",
-                "Pragma": "no-cache", 
+                "Pragma": "no-cache",
                 "Expires": "0",
                 "Connection": "keep-alive",
                 "Content-Type": "text/event-stream; charset=utf-8",
@@ -125,72 +123,3 @@ async def cleanup_session(session_id: str, project_id: int):
     except Exception as e:
         logger.error(f"❌ Error cleaning up session {session_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to cleanup session: {e}") from e
-
-
-@router.post("/chat", response_model=ChatResponse)
-async def chat_simple(request: ChatSessionRequest):
-    """
-    Simple non-streaming endpoint for testing and debugging
-    
-    This endpoint collects all updates and returns them as a single response.
-    Useful for testing the agent workflow without streaming complexity.
-    """
-    try:
-        logger.info(f"🚀 Starting simple chat for project {request.project_id}, session {request.session_id}")
-        logger.info(f"📝 Prompt: {request.prompt[:100]}{'...' if len(request.prompt) > 100 else ''}")
-
-        # Initialize session manager
-        session_manager = SessionManager()
-
-        # Ensure session environment exists or create it
-        if not session_manager.validate_session_directory(request.project_id, request.session_id):
-            logger.info(f"📁 Creating session environment for {request.session_id}")
-            session_manager.create_session_environment(
-                project_id=request.project_id,
-                session_id=request.session_id,
-                base_branch="main",
-            )
-
-        # Create agent instance for this project
-        agent = Agent(
-            project_id=request.project_id,
-            session_id=request.session_id,
-            assistant_message_id=request.assistant_message_id,
-        )
-
-        # Set GitHub integration if token provided
-        if request.github_token:
-            agent.set_github_integration(request.github_token)
-
-        # Collect all updates
-        updates = []
-        async for update in agent.run(request.prompt):
-            updates.append(update)
-
-            # Safety limit to prevent memory issues
-            if len(updates) > 1000:
-                logger.warning("⚠️ Update limit reached, stopping collection")
-                break
-
-        logger.info(f"✅ Collected {len(updates)} updates")
-
-        return ChatResponse(updates=updates, success=True)
-
-    except Exception as e:
-        logger.error(f"❌ Error in simple chat: {e}")
-        raise HTTPException(status_code=500, detail=str(e)) from e
-
-
-@router.get("/test")
-async def test_endpoint():
-    """Simple test endpoint to verify the API is working"""
-    return {
-        "message": "Chat API is working!",
-        "service": "agentic-coding-pipeline",
-        "endpoints": {
-            "streaming": "/api/chat/stream", 
-            "simple": "/api/chat", 
-            "cleanup": "/api/chat/session/{session_id}/cleanup",
-            "test": "/api/test"
-        },
-    }
