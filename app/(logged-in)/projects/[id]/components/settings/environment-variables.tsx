@@ -118,17 +118,17 @@ export function EnvironmentVariables({ projectId }: EnvironmentVariablesProps) {
 
       {variables.length === 0 ? (
         <Card>
-          <CardContent className="py-8">
+          <CardContent className="py-6">
             <div className="text-center text-muted-foreground">
               No environment variables configured. Add your first variable to get started.
             </div>
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-1">
           {variables.map(variable => (
             <Card key={variable.id}>
-              <CardContent className="py-3 px-4">
+              <CardContent className="py-2 px-4">
                 <div className="flex items-center justify-between">
                   {/* Left side - Key */}
                   <div className="flex items-center gap-3 min-w-0 flex-1">
