@@ -362,6 +362,7 @@ export default function ProjectPage({ params }: ProjectPageProps) {
           ) : currentView === 'database' ? (
             <DatabaseTab
               projectId={projectId}
+              sessionId={sessionId}
             />
           ) : (
             <BrandGuidelines

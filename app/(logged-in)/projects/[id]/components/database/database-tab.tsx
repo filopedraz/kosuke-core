@@ -11,8 +11,8 @@ import { ConnectionStatus } from './connection-status';
 import { useDatabaseInfo } from '@/hooks/use-database-info';
 import type { DatabaseTabProps } from '@/lib/types';
 
-export function DatabaseTab({ projectId }: DatabaseTabProps) {
-  const { data: dbInfo, isLoading } = useDatabaseInfo(projectId);
+export function DatabaseTab({ projectId, sessionId }: DatabaseTabProps) {
+  const { data: dbInfo, isLoading } = useDatabaseInfo(projectId, sessionId);
 
   if (isLoading) {
     return (
@@ -32,7 +32,10 @@ export function DatabaseTab({ projectId }: DatabaseTabProps) {
                 <Database className="w-5 h-5" />
                 Project Database
               </CardTitle>
-              <CardDescription>Manage your project's SQLite database</CardDescription>
+              <CardDescription>
+                Manage your project's SQLite database
+                {sessionId ? ` (Session: ${sessionId})` : ' (Main Branch)'}
+              </CardDescription>
             </div>
             <ConnectionStatus connected={dbInfo?.connected || false} />
           </div>
@@ -77,15 +80,15 @@ export function DatabaseTab({ projectId }: DatabaseTabProps) {
         </TabsList>
 
         <TabsContent value="schema" className="mt-6">
-          <SchemaViewer projectId={projectId} />
+          <SchemaViewer projectId={projectId} sessionId={sessionId} />
         </TabsContent>
 
         <TabsContent value="browse" className="mt-6">
-          <TableBrowser projectId={projectId} />
+          <TableBrowser projectId={projectId} sessionId={sessionId} />
         </TabsContent>
 
         <TabsContent value="query" className="mt-6">
-          <QueryRunner projectId={projectId} />
+          <QueryRunner projectId={projectId} sessionId={sessionId} />
         </TabsContent>
       </Tabs>
     </div>

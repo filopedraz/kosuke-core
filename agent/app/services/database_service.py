@@ -7,9 +7,15 @@ import logging
 logger = logging.getLogger(__name__)
 
 class DatabaseService:
-    def __init__(self, project_id: int):
+    def __init__(self, project_id: int, session_id: str = None):
         self.project_id = project_id
-        self.db_path = f"{settings.PROJECTS_DIR}/{project_id}/database.sqlite"
+        self.session_id = session_id
+        
+        # Use session-specific database if sessionId is provided, otherwise use main database
+        if session_id:
+            self.db_path = f"{settings.PROJECTS_DIR}/{project_id}/sessions/{session_id}/database.sqlite"
+        else:
+            self.db_path = f"{settings.PROJECTS_DIR}/{project_id}/database.sqlite"
 
     def _get_connection(self) -> sqlite3.Connection:
         """Get database connection"""

@@ -10,11 +10,11 @@ import { useDatabaseQuery } from '@/hooks/use-database-query';
 import { QueryRunnerSkeleton } from './skeletons/query-runner-skeleton';
 import type { QueryRunnerProps, QueryResult } from '@/lib/types';
 
-export function QueryRunner({ projectId }: QueryRunnerProps) {
+export function QueryRunner({ projectId, sessionId }: QueryRunnerProps) {
   const [query, setQuery] = useState('SELECT * FROM sqlite_master WHERE type=\'table\';');
   const [result, setResult] = useState<QueryResult | null>(null);
   
-  const { mutate: executeQuery, isPending } = useDatabaseQuery(projectId);
+  const { mutate: executeQuery, isPending } = useDatabaseQuery(projectId, sessionId);
 
   const handleExecuteQuery = () => {
     if (!query.trim()) return;

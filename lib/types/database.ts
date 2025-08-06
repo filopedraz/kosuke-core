@@ -41,18 +41,22 @@ export interface QueryResult {
 
 export interface DatabaseTabProps {
   projectId: number;
+  sessionId?: string | null;
 }
 
 export interface SchemaViewerProps {
   projectId: number;
+  sessionId?: string | null;
 }
 
 export interface TableBrowserProps {
   projectId: number;
+  sessionId?: string | null;
 }
 
 export interface QueryRunnerProps {
   projectId: number;
+  sessionId?: string | null;
 }
 
 export interface ConnectionStatusProps {

@@ -8,8 +8,8 @@ import { useDatabaseSchema } from '@/hooks/use-database-schema';
 import { SchemaViewerSkeleton } from './skeletons/schema-viewer-skeleton';
 import type { SchemaViewerProps } from '@/lib/types';
 
-export function SchemaViewer({ projectId }: SchemaViewerProps) {
-  const { data: schema, isLoading, error } = useDatabaseSchema(projectId);
+export function SchemaViewer({ projectId, sessionId }: SchemaViewerProps) {
+  const { data: schema, isLoading, error } = useDatabaseSchema(projectId, sessionId);
 
   if (isLoading) {
     return <SchemaViewerSkeleton />;

@@ -11,15 +11,16 @@ import { useTableData } from '@/hooks/use-table-data';
 import { TableBrowserSkeleton } from './skeletons/table-browser-skeleton';
 import type { TableBrowserProps } from '@/lib/types';
 
-export function TableBrowser({ projectId }: TableBrowserProps) {
+export function TableBrowser({ projectId, sessionId }: TableBrowserProps) {
   const [selectedTable, setSelectedTable] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
   const pageSize = 100;
 
-  const { data: schema, isLoading: schemaLoading } = useDatabaseSchema(projectId);
+  const { data: schema, isLoading: schemaLoading } = useDatabaseSchema(projectId, sessionId);
   const { data: tableData, isLoading: dataLoading, error } = useTableData(
     projectId,
     selectedTable,
+    sessionId,
     pageSize,
     currentPage * pageSize
   );

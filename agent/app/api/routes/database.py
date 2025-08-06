@@ -55,3 +55,55 @@ async def execute_query(project_id: int, query_request: QueryRequest):
     except Exception as e:
         logger.error(f"Error executing query for project {project_id}: {e}")
         raise HTTPException(status_code=400, detail=str(e))
+
+# Session-specific database endpoints
+
+@router.get("/database/info/{project_id}/{session_id}", response_model=DatabaseInfo)
+async def get_session_database_info(project_id: int, session_id: str):
+    """Get database information for a specific session"""
+    try:
+        db_service = DatabaseService(project_id, session_id)
+        info = await db_service.get_database_info()
+        return DatabaseInfo(**info)
+    except Exception as e:
+        logger.error(f"Error getting database info for project {project_id}, session {session_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/database/schema/{project_id}/{session_id}", response_model=DatabaseSchema)
+async def get_session_database_schema(project_id: int, session_id: str):
+    """Get database schema for a specific session"""
+    try:
+        db_service = DatabaseService(project_id, session_id)
+        schema = await db_service.get_schema()
+        return DatabaseSchema(**schema)
+    except Exception as e:
+        logger.error(f"Error getting database schema for project {project_id}, session {session_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/database/table/{project_id}/{session_id}/{table_name}", response_model=TableData)
+async def get_session_table_data(
+    project_id: int,
+    session_id: str,
+    table_name: str,
+    limit: int = Query(100, ge=1, le=1000),
+    offset: int = Query(0, ge=0)
+):
+    """Get data from a specific table in a session database with pagination"""
+    try:
+        db_service = DatabaseService(project_id, session_id)
+        table_data = await db_service.get_table_data(table_name, limit, offset)
+        return TableData(**table_data)
+    except Exception as e:
+        logger.error(f"Error getting table data for project {project_id}, session {session_id}, table {table_name}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/database/query/{project_id}/{session_id}", response_model=QueryResult)
+async def execute_session_query(project_id: int, session_id: str, query_request: QueryRequest):
+    """Execute a SELECT query on a session database"""
+    try:
+        db_service = DatabaseService(project_id, session_id)
+        result = await db_service.execute_query(query_request.query)
+        return QueryResult(**result)
+    except Exception as e:
+        logger.error(f"Error executing query for project {project_id}, session {session_id}: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
