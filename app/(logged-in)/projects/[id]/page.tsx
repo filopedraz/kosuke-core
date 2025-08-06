@@ -254,7 +254,7 @@ export default function ProjectPage({ params }: ProjectPageProps) {
           onToggleChat: toggleChatCollapsed,
           showSidebar: showSidebar,
           onToggleSidebar: toggleSidebar,
-          activeChatSessionId: activeChatSessionId,
+          activeChatSessionId: !showSidebar ? activeChatSessionId : null,
           onCreatePullRequest: handleCreatePullRequest,
         }}
       />
