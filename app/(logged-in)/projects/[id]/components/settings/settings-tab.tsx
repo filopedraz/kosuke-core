@@ -2,8 +2,8 @@
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Settings } from 'lucide-react';
-import { EnvironmentVariables } from './environment-variables';
 import DefaultBranchSettings from './default-branch-settings';
+import { EnvironmentVariables } from './environment-variables';
 
 interface SettingsTabProps {
   projectId: number;

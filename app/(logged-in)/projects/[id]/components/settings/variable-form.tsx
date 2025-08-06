@@ -1,9 +1,5 @@
 'use client';
 
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -22,12 +18,16 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, Key } from 'lucide-react';
 import {
   useCreateEnvironmentVariable,
   useUpdateEnvironmentVariable,
 } from '@/hooks/use-environment-mutations';
 import type { EnvironmentVariable } from '@/lib/types/environment';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Key, Loader2 } from 'lucide-react';
+import { useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
 
 const environmentVariableSchema = z.object({
   key: z
@@ -157,10 +157,10 @@ export function VariableForm({ projectId, isOpen, onClose, editingVariable }: Va
                     <FormItem>
                       <FormLabel className="text-sm font-medium">Value</FormLabel>
                       <FormControl>
-                        <Input 
-                          {...field} 
-                          placeholder="your-api-key-value" 
-                          type="text" 
+                        <Input
+                          {...field}
+                          placeholder="your-api-key-value"
+                          type="text"
                           className="h-11"
                           disabled={isLoading}
                         />
@@ -182,8 +182,8 @@ export function VariableForm({ projectId, isOpen, onClose, editingVariable }: Va
                         </FormDescription>
                       </div>
                       <FormControl>
-                        <Switch 
-                          checked={field.value} 
+                        <Switch
+                          checked={field.value}
                           onCheckedChange={field.onChange}
                           disabled={isLoading}
                         />
@@ -203,8 +203,8 @@ export function VariableForm({ projectId, isOpen, onClose, editingVariable }: Va
                   >
                     Cancel
                   </Button>
-                  <Button 
-                    type="submit" 
+                  <Button
+                    type="submit"
                     disabled={isLoading}
                     className="h-10 min-w-[120px]"
                   >

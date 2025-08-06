@@ -1,9 +1,5 @@
 'use client';
 
-import { useState, useCallback } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   AlertDialog,
@@ -16,12 +12,16 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { Plus, Eye, EyeOff, Edit, Trash2, Shield, InfoIcon } from 'lucide-react';
-import { VariableForm } from './variable-form';
-import { EnvironmentVariablesSkeleton } from './skeletons/environment-variables-skeleton';
-import { useEnvironmentVariables } from '@/hooks/use-environment-variables';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { useDeleteEnvironmentVariable } from '@/hooks/use-environment-mutations';
+import { useEnvironmentVariables } from '@/hooks/use-environment-variables';
 import type { EnvironmentVariable } from '@/lib/types/environment';
+import { Edit, Eye, EyeOff, InfoIcon, Plus, Shield, Trash2 } from 'lucide-react';
+import { useCallback, useState } from 'react';
+import { EnvironmentVariablesSkeleton } from './skeletons/environment-variables-skeleton';
+import { VariableForm } from './variable-form';
 
 interface EnvironmentVariablesProps {
   projectId: number;
@@ -97,16 +97,8 @@ export function EnvironmentVariables({ projectId }: EnvironmentVariablesProps) {
         <Alert className="bg-blue-50 border-blue-200 dark:bg-blue-950/20 dark:border-blue-800">
           <InfoIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
           <AlertDescription className="text-blue-700 dark:text-blue-300">
-            <strong>Project-wide variables:</strong> Environment variables apply to all chat sessions and preview containers in this project. 
+            Environment variables apply to all chat sessions and preview containers in this project.
             They are not session-specific.
-          </AlertDescription>
-        </Alert>
-        
-        <Alert className="bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-800">
-          <Shield className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-          <AlertDescription className="text-amber-700 dark:text-amber-300">
-            Secret variables are encrypted and will only be visible in preview containers. Regular
-            variables are stored as plain text and visible to project collaborators.
           </AlertDescription>
         </Alert>
       </div>
@@ -126,38 +118,44 @@ export function EnvironmentVariables({ projectId }: EnvironmentVariablesProps) {
 
       {variables.length === 0 ? (
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="py-8">
             <div className="text-center text-muted-foreground">
               No environment variables configured. Add your first variable to get started.
             </div>
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2">
           {variables.map(variable => (
             <Card key={variable.id}>
-              <CardContent className="pt-4">
+              <CardContent className="py-3 px-4">
                 <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <code className="font-mono text-sm bg-muted px-2 py-1 rounded">
+                  {/* Left side - Key */}
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <code className="font-mono text-sm font-medium">
                         {variable.key}
                       </code>
                       {variable.isSecret && (
-                        <Badge variant="secondary" className="text-xs">
+                        <Badge variant="secondary" className="text-xs h-5">
                           <Shield className="w-3 h-3 mr-1" />
                           Secret
                         </Badge>
                       )}
                     </div>
+                  </div>
+
+                  {/* Right side - Value and Actions */}
+                  <div className="flex items-center gap-3">
                     <div className="flex items-center gap-2">
-                      <code className="font-mono text-sm text-muted-foreground">
+                      <code className="font-mono text-sm text-muted-foreground bg-muted/50 px-2 py-1 rounded">
                         {formatValue(variable)}
                       </code>
                       {variable.isSecret && (
                         <Button
                           variant="ghost"
                           size="sm"
+                          className="h-7 w-7 p-0"
                           onClick={() => toggleSecretVisibility(variable.id)}
                         >
                           {visibleSecrets.has(variable.id) ? (
@@ -169,40 +167,41 @@ export function EnvironmentVariables({ projectId }: EnvironmentVariablesProps) {
                       )}
                     </div>
 
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setEditingVariable(variable)}
-                    >
-                      <Edit className="w-3 h-3" />
-                    </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="destructive" size="sm">
-                          <Trash2 className="w-3 h-3" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Delete Environment Variable</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Are you sure you want to delete the environment variable &quot;{variable.key}&quot;? 
-                            This action cannot be undone and may affect your project&apos;s functionality.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => handleDeleteVariable(variable.id)}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                          >
-                            Delete
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0"
+                        onClick={() => setEditingVariable(variable)}
+                      >
+                        <Edit className="w-3 h-3" />
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0 hover:bg-destructive/10 hover:text-destructive">
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Environment Variable</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to delete the environment variable &quot;{variable.key}&quot;?
+                              This action cannot be undone and may affect your project&apos;s functionality.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDeleteVariable(variable.id)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
                   </div>
                 </div>
               </CardContent>
