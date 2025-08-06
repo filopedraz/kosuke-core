@@ -8,8 +8,8 @@ import docker
 from docker.errors import NotFound
 
 from app.models.preview import ContainerInfo
-from app.models.preview import PreviewStatus
 from app.models.preview import GitUpdateStatus
+from app.models.preview import PreviewStatus
 from app.services.session_manager import SessionManager
 from app.utils.config import settings
 
@@ -236,7 +236,7 @@ class DockerService:
         Returns git pull status for main branch updates.
         """
         git_status = None
-        
+
         try:
             session_path = self.session_manager.get_session_path(project_id, session_id)
             if not self.session_manager.validate_session_directory(project_id, session_id):
@@ -247,17 +247,17 @@ class DockerService:
                 # For chat sessions, create the session environment
                 logger.info(f"Creating session environment for {session_id}")
                 self.session_manager.create_session_environment(project_id, session_id)
-            
+
             # Update main branch if this is a main session
             if session_id == "main":
                 logger.info(f"Updating main branch for project {project_id} before starting preview")
                 git_status = await self.session_manager.update_main_branch(project_id)
                 logger.info(f"Git update status for project {project_id}: {git_status}")
-                
+
         except Exception as e:
             logger.error(f"Failed to create/validate session environment: {e}")
             raise Exception(f"Session environment setup failed: {e}") from e
-            
+
         return git_status
 
     async def _create_new_container(
@@ -295,12 +295,12 @@ class DockerService:
         )
 
         url = f"http://localhost:{host_port}"
-        
+
         # Convert git_status dict to GitUpdateStatus model if present
         git_update_status = None
         if git_status:
             git_update_status = GitUpdateStatus(**git_status)
-        
+
         container_info = ContainerInfo(
             project_id=project_id,
             session_id=session_id,
@@ -468,9 +468,9 @@ class DockerService:
 
             # No container found
             return PreviewStatus(
-                running=False, 
-                url=None, 
-                compilation_complete=False, 
+                running=False,
+                url=None,
+                compilation_complete=False,
                 is_responding=False,
                 git_status=None
             )

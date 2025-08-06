@@ -8,7 +8,6 @@ import { cn } from '@/lib/utils';
 import { useUser } from '@clerk/nextjs';
 
 // Import types and hooks
-import { useChatMessages } from '@/hooks/use-chat-messages';
 import { useChatSessionMessages } from '@/hooks/use-chat-sessions';
 import { useChatState } from '@/hooks/use-chat-state';
 import { useSendMessage } from '@/hooks/use-send-message';
@@ -23,9 +22,7 @@ import ModelBanner from './model-banner';
 
 export default function ChatInterface({
   projectId,
-  initialMessages = [],
   className,
-  isLoading: initialIsLoading = false,
   activeChatSessionId,
   currentBranch,
   sessionId,
@@ -42,23 +39,20 @@ export default function ChatInterface({
     imageUrl?: string;
   } | null>(null);
 
-  // Custom hooks for business logic
-  const sendMessageMutation = useSendMessage(projectId, activeChatSessionId, sessionId);
+  // State for immediate loading feedback
+  const [isGenerating, setIsGenerating] = useState(false);
 
-  // Use session-specific messages if we have a sessionId, otherwise use project-wide messages
-  const sessionMessagesQuery = useChatSessionMessages(projectId, sessionId || '');
-  const projectMessagesQuery = useChatMessages(projectId, initialMessages, initialIsLoading, sendMessageMutation.expectingWebhookUpdate);
-
-  const messagesQuery = sessionId ? sessionMessagesQuery : projectMessagesQuery;
-  const chatState = useChatState(projectId);
+  // Custom hooks for business logic - all session-based now
+  // Always call hooks at the top level, even if sessionId is not available yet
+  const sendMessageMutation = useSendMessage(projectId, activeChatSessionId, sessionId || '');
+  const messagesQuery = useChatSessionMessages(projectId, sessionId || '');
+  const chatState = useChatState(projectId, sessionId);
 
   // Extract data from hooks
   const {
     data: messagesData,
     isLoading: isLoadingMessages,
   } = messagesQuery;
-
-
 
   const messages = useMemo(() => {
     const msgs = messagesData?.messages || [];
@@ -74,8 +68,6 @@ export default function ChatInterface({
     streamingAssistantMessageId,
     cancelStream,
   } = sendMessageMutation;
-
-
 
   const {
     isError,
@@ -101,9 +93,6 @@ export default function ChatInterface({
       setUser(null);
     }
   }, [isLoaded, clerkUser]);
-
-  // State for immediate loading feedback
-  const [isGenerating, setIsGenerating] = useState(false);
 
   // Handle send errors
   useEffect(() => {
@@ -132,6 +121,15 @@ export default function ChatInterface({
 
     return () => clearTimeout(scrollTimeout);
   }, [messages, isLoadingMessages, streamingContentBlocks]);
+
+  // Ensure we have a sessionId - this is now required
+  if (!sessionId) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <p className="text-muted-foreground">No session selected</p>
+      </div>
+    );
+  }
 
   // Handle sending messages
   const handleSendMessage = async (

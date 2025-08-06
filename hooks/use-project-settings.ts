@@ -94,11 +94,11 @@ export function useCreatePullRequest(projectId: number) {
     },
     onSuccess: data => {
       toast({
-        title: 'Success',
-        description: `Pull request #${data.pull_request_number} created successfully`,
+        title: 'Redirecting to GitHub',
+        description: 'Opening GitHub pull request creation page...',
       });
 
-      // Open PR in new tab
+      // Open GitHub PR creation page in new tab
       window.open(data.pull_request_url, '_blank');
     },
     onError: (error: Error) => {

@@ -1,7 +1,8 @@
 'use client';
 
-import { CheckCircle, Download, ExternalLink, Github, Loader2, RefreshCw, XCircle, GitBranch } from 'lucide-react';
+import { CheckCircle, Download, ExternalLink, GitBranch, Github, Loader2, RefreshCw, XCircle } from 'lucide-react';
 
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -18,6 +19,7 @@ interface PreviewPanelProps {
   projectId: number;
   projectName: string;
   sessionId: string | null;
+  branch?: string;
   className?: string;
 }
 
@@ -25,6 +27,7 @@ export default function PreviewPanel({
   projectId,
   projectName,
   sessionId,
+  branch,
   className,
 }: PreviewPanelProps) {
   const {
@@ -71,7 +74,7 @@ export default function PreviewPanel({
       <div className="flex items-center space-x-1 text-xs text-muted-foreground">
         <GitBranch className="h-3 w-3" />
         <span>
-          {gitStatus.action === 'pulled' && gitStatus.commits_pulled > 0 
+          {gitStatus.action === 'pulled' && gitStatus.commits_pulled > 0
             ? `${gitStatus.commits_pulled} new commit${gitStatus.commits_pulled === 1 ? '' : 's'}`
             : gitStatus.action === 'cached'
             ? 'cached'
@@ -83,13 +86,18 @@ export default function PreviewPanel({
       </div>
     );
   };
+  // Determine branch name to display
+  const displayBranch = branch || (sessionId ? 'chat-session' : 'main');
 
   return (
     <div className={cn('flex flex-col h-full w-full overflow-hidden', className)} data-testid="preview-panel">
       <div className="flex items-center justify-between px-4 py-2 border-b">
-        <div className="flex flex-col">
+        <div className="flex items-center gap-2">
           <h3 className="text-sm font-medium">Preview</h3>
-          {renderGitStatus()}
+          <Badge variant="secondary" className="text-xs">
+            {displayBranch}
+            {renderGitStatus()}
+          </Badge>
         </div>
         <div className="flex items-center space-x-1">
           <DropdownMenu>

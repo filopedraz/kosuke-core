@@ -1,14 +1,13 @@
 'use client';
 
-
-import { notFound } from 'next/navigation';
+import { notFound, useRouter, useSearchParams } from 'next/navigation';
 import { use, useEffect, useRef, useState } from 'react';
 
 import Navbar from '@/components/ui/navbar';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useChatMessages } from '@/hooks/use-chat-messages';
-import { useChatSessions } from '@/hooks/use-chat-sessions';
+import { useChatSessionMessages, useChatSessions } from '@/hooks/use-chat-sessions';
 import { usePreviewStatus, useStartPreview } from '@/hooks/use-preview-status';
+import { useCreatePullRequest } from '@/hooks/use-project-settings';
 import { useProjectUIState } from '@/hooks/use-project-ui-state';
 import { useProject } from '@/hooks/use-projects';
 import { cn } from '@/lib/utils';
@@ -129,8 +128,11 @@ function ProjectLoadingSkeleton() {
 export default function ProjectPage({ params }: ProjectPageProps) {
   // Unwrap promises using React.use()
   const { id } = use(params);
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
   const projectId = Number(id);
+  const sessionFromUrl = searchParams.get('session');
 
   if (isNaN(projectId)) {
     notFound();
@@ -138,36 +140,68 @@ export default function ProjectPage({ params }: ProjectPageProps) {
 
   const { user } = useUser();
   const { data: project, isLoading: isProjectLoading, error: projectError } = useProject(projectId);
-  const { data: messagesData, isLoading: isMessagesLoading } = useChatMessages(projectId, [], false);
   const { data: sessions = [] } = useChatSessions(projectId);
+
+  // Pull request functionality
+  const createPullRequestMutation = useCreatePullRequest(projectId);
 
     // UI state management
   const { currentView, setCurrentView, isChatCollapsed, toggleChatCollapsed } = useProjectUIState(project);
 
   // Chat session state management
   const [activeChatSessionId, setActiveChatSessionId] = useState<number | null>(null);
-  const [showSidebar, setShowSidebar] = useState(true); // Start with sidebar visible
+  const [showSidebar, setShowSidebar] = useState(!sessionFromUrl); // Show sidebar unless we have a session in URL
 
-  // Auto-select default session when sessions are loaded
+  // Auto-select session based on URL or default session when sessions are loaded
   useEffect(() => {
     if (sessions.length > 0 && activeChatSessionId === null) {
-      // Find default session or use the first session
-      const defaultSession = sessions.find(session => session.isDefault) || sessions[0];
-      if (defaultSession) {
-        setActiveChatSessionId(defaultSession.id);
+      let sessionToSelect = null;
+
+      if (sessionFromUrl) {
+        // Try to find session from URL
+        sessionToSelect = sessions.find(session => session.sessionId === sessionFromUrl);
+        if (sessionToSelect) {
+          setShowSidebar(false); // Show chat interface when coming from URL
+        }
+      }
+
+      if (!sessionToSelect) {
+        // Fall back to default session or first session
+        sessionToSelect = sessions.find(session => session.isDefault) || sessions[0];
+      }
+
+      if (sessionToSelect) {
+        setActiveChatSessionId(sessionToSelect.id);
       }
     }
-  }, [sessions, activeChatSessionId]);
+  }, [sessions, activeChatSessionId, sessionFromUrl]);
 
-  // Get current session branch information
+  // Handle session selection and URL updates
+  const handleSessionSelect = (sessionId: number) => {
+    const session = sessions.find(s => s.id === sessionId);
+    if (session) {
+      setActiveChatSessionId(sessionId);
+      setShowSidebar(false); // Switch to chat interface
+      // Update URL to reflect selected session using query params
+      router.push(`/projects/${projectId}?session=${session.sessionId}`, { scroll: false });
+    }
+  };
+
+  // Get current session information
   const currentSession = sessions.find(session => session.id === activeChatSessionId);
   const currentBranch = currentSession?.githubBranchName;
   const sessionId = currentSession?.sessionId;
 
+  // Fetch messages for the active session
+  const { data: messagesData, isLoading: isMessagesLoading } = useChatSessionMessages(
+    projectId,
+    sessionId || ''
+  );
+
   // Preview should use session only when in chat interface view, not in sidebar list view
   const previewSessionId = showSidebar ? null : (sessionId || null);
 
-    // Preview management hooks - use null when in sidebar view (main branch)
+  // Preview management hooks - use null when in sidebar view (main branch)
   const { data: previewStatus, isLoading: isPreviewLoading } = usePreviewStatus(
     projectId,
     previewSessionId,
@@ -196,7 +230,7 @@ export default function ProjectPage({ params }: ProjectPageProps) {
   }, [projectId, previewStatus, isPreviewLoading, startPreview]);
 
   // Loading state
-  if (isProjectLoading || isMessagesLoading || !user) {
+  if (isProjectLoading || !user) {
     return <ProjectLoadingSkeleton />;
   }
 
@@ -218,7 +252,27 @@ export default function ProjectPage({ params }: ProjectPageProps) {
   };
 
   const toggleSidebar = () => {
+    if (!showSidebar) {
+      // Going back to sidebar - update URL to main project page
+      router.push(`/projects/${projectId}`, { scroll: false });
+    }
     setShowSidebar(!showSidebar);
+  };
+
+  // Handle creating pull request from active chat session
+  const handleCreatePullRequest = () => {
+    if (!activeChatSessionId || !currentSession?.sessionId) {
+      console.error('No active chat session for pull request creation');
+      return;
+    }
+
+    createPullRequestMutation.mutate({
+      sessionId: currentSession.sessionId,
+      data: {
+        title: `Updates from chat session: ${currentSession.title}`,
+        description: `Automated changes from Kosuke chat session: ${currentSession.title}\n\nSession ID: ${currentSession.sessionId}`,
+      },
+    });
   };
 
   return (
@@ -234,9 +288,11 @@ export default function ProjectPage({ params }: ProjectPageProps) {
           onToggleChat: toggleChatCollapsed,
           showSidebar: showSidebar,
           onToggleSidebar: toggleSidebar,
+          activeChatSessionId: !showSidebar ? activeChatSessionId : null,
+          onCreatePullRequest: handleCreatePullRequest,
         }}
       />
-            <div className={cn('flex h-[calc(100vh-3.5rem)] w-full overflow-hidden')}>
+      <div className={cn('flex h-[calc(100vh-3.5rem)] w-full overflow-hidden')}>
         <div
           ref={chatInterfaceRef}
           className={cn(
@@ -259,10 +315,7 @@ export default function ProjectPage({ params }: ProjectPageProps) {
                 <ChatSidebar
                   projectId={projectId}
                   activeChatSessionId={activeChatSessionId}
-                  onChatSessionChange={(sessionId) => {
-                    setActiveChatSessionId(sessionId);
-                    setShowSidebar(false); // Switch to chat interface when selecting a session
-                  }}
+                  onChatSessionChange={handleSessionSelect}
                 />
               </div>
             ) : (
@@ -270,16 +323,12 @@ export default function ProjectPage({ params }: ProjectPageProps) {
               <div className="w-full flex flex-col">
                 <ChatInterface
                   projectId={projectId}
-                  initialMessages={messagesData?.messages || []}
-                  isLoading={isMessagesLoading}
                   activeChatSessionId={activeChatSessionId}
                   currentBranch={currentBranch}
                   sessionId={sessionId}
                 />
               </div>
             )}
-
-
           </div>
         </div>
 
@@ -295,6 +344,7 @@ export default function ProjectPage({ params }: ProjectPageProps) {
               projectId={projectId}
               projectName={project.name}
               sessionId={previewSessionId}
+              branch={currentBranch}
             />
           ) : currentView === 'code' ? (
             <CodeExplorer

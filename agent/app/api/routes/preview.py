@@ -31,19 +31,19 @@ async def start_preview(
         # Use "main" as default session_id for main branch previews
         session_id = request.session_id or "main"
         url = await docker_service.start_preview(request.project_id, session_id, request.env_vars)
-        
+
         # Get the full status including git information
         status = await docker_service.get_preview_status(request.project_id, session_id)
-        
+
         response = {
-            "success": True, 
-            "url": url, 
-            "project_id": request.project_id, 
+            "success": True,
+            "url": url,
+            "project_id": request.project_id,
             "session_id": session_id,
             "compilation_complete": status.compilation_complete,
             "is_responding": status.is_responding
         }
-        
+
         # Include git status for main branch previews
         if status.git_status:
             response["git_status"] = {
@@ -52,7 +52,7 @@ async def start_preview(
                 "message": status.git_status.message,
                 "commits_pulled": status.git_status.commits_pulled
             }
-        
+
         return response
     except HTTPException:
         raise  # Re-raise HTTPExceptions without modification

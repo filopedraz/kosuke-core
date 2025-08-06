@@ -63,7 +63,6 @@ export interface CreatePullRequestData {
 
 export interface CreatePullRequestResponse {
   pull_request_url: string;
-  pull_request_number: number;
   title: string;
   source_branch: string;
   target_branch: string;

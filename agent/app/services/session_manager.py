@@ -1,6 +1,7 @@
 import logging
 import shutil
-from datetime import datetime, timedelta
+from datetime import datetime
+from datetime import timedelta
 from pathlib import Path
 
 import git
@@ -39,11 +40,11 @@ class SessionManager:
         """
         try:
             main_project_path = Path(settings.projects_dir) / str(project_id)
-            
+
             # Check if we need to pull (60-minute cache)
             last_pull = self.last_main_pull.get(project_id)
             now = datetime.now()
-            
+
             if last_pull and (now - last_pull) < timedelta(minutes=self.PULL_CACHE_MINUTES):
                 minutes_since_pull = int((now - last_pull).total_seconds() / 60)
                 logger.info(f"Skipping git pull for project {project_id} - last pulled {minutes_since_pull} minutes ago")
@@ -61,30 +62,30 @@ class SessionManager:
 
             # Initialize git repo
             repo = git.Repo(main_project_path)
-            
+
             # Get current commit hash before pull
             current_commit = repo.head.commit.hexsha
-            
+
             logger.info(f"Updating main branch for project {project_id} from {default_branch}")
-            
+
             try:
                 # Fetch latest changes
                 logger.info(f"Fetching latest changes for project {project_id}")
                 repo.remotes.origin.fetch()
-                
+
                 # Try regular pull first
                 logger.info(f"Attempting git pull for project {project_id}")
                 repo.git.pull("origin", default_branch)
-                
+
             except git.exc.GitCommandError as e:
                 logger.warning(f"Regular pull failed for project {project_id}, attempting hard reset: {e}")
-                
+
                 # Hard pull: reset to remote state
                 try:
                     # Reset to remote branch
                     repo.git.reset("--hard", f"origin/{default_branch}")
                     logger.info(f"Successfully performed hard reset for project {project_id}")
-                    
+
                 except git.exc.GitCommandError as hard_error:
                     logger.error(f"Hard reset also failed for project {project_id}: {hard_error}")
                     raise Exception(f"Both regular pull and hard reset failed: {hard_error}")
@@ -92,7 +93,7 @@ class SessionManager:
             # Get new commit hash and count commits pulled
             new_commit = repo.head.commit.hexsha
             commits_pulled = 0
-            
+
             if current_commit != new_commit:
                 # Count commits between old and new
                 try:
