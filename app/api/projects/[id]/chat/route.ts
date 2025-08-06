@@ -275,36 +275,8 @@ export async function POST(
 
       targetChatSession = session;
     } else {
-      // Get or create default chat session
-      let [defaultSession] = await db
-        .select()
-        .from(chatSessions)
-        .where(
-          and(
-            eq(chatSessions.projectId, projectId),
-            eq(chatSessions.isDefault, true)
-          )
-        );
-
-      if (!defaultSession) {
-        // Create default session if it doesn't exist
-        const sessionId = Math.random().toString(36).substr(2, 6);
-        [defaultSession] = await db
-          .insert(chatSessions)
-          .values({
-            projectId,
-            userId,
-            title: 'Main Conversation',
-            sessionId,
-            githubBranchName: `kosuke/chat-${sessionId}`,
-            status: 'active',
-            isDefault: true,
-            messageCount: 0,
-          })
-          .returning();
-      }
-
-      targetChatSession = defaultSession;
+      // Require explicit chat session ID
+      return new Response('Chat session ID is required', { status: 400 });
     }
 
     // Save user message immediately
