@@ -9,6 +9,7 @@ from app.api.routes import database
 from app.api.routes import github
 from app.api.routes import health
 from app.api.routes import preview
+from app.api.routes import revert
 
 # Configure logging for the entire application
 logging.basicConfig(
@@ -37,6 +38,7 @@ app.include_router(database.router, prefix="/api", tags=["database"])
 app.include_router(github.router, prefix="/api", tags=["github"])
 app.include_router(health.router, prefix="/api", tags=["health"])
 app.include_router(preview.router, prefix="/api", tags=["preview"])
+app.include_router(revert.router, prefix="/api", tags=["revert"])
 
 # Also include root endpoint
 app.include_router(health.router, tags=["root"])

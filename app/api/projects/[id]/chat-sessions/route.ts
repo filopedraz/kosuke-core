@@ -143,26 +143,8 @@ export async function GET(
       .where(eq(chatSessions.projectId, projectId))
       .orderBy(desc(chatSessions.lastActivityAt));
 
-    // If no sessions exist, create a default session
-    if (sessions.length === 0) {
-      const sessionId = Math.random().toString(36).substr(2, 6);
-      const [defaultSession] = await db
-        .insert(chatSessions)
-        .values({
-          projectId,
-          userId,
-          title: 'Main Conversation',
-          sessionId,
-          githubBranchName: `kosuke/chat-${sessionId}`,
-          status: 'active',
-          isDefault: true,
-          messageCount: 0,
-        })
-        .returning();
-
-      sessions = [defaultSession];
-      console.log(`✅ Created default session for project ${projectId}: ${sessionId}`);
-    }
+    // Return sessions (empty array if none exist)
+    // No automatic creation of default session
 
     // Check and update merge status for sessions with GitHub branches
     if (project.githubOwner && project.githubRepoName) {

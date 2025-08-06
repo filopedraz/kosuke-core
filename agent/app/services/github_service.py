@@ -18,15 +18,24 @@ logger = logging.getLogger(__name__)
 
 
 class GitHubService:
-    def __init__(self, github_token: str):
+    def __init__(self, github_token: str, local_only: bool = False):
         self.github_token = github_token
-        self.github = Github(github_token)
-        self.user = self.github.get_user()
+        self.local_only = local_only
+
+        if not local_only:
+            self.github = Github(github_token)
+            self.user = self.github.get_user()
+        else:
+            self.github = None
+            self.user = None
+
         # Store sync sessions for tracking changes across commits
         self.sync_sessions: dict[str, dict] = {}
 
     async def create_repository(self, request: CreateRepoRequest) -> GitHubRepo:
         """Create a new GitHub repository from Kosuke template"""
+        if self.local_only:
+            raise Exception("GitHub API operations not available in local-only mode")
         try:
             template_repo = request.template_repo or settings.template_repository
             logger.info(f"Creating repository '{request.name}' from template: {template_repo}")
@@ -524,6 +533,89 @@ class GitHubService:
         except Exception as e:
             logger.error(f"Error getting repository info: {e}")
             raise Exception(f"Failed to get repository info: {e!s}") from e
+
+    def checkout_commit(self, session_path: Path, commit_sha: str) -> bool:
+        """
+        Checkout specific commit in session directory
+
+        Args:
+            session_path: Path to session directory
+            commit_sha: Git commit SHA to checkout
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            logger.info(f"Checking out commit {commit_sha} in {session_path}")
+
+            # Ensure we're in the right directory
+            if not (session_path / ".git").exists():
+                logger.error(f"No git repository found in {session_path}")
+                return False
+
+            # Use GitPython for checkout
+            repo = git.Repo(session_path)
+
+            # Checkout the specific commit (detached HEAD state)
+            repo.git.checkout(commit_sha)
+
+            logger.info(f"✅ Successfully checked out commit {commit_sha}")
+            return True
+
+        except Exception as e:
+            logger.error(f"❌ Error during git checkout: {e}")
+            return False
+
+    def create_backup_commit(self, session_path: Path, message: str) -> str | None:
+        """
+        Create a backup commit before reverting
+
+        Args:
+            session_path: Path to session directory
+            message: Commit message for backup
+
+        Returns:
+            str | None: Commit SHA if successful, None otherwise
+        """
+        try:
+            repo = git.Repo(session_path)
+
+            # Check if there are any changes to commit
+            if not repo.is_dirty(untracked_files=True):
+                logger.info("No changes to backup")
+                return None
+
+            # Add all changes
+            repo.git.add(".")
+
+            # Create backup commit
+            commit = repo.index.commit(message)
+
+            backup_sha = commit.hexsha
+            logger.info(f"✅ Created backup commit: {backup_sha}")
+            return backup_sha
+
+        except Exception as e:
+            logger.error(f"❌ Error creating backup commit: {e}")
+            return None
+
+    def get_current_commit_sha(self, session_path: Path) -> str | None:
+        """
+        Get current commit SHA in session directory
+
+        Args:
+            session_path: Path to session directory
+
+        Returns:
+            str | None: Current commit SHA or None if error
+        """
+        try:
+            repo = git.Repo(session_path)
+            return repo.head.commit.hexsha
+
+        except Exception as e:
+            logger.error(f"❌ Error getting current commit: {e}")
+            return None
 
     def get_user_repositories(self, page: int = 1, per_page: int = 30) -> list[GitHubRepo]:
         """Get user's GitHub repositories"""

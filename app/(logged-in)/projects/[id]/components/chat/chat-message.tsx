@@ -12,9 +12,11 @@ import { cn } from '@/lib/utils';
 import type { AssistantBlock, ChatMessageProps, ContentBlock, ErrorType } from '@/lib/types';
 import { getFileName, processMessageContent } from '@/lib/utils/message-content';
 import AssistantResponse from './assistant-response';
+import { MessageRevertButton } from './message-revert-button';
 
 
 export default function ChatMessage({
+  id,
   content,
   blocks,
   role,
@@ -25,8 +27,15 @@ export default function ChatMessage({
   hasError = false,
   errorType = 'unknown',
   onRegenerate,
+  commitSha,
+  projectId,
+  chatSessionId,
+  sessionId,
+  metadata,
 }: ChatMessageProps) {
   const isUser = role === 'user';
+  const isSystem = role === 'system';
+  const isRevertMessage = isSystem && metadata?.revertInfo;
   const { imageUrl, displayName, initials } = useUser();
 
 
@@ -93,8 +102,67 @@ export default function ChatMessage({
   const contentParts = processMessageContent(content || '');
 
   // Check if this is an assistant message with blocks
-  const hasBlocks = !isUser && blocks && blocks.length > 0;
+  const hasBlocks = !isUser && !isSystem && blocks && blocks.length > 0;
   const contentBlocks = hasBlocks ? convertBlocksToContentBlocks(blocks) : null;
+
+  // Handle revert system messages with special styling
+  if (isRevertMessage) {
+    const handleSystemMessageClick = () => {
+      if (metadata?.revertInfo?.message_id) {
+        // Find and scroll to the original message
+        const targetMessage = document.querySelector(`[data-message-id="${metadata.revertInfo.message_id}"]`);
+        if (targetMessage) {
+          targetMessage.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center'
+          });
+          // Add a brief highlight effect
+          targetMessage.classList.add('ring-2', 'ring-primary', 'ring-offset-2');
+          setTimeout(() => {
+            targetMessage.classList.remove('ring-2', 'ring-primary', 'ring-offset-2');
+          }, 2000);
+        }
+      }
+    };
+
+    return (
+      <div className={cn('flex justify-center mx-auto mb-4', className)}>
+        <div
+          className={cn(
+            'flex items-start gap-3 p-3 max-w-sm min-w-0',
+            'bg-card border border-border rounded-lg shadow-sm',
+            'cursor-pointer hover:shadow-md transition-all duration-200',
+            'hover:border-border/80'
+          )}
+          role="listitem"
+          onClick={handleSystemMessageClick}
+        >
+
+          <div className="flex-1 min-w-0 space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-foreground">
+                  System
+                </span>
+                {metadata?.revertInfo && (
+                  <code className="px-1.5 py-0.5 bg-muted rounded text-xs font-mono text-foreground">
+                    {metadata.revertInfo.commit_sha?.slice(0, 7)}
+                  </code>
+                )}
+              </div>
+              <time className="text-xs text-muted-foreground">
+                {formatDistanceToNow(new Date(timestamp), { addSuffix: true })}
+              </time>
+            </div>
+
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              {content}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
 
 
@@ -112,6 +180,7 @@ export default function ChatMessage({
         className
       )}
       role="listitem"
+      data-message-id={id}
     >
       {showAvatar ? (
         <Avatar className="h-8 w-8">
@@ -136,13 +205,24 @@ export default function ChatMessage({
 
       <div className="flex-1 space-y-2">
         {showAvatar && ( // Only show header for first message in a sequence
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between group">
             <h4>
               {isUser ? 'You' : 'AI Assistant'}
             </h4>
-            <time className="text-xs text-muted-foreground">
-              {formatDistanceToNow(new Date(timestamp), { addSuffix: true })}
-            </time>
+            <div className="flex items-center gap-2">
+              {/* Add revert button for assistant messages with commit SHA */}
+              {!isUser && id && projectId && chatSessionId && sessionId && commitSha && (
+                <MessageRevertButton
+                  message={{ id, role, timestamp, commitSha, content }}
+                  projectId={projectId}
+                  chatSessionId={chatSessionId}
+                  sessionId={sessionId}
+                />
+              )}
+              <time className="text-xs text-muted-foreground">
+                {formatDistanceToNow(new Date(timestamp), { addSuffix: true })}
+              </time>
+            </div>
           </div>
         )}
 

@@ -202,7 +202,13 @@ class Agent:
             self._save_text_content(text_state)
 
         yield {"type": "error", "message": event["message"]}
-        await self._send_assistant_message_webhook(text_state["all_blocks"], success=False)
+
+        # Get commit SHA even for error events
+        commit_sha = None
+        if self.github_service and self.session_id:
+            commit_sha = await self._get_current_commit_sha()
+
+        await self._send_assistant_message_webhook(text_state["all_blocks"], success=False, commit_sha=commit_sha)
 
     def _save_text_content(self, text_state: dict):
         """Save accumulated text content and reset state"""
@@ -223,7 +229,13 @@ class Agent:
         """Finalize processing and send webhooks"""
         if text_state["active"]:
             self._save_text_content(text_state)
-        await self._send_assistant_message_webhook(text_state["all_blocks"], success=True)
+
+        # Get commit SHA BEFORE sending assistant message webhook
+        commit_sha = None
+        if self.github_service and self.session_id:
+            commit_sha = await self._get_current_commit_sha()
+
+        await self._send_assistant_message_webhook(text_state["all_blocks"], success=True, commit_sha=commit_sha)
 
         # Finalize GitHub session if enabled
         await self.finalize_github_session()
@@ -233,7 +245,13 @@ class Agent:
         if text_state["active"]:
             self._save_text_content(text_state)
         logger.error(f"❌ Error in claude-code agent: {error}")
-        await self._send_assistant_message_webhook(text_state["all_blocks"], success=False)
+
+        # Get commit SHA even for errors
+        commit_sha = None
+        if self.github_service and self.session_id:
+            commit_sha = await self._get_current_commit_sha()
+
+        await self._send_assistant_message_webhook(text_state["all_blocks"], success=False, commit_sha=commit_sha)
 
         # If we have GitHub integration and session fails, mark session as failed
         if self.github_service and self.session_id:
@@ -266,7 +284,20 @@ class Agent:
             except Exception as e:
                 print(f"❌ Error finalizing GitHub session: {e}")
 
-    async def _send_assistant_message_webhook(self, assistant_blocks: list, success: bool = True):
+    async def _get_current_commit_sha(self) -> str | None:
+        """Get current commit SHA from the session directory"""
+        try:
+            from app.services.git_service import GitService
+
+            git_service = GitService()
+            return git_service.get_current_commit_sha(self.working_directory)
+        except Exception as e:
+            logger.error(f"❌ Error getting current commit SHA: {e}")
+            return None
+
+    async def _send_assistant_message_webhook(
+        self, assistant_blocks: list, success: bool = True, commit_sha: str | None = None
+    ):
         """Send complete assistant message with all blocks to Next.js"""
         try:
             duration = time.time() - self.start_time
@@ -283,11 +314,12 @@ class Agent:
                     tokens_output=token_usage["output_tokens"],
                     context_tokens=token_usage["context_tokens"],
                     assistant_message_id=self.assistant_message_id,
+                    commit_sha=commit_sha,
                 )
 
             logger.info(
                 f"✅ Sent assistant message webhook: {len(assistant_blocks)} blocks, "
-                f"{token_usage['total_tokens']} tokens"
+                f"{token_usage['total_tokens']} tokens, commit_sha: {commit_sha}"
             )
 
             # Send completion webhook with GitHub info

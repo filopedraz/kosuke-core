@@ -41,7 +41,7 @@ export function DatabaseTab({ projectId, sessionId }: DatabaseTabProps) {
                   Project Database
                 </CardTitle>
                 <CardDescription>
-                  Manage your project&apos;s SQLite database
+                  Manage your project&apos;s PostgreSQL database
                   {sessionId ? ` (Session: ${sessionId})` : ' (Main Branch)'}
                 </CardDescription>
               </div>
