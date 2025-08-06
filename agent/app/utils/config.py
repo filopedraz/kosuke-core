@@ -109,6 +109,11 @@ class Settings:
         self.nextjs_url: str = os.getenv("NEXTJS_URL", "http://localhost:3000")
         self.webhook_secret: str = os.getenv("WEBHOOK_SECRET", "dev-secret-change-in-production")
 
+        # Domain settings
+        self.MAIN_DOMAIN: str = os.getenv("MAIN_DOMAIN", "kosuke.ai")
+        self.PREVIEW_BASE_DOMAIN: str = os.getenv("PREVIEW_BASE_DOMAIN", "kosuke.app")
+        self.TRAEFIK_ENABLED: bool = os.getenv("TRAEFIK_ENABLED", "false").lower() == "true"
+
     def validate_settings(self) -> bool:
         """Validate required settings"""
         if not self.anthropic_api_key:
@@ -144,6 +149,9 @@ class Settings:
             "processing_timeout": self.processing_timeout,
             "nextjs_url": self.nextjs_url,
             "webhook_secret": "***" if self.webhook_secret else "",
+            "main_domain": self.MAIN_DOMAIN,
+            "preview_base_domain": self.PREVIEW_BASE_DOMAIN,
+            "traefik_enabled": self.TRAEFIK_ENABLED,
         }
 
 

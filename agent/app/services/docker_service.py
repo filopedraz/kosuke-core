@@ -10,6 +10,7 @@ from docker.errors import NotFound
 from app.models.preview import ContainerInfo
 from app.models.preview import GitUpdateStatus
 from app.models.preview import PreviewStatus
+from app.services.domain_service import DomainService
 from app.services.session_manager import SessionManager
 from app.utils.config import settings
 
@@ -30,8 +31,9 @@ class DockerService:
         self.containers: dict[tuple[int, str], ContainerInfo] = {}
         self.CONTAINER_NAME_PREFIX = "kosuke-preview-"
 
-        # Initialize session manager
+        # Initialize session manager and domain service
         self.session_manager = SessionManager()
+        self.domain_service = DomainService()
 
         # Determine the correct host projects directory
         self.host_projects_dir = self._get_host_projects_dir()
@@ -273,7 +275,6 @@ class DockerService:
         git_status: dict | None = None,
     ) -> str:
         """Create a new container for the session"""
-        host_port = self._get_random_port()
         host_session_path = self._get_host_session_path(project_id, session_id)
 
         logger.info(
@@ -281,6 +282,42 @@ class DockerService:
         )
 
         environment = self._prepare_container_environment(project_id, session_id, env_vars)
+
+        # Determine if we're using Traefik or traditional port mapping
+        if settings.TRAEFIK_ENABLED:
+            # Use Traefik routing - no port mapping needed
+            ports = {}
+            network = "kosuke_network"
+
+            # Generate subdomain for this container (use session_id as branch for now)
+            # In a real implementation, you'd extract the actual branch name
+            branch_name = session_id  # Fallback to session_id as branch identifier
+            project_domain = self.domain_service.generate_subdomain(project_id, branch_name)
+
+            # Add Traefik labels for automatic routing
+            labels = {
+                "traefik.enable": "true",
+                f"traefik.http.routers.{container_name}.rule": f"Host(`{project_domain}`)",
+                f"traefik.http.routers.{container_name}.tls.certresolver": "letsencrypt",
+                f"traefik.http.services.{container_name}.loadbalancer.server.port": "3000",
+                "traefik.docker.network": "kosuke_network",
+                "kosuke.project_id": str(project_id),
+                "kosuke.session_id": session_id,
+                "kosuke.branch": branch_name,
+            }
+
+            url = f"https://{project_domain}"
+        else:
+            # Traditional port mapping for development
+            host_port = self._get_random_port()
+            ports = {"3000/tcp": host_port}
+            network = "kosuke-core_default"
+            labels = {
+                "kosuke.project_id": str(project_id),
+                "kosuke.session_id": session_id,
+                "kosuke.branch": session_id,
+            }
+            url = f"http://localhost:{host_port}"
 
         # Run container creation in executor with timeout
         loop = asyncio.get_event_loop()
@@ -291,19 +328,18 @@ class DockerService:
                     image=settings.preview_default_image,
                     name=container_name,
                     command=None,
-                    ports={"3000/tcp": host_port},
+                    ports=ports,
                     volumes={str(host_session_path): {"bind": "/app", "mode": "rw"}},
                     working_dir="/app",
                     environment=environment,
-                    network="kosuke-core_default",
+                    network=network,
+                    labels=labels,
                     detach=True,
                     auto_remove=False,
                 ),
             ),
             timeout=30.0,
         )
-
-        url = f"http://localhost:{host_port}"
 
         # Convert git_status dict to GitUpdateStatus model if present
         git_update_status = None
@@ -315,7 +351,7 @@ class DockerService:
             session_id=session_id,
             container_id=container.id,
             container_name=container_name,
-            port=host_port,
+            port=host_port if not settings.TRAEFIK_ENABLED else 3000,  # Use 3000 for Traefik, actual port for direct
             url=url,
             compilation_complete=False,
             git_status=git_update_status,
@@ -568,3 +604,12 @@ class DockerService:
         except Exception as e:
             logger.error(f"Error restarting container for project {project_id} session {session_id}: {e}")
             raise
+
+    async def get_project_preview_urls(self, project_id: int) -> dict:
+        """Get all preview URLs for a project"""
+        try:
+            preview_urls = self.domain_service.get_preview_urls_for_project(project_id)
+            return {"preview_urls": preview_urls, "total_count": len(preview_urls)}
+        except Exception as e:
+            logger.error(f"Error getting preview URLs for project {project_id}: {e}")
+            return {"preview_urls": [], "total_count": 0}

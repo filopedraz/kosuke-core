@@ -61,22 +61,19 @@ export default function DefaultBranchSettings({ projectId }: DefaultBranchSettin
 
   if (isLoading) {
     return (
-      <div className="flex flex-col h-full p-6 space-y-6">
+      <div className="space-y-6">
         <div className="flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <GitBranch className="h-5 w-5 text-primary" />
-            <h1 className="text-2xl font-semibold">Default Branch</h1>
+          <div>
+            <Skeleton className="h-6 w-32 mb-2" />
+            <Skeleton className="h-4 w-64" />
           </div>
         </div>
-
-        <div className="space-y-6">
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Skeleton className="h-4 w-20" />
-              <Skeleton className="h-10 w-full" />
-            </div>
-            <Skeleton className="h-10 w-20" />
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-20" />
+            <Skeleton className="h-10 w-full" />
           </div>
+          <Skeleton className="h-10 w-20" />
         </div>
       </div>
     );
@@ -84,63 +81,62 @@ export default function DefaultBranchSettings({ projectId }: DefaultBranchSettin
 
   if (error) {
     return (
-      <div className="flex flex-col h-full p-6 space-y-6">
+      <div className="space-y-6">
         <div className="flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <GitBranch className="h-5 w-5 text-primary" />
-            <h1 className="text-2xl font-semibold">Default Branch</h1>
+          <div>
+            <h3 className="text-xl font-medium">Default Branch</h3>
+            <p className="text-muted-foreground mt-2">
+              Set the default branch for new chat sessions. New conversations will branch from this base.
+            </p>
           </div>
-        </div>
-
-        <div className="space-y-6">
-          <p className="text-muted-foreground">
-            Set the default branch for new chat sessions. New conversations will branch from this base.
-          </p>
-
-          <Alert variant="destructive">
-            <AlertDescription>
-              Failed to load branch settings. This might be because the project is not connected to a GitHub repository.
-            </AlertDescription>
-          </Alert>
-
           <Button
             variant="outline"
             onClick={handleRefresh}
             size="sm"
-            className="w-fit"
+            className="gap-1.5 h-9"
           >
-            <RefreshCw className="h-4 w-4 mr-2" />
+            <RefreshCw className="h-4 w-4" />
             Retry
           </Button>
         </div>
+
+        <Alert variant="destructive">
+          <AlertDescription>
+            Failed to load branch settings. This might be because the project is not connected to a GitHub repository.
+          </AlertDescription>
+        </Alert>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-full p-6 space-y-6">
+    <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <div className="flex items-center gap-2">
-          <GitBranch className="h-5 w-5 text-primary" />
-          <h1 className="text-2xl font-semibold">Default Branch</h1>
+        <div>
+          <h3 className="text-xl font-medium">Default Branch</h3>
+          <p className="text-muted-foreground mt-2">
+            Set the default branch for new chat sessions. New conversations will branch from this base.
+          </p>
         </div>
-
         <Button
           variant="outline"
-          size="icon"
           onClick={handleRefresh}
           disabled={isLoading}
-          className="h-9 w-9"
+          size="sm"
+          className="gap-1.5 h-9"
         >
           <RefreshCw className="h-4 w-4" />
+          Refresh
         </Button>
       </div>
 
-      <p className="text-muted-foreground">
-        Set the default branch for new chat sessions. New conversations will branch from this base.
-      </p>
-
-      <div className="space-y-6">
+      {settings?.available_branches.length === 0 ? (
+        <Alert>
+          <AlertDescription>
+            No branches found. Make sure your project is connected to a GitHub repository with at least one branch.
+          </AlertDescription>
+        </Alert>
+      ) : (
         <div className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="default-branch" className="text-sm font-medium">Default Branch</Label>
@@ -167,28 +163,21 @@ export default function DefaultBranchSettings({ projectId }: DefaultBranchSettin
             </Select>
           </div>
 
-          {settings?.available_branches.length === 0 && (
-            <Alert>
-              <AlertDescription>
-                No branches found. Make sure your project is connected to a GitHub repository with at least one branch.
-              </AlertDescription>
-            </Alert>
-          )}
-
           <div className="flex items-center gap-2">
             <Button
               onClick={handleSave}
               disabled={!hasChanges || updateDefaultBranch.isPending}
               size="sm"
+              className="gap-1.5 h-9"
             >
               {updateDefaultBranch.isPending ? (
                 <>
-                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  <RefreshCw className="h-4 w-4 animate-spin" />
                   Saving...
                 </>
               ) : (
                 <>
-                  <Save className="h-4 w-4 mr-2" />
+                  <Save className="h-4 w-4" />
                   Save Changes
                 </>
               )}
@@ -202,6 +191,7 @@ export default function DefaultBranchSettings({ projectId }: DefaultBranchSettin
                   setHasChanges(false);
                 }}
                 size="sm"
+                className="h-9"
               >
                 Cancel
               </Button>
@@ -210,11 +200,11 @@ export default function DefaultBranchSettings({ projectId }: DefaultBranchSettin
 
           {settings?.default_branch && (
             <div className="text-sm text-muted-foreground">
-              <strong>Current default:</strong> {settings.default_branch}
+              <strong>Current default:</strong> <code className="bg-muted px-1 rounded text-xs font-mono">{settings.default_branch}</code>
             </div>
           )}
         </div>
-      </div>
+      )}
     </div>
   );
 }

@@ -1,0 +1,23 @@
+export interface PreviewUrl {
+  id: number;
+  project_id: number;
+  branch_name: string;
+  subdomain: string;
+  full_url: string;
+  container_status: 'running' | 'stopped' | 'error';
+  ssl_enabled: boolean;
+  created_at: string;
+  last_accessed: string | null;
+}
+
+export interface PreviewUrlsResponse {
+  preview_urls: PreviewUrl[];
+  total_count: number;
+}
+
+export interface PreviewUrlStats {
+  total_previews: number;
+  active_previews: number;
+  ssl_enabled_count: number;
+  container_status_count: Record<string, number>;
+}

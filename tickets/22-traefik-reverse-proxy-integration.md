@@ -17,6 +17,37 @@ traefik/
 └── docker-compose.traefik.yml
 agent/app/services/domain_service.py
 agent/app/services/docker_service.py (update)
+.env.example (update with domain configs)
+```
+
+## Required DNS Configuration
+
+### Cloudflare DNS Records Required:
+
+**For kosuke.ai domain (main application):**
+
+- `A` record: `kosuke.ai` → Your server IP
+- `A` record: `www.kosuke.ai` → Your server IP
+- `A` record: `traefik.kosuke.ai` → Your server IP (Traefik dashboard)
+
+**For kosuke.app domain (preview containers):**
+
+- `A` record: `*.kosuke.app` → Your server IP (wildcard for all previews)
+
+**Note:** You need both domains registered and configured in Cloudflare.
+
+## Environment Variables
+
+Add to your `.env.prod` file:
+
+```bash
+# Domain configuration
+MAIN_DOMAIN=kosuke.ai
+PREVIEW_BASE_DOMAIN=kosuke.app
+
+# Cloudflare configuration for SSL
+CLOUDFLARE_EMAIL=your-email@domain.com
+CLOUDFLARE_API_KEY=your-global-api-key
 ```
 
 ## Implementation Details
@@ -50,6 +81,8 @@ services:
     environment:
       - CLOUDFLARE_EMAIL=${CLOUDFLARE_EMAIL}
       - CLOUDFLARE_API_KEY=${CLOUDFLARE_API_KEY}
+      - MAIN_DOMAIN=kosuke.ai
+      - PREVIEW_DOMAIN=kosuke.app
 
   postgres:
     image: postgres:16.4-alpine
@@ -99,6 +132,7 @@ services:
       - PYTHONUNBUFFERED=1
       - NEXTJS_URL=http://nextjs:3000
       - TRAEFIK_ENABLED=true
+      - PREVIEW_BASE_DOMAIN=kosuke.app
     networks:
       - kosuke_network
     depends_on:
@@ -156,6 +190,7 @@ certificatesResolvers:
         resolvers:
           - '1.1.1.1:53'
           - '8.8.8.8:53'
+        # Supports both kosuke.ai and kosuke.app domains
 
 log:
   level: INFO
@@ -192,12 +227,16 @@ class DomainService:
         if len(sanitized_branch) > 20:
             sanitized_branch = sanitized_branch[:20].rstrip('-')
 
-        # Create subdomain: project-{id}-{branch}
+        # Create subdomain: project-{id}-{branch} on kosuke.app (preview domain)
         subdomain = f"project-{project_id}-{sanitized_branch}"
-        full_domain = f"{subdomain}.{settings.BASE_DOMAIN}"
+        full_domain = f"{subdomain}.{settings.PREVIEW_BASE_DOMAIN}"
 
         logger.info(f"Generated subdomain: {full_domain} for project {project_id}, branch: {branch_name}")
         return full_domain
+
+    def generate_main_domain(self) -> str:
+        """Get the main application domain"""
+        return settings.MAIN_DOMAIN or "kosuke.ai"
 
     async def update_container_routing(self, project_id: int, container_name: str, port: int, branch_name: str) -> str:
         """Update container routing when container starts"""

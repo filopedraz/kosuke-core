@@ -4,6 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Settings } from 'lucide-react';
 import DefaultBranchSettings from './default-branch-settings';
 import { EnvironmentVariables } from './environment-variables';
+import { SubdomainDisplay } from './subdomain-display';
 
 interface SettingsTabProps {
   projectId: number;
@@ -23,6 +24,7 @@ export function SettingsTab({ projectId }: SettingsTabProps) {
         <TabsList>
           <TabsTrigger value="environment">Environment Variables</TabsTrigger>
           <TabsTrigger value="branch">Default Branch</TabsTrigger>
+          <TabsTrigger value="subdomains">Preview URLs</TabsTrigger>
         </TabsList>
 
         <TabsContent value="environment" className="space-y-6 pt-6 pb-12">
@@ -31,6 +33,10 @@ export function SettingsTab({ projectId }: SettingsTabProps) {
 
         <TabsContent value="branch" className="space-y-6 pt-6 pb-12">
           <DefaultBranchSettings projectId={projectId} />
+        </TabsContent>
+
+        <TabsContent value="subdomains" className="space-y-6 pt-6 pb-12">
+          <SubdomainDisplay projectId={projectId} />
         </TabsContent>
       </Tabs>
     </div>

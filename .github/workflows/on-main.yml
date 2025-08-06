@@ -1,0 +1,52 @@
+name: Deploy to Production
+
+env:
+  DOCKER_BUILDKIT: 1
+  COMPOSE_DOCKER_CLI_BUILD: 1
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: 'main-production-${{ github.workflow }}'
+  cancel-in-progress: true
+
+jobs:
+  deploy-production:
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install SSH Client
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install openssh-client -y
+
+      - name: Set up SSH keys
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.PROD_SERVER_ID_RSA }}" > ~/.ssh/id_rsa
+          echo "StrictHostKeyChecking no" >> ~/.ssh/config
+          chmod 400 ~/.ssh/config
+          chmod 600 ~/.ssh/id_rsa
+          chmod 700 ~/.ssh
+
+      - name: Deploy to Production Server
+        id: deploy
+        run: |
+          ssh ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_IP }} "cd /home/filippo/kosuke-core/ && git pull"
+          ssh ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_IP }} "cd /home/filippo/kosu-core/ && docker compose -f docker-compose.production.yml up --build -d"
+
+      - name: Notify Slack - Success
+        if: success()
+        run: |
+          curl -X POST --data '{"text":"✅ Kosuke App Production Deployed Successfully"}' ${{ secrets.SLACK_DEV_CHANNEL_WEBHOOK_URL }}
+
+      - name: Notify Slack - Failure
+        if: failure()
+        run: |
+          curl -X POST --data "{\"text\":\"❌ Kosuke App Production Deployment Failed\nAction: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" ${{ secrets.SLACK_DEV_CHANNEL_WEBHOOK_URL }}

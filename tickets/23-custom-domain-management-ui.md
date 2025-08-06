@@ -5,7 +5,12 @@
 
 ## Description
 
-Add UI to the project settings to display automatically generated subdomains based on branch names. Users can see their preview URLs but cannot modify them.
+Add UI to the project settings to display automatically generated subdomains on kosuke.app based on branch names. Users can see their preview URLs but cannot modify them.
+
+## Domain Architecture
+
+- **Main Application**: `kosuke.ai` (Next.js app)
+- **Preview Containers**: `*.kosuke.app` (Generated subdomains like `project-123-main.kosuke.app`)
 
 ## Files to Create/Update
 
@@ -223,7 +228,7 @@ export function SubdomainDisplay({ projectId }: SubdomainDisplayProps) {
         <Info className="h-4 w-4" />
         <AlertDescription>
           Preview URLs are automatically generated based on your branch names during chat sessions.
-          Each branch gets its own subdomain like <code>project-{projectId}-main.kosuke.ai</code>
+          Each branch gets its own subdomain like <code>project-{projectId}-main.kosuke.app</code>
         </AlertDescription>
       </Alert>
     </div>
@@ -375,11 +380,11 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 
 1. **Infrastructure Layer:**
    - **Traefik** as reverse proxy with automatic SSL (Let's Encrypt)
-   - **Cloudflare DNS** with wildcard `*.kosuke.ai` → your server
+   - **Cloudflare DNS** with wildcard `*.kosuke.app` → your server (previews)
    - **Docker Compose** orchestration for all services
 
 2. **Automatic Domain Management:**
-   - Subdomains generated automatically: `project-{id}-{branch}.kosuke.ai`
+   - Subdomains generated automatically: `project-{id}-{branch}.kosuke.app`
    - Python agent creates containers with Traefik labels
    - Dynamic routing based on `Host()` rules
    - No user configuration required
@@ -389,11 +394,11 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
    ```
    User starts chat session with branch "main"
    ↓
-   Agent generates: project-123-main.kosuke.ai
+   Agent generates: project-123-main.kosuke.app
    ↓
-   Cloudflare DNS: *.kosuke.ai → Your Server (IP)
+   Cloudflare DNS: *.kosuke.app → Your Server (IP)
    ↓
-   Traefik: Host(`project-123-main.kosuke.ai`) → project container
+   Traefik: Host(`project-123-main.kosuke.app`) → project container
    ↓
    Container: kosuke-preview-123 serves the app
    ```
