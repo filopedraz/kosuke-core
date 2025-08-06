@@ -1,6 +1,5 @@
 import type {
   ApiChatMessage,
-  ChatMessageProps,
   ContentBlock,
   ErrorType,
   MessageOptions,
@@ -481,17 +480,48 @@ export function useSendMessage(
     },
     onMutate: async newMessage => {
       // Cancel any outgoing refetches for session-specific queries
-      await queryClient.cancelQueries({ queryKey: ['chat-session-messages', projectId, sessionId] });
+      await queryClient.cancelQueries({
+        queryKey: ['chat-session-messages', projectId, sessionId],
+      });
 
       // Snapshot the previous messages
-      const previousMessages = queryClient.getQueryData(['chat-session-messages', projectId, sessionId]);
+      const previousMessages = queryClient.getQueryData([
+        'chat-session-messages',
+        projectId,
+        sessionId,
+      ]);
+
+      // Optimistically add the user message
+      if (previousMessages) {
+        const userMessage = {
+          id: Date.now(), // Temporary ID
+          content: newMessage.content,
+          role: 'user' as const,
+          timestamp: new Date(),
+          modelType: 'premium',
+          projectId,
+          chatSessionId: activeChatSessionId,
+          userId: 'current-user', // Will be replaced by server
+          tokensInput: 0,
+          tokensOutput: 0,
+          contextTokens: 0,
+        };
+
+        queryClient.setQueryData(['chat-session-messages', projectId, sessionId], (old: any) => ({
+          ...old,
+          messages: [...(old?.messages || []), userMessage],
+        }));
+      }
 
       return { previousMessages };
     },
     onError: (error, _, context) => {
       // If there's an error, roll back to the previous state
       if (context?.previousMessages) {
-        queryClient.setQueryData(['chat-session-messages', projectId, sessionId], context.previousMessages);
+        queryClient.setQueryData(
+          ['chat-session-messages', projectId, sessionId],
+          context.previousMessages
+        );
       }
 
       // Clear streaming state on error
@@ -505,7 +535,7 @@ export function useSendMessage(
 
       console.error('Message sending failed:', error);
     },
-    onSuccess: (data) => {
+    onSuccess: data => {
       // Mark that we're expecting a webhook update
       setStreamingState(prev => ({
         ...prev,
@@ -514,10 +544,10 @@ export function useSendMessage(
 
       // If this was an image upload (non-streaming), invalidate queries immediately
       if (data.expectingWebhookUpdate === false) {
-        queryClient.invalidateQueries({ 
-          queryKey: ['chat-session-messages', projectId, sessionId] 
+        queryClient.invalidateQueries({
+          queryKey: ['chat-session-messages', projectId, sessionId],
         });
-        
+
         // Update session list to reflect new message count
         queryClient.invalidateQueries({ queryKey: ['chat-sessions', projectId] });
       }
@@ -526,10 +556,10 @@ export function useSendMessage(
       // Add a delay before invalidating queries to allow webhook to save data
       setTimeout(async () => {
         // Invalidate and wait for the query to settle before clearing streaming state
-        await queryClient.invalidateQueries({ 
-          queryKey: ['chat-session-messages', projectId, sessionId] 
+        await queryClient.invalidateQueries({
+          queryKey: ['chat-session-messages', projectId, sessionId],
         });
-        
+
         // Also invalidate session list to update message counts
         await queryClient.invalidateQueries({ queryKey: ['chat-sessions', projectId] });
 

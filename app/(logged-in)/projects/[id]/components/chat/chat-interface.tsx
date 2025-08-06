@@ -22,9 +22,7 @@ import ModelBanner from './model-banner';
 
 export default function ChatInterface({
   projectId,
-  initialMessages = [],
   className,
-  isLoading: initialIsLoading = false,
   activeChatSessionId,
   currentBranch,
   sessionId,
@@ -41,18 +39,13 @@ export default function ChatInterface({
     imageUrl?: string;
   } | null>(null);
 
-  // Ensure we have a sessionId - this is now required
-  if (!sessionId) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <p className="text-muted-foreground">No session selected</p>
-      </div>
-    );
-  }
+  // State for immediate loading feedback
+  const [isGenerating, setIsGenerating] = useState(false);
 
   // Custom hooks for business logic - all session-based now
-  const sendMessageMutation = useSendMessage(projectId, activeChatSessionId, sessionId);
-  const messagesQuery = useChatSessionMessages(projectId, sessionId);
+  // Always call hooks at the top level, even if sessionId is not available yet
+  const sendMessageMutation = useSendMessage(projectId, activeChatSessionId, sessionId || '');
+  const messagesQuery = useChatSessionMessages(projectId, sessionId || '');
   const chatState = useChatState(projectId, sessionId);
 
   // Extract data from hooks
@@ -60,8 +53,6 @@ export default function ChatInterface({
     data: messagesData,
     isLoading: isLoadingMessages,
   } = messagesQuery;
-
-
 
   const messages = useMemo(() => {
     const msgs = messagesData?.messages || [];
@@ -77,8 +68,6 @@ export default function ChatInterface({
     streamingAssistantMessageId,
     cancelStream,
   } = sendMessageMutation;
-
-
 
   const {
     isError,
@@ -104,9 +93,6 @@ export default function ChatInterface({
       setUser(null);
     }
   }, [isLoaded, clerkUser]);
-
-  // State for immediate loading feedback
-  const [isGenerating, setIsGenerating] = useState(false);
 
   // Handle send errors
   useEffect(() => {
@@ -135,6 +121,15 @@ export default function ChatInterface({
 
     return () => clearTimeout(scrollTimeout);
   }, [messages, isLoadingMessages, streamingContentBlocks]);
+
+  // Ensure we have a sessionId - this is now required
+  if (!sessionId) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <p className="text-muted-foreground">No session selected</p>
+      </div>
+    );
+  }
 
   // Handle sending messages
   const handleSendMessage = async (

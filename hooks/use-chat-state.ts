@@ -71,9 +71,11 @@ export function useChatState(projectId: number, sessionId?: string | null) {
 
       try {
         // Get current messages from TanStack Query cache (session-specific)
-        const currentData = queryClient.getQueryData(['chat-session-messages', projectId, sessionId]) as
-          | { messages: ChatMessageProps[] }
-          | undefined;
+        const currentData = queryClient.getQueryData([
+          'chat-session-messages',
+          projectId,
+          sessionId,
+        ]) as { messages: ChatMessageProps[] } | undefined;
 
         if (currentData) {
           // Find and remove all messages after the last user message

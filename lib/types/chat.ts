@@ -107,9 +107,7 @@ export interface ChatInputProps {
 
 export interface ChatInterfaceProps {
   projectId: number;
-  initialMessages?: Omit<ChatMessageProps, 'isLoading' | 'className'>[];
   className?: string;
-  isLoading?: boolean;
   activeChatSessionId?: number | null;
   currentBranch?: string;
   sessionId?: string; // Session ID for fetching session-specific messages
