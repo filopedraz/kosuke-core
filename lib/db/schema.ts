@@ -26,15 +26,6 @@ export const users = pgTable('users', {
   deletedAt: timestamp('deleted_at'),
 });
 
-export const waitlistEntries = pgTable('waitlist_entries', {
-  id: serial('id').primaryKey(),
-  email: varchar('email', { length: 255 }).notNull().unique(),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-  status: varchar('status', { length: 20 }).notNull().default('pending'), // 'pending', 'invited', 'registered'
-  invitedAt: timestamp('invited_at'),
-  registeredAt: timestamp('registered_at'),
-});
-
 export const activityLogs = pgTable('activity_logs', {
   id: serial('id').primaryKey(),
   userId: text('user_id').references(() => users.clerkUserId),
@@ -334,9 +325,6 @@ export type ChatMessage = typeof chatMessages.$inferSelect;
 export type NewChatMessage = typeof chatMessages.$inferInsert;
 export type Diff = typeof diffs.$inferSelect;
 export type NewDiff = typeof diffs.$inferInsert;
-
-export type WaitlistEntry = typeof waitlistEntries.$inferSelect;
-export type NewWaitlistEntry = typeof waitlistEntries.$inferInsert;
 
 export type UserGithubToken = typeof userGithubTokens.$inferSelect;
 export type NewUserGithubToken = typeof userGithubTokens.$inferInsert;
