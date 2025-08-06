@@ -201,13 +201,23 @@ export function EnvironmentVariables({ projectId }: EnvironmentVariablesProps) {
         editingVariable={editingVariable}
       />
 
-      <Alert>
-        <InfoIcon className="h-4 w-4" />
-        <AlertDescription>
-          Secret variables are encrypted and will only be visible in preview containers. Regular
-          variables are stored as plain text and visible to project collaborators.
-        </AlertDescription>
-      </Alert>
+      <div className="space-y-3">
+        <Alert>
+          <InfoIcon className="h-4 w-4" />
+          <AlertDescription>
+            <strong>Project-wide variables:</strong> Environment variables apply to all chat sessions and preview containers in this project. 
+            They are not session-specific.
+          </AlertDescription>
+        </Alert>
+        
+        <Alert>
+          <Shield className="h-4 w-4" />
+          <AlertDescription>
+            Secret variables are encrypted and will only be visible in preview containers. Regular
+            variables are stored as plain text and visible to project collaborators.
+          </AlertDescription>
+        </Alert>
+      </div>
     </div>
   );
 }
