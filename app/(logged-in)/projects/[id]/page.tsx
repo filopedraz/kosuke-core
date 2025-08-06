@@ -295,6 +295,7 @@ export default function ProjectPage({ params }: ProjectPageProps) {
               projectId={projectId}
               projectName={project.name}
               sessionId={previewSessionId}
+              branch={currentBranch}
             />
           ) : currentView === 'code' ? (
             <CodeExplorer
