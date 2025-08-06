@@ -80,6 +80,7 @@ class WebhookService:
         tokens_output: int = 0,
         context_tokens: int = 0,
         assistant_message_id: int | None = None,
+        commit_sha: str | None = None,
     ) -> bool:
         """Send assistant message with blocks to Next.js database"""
         endpoint = f"/api/projects/{project_id}/webhook/data"
@@ -92,6 +93,7 @@ class WebhookService:
                 "tokensOutput": tokens_output,
                 "contextTokens": context_tokens,
                 "assistantMessageId": assistant_message_id,
+                "commitSha": commit_sha,
             },
         }
 

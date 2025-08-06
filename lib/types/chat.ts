@@ -140,6 +140,7 @@ export interface WebhookAssistantData {
   tokensOutput?: number;
   contextTokens?: number;
   assistantMessageId?: number; // ID of assistant message to update
+  commitSha?: string; // Git commit SHA for revert functionality
 }
 
 // Assistant Response Types

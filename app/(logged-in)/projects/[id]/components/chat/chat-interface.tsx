@@ -223,6 +223,9 @@ export default function ChatInterface({
                   hasError={message.hasError}
                   errorType={message.errorType}
                   onRegenerate={message.onRegenerate}
+                  commitSha={message.commitSha}
+                  projectId={projectId}
+                  chatSessionId={activeChatSessionId}
                 />
               ))}
 

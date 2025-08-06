@@ -1,22 +1,24 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/server';
 import { db } from '@/lib/db/drizzle';
 import { chatMessages, chatSessions } from '@/lib/db/schema';
-import { eq, and } from 'drizzle-orm';
 import type { RevertToMessageRequest } from '@/lib/types/chat';
+import { and, eq } from 'drizzle-orm';
+import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string; sessionId: string } }
+  { params }: { params: Promise<{ id: string; sessionId: string }> }
 ) {
   try {
-    const { userId } = auth();
+    const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const projectId = parseInt(params.id);
-    const sessionId = parseInt(params.sessionId);
+    const { id, sessionId } = await params;
+
+    const projectId = parseInt(id);
+    const sessionIdNumber = parseInt(sessionId);
     const body: RevertToMessageRequest = await request.json();
 
     // Verify the message exists and belongs to this session
@@ -27,7 +29,7 @@ export async function POST(
         and(
           eq(chatMessages.id, body.message_id),
           eq(chatMessages.projectId, projectId),
-          eq(chatMessages.chatSessionId, sessionId)
+          eq(chatMessages.chatSessionId, sessionIdNumber)
         )
       )
       .limit(1);
@@ -43,7 +45,7 @@ export async function POST(
     const session = await db
       .select()
       .from(chatSessions)
-      .where(eq(chatSessions.id, sessionId))
+      .where(eq(chatSessions.id, sessionIdNumber))
       .limit(1);
 
     if (!session[0]) {
@@ -73,7 +75,7 @@ export async function POST(
       );
     }
 
-    const result = await response.json();
+    await response.json();
     return NextResponse.json({
       success: true,
       data: {

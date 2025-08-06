@@ -192,8 +192,8 @@ export default function ProjectPage({ params }: ProjectPageProps) {
   const currentBranch = currentSession?.githubBranchName;
   const sessionId = currentSession?.sessionId;
 
-  // Fetch messages for the active session
-  const { data: messagesData, isLoading: isMessagesLoading } = useChatSessionMessages(
+  // Fetch messages for the active session (reserved for future use)
+  const { data: _messagesData, isLoading: _isMessagesLoading } = useChatSessionMessages(
     projectId,
     sessionId || ''
   );

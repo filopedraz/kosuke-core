@@ -431,7 +431,7 @@ export async function POST(
     const agentServiceUrl = process.env.AGENT_SERVICE_URL || 'http://localhost:8001';
 
     // Use the session-aware chat endpoint
-    const endpoint = '/api/chat/session';
+    const endpoint = '/api/chat/stream';
     console.log(`🚀 Routing to: ${endpoint} for session ${chatSession.sessionId}`);
 
     // Mark unused variables for future use

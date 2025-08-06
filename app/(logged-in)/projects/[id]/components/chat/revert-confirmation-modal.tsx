@@ -1,12 +1,12 @@
 'use client';
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { RotateCcw, AlertTriangle, GitCommit } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useRevertToMessage } from '@/hooks/use-message-operations';
-import { formatDistanceToNow } from 'date-fns';
 import type { ChatMessage } from '@/lib/types/chat';
+import { formatDistanceToNow } from 'date-fns';
+import { AlertTriangle, GitCommit, RotateCcw } from 'lucide-react';
 
 interface RevertConfirmationModalProps {
   message: ChatMessage;
@@ -51,7 +51,7 @@ export function RevertConfirmationModal({
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
               This will revert your project to the state when this assistant message was created.
-              Any changes made after this point will remain in Git history but won't be visible in
+              Any changes made after this point will remain in Git history but won&apos;t be visible in
               your working directory.
             </AlertDescription>
           </Alert>

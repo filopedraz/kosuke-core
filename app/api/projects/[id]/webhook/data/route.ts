@@ -150,6 +150,7 @@ async function handleAssistantMessage(
           tokensInput: data.tokensInput || 0,
           tokensOutput: data.tokensOutput || 0,
           contextTokens: data.contextTokens || 0,
+          commitSha: data.commitSha || null, // Git commit SHA for revert functionality
         })
         .where(eq(chatMessages.id, data.assistantMessageId))
         .returning();
@@ -168,6 +169,7 @@ async function handleAssistantMessage(
         tokensInput: data.tokensInput || 0,
         tokensOutput: data.tokensOutput || 0,
         contextTokens: data.contextTokens || 0,
+        commitSha: data.commitSha || null, // Git commit SHA for revert functionality
       }).returning();
 
       savedMessage = newMessage;
