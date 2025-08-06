@@ -17,6 +17,7 @@ import { useUser } from '@clerk/nextjs';
 import BrandGuidelines from './components/brand/brand-guidelines';
 import ChatInterface from './components/chat/chat-interface';
 import ChatSidebar from './components/chat/chat-sidebar';
+import { DatabaseTab } from './components/database/database-tab';
 import CodeExplorer from './components/preview/code-explorer';
 import PreviewPanel from './components/preview/preview-panel';
 import DefaultBranchSettings from './components/settings/default-branch-settings';
@@ -356,6 +357,10 @@ export default function ProjectPage({ params }: ProjectPageProps) {
             />
           ) : currentView === 'settings' ? (
             <DefaultBranchSettings
+              projectId={projectId}
+            />
+          ) : currentView === 'database' ? (
+            <DatabaseTab
               projectId={projectId}
             />
           ) : (

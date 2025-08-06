@@ -8,8 +8,8 @@ type SharedLayoutProps = {
   variant?: 'standard' | 'project' | 'waitlist';
   projectProps?: {
     projectName: string;
-    currentView: 'preview' | 'code' | 'branding' | 'settings';
-    onViewChange: (view: 'preview' | 'code' | 'branding' | 'settings') => void;
+    currentView: 'preview' | 'code' | 'branding' | 'settings' | 'database';
+    onViewChange: (view: 'preview' | 'code' | 'branding' | 'settings' | 'database') => void;
     onRefresh?: () => void;
     isChatCollapsed?: boolean;
     onToggleChat?: () => void;
