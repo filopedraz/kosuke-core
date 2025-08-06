@@ -5,7 +5,7 @@ import { use, useEffect, useRef, useState } from 'react';
 
 import Navbar from '@/components/ui/navbar';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useChatSessionMessages, useChatSessions } from '@/hooks/use-chat-sessions';
+import { useChatSessions } from '@/hooks/use-chat-sessions';
 import { usePreviewStatus, useStartPreview } from '@/hooks/use-preview-status';
 import { useCreatePullRequest } from '@/hooks/use-project-settings';
 import { useProjectUIState } from '@/hooks/use-project-ui-state';
@@ -193,10 +193,10 @@ export default function ProjectPage({ params }: ProjectPageProps) {
   const sessionId = currentSession?.sessionId;
 
   // Fetch messages for the active session (reserved for future use)
-  const { data: _messagesData, isLoading: _isMessagesLoading } = useChatSessionMessages(
-    projectId,
-    sessionId || ''
-  );
+  // const { data: _messagesData, isLoading: _isMessagesLoading } = useChatSessionMessages(
+  //   projectId,
+  //   sessionId || ''
+  // );
 
   // Preview should use session only when in chat interface view, not in sidebar list view
   const previewSessionId = showSidebar ? null : (sessionId || null);

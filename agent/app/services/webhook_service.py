@@ -143,6 +143,25 @@ class WebhookService:
 
         return await self._send_webhook_with_retry(endpoint, data)
 
+    async def send_system_message(
+        self,
+        project_id: int,
+        chat_session_id: int | str,
+        content: str,
+        revert_info: dict[str, Any] | None = None,
+    ) -> bool:
+        """Send system message (e.g., revert notifications) to Next.js database"""
+        endpoint = f"/api/projects/{project_id}/webhook/data"
+        data = {
+            "type": "system_message",
+            "data": {
+                "chatSessionId": chat_session_id,
+                "content": content,
+                "revertInfo": revert_info,
+            },
+        }
+        return await self._send_webhook_with_retry(endpoint, data)
+
 
 # Global webhook service instance
 webhook_service = WebhookService()

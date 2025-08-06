@@ -26,7 +26,10 @@ export interface ChatMessage {
   commitSha?: string; // NEW: Git commit SHA for revert functionality
   hasError?: boolean;
   errorType?: ErrorType;
-  metadata?: string;
+  metadata?: {
+    revertInfo?: { messageId: number; commitSha: string; timestamp: string };
+    [key: string]: unknown;
+  };
 }
 
 // Error Types
@@ -98,6 +101,11 @@ export interface ChatMessageProps {
   commitSha?: string; // NEW: Git commit SHA for revert functionality
   projectId?: number; // NEW: Project ID for revert operations
   chatSessionId?: number; // NEW: Chat session ID for revert operations
+  sessionId?: string; // NEW: Session ID string for revert operations
+  metadata?: {
+    revertInfo?: { messageId: number; commitSha: string; timestamp: string };
+    [key: string]: unknown;
+  }; // NEW: System message metadata
 }
 
 export interface ChatInputProps {
@@ -141,6 +149,7 @@ export interface WebhookAssistantData {
   contextTokens?: number;
   assistantMessageId?: number; // ID of assistant message to update
   commitSha?: string; // Git commit SHA for revert functionality
+  chatSessionId?: number; // For fallback message creation
 }
 
 // Assistant Response Types

@@ -63,6 +63,7 @@ export async function POST(
         project_id: projectId,
         session_id: session[0].sessionId,
         commit_sha: message[0].commitSha,
+        message_id: body.message_id,
         create_backup: body.create_backup_commit || false,
       }),
     });

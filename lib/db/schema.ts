@@ -107,6 +107,7 @@ export const chatMessages = pgTable('chat_messages', {
   tokensOutput: integer('tokens_output'), // Number of tokens received from the model
   contextTokens: integer('context_tokens'), // Current context window size in tokens
   commitSha: text('commit_sha'), // NEW: Git commit SHA for revert functionality
+  metadata: jsonb('metadata'), // NEW: System message metadata (e.g., revert info)
 });
 
 export const diffs = pgTable('diffs', {

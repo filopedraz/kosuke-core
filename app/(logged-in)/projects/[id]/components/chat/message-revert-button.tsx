@@ -1,16 +1,17 @@
 'use client';
 
-import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { RotateCcw, GitCommit } from 'lucide-react';
-import { RevertConfirmationModal } from './revert-confirmation-modal';
 import type { ChatMessage } from '@/lib/types/chat';
+import { GitCommit, RotateCcw } from 'lucide-react';
+import { useState } from 'react';
+import { RevertConfirmationModal } from './revert-confirmation-modal';
 
 interface MessageRevertButtonProps {
   message: ChatMessage;
   projectId: number;
   chatSessionId: number;
+  sessionId: string;
   className?: string;
 }
 
@@ -18,6 +19,7 @@ export function MessageRevertButton({
   message,
   projectId,
   chatSessionId,
+  sessionId,
   className,
 }: MessageRevertButtonProps) {
   const [showConfirmation, setShowConfirmation] = useState(false);
@@ -34,7 +36,7 @@ export function MessageRevertButton({
           <Button
             variant="ghost"
             size="sm"
-            className={`h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity ${className}`}
+            className={`h-8 w-8 p-0 ${className}`}
             onClick={() => setShowConfirmation(true)}
           >
             <RotateCcw className="h-4 w-4" />
@@ -52,6 +54,7 @@ export function MessageRevertButton({
         message={message}
         projectId={projectId}
         chatSessionId={chatSessionId}
+        sessionId={sessionId}
         isOpen={showConfirmation}
         onClose={() => setShowConfirmation(false)}
       />

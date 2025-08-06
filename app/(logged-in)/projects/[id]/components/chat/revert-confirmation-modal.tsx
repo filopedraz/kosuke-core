@@ -12,6 +12,7 @@ interface RevertConfirmationModalProps {
   message: ChatMessage;
   projectId: number;
   chatSessionId: number;
+  sessionId: string;
   isOpen: boolean;
   onClose: () => void;
 }
@@ -20,10 +21,11 @@ export function RevertConfirmationModal({
   message,
   projectId,
   chatSessionId,
+  sessionId,
   isOpen,
   onClose,
 }: RevertConfirmationModalProps) {
-  const revertMutation = useRevertToMessage(projectId, chatSessionId);
+  const revertMutation = useRevertToMessage(projectId, chatSessionId, sessionId);
 
   const handleRevert = () => {
     revertMutation.mutate(
@@ -38,7 +40,7 @@ export function RevertConfirmationModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px] border border-border bg-card">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <RotateCcw className="w-5 h-5" />
@@ -50,7 +52,7 @@ export function RevertConfirmationModal({
           <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
-              This will revert your project to the state when this assistant message was created.
+              This will revert your chat session to the state when this assistant message was created.
               Any changes made after this point will remain in Git history but won&apos;t be visible in
               your working directory.
             </AlertDescription>
@@ -98,7 +100,7 @@ export function RevertConfirmationModal({
               ) : (
                 <>
                   <RotateCcw className="w-4 h-4 mr-2" />
-                  Revert Project
+                  Revert Chat Session
                 </>
               )}
             </Button>

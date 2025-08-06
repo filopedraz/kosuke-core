@@ -1,9 +1,9 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
-import type { RevertToMessageRequest, RevertToMessageResponse } from '@/lib/types/chat';
 import type { ApiResponse } from '@/lib/api';
+import type { RevertToMessageRequest, RevertToMessageResponse } from '@/lib/types/chat';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
-export function useRevertToMessage(projectId: number, chatSessionId: number) {
+export function useRevertToMessage(projectId: number, chatSessionId: number, sessionId: string) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -27,8 +27,8 @@ export function useRevertToMessage(projectId: number, chatSessionId: number) {
       return result.data;
     },
     onSuccess: result => {
-      // Invalidate relevant queries to refresh UI
-      queryClient.invalidateQueries({ queryKey: ['chat-messages', projectId, chatSessionId] });
+      // Invalidate relevant queries to refresh UI with correct query keys
+      queryClient.invalidateQueries({ queryKey: ['chat-session-messages', projectId, sessionId] });
       queryClient.invalidateQueries({ queryKey: ['project-files', projectId] });
 
       toast({
