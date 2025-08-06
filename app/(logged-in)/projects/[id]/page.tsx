@@ -178,8 +178,8 @@ export default function ProjectPage({ params }: ProjectPageProps) {
     if (session) {
       setActiveChatSessionId(sessionId);
       setShowSidebar(false); // Switch to chat interface
-      // Update URL to reflect selected session
-      router.push(`/projects/${projectId}/chat/${session.sessionId}`, { scroll: false });
+      // Update URL to reflect selected session using query params
+      router.push(`/projects/${projectId}?session=${session.sessionId}`, { scroll: false });
     }
   };
 
