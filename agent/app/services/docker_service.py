@@ -93,7 +93,7 @@ class DockerService:
         return {
             "NODE_ENV": "development",
             "PORT": "3000",
-            "DATABASE_URL": (
+            "POSTGRES_URL": (
                 f"postgres://postgres:{db_password}@postgres:5432/kosuke_project_{project_id}_session_{session_id}"
             ),
             **env_vars,

@@ -5,6 +5,7 @@ import {
   ArrowLeft,
   CircleIcon,
   Code,
+  Database,
   Eye,
   GitPullRequest,
   LayoutDashboard,
@@ -34,8 +35,8 @@ type NavbarProps = {
   variant?: 'standard' | 'project' | 'waitlist';
   projectProps?: {
     projectName: string;
-    currentView: 'preview' | 'code' | 'branding' | 'settings';
-    onViewChange: (view: 'preview' | 'code' | 'branding' | 'settings') => void;
+    currentView: 'preview' | 'code' | 'branding' | 'settings' | 'database';
+    onViewChange: (view: 'preview' | 'code' | 'branding' | 'settings' | 'database') => void;
     onRefresh?: () => void;
     isChatCollapsed?: boolean;
     onToggleChat?: () => void;
@@ -246,6 +247,15 @@ export default function Navbar({ variant = 'standard', projectProps, className }
                   >
                     <Settings className="h-4 w-4 mr-1" />
                     Settings
+                  </Button>
+                  <Button
+                    variant={projectProps.currentView === 'database' ? 'secondary' : 'ghost'}
+                    size="sm"
+                    className="rounded-none px-3 h-8"
+                    onClick={() => projectProps.onViewChange('database')}
+                  >
+                    <Database className="h-4 w-4 mr-1" />
+                    Database
                   </Button>
                 </div>
               </div>

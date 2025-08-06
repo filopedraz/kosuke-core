@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 
 import type { Project } from '@/lib/db/schema';
 
-export type ProjectView = 'preview' | 'code' | 'branding' | 'settings';
+export type ProjectView = 'preview' | 'code' | 'branding' | 'settings' | 'database';
 
 interface ProjectUIState {
   currentView: ProjectView;

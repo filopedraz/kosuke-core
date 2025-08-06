@@ -82,7 +82,7 @@ class Settings:
 
         # Preview settings
         self.preview_default_image: str = os.getenv(
-            "PREVIEW_DEFAULT_IMAGE", "ghcr.io/filopedraz/kosuke-template:v0.0.78"
+            "PREVIEW_DEFAULT_IMAGE", "ghcr.io/filopedraz/kosuke-template:v0.0.80"
         )
         self.preview_port_range_start: int = int(os.getenv("PREVIEW_PORT_RANGE_START", "3001"))
         self.preview_port_range_end: int = int(os.getenv("PREVIEW_PORT_RANGE_END", "3100"))
