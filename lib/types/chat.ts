@@ -23,6 +23,7 @@ export interface ChatMessage {
   tokensInput?: number;
   tokensOutput?: number;
   contextTokens?: number;
+  commitSha?: string; // NEW: Git commit SHA for revert functionality
   hasError?: boolean;
   errorType?: ErrorType;
   metadata?: string;
@@ -94,6 +95,9 @@ export interface ChatMessageProps {
   tokensInput?: number;
   tokensOutput?: number;
   contextTokens?: number;
+  commitSha?: string; // NEW: Git commit SHA for revert functionality
+  projectId?: number; // NEW: Project ID for revert operations
+  chatSessionId?: number; // NEW: Chat session ID for revert operations
 }
 
 export interface ChatInputProps {
@@ -210,4 +214,17 @@ export interface StreamingEvent {
   is_error?: boolean; // Whether the tool execution failed (for tool_stop events)
   result?: string; // Legacy tool execution result
   summary?: string; // Task completion summary
+}
+
+// Revert Operation Types
+export interface RevertToMessageRequest {
+  message_id: number;
+  create_backup_commit?: boolean;
+}
+
+export interface RevertToMessageResponse {
+  success: boolean;
+  reverted_to_commit: string;
+  backup_commit?: string;
+  message: string;
 }

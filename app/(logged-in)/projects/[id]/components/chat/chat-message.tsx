@@ -12,9 +12,11 @@ import { cn } from '@/lib/utils';
 import type { AssistantBlock, ChatMessageProps, ContentBlock, ErrorType } from '@/lib/types';
 import { getFileName, processMessageContent } from '@/lib/utils/message-content';
 import AssistantResponse from './assistant-response';
+import { MessageRevertButton } from './message-revert-button';
 
 
 export default function ChatMessage({
+  id,
   content,
   blocks,
   role,
@@ -25,6 +27,9 @@ export default function ChatMessage({
   hasError = false,
   errorType = 'unknown',
   onRegenerate,
+  commitSha,
+  projectId,
+  chatSessionId,
 }: ChatMessageProps) {
   const isUser = role === 'user';
   const { imageUrl, displayName, initials } = useUser();
@@ -136,13 +141,23 @@ export default function ChatMessage({
 
       <div className="flex-1 space-y-2">
         {showAvatar && ( // Only show header for first message in a sequence
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between group">
             <h4>
               {isUser ? 'You' : 'AI Assistant'}
             </h4>
-            <time className="text-xs text-muted-foreground">
-              {formatDistanceToNow(new Date(timestamp), { addSuffix: true })}
-            </time>
+            <div className="flex items-center gap-2">
+              <time className="text-xs text-muted-foreground">
+                {formatDistanceToNow(new Date(timestamp), { addSuffix: true })}
+              </time>
+              {/* Add revert button for assistant messages with commit SHA */}
+              {!isUser && id && projectId && chatSessionId && commitSha && (
+                <MessageRevertButton
+                  message={{ id, role, timestamp, commitSha, content }}
+                  projectId={projectId}
+                  chatSessionId={chatSessionId}
+                />
+              )}
+            </div>
           </div>
         )}
 
