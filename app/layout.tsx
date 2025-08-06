@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import { ReactNode } from 'react';
+import Script from 'next/script';
 import './globals.css';
 
 import { ClerkThemeProvider } from '@/components/clerk-theme-provider';
@@ -32,6 +33,12 @@ export default function RootLayout({ children }: RootLayoutProps) {
     <ClerkThemeProvider>
       <html lang="en" className={inter.className} suppressHydrationWarning>
         <body className="min-h-[100dvh] bg-background text-foreground overflow-x-hidden">
+          <Script
+            defer
+            data-domain="kosuke.ai"
+            src="https://plausible.joandko.io/js/script.js"
+            strategy="beforeInteractive"
+          />
           <Providers>
             <div className="flex flex-col min-h-[100dvh]">
               <ErrorBoundary>
