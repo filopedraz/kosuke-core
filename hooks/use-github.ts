@@ -31,7 +31,8 @@ export function useGitHub() {
       const response = await fetch('/api/auth/github/status');
 
       if (response.ok) {
-        const data: GitHubStatusResponse = await response.json();
+        const responseData = await response.json();
+        const data: GitHubStatusResponse = responseData.data;
 
         if (data.connected && data.githubUsername) {
           setState(prev => ({
