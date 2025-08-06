@@ -1,7 +1,8 @@
-import { del, list, put } from '@vercel/blob';
+import { S3Client, PutObjectCommand, DeleteObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
+import { Upload } from '@aws-sdk/lib-storage';
 import { promises as fs } from 'fs';
 import path from 'path';
-import { IS_PRODUCTION, STORAGE_BASE_URL, UPLOADS_DIR } from './constants';
+import { IS_PRODUCTION, STORAGE_BASE_URL, UPLOADS_DIR, DO_SPACES_ENDPOINT, DO_SPACES_REGION, DO_SPACES_BUCKET, DO_SPACES_CDN_URL } from './constants';
 
 // Types for file info
 interface FileInfo {
@@ -10,6 +11,17 @@ interface FileInfo {
   lastModified: Date;
   url: string;
 }
+
+// Digital Ocean Spaces client (S3-compatible)
+const s3Client = new S3Client({
+  endpoint: DO_SPACES_ENDPOINT,
+  region: DO_SPACES_REGION,
+  credentials: {
+    accessKeyId: process.env.DO_SPACES_KEY || '',
+    secretAccessKey: process.env.DO_SPACES_SECRET || '',
+  },
+  forcePathStyle: false, // Digital Ocean Spaces uses virtual-hosted-style
+});
 
 // Ensure uploads directory exists (development only)
 async function ensureUploadsDir(dir: string = UPLOADS_DIR): Promise<void> {
@@ -106,44 +118,66 @@ async function listFilesLocal(
   return files;
 }
 
-// Production storage functions (Vercel Blob)
+// Production storage functions (Digital Ocean Spaces)
 async function uploadFileProduction(file: globalThis.File, filename: string): Promise<string> {
   try {
-    const blob = await put(filename, file, {
-      access: 'public',
+    const upload = new Upload({
+      client: s3Client,
+      params: {
+        Bucket: DO_SPACES_BUCKET,
+        Key: filename,
+        Body: file,
+        ACL: 'public-read',
+        ContentType: file.type,
+      },
     });
 
-    return blob.url;
+    await upload.done();
+    
+    // Return the CDN URL for the uploaded file
+    return `${DO_SPACES_CDN_URL}/${filename}`;
   } catch (error) {
-    console.error('Error uploading to Vercel Blob:', error);
+    console.error('Error uploading to Digital Ocean Spaces:', error);
     throw new Error('Failed to upload file to cloud storage');
   }
 }
 
 async function deleteFileProduction(url: string): Promise<void> {
   try {
-    await del(url);
+    // Extract the key from the URL
+    const key = url.replace(`${DO_SPACES_CDN_URL}/`, '');
+    
+    const command = new DeleteObjectCommand({
+      Bucket: DO_SPACES_BUCKET,
+      Key: key,
+    });
+
+    await s3Client.send(command);
   } catch (error) {
-    console.error('Error deleting from Vercel Blob:', error);
+    console.error('Error deleting from Digital Ocean Spaces:', error);
     throw new Error('Failed to delete file from cloud storage');
   }
 }
 
 async function listFilesProduction(prefix: string = ''): Promise<FileInfo[]> {
   try {
-    const { blobs } = await list({
-      prefix: prefix || undefined,
-      limit: 1000, // Vercel Blob limit
+    const command = new ListObjectsV2Command({
+      Bucket: DO_SPACES_BUCKET,
+      Prefix: prefix || undefined,
+      MaxKeys: 1000,
     });
 
-    return blobs.map(blob => ({
-      name: blob.pathname,
-      size: blob.size,
-      lastModified: new Date(blob.uploadedAt),
-      url: blob.url,
+    const response = await s3Client.send(command);
+    const objects = response.Contents || [];
+
+    return objects.map(obj => ({
+      name: obj.Key || '',
+      size: obj.Size || 0,
+      lastModified: obj.LastModified || new Date(),
+      url: `${DO_SPACES_CDN_URL}/${obj.Key}`,
     }));
   } catch (error) {
-    console.error('Error listing Vercel Blob files:', error);
+    console.error('Error listing Digital Ocean Spaces files:', error);
     throw new Error('Failed to list files from cloud storage');
   }
 }
@@ -151,8 +185,8 @@ async function listFilesProduction(prefix: string = ''): Promise<FileInfo[]> {
 // Extract filename from URL
 function extractFilenameFromUrl(url: string): string {
   if (IS_PRODUCTION) {
-    // For production URLs, return the full URL for Vercel Blob deletion
-    return url;
+    // For production URLs, extract the key from Digital Ocean Spaces URL
+    return url.replace(`${DO_SPACES_CDN_URL}/`, '');
   } else {
     // For local URLs, extract the filename part
     const urlParts = url.split('/');
@@ -250,8 +284,8 @@ export async function listFiles(
 ): Promise<FileInfo[]> {
   try {
     if (IS_PRODUCTION) {
-      // Note: Vercel Blob doesn't support recursive parameter in the same way,
-      // but it lists all files with the prefix by default
+      // Note: Digital Ocean Spaces lists all files with the prefix by default
+      // (recursive behavior is built-in for S3-compatible storage)
       return await listFilesProduction(prefix);
     } else {
       return await listFilesLocal(prefix, recursive);
