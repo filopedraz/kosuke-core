@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useState } from 'react';
 
 // Hook for managing chat error state and regeneration
-export function useChatState(projectId: number) {
+export function useChatState(projectId: number, sessionId?: string | null) {
   const queryClient = useQueryClient();
 
   // Error state
@@ -61,13 +61,21 @@ export function useChatState(projectId: number) {
         return;
       }
 
+      // Ensure we have a sessionId for regeneration
+      if (!sessionId) {
+        console.warn('Cannot regenerate: No session ID provided');
+        return;
+      }
+
       setIsRegenerating(true);
 
       try {
-        // Get current messages from TanStack Query cache
-        const currentData = queryClient.getQueryData(['messages', projectId]) as
-          | { messages: ChatMessageProps[] }
-          | undefined;
+        // Get current messages from TanStack Query cache (session-specific)
+        const currentData = queryClient.getQueryData([
+          'chat-session-messages',
+          projectId,
+          sessionId,
+        ]) as { messages: ChatMessageProps[] } | undefined;
 
         if (currentData) {
           // Find and remove all messages after the last user message
@@ -81,7 +89,7 @@ export function useChatState(projectId: number) {
             const updatedMessages = messages.slice(0, userMessageIndex + 1);
 
             // Optimistically update messages to remove any failed assistant responses
-            queryClient.setQueryData(['messages', projectId], {
+            queryClient.setQueryData(['chat-session-messages', projectId, sessionId], {
               ...currentData,
               messages: updatedMessages,
             });
@@ -102,7 +110,7 @@ export function useChatState(projectId: number) {
         setIsRegenerating(false);
       }
     },
-    [lastUserMessage, lastMessageOptions, projectId, queryClient, clearError]
+    [lastUserMessage, lastMessageOptions, projectId, sessionId, queryClient, clearError]
   );
 
   // Get error message based on error type
@@ -122,11 +130,13 @@ export function useChatState(projectId: number) {
 
   // Reset chat messages
   const resetChat = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ['messages', projectId] });
+    if (sessionId) {
+      queryClient.invalidateQueries({ queryKey: ['chat-session-messages', projectId, sessionId] });
+    }
     clearError();
     setLastUserMessage('');
     setLastMessageOptions(null);
-  }, [projectId, queryClient, clearError]);
+  }, [projectId, sessionId, queryClient, clearError]);
 
   return {
     // Error state

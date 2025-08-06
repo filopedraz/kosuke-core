@@ -89,9 +89,9 @@ export const chatMessages = pgTable('chat_messages', {
   projectId: integer('project_id')
     .references(() => projects.id)
     .notNull(),
-  chatSessionId: integer('chat_session_id').references(() => chatSessions.id, {
-    onDelete: 'cascade',
-  }),
+  chatSessionId: integer('chat_session_id')
+    .references(() => chatSessions.id, { onDelete: 'cascade' })
+    .notNull(), // Make this NOT NULL - all messages must be tied to a session
   userId: text('user_id').references(() => users.clerkUserId),
   role: varchar('role', { length: 20 }).notNull(), // 'user' or 'assistant'
   content: text('content'), // For user messages (nullable for assistant messages)
