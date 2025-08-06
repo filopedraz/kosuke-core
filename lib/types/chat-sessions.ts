@@ -15,6 +15,11 @@ export interface ChatSession {
   lastActivityAt: string;
   messageCount: number;
   isDefault: boolean;
+  // GitHub merge status
+  branchMergedAt?: string;
+  branchMergedBy?: string;
+  mergeCommitSha?: string;
+  pullRequestNumber?: number;
 }
 
 export interface CreateChatSessionData {

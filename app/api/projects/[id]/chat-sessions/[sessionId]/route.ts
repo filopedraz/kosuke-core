@@ -13,6 +13,11 @@ const updateChatSessionSchema = z.object({
   title: z.string().min(1).max(100).optional(),
   description: z.string().optional(),
   status: z.enum(['active', 'archived', 'completed']).optional(),
+  // GitHub merge status fields
+  branchMergedAt: z.string().optional(),
+  branchMergedBy: z.string().max(100).optional(),
+  mergeCommitSha: z.string().max(40).optional(),
+  pullRequestNumber: z.number().int().positive().optional(),
 });
 
 // Schema for sending a message - support both formats

@@ -41,16 +41,16 @@ async def start_preview(
             "project_id": request.project_id,
             "session_id": session_id,
             "compilation_complete": status.compilation_complete,
-            "is_responding": status.is_responding
+            "is_responding": status.is_responding,
         }
 
-        # Include git status for main branch previews
+        # Include git status when available (for main branch previews and recovered containers)
         if status.git_status:
             response["git_status"] = {
                 "success": status.git_status.success,
                 "action": status.git_status.action,
                 "message": status.git_status.message,
-                "commits_pulled": status.git_status.commits_pulled
+                "commits_pulled": status.git_status.commits_pulled,
             }
 
         return response

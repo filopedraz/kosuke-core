@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useToast } from '@/hooks/use-toast';
-import type { PreviewStatus, UsePreviewPanelOptions, UsePreviewPanelReturn, GitUpdateStatus } from '@/lib/types';
+import type {
+  PreviewStatus,
+  UsePreviewPanelOptions,
+  UsePreviewPanelReturn,
+  GitUpdateStatus,
+} from '@/lib/types';
 import { useStartPreview } from './use-preview-status';
 
 export function usePreviewPanel({
@@ -150,7 +155,7 @@ export function usePreviewPanel({
         if (data.git_status && (!sessionId || sessionId === 'main')) {
           setGitStatus(data.git_status);
           console.log('[Preview Panel] Git status:', data.git_status);
-          
+
           // Show toast for git updates
           if (data.git_status.action === 'pulled' && data.git_status.commits_pulled > 0) {
             toast({
@@ -295,14 +300,14 @@ export function usePreviewPanel({
     // Show git status message when updating main branch
     if (status === 'loading' && gitStatus) {
       if (gitStatus.action === 'pulled') {
-        return gitStatus.commits_pulled > 0 
+        return gitStatus.commits_pulled > 0
           ? `Updated with ${gitStatus.commits_pulled} new commit${gitStatus.commits_pulled === 1 ? '' : 's'}`
           : 'Already up to date';
       } else if (gitStatus.action === 'cached') {
         return 'Using cached version, loading preview...';
       }
     }
-    
+
     switch (status) {
       case 'ready':
         return 'Preview is ready!';

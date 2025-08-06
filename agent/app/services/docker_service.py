@@ -195,18 +195,28 @@ class DockerService:
 
         return None
 
-    async def _handle_existing_container(self, project_id: int, session_id: str, container_name: str) -> str | None:
+    async def _handle_existing_container(
+        self, project_id: int, session_id: str, container_name: str, git_status: dict | None = None
+    ) -> str | None:
         """Handle existing container if found"""
         container_key = (project_id, session_id)
 
         # Check if container already exists in memory
         if container_key in self.containers:
             container_info = self.containers[container_key]
+            # Update git status for existing container in memory
+            if git_status:
+                container_info.git_status = GitUpdateStatus(**git_status)
             return container_info.url
 
         # Check for existing Docker container
         existing = await self._get_existing_container(container_name)
         if existing:
+            # Convert git_status dict to GitUpdateStatus model if present
+            git_update_status = None
+            if git_status:
+                git_update_status = GitUpdateStatus(**git_status)
+
             container_info = ContainerInfo(
                 project_id=project_id,
                 session_id=session_id,
@@ -215,7 +225,7 @@ class DockerService:
                 port=existing["host_port"],
                 url=existing["url"],
                 compilation_complete=True,
-                git_status=None,  # No git status for existing containers
+                git_status=git_update_status,  # Include git status for existing containers
             )
             self.containers[container_key] = container_info
             return existing["url"]
@@ -261,7 +271,12 @@ class DockerService:
         return git_status
 
     async def _create_new_container(
-        self, project_id: int, session_id: str, container_name: str, env_vars: dict[str, str], git_status: dict | None = None
+        self,
+        project_id: int,
+        session_id: str,
+        container_name: str,
+        env_vars: dict[str, str],
+        git_status: dict | None = None,
     ) -> str:
         """Create a new container for the session"""
         host_port = self._get_random_port()
@@ -351,19 +366,21 @@ class DockerService:
 
         container_name = self._get_container_name(project_id, session_id)
 
-        # Check for existing containers first
-        existing_url = await self._handle_existing_container(project_id, session_id, container_name)
+        # Always ensure session environment and get git status (even for existing containers)
+        git_status = await self._ensure_session_environment(project_id, session_id)
+
+        # Check for existing containers
+        existing_url = await self._handle_existing_container(project_id, session_id, container_name, git_status)
         if existing_url:
             return existing_url
-
-        # Ensure session environment exists
-        git_status = await self._ensure_session_environment(project_id, session_id)
 
         # Ensure session database (don't wait for it to complete)
         _db_task = asyncio.create_task(self._ensure_session_database(project_id, session_id))
 
         try:
-            return await self._create_new_container(project_id, session_id, container_name, env_vars, git_status=git_status)
+            return await self._create_new_container(
+                project_id, session_id, container_name, env_vars, git_status=git_status
+            )
         except asyncio.TimeoutError:
             logger.error(f"Container creation timeout for project {project_id} session {session_id}")
             raise Exception("Container creation timeout") from None
@@ -442,7 +459,17 @@ class DockerService:
             # Try to detect existing Docker container
             existing = await self._get_existing_container(self._get_container_name(project_id, session_id))
             if existing:
-                # Restore container info to memory (no git status for recovered containers)
+                # For main branch containers, check for git updates even when recovering
+                git_status = None
+                if session_id == "main":
+                    try:
+                        git_status_dict = await self.session_manager.update_main_branch(project_id)
+                        if git_status_dict:
+                            git_status = GitUpdateStatus(**git_status_dict)
+                    except Exception as e:
+                        logger.error(f"Failed to get git status for recovered container: {e}")
+
+                # Restore container info to memory
                 container_info = ContainerInfo(
                     project_id=project_id,
                     session_id=session_id,
@@ -451,7 +478,7 @@ class DockerService:
                     port=existing["host_port"],
                     url=existing["url"],
                     compilation_complete=True,  # Assume running container is compiled
-                    git_status=None,  # No git status for recovered containers
+                    git_status=git_status,  # Include git status for main branch
                 )
                 self.containers[container_key] = container_info
 
@@ -463,16 +490,12 @@ class DockerService:
                     url=existing["url"],
                     compilation_complete=True,
                     is_responding=is_responding,
-                    git_status=None,  # No git status for recovered containers
+                    git_status=git_status,
                 )
 
             # No container found
             return PreviewStatus(
-                running=False,
-                url=None,
-                compilation_complete=False,
-                is_responding=False,
-                git_status=None
+                running=False, url=None, compilation_complete=False, is_responding=False, git_status=None
             )
 
         container_info = self.containers[container_key]

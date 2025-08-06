@@ -47,13 +47,15 @@ class SessionManager:
 
             if last_pull and (now - last_pull) < timedelta(minutes=self.PULL_CACHE_MINUTES):
                 minutes_since_pull = int((now - last_pull).total_seconds() / 60)
-                logger.info(f"Skipping git pull for project {project_id} - last pulled {minutes_since_pull} minutes ago")
+                logger.info(
+                    f"Skipping git pull for project {project_id} - last pulled {minutes_since_pull} minutes ago"
+                )
                 return {
                     "success": True,
                     "action": "cached",
                     "message": f"Using cached version from {minutes_since_pull} minutes ago",
                     "commits_pulled": 0,
-                    "last_pull_time": last_pull.isoformat()
+                    "last_pull_time": last_pull.isoformat(),
                 }
 
             # Ensure main project exists
@@ -88,7 +90,7 @@ class SessionManager:
 
                 except git.exc.GitCommandError as hard_error:
                     logger.error(f"Hard reset also failed for project {project_id}: {hard_error}")
-                    raise Exception(f"Both regular pull and hard reset failed: {hard_error}")
+                    raise Exception(f"Both regular pull and hard reset failed: {hard_error}") from hard_error
 
             # Get new commit hash and count commits pulled
             new_commit = repo.head.commit.hexsha
@@ -117,7 +119,7 @@ class SessionManager:
                 "commits_pulled": commits_pulled,
                 "last_pull_time": now.isoformat(),
                 "previous_commit": current_commit[:8],
-                "new_commit": new_commit[:8]
+                "new_commit": new_commit[:8],
             }
 
         except Exception as e:
@@ -127,7 +129,7 @@ class SessionManager:
                 "action": "error",
                 "message": f"Failed to update: {e}",
                 "commits_pulled": 0,
-                "error": str(e)
+                "error": str(e),
             }
 
     def create_session_environment(self, project_id: int, session_id: str, base_branch: str = "main") -> str:
