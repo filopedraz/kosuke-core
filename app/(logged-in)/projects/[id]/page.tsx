@@ -7,6 +7,7 @@ import Navbar from '@/components/ui/navbar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useChatSessionMessages, useChatSessions } from '@/hooks/use-chat-sessions';
 import { usePreviewStatus, useStartPreview } from '@/hooks/use-preview-status';
+import { useCreatePullRequest } from '@/hooks/use-project-settings';
 import { useProjectUIState } from '@/hooks/use-project-ui-state';
 import { useProject } from '@/hooks/use-projects';
 import { cn } from '@/lib/utils';
@@ -141,7 +142,10 @@ export default function ProjectPage({ params }: ProjectPageProps) {
   const { data: project, isLoading: isProjectLoading, error: projectError } = useProject(projectId);
   const { data: sessions = [] } = useChatSessions(projectId);
 
-  // UI state management
+  // Pull request functionality
+  const createPullRequestMutation = useCreatePullRequest(projectId);
+
+    // UI state management
   const { currentView, setCurrentView, isChatCollapsed, toggleChatCollapsed } = useProjectUIState(project);
 
   // Chat session state management
@@ -255,6 +259,22 @@ export default function ProjectPage({ params }: ProjectPageProps) {
     setShowSidebar(!showSidebar);
   };
 
+  // Handle creating pull request from active chat session
+  const handleCreatePullRequest = () => {
+    if (!activeChatSessionId || !currentSession?.sessionId) {
+      console.error('No active chat session for pull request creation');
+      return;
+    }
+
+    createPullRequestMutation.mutate({
+      sessionId: currentSession.sessionId,
+      data: {
+        title: `Updates from chat session: ${currentSession.title}`,
+        description: `Automated changes from Kosuke chat session: ${currentSession.title}\n\nSession ID: ${currentSession.sessionId}`,
+      },
+    });
+  };
+
   return (
     <div className="flex flex-col h-screen w-full">
       <Navbar
@@ -268,6 +288,8 @@ export default function ProjectPage({ params }: ProjectPageProps) {
           onToggleChat: toggleChatCollapsed,
           showSidebar: showSidebar,
           onToggleSidebar: toggleSidebar,
+          activeChatSessionId: !showSidebar ? activeChatSessionId : null,
+          onCreatePullRequest: handleCreatePullRequest,
         }}
       />
       <div className={cn('flex h-[calc(100vh-3.5rem)] w-full overflow-hidden')}>
@@ -322,6 +344,7 @@ export default function ProjectPage({ params }: ProjectPageProps) {
               projectId={projectId}
               projectName={project.name}
               sessionId={previewSessionId}
+              branch={currentBranch}
             />
           ) : currentView === 'code' ? (
             <CodeExplorer

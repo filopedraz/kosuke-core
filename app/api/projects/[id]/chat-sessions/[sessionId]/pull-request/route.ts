@@ -5,7 +5,7 @@ import { auth } from '@/lib/auth/server';
 import { db } from '@/lib/db/drizzle';
 import { chatSessions, projects } from '@/lib/db/schema';
 import { getGitHubToken } from '@/lib/github/auth';
-import { Github } from '@octokit/rest';
+import { Octokit } from '@octokit/rest';
 import { and, eq } from 'drizzle-orm';
 
 // Schema for creating pull request
@@ -112,11 +112,11 @@ export async function POST(
     // Set defaults
     const sourceBranch = session.githubBranchName || `kosuke-chat-${sessionId}`;
     const targetBranch = target_branch || project.defaultBranch || 'main';
-    const prTitle = title || `Feature: ${session.title}`;
+    const prTitle = title || `Updates from chat session: ${session.title}`;
     const prDescription = description || `Automated changes from Kosuke chat session: ${session.title}\n\nSession ID: ${sessionId}`;
 
     try {
-      const github = new Github({
+      const github = new Octokit({
         auth: githubToken,
       });
 
@@ -148,45 +148,25 @@ export async function POST(
         );
       }
 
-      // Create pull request
-      const { data: pullRequest } = await github.rest.pulls.create({
-        owner: project.githubOwner,
-        repo: project.githubRepoName,
-        title: prTitle,
-        body: prDescription,
-        head: sourceBranch,
-        base: targetBranch,
-      });
+      // Generate GitHub PR creation URL
+      const encodedTitle = encodeURIComponent(prTitle);
+      const encodedBody = encodeURIComponent(prDescription);
+
+      const githubPrUrl = `https://github.com/${project.githubOwner}/${project.githubRepoName}/compare/${targetBranch}...${sourceBranch}?quick_pull=1&title=${encodedTitle}&body=${encodedBody}`;
 
       return NextResponse.json({
-        pull_request_url: pullRequest.html_url,
-        pull_request_number: pullRequest.number,
-        title: pullRequest.title,
+        pull_request_url: githubPrUrl,
         source_branch: sourceBranch,
         target_branch: targetBranch,
+        title: prTitle,
         success: true,
       });
 
     } catch (error: unknown) {
-      console.error('Error creating pull request:', error);
-
-      // Handle specific GitHub API errors
-      if (error.status === 422) {
-        return NextResponse.json(
-          { error: 'Pull request already exists or no differences between branches' },
-          { status: 400 }
-        );
-      }
-
-      if (error.status === 404) {
-        return NextResponse.json(
-          { error: 'Repository not found or insufficient permissions' },
-          { status: 400 }
-        );
-      }
+      console.error('Error preparing pull request:', error);
 
       return NextResponse.json(
-        { error: 'Failed to create pull request' },
+        { error: 'Failed to prepare pull request' },
         { status: 500 }
       );
     }
