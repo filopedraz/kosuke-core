@@ -3,8 +3,19 @@ import { NextRequest, NextResponse } from 'next/server';
 import { eq } from 'drizzle-orm';
 
 import { db } from '@/lib/db/drizzle';
-import { chatMessages, projects } from '@/lib/db/schema';
-import type { GitHubWebhookData, WebhookAssistantData } from '@/lib/types';
+import { chatMessages, chatSessions, projects } from '@/lib/db/schema';
+import type { WebhookAssistantData } from '@/lib/types';
+import type { GitHubCommitData, GitHubSessionSummary } from '@/lib/types/github';
+
+interface SystemMessageData {
+  content: string;
+  chatSessionId: string | number;
+  revertInfo?: {
+    messageId: number;
+    commitSha: string;
+    timestamp: string;
+  };
+}
 
 interface CompletionLogData {
   success: boolean;
@@ -46,19 +57,26 @@ interface CompletionResponse {
 // Webhook authentication
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET || 'dev-secret-change-in-production';
 
-// Webhook request schema
-interface WebhookRequest {
-  type: 'assistant_message' | 'completion';
-  data: WebhookAssistantData & {
-    // For completion events
-    success?: boolean;
-    totalActions?: number;
-    duration?: number;
-    // GitHub integration data
-    githubCommit?: GitHubWebhookData['githubCommit'];
-    sessionSummary?: GitHubWebhookData['sessionSummary'];
-  };
-}
+// Webhook request schema - discriminated union
+type WebhookRequest =
+  | {
+      type: 'assistant_message';
+      data: WebhookAssistantData;
+    }
+  | {
+      type: 'completion';
+      data: WebhookAssistantData & {
+        success?: boolean;
+        totalActions?: number;
+        duration?: number;
+        githubCommit?: GitHubCommitData;
+        sessionSummary?: GitHubSessionSummary;
+      };
+    }
+  | {
+      type: 'system_message';
+      data: SystemMessageData;
+    };
 
 /**
  * Unified webhook endpoint for Python service to save assistant data
@@ -108,9 +126,12 @@ export async function POST(
       case 'completion':
         return await handleCompletion(projectId, webhookData.data);
 
+      case 'system_message':
+        return await handleSystemMessage(projectId, project.createdBy, webhookData.data);
+
       default:
         return NextResponse.json({
-          error: `Unknown webhook type: ${webhookData.type}`
+          error: `Unknown webhook type: ${(webhookData as { type: string }).type}`
         }, { status: 400 });
     }
 
@@ -128,7 +149,7 @@ export async function POST(
  */
 async function handleAssistantMessage(
   projectId: number,
-  userId: number,
+  userId: string,
   data: WebhookAssistantData
 ): Promise<NextResponse> {
   try {
@@ -150,6 +171,7 @@ async function handleAssistantMessage(
           tokensInput: data.tokensInput || 0,
           tokensOutput: data.tokensOutput || 0,
           contextTokens: data.contextTokens || 0,
+          commitSha: data.commitSha || null, // Git commit SHA for revert functionality
         })
         .where(eq(chatMessages.id, data.assistantMessageId))
         .returning();
@@ -158,6 +180,12 @@ async function handleAssistantMessage(
       console.log(`✅ Updated existing assistant message ${data.assistantMessageId}`);
     } else {
       // Create new assistant message (fallback for backward compatibility)
+      if (!data.chatSessionId) {
+        return NextResponse.json({
+          error: 'chatSessionId is required for creating new assistant messages'
+        }, { status: 400 });
+      }
+
       const [newMessage] = await db.insert(chatMessages).values({
         projectId,
         userId,
@@ -165,9 +193,11 @@ async function handleAssistantMessage(
         blocks: data.blocks || null, // Assistant response blocks as JSON
         role: 'assistant',
         modelType: 'premium',
+        chatSessionId: data.chatSessionId,
         tokensInput: data.tokensInput || 0,
         tokensOutput: data.tokensOutput || 0,
         contextTokens: data.contextTokens || 0,
+        commitSha: data.commitSha || null, // Git commit SHA for revert functionality
       }).returning();
 
       savedMessage = newMessage;
@@ -214,8 +244,8 @@ async function handleCompletion(
     success?: boolean;
     totalActions?: number;
     duration?: number;
-    githubCommit?: GitHubWebhookData['githubCommit'];
-    sessionSummary?: GitHubWebhookData['sessionSummary'];
+    githubCommit?: GitHubCommitData;
+    sessionSummary?: GitHubSessionSummary;
   }
 ): Promise<NextResponse> {
   try {
@@ -284,6 +314,71 @@ async function handleCompletion(
     console.error('Error handling completion:', error);
     return NextResponse.json(
       { error: 'Failed to handle completion' },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * Handle saving system message (e.g., revert notifications)
+ */
+async function handleSystemMessage(
+  projectId: number,
+  userId: string,
+  data: SystemMessageData
+): Promise<NextResponse> {
+  try {
+    if (!data.content || !data.chatSessionId) {
+      return NextResponse.json({
+        error: 'Content and chatSessionId are required for system messages'
+      }, { status: 400 });
+    }
+
+    // If chatSessionId is a string, look up the integer ID
+    let sessionIntId: number;
+    if (typeof data.chatSessionId === 'string') {
+      // Look up session by sessionId string
+      const [session] = await db
+        .select({ id: chatSessions.id })
+        .from(chatSessions)
+        .where(eq(chatSessions.sessionId, data.chatSessionId))
+        .limit(1);
+
+      if (!session) {
+        return NextResponse.json({
+          error: `Chat session not found: ${data.chatSessionId}`
+        }, { status: 404 });
+      }
+
+      sessionIntId = session.id;
+    } else {
+      sessionIntId = data.chatSessionId;
+    }
+
+    // Create system message in database
+    const [savedMessage] = await db.insert(chatMessages).values({
+      projectId,
+      userId,
+      content: data.content,
+      role: 'system',
+      modelType: 'system',
+      chatSessionId: sessionIntId,
+      // Store revert info as metadata in a JSON field if available
+      metadata: data.revertInfo ? { revertInfo: data.revertInfo } : null,
+    }).returning();
+
+    console.log(`✅ System message saved: ${savedMessage.id}`);
+
+    return NextResponse.json({
+      success: true,
+      messageId: savedMessage.id,
+      content: savedMessage.content,
+    });
+
+  } catch (error) {
+    console.error('Error saving system message:', error);
+    return NextResponse.json(
+      { error: 'Failed to save system message' },
       { status: 500 }
     );
   }

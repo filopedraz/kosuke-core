@@ -23,9 +23,13 @@ export interface ChatMessage {
   tokensInput?: number;
   tokensOutput?: number;
   contextTokens?: number;
+  commitSha?: string; // NEW: Git commit SHA for revert functionality
   hasError?: boolean;
   errorType?: ErrorType;
-  metadata?: string;
+  metadata?: {
+    revertInfo?: { messageId: number; commitSha: string; timestamp: string };
+    [key: string]: unknown;
+  };
 }
 
 // Error Types
@@ -94,6 +98,14 @@ export interface ChatMessageProps {
   tokensInput?: number;
   tokensOutput?: number;
   contextTokens?: number;
+  commitSha?: string; // NEW: Git commit SHA for revert functionality
+  projectId?: number; // NEW: Project ID for revert operations
+  chatSessionId?: number; // NEW: Chat session ID for revert operations
+  sessionId?: string; // NEW: Session ID string for revert operations
+  metadata?: {
+    revertInfo?: { messageId: number; commitSha: string; timestamp: string };
+    [key: string]: unknown;
+  }; // NEW: System message metadata
 }
 
 export interface ChatInputProps {
@@ -136,6 +148,8 @@ export interface WebhookAssistantData {
   tokensOutput?: number;
   contextTokens?: number;
   assistantMessageId?: number; // ID of assistant message to update
+  commitSha?: string; // Git commit SHA for revert functionality
+  chatSessionId?: number; // For fallback message creation
 }
 
 // Assistant Response Types
@@ -210,4 +224,17 @@ export interface StreamingEvent {
   is_error?: boolean; // Whether the tool execution failed (for tool_stop events)
   result?: string; // Legacy tool execution result
   summary?: string; // Task completion summary
+}
+
+// Revert Operation Types
+export interface RevertToMessageRequest {
+  message_id: number;
+  create_backup_commit?: boolean;
+}
+
+export interface RevertToMessageResponse {
+  success: boolean;
+  reverted_to_commit: string;
+  backup_commit?: string;
+  message: string;
 }

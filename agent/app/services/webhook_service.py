@@ -80,6 +80,7 @@ class WebhookService:
         tokens_output: int = 0,
         context_tokens: int = 0,
         assistant_message_id: int | None = None,
+        commit_sha: str | None = None,
     ) -> bool:
         """Send assistant message with blocks to Next.js database"""
         endpoint = f"/api/projects/{project_id}/webhook/data"
@@ -92,6 +93,7 @@ class WebhookService:
                 "tokensOutput": tokens_output,
                 "contextTokens": context_tokens,
                 "assistantMessageId": assistant_message_id,
+                "commitSha": commit_sha,
             },
         }
 
@@ -139,6 +141,25 @@ class WebhookService:
         if session_summary:
             data["data"]["sessionSummary"] = session_summary
 
+        return await self._send_webhook_with_retry(endpoint, data)
+
+    async def send_system_message(
+        self,
+        project_id: int,
+        chat_session_id: int | str,
+        content: str,
+        revert_info: dict[str, Any] | None = None,
+    ) -> bool:
+        """Send system message (e.g., revert notifications) to Next.js database"""
+        endpoint = f"/api/projects/{project_id}/webhook/data"
+        data = {
+            "type": "system_message",
+            "data": {
+                "chatSessionId": chat_session_id,
+                "content": content,
+                "revertInfo": revert_info,
+            },
+        }
         return await self._send_webhook_with_retry(endpoint, data)
 
 
