@@ -19,7 +19,7 @@ import ChatInterface from './components/chat/chat-interface';
 import ChatSidebar from './components/chat/chat-sidebar';
 import CodeExplorer from './components/preview/code-explorer';
 import PreviewPanel from './components/preview/preview-panel';
-import DefaultBranchSettings from './components/settings/default-branch-settings';
+import { SettingsTab } from './components/settings/settings-tab';
 
 interface ProjectPageProps {
   params: Promise<{
@@ -355,7 +355,7 @@ export default function ProjectPage({ params }: ProjectPageProps) {
               projectId={projectId}
             />
           ) : currentView === 'settings' ? (
-            <DefaultBranchSettings
+            <SettingsTab
               projectId={projectId}
             />
           ) : (

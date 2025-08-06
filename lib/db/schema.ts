@@ -8,6 +8,7 @@ import {
   text,
   timestamp,
   varchar,
+  unique,
 } from 'drizzle-orm/pg-core';
 
 export const users = pgTable('users', {
@@ -152,15 +153,45 @@ export const projectCommits = pgTable('project_commits', {
 export const githubSyncSessions = pgTable('github_sync_sessions', {
   id: serial('id').primaryKey(),
   projectId: integer('project_id')
+    .references(() => projects.id, { onDelete: 'cascade' })
+    .notNull(),
+  triggerType: varchar('trigger_type', { length: 50 }).notNull(), // 'manual', 'webhook', 'cron'
+  status: varchar('status', { length: 20 }).default('running'), // 'running', 'completed', 'failed'
+  changes: jsonb('changes'),
+  startedAt: timestamp('started_at').defaultNow(),
+  completedAt: timestamp('completed_at'),
+  logs: text('logs'),
+});
+
+export const projectEnvironmentVariables = pgTable('project_environment_variables', {
+  id: serial('id').primaryKey(),
+  projectId: integer('project_id')
     .notNull()
     .references(() => projects.id, { onDelete: 'cascade' }),
-  sessionId: text('session_id').notNull(),
-  startTime: timestamp('start_time').defaultNow(),
-  endTime: timestamp('end_time'),
-  commitSha: text('commit_sha'),
-  filesChanged: integer('files_changed').default(0),
-  status: text('status').default('active'), // active, completed, failed
-});
+  key: text('key').notNull(),
+  value: text('value').notNull(),
+  isSecret: boolean('is_secret').default(false),
+  description: text('description'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+}, (table) => ({
+  uniqueProjectKey: unique().on(table.projectId, table.key),
+}));
+
+export const projectIntegrations = pgTable('project_integrations', {
+  id: serial('id').primaryKey(),
+  projectId: integer('project_id')
+    .notNull()
+    .references(() => projects.id, { onDelete: 'cascade' }),
+  integrationType: text('integration_type').notNull(), // 'clerk', 'polar', 'stripe', 'custom'
+  integrationName: text('integration_name').notNull(),
+  config: text('config').notNull().default('{}'), // JSON string
+  enabled: boolean('enabled').default(true),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+}, (table) => ({
+  uniqueProjectIntegration: unique().on(table.projectId, table.integrationType, table.integrationName),
+}));
 
 export const usersRelations = relations(users, ({ many }) => ({
   projects: many(projects),
@@ -250,6 +281,20 @@ export const githubSyncSessionsRelations = relations(githubSyncSessions, ({ one 
   }),
 }));
 
+export const projectEnvironmentVariablesRelations = relations(projectEnvironmentVariables, ({ one }) => ({
+  project: one(projects, {
+    fields: [projectEnvironmentVariables.projectId],
+    references: [projects.id],
+  }),
+}));
+
+export const projectIntegrationsRelations = relations(projectIntegrations, ({ one }) => ({
+  project: one(projects, {
+    fields: [projectIntegrations.projectId],
+    references: [projects.id],
+  }),
+}));
+
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type ActivityLog = typeof activityLogs.$inferSelect;
@@ -284,3 +329,7 @@ export type ProjectCommit = typeof projectCommits.$inferSelect;
 export type NewProjectCommit = typeof projectCommits.$inferInsert;
 export type GithubSyncSession = typeof githubSyncSessions.$inferSelect;
 export type NewGithubSyncSession = typeof githubSyncSessions.$inferInsert;
+export type ProjectEnvironmentVariable = typeof projectEnvironmentVariables.$inferSelect;
+export type NewProjectEnvironmentVariable = typeof projectEnvironmentVariables.$inferInsert;
+export type ProjectIntegration = typeof projectIntegrations.$inferSelect;
+export type NewProjectIntegration = typeof projectIntegrations.$inferInsert;
