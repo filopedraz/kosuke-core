@@ -91,16 +91,35 @@ export function EnvironmentVariables({ projectId }: EnvironmentVariablesProps) {
   }
 
   return (
-    <div className="space-y-6">
+    <>
+      {/* Warning Banners */}
+      <div className="space-y-3 mb-6">
+        <Alert className="bg-blue-50 border-blue-200 dark:bg-blue-950/20 dark:border-blue-800">
+          <InfoIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+          <AlertDescription className="text-blue-700 dark:text-blue-300">
+            <strong>Project-wide variables:</strong> Environment variables apply to all chat sessions and preview containers in this project. 
+            They are not session-specific.
+          </AlertDescription>
+        </Alert>
+        
+        <Alert className="bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-800">
+          <Shield className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+          <AlertDescription className="text-amber-700 dark:text-amber-300">
+            Secret variables are encrypted and will only be visible in preview containers. Regular
+            variables are stored as plain text and visible to project collaborators.
+          </AlertDescription>
+        </Alert>
+      </div>
+
       <div className="flex justify-between items-center">
         <div>
-          <h3 className="text-lg font-semibold">Environment Variables</h3>
-          <p className="text-sm text-muted-foreground">
+          <h3 className="text-xl font-medium">Environment Variables</h3>
+          <p className="text-muted-foreground mt-2">
             Configure variables that will be available in your project preview
           </p>
         </div>
-        <Button onClick={() => setShowAddForm(true)}>
-          <Plus className="w-4 h-4 mr-2" />
+        <Button onClick={() => setShowAddForm(true)} className="gap-1.5 h-9">
+          <Plus className="w-4 h-4" />
           Add Variable
         </Button>
       </div>
@@ -149,9 +168,7 @@ export function EnvironmentVariables({ projectId }: EnvironmentVariablesProps) {
                         </Button>
                       )}
                     </div>
-                    {variable.description && (
-                      <p className="text-xs text-muted-foreground mt-1">{variable.description}</p>
-                    )}
+
                   </div>
                   <div className="flex gap-2">
                     <Button
@@ -171,8 +188,8 @@ export function EnvironmentVariables({ projectId }: EnvironmentVariablesProps) {
                         <AlertDialogHeader>
                           <AlertDialogTitle>Delete Environment Variable</AlertDialogTitle>
                           <AlertDialogDescription>
-                            Are you sure you want to delete the environment variable "{variable.key}"? 
-                            This action cannot be undone and may affect your project's functionality.
+                            Are you sure you want to delete the environment variable &quot;{variable.key}&quot;? 
+                            This action cannot be undone and may affect your project&apos;s functionality.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
@@ -200,24 +217,6 @@ export function EnvironmentVariables({ projectId }: EnvironmentVariablesProps) {
         onClose={handleFormClose}
         editingVariable={editingVariable}
       />
-
-      <div className="space-y-3">
-        <Alert>
-          <InfoIcon className="h-4 w-4" />
-          <AlertDescription>
-            <strong>Project-wide variables:</strong> Environment variables apply to all chat sessions and preview containers in this project. 
-            They are not session-specific.
-          </AlertDescription>
-        </Alert>
-        
-        <Alert>
-          <Shield className="h-4 w-4" />
-          <AlertDescription>
-            Secret variables are encrypted and will only be visible in preview containers. Regular
-            variables are stored as plain text and visible to project collaborators.
-          </AlertDescription>
-        </Alert>
-      </div>
-    </div>
+    </>
   );
 }

@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
+import { ApiErrorHandler, ApiResponseHandler } from '@/lib/api';
 import { auth } from '@/lib/auth/server';
 import { db } from '@/lib/db/drizzle';
 import { projectEnvironmentVariables, projects } from '@/lib/db/schema';
-import { eq, and } from 'drizzle-orm';
-import { createSuccessResponse, createErrorResponse } from '@/lib/api/responses';
+import { and, eq } from 'drizzle-orm';
+import { NextRequest } from 'next/server';
+import { z } from 'zod';
 
 // Schema for updating environment variables
 const updateEnvironmentVariableSchema = z.object({
@@ -20,7 +20,7 @@ export async function PUT(
   try {
     const { userId } = await auth();
     if (!userId) {
-      return createErrorResponse('Unauthorized', 401);
+      return ApiErrorHandler.unauthorized();
     }
 
     const { id, varId } = await params;
@@ -28,7 +28,7 @@ export async function PUT(
     const variableId = parseInt(varId);
 
     if (isNaN(projectId) || isNaN(variableId)) {
-      return createErrorResponse('Invalid project ID or variable ID', 400);
+      return ApiErrorHandler.badRequest('Invalid project ID or variable ID');
     }
 
     // Parse request body
@@ -43,7 +43,7 @@ export async function PUT(
       .limit(1);
 
     if (project.length === 0) {
-      return createErrorResponse('Project not found', 404);
+      return ApiErrorHandler.notFound('Project not found');
     }
 
     // Verify variable exists and belongs to project
@@ -59,7 +59,7 @@ export async function PUT(
       .limit(1);
 
     if (existingVariable.length === 0) {
-      return createErrorResponse('Environment variable not found', 404);
+      return ApiErrorHandler.notFound('Environment variable not found');
     }
 
     // Update environment variable
@@ -72,13 +72,13 @@ export async function PUT(
       .where(eq(projectEnvironmentVariables.id, variableId))
       .returning();
 
-    return createSuccessResponse(updatedVariable[0]);
+    return ApiResponseHandler.success(updatedVariable[0]);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return createErrorResponse(error.errors[0].message, 400);
+      return ApiErrorHandler.validationError(error);
     }
     console.error('Error updating environment variable:', error);
-    return createErrorResponse('Internal server error', 500);
+    return ApiErrorHandler.serverError(error);
   }
 }
 
@@ -89,7 +89,7 @@ export async function DELETE(
   try {
     const { userId } = await auth();
     if (!userId) {
-      return createErrorResponse('Unauthorized', 401);
+      return ApiErrorHandler.unauthorized();
     }
 
     const { id, varId } = await params;
@@ -97,7 +97,7 @@ export async function DELETE(
     const variableId = parseInt(varId);
 
     if (isNaN(projectId) || isNaN(variableId)) {
-      return createErrorResponse('Invalid project ID or variable ID', 400);
+      return ApiErrorHandler.badRequest('Invalid project ID or variable ID');
     }
 
     // Verify project ownership
@@ -108,7 +108,7 @@ export async function DELETE(
       .limit(1);
 
     if (project.length === 0) {
-      return createErrorResponse('Project not found', 404);
+      return ApiErrorHandler.notFound('Project not found');
     }
 
     // Verify variable exists and belongs to project
@@ -124,7 +124,7 @@ export async function DELETE(
       .limit(1);
 
     if (existingVariable.length === 0) {
-      return createErrorResponse('Environment variable not found', 404);
+      return ApiErrorHandler.notFound('Environment variable not found');
     }
 
     // Delete environment variable
@@ -132,9 +132,9 @@ export async function DELETE(
       .delete(projectEnvironmentVariables)
       .where(eq(projectEnvironmentVariables.id, variableId));
 
-    return createSuccessResponse({ message: 'Environment variable deleted successfully' });
+    return ApiResponseHandler.success({ message: 'Environment variable deleted successfully' });
   } catch (error) {
     console.error('Error deleting environment variable:', error);
-    return createErrorResponse('Internal server error', 500);
+    return ApiErrorHandler.serverError(error);
   }
 }

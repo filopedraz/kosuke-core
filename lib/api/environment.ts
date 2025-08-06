@@ -6,7 +6,9 @@ import { eq } from 'drizzle-orm';
  * Fetch environment variables for a project to use in preview containers
  * Returns a key-value object suitable for Docker container environment
  */
-export async function getProjectEnvironmentVariables(projectId: number): Promise<Record<string, string>> {
+export async function getProjectEnvironmentVariables(
+  projectId: number
+): Promise<Record<string, string>> {
   try {
     const variables = await db
       .select({

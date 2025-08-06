@@ -25,7 +25,7 @@ export interface UpdateEnvironmentVariableData {
   description?: string;
 }
 
-// Project Integration Types  
+// Project Integration Types
 export interface Integration {
   id: number;
   projectId: number;
@@ -64,7 +64,10 @@ export interface IntegrationTemplate {
 }
 
 // Utility types for transforming database models
-export type EnvironmentVariableFromDB = Omit<ProjectEnvironmentVariable, 'createdAt' | 'updatedAt'> & {
+export type EnvironmentVariableFromDB = Omit<
+  ProjectEnvironmentVariable,
+  'createdAt' | 'updatedAt'
+> & {
   createdAt: Date;
   updatedAt: Date;
 };

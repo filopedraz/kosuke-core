@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
+import { ApiErrorHandler, ApiResponseHandler } from '@/lib/api';
 import { auth } from '@/lib/auth/server';
 import { db } from '@/lib/db/drizzle';
 import { projectEnvironmentVariables, projects } from '@/lib/db/schema';
-import { eq, and } from 'drizzle-orm';
-import { createSuccessResponse, createErrorResponse } from '@/lib/api/responses';
+import { and, eq } from 'drizzle-orm';
+import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 
 // Schema for creating environment variables
 const createEnvironmentVariableSchema = z.object({
@@ -21,14 +21,14 @@ export async function GET(
   try {
     const { userId } = await auth();
     if (!userId) {
-      return createErrorResponse('Unauthorized', 401);
+      return ApiErrorHandler.unauthorized();
     }
 
     const { id } = await params;
     const projectId = parseInt(id);
 
     if (isNaN(projectId)) {
-      return createErrorResponse('Invalid project ID', 400);
+      return ApiErrorHandler.badRequest('Invalid project ID');
     }
 
     // Verify project ownership
@@ -39,7 +39,7 @@ export async function GET(
       .limit(1);
 
     if (project.length === 0) {
-      return createErrorResponse('Project not found', 404);
+      return ApiErrorHandler.notFound('Project not found');
     }
 
     // Fetch environment variables
@@ -49,10 +49,10 @@ export async function GET(
       .where(eq(projectEnvironmentVariables.projectId, projectId))
       .orderBy(projectEnvironmentVariables.key);
 
-    return createSuccessResponse({ variables });
+    return ApiResponseHandler.success({ variables });
   } catch (error) {
     console.error('Error fetching environment variables:', error);
-    return createErrorResponse('Internal server error', 500);
+    return ApiErrorHandler.serverError(error);
   }
 }
 
@@ -63,14 +63,14 @@ export async function POST(
   try {
     const { userId } = await auth();
     if (!userId) {
-      return createErrorResponse('Unauthorized', 401);
+      return ApiErrorHandler.unauthorized();
     }
 
     const { id } = await params;
     const projectId = parseInt(id);
 
     if (isNaN(projectId)) {
-      return createErrorResponse('Invalid project ID', 400);
+      return ApiErrorHandler.badRequest('Invalid project ID');
     }
 
     // Parse request body
@@ -85,7 +85,7 @@ export async function POST(
       .limit(1);
 
     if (project.length === 0) {
-      return createErrorResponse('Project not found', 404);
+      return ApiErrorHandler.notFound('Project not found');
     }
 
     // Check if key already exists
@@ -101,7 +101,10 @@ export async function POST(
       .limit(1);
 
     if (existingVariable.length > 0) {
-      return createErrorResponse('Environment variable with this key already exists', 409);
+      return NextResponse.json(
+        { error: 'Environment variable with this key already exists', code: 'CONFLICT' },
+        { status: 409 }
+      );
     }
 
     // Create environment variable
@@ -116,12 +119,12 @@ export async function POST(
       })
       .returning();
 
-    return createSuccessResponse(newVariable[0], 201);
+    return ApiResponseHandler.created(newVariable[0]);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return createErrorResponse(error.errors[0].message, 400);
+      return ApiErrorHandler.validationError(error);
     }
     console.error('Error creating environment variable:', error);
-    return createErrorResponse('Internal server error', 500);
+    return ApiErrorHandler.serverError(error);
   }
 }

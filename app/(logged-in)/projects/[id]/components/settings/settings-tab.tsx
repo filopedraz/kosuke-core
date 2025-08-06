@@ -1,8 +1,7 @@
 'use client';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Settings, Key, GitBranch } from 'lucide-react';
+import { Settings } from 'lucide-react';
 import { EnvironmentVariables } from './environment-variables';
 import DefaultBranchSettings from './default-branch-settings';
 
@@ -12,36 +11,25 @@ interface SettingsTabProps {
 
 export function SettingsTab({ projectId }: SettingsTabProps) {
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Settings className="w-5 h-5" />
-            Project Settings
-          </CardTitle>
-          <CardDescription>
-            Configure environment variables, default branch, and other project settings
-          </CardDescription>
-        </CardHeader>
-      </Card>
+    <div className="flex flex-col h-full p-6 space-y-6">
+      <div className="flex justify-between items-center">
+        <div className="flex items-center gap-2">
+          <Settings className="h-5 w-5 text-primary" />
+          <h1 className="text-2xl font-semibold">Project Settings</h1>
+        </div>
+      </div>
 
       <Tabs defaultValue="environment" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="environment" className="flex items-center gap-2">
-            <Key className="w-4 h-4" />
-            Environment Variables
-          </TabsTrigger>
-          <TabsTrigger value="branch" className="flex items-center gap-2">
-            <GitBranch className="w-4 h-4" />
-            Default Branch
-          </TabsTrigger>
+        <TabsList>
+          <TabsTrigger value="environment">Environment Variables</TabsTrigger>
+          <TabsTrigger value="branch">Default Branch</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="environment" className="mt-6">
+        <TabsContent value="environment" className="space-y-6 pt-6 pb-12">
           <EnvironmentVariables projectId={projectId} />
         </TabsContent>
 
-        <TabsContent value="branch" className="mt-6">
+        <TabsContent value="branch" className="space-y-6 pt-6 pb-12">
           <DefaultBranchSettings projectId={projectId} />
         </TabsContent>
       </Tabs>

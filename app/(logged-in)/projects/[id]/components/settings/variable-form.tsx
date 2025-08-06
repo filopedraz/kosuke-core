@@ -9,8 +9,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
-  DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
@@ -23,9 +21,8 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Key } from 'lucide-react';
 import {
   useCreateEnvironmentVariable,
   useUpdateEnvironmentVariable,
@@ -39,8 +36,7 @@ const environmentVariableSchema = z.object({
     .max(100, 'Key must be less than 100 characters')
     .regex(/^[A-Z_][A-Z0-9_]*$/, 'Key must be uppercase letters, numbers, and underscores only'),
   value: z.string().min(1, 'Value is required'),
-  isSecret: z.boolean().default(false),
-  description: z.string().optional(),
+  isSecret: z.boolean(),
 });
 
 type FormData = z.infer<typeof environmentVariableSchema>;
@@ -62,7 +58,6 @@ export function VariableForm({ projectId, isOpen, onClose, editingVariable }: Va
       key: '',
       value: '',
       isSecret: false,
-      description: '',
     },
   });
 
@@ -77,14 +72,12 @@ export function VariableForm({ projectId, isOpen, onClose, editingVariable }: Va
           key: editingVariable.key,
           value: editingVariable.value,
           isSecret: editingVariable.isSecret,
-          description: editingVariable.description || '',
         });
       } else {
         form.reset({
           key: '',
           value: '',
           isSecret: false,
-          description: '',
         });
       }
     }
@@ -98,115 +91,131 @@ export function VariableForm({ projectId, isOpen, onClose, editingVariable }: Va
           data: {
             value: data.value,
             isSecret: data.isSecret,
-            description: data.description,
           },
         });
       } else {
         await createMutation.mutateAsync(data);
       }
       onClose();
-    } catch (error) {
+    } catch {
       // Error handling is done in the mutation hooks
     }
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
-          <DialogTitle>{isEditing ? 'Edit Environment Variable' : 'Add Environment Variable'}</DialogTitle>
-          <DialogDescription>
-            {isEditing
-              ? 'Update the environment variable details.'
-              : 'Create a new environment variable for your project.'}
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent
+        className="p-0 overflow-hidden border border-border bg-card shadow-lg rounded-md"
+        style={{ maxWidth: '512px' }}
+      >
+        <DialogTitle className="sr-only">
+          {isEditing ? 'Edit Environment Variable' : 'Add Environment Variable'}
+        </DialogTitle>
+        <DialogDescription className="sr-only">
+          {isEditing
+            ? 'Update the environment variable details.'
+            : 'Create a new environment variable for your project.'}
+        </DialogDescription>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="key"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Key</FormLabel>
-                  <FormControl>
-                    <Input
-                      {...field}
-                      placeholder="API_KEY"
-                      disabled={isEditing} // Don't allow key changes when editing
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    Must be uppercase letters, numbers, and underscores only.
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+        <div className="p-4">
+          <div className="flex items-center space-x-3 mb-4">
+            <Key className="h-5 w-5 text-primary" />
+            <h3 className="text-lg font-semibold">
+              {isEditing ? 'Edit Environment Variable' : 'Add Environment Variable'}
+            </h3>
+          </div>
 
-            <FormField
-              control={form.control}
-              name="value"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Value</FormLabel>
-                  <FormControl>
-                    <Input {...field} placeholder="your-api-key-value" type="text" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <div className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="key"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm font-medium">Key</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          placeholder="API_KEY"
+                          className="h-11"
+                          disabled={isEditing || isLoading}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Must be uppercase letters, numbers, and underscores only.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-            <FormField
-              control={form.control}
-              name="isSecret"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                  <div className="space-y-0.5">
-                    <FormLabel>Secret Variable</FormLabel>
-                    <FormDescription>
-                      Secret variables are encrypted and masked in the interface.
-                    </FormDescription>
-                  </div>
-                  <FormControl>
-                    <Switch checked={field.value} onCheckedChange={field.onChange} />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
+                <FormField
+                  control={form.control}
+                  name="value"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm font-medium">Value</FormLabel>
+                      <FormControl>
+                        <Input 
+                          {...field} 
+                          placeholder="your-api-key-value" 
+                          type="text" 
+                          className="h-11"
+                          disabled={isLoading}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Description (Optional)</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      {...field}
-                      placeholder="Brief description of what this variable is used for..."
-                      className="resize-none"
-                      rows={3}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                <FormField
+                  control={form.control}
+                  name="isSecret"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-sm font-medium">Secret Variable</FormLabel>
+                        <FormDescription>
+                          Secret variables are encrypted and masked in the interface.
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch 
+                          checked={field.value} 
+                          onCheckedChange={field.onChange}
+                          disabled={isLoading}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
 
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={onClose} disabled={isLoading}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isLoading}>
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {isEditing ? 'Update Variable' : 'Create Variable'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
+                {/* Actions */}
+                <div className="flex justify-end items-center gap-3 pt-3">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={onClose}
+                    disabled={isLoading}
+                    className="h-10"
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    type="submit" 
+                    disabled={isLoading}
+                    className="h-10 min-w-[120px]"
+                  >
+                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {isEditing ? 'Update Variable' : 'Create Variable'}
+                  </Button>
+                </div>
+              </div>
+            </form>
+          </Form>
+        </div>
       </DialogContent>
     </Dialog>
   );

@@ -7,8 +7,8 @@ import {
   serial,
   text,
   timestamp,
-  varchar,
   unique,
+  varchar,
 } from 'drizzle-orm/pg-core';
 
 export const users = pgTable('users', {
@@ -163,35 +163,47 @@ export const githubSyncSessions = pgTable('github_sync_sessions', {
   logs: text('logs'),
 });
 
-export const projectEnvironmentVariables = pgTable('project_environment_variables', {
-  id: serial('id').primaryKey(),
-  projectId: integer('project_id')
-    .notNull()
-    .references(() => projects.id, { onDelete: 'cascade' }),
-  key: text('key').notNull(),
-  value: text('value').notNull(),
-  isSecret: boolean('is_secret').default(false),
-  description: text('description'),
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
-}, (table) => ({
-  uniqueProjectKey: unique().on(table.projectId, table.key),
-}));
+export const projectEnvironmentVariables = pgTable(
+  'project_environment_variables',
+  {
+    id: serial('id').primaryKey(),
+    projectId: integer('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    key: text('key').notNull(),
+    value: text('value').notNull(),
+    isSecret: boolean('is_secret').default(false),
+    description: text('description'),
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  table => ({
+    uniqueProjectKey: unique('project_env_vars_unique_key').on(table.projectId, table.key),
+  })
+);
 
-export const projectIntegrations = pgTable('project_integrations', {
-  id: serial('id').primaryKey(),
-  projectId: integer('project_id')
-    .notNull()
-    .references(() => projects.id, { onDelete: 'cascade' }),
-  integrationType: text('integration_type').notNull(), // 'clerk', 'polar', 'stripe', 'custom'
-  integrationName: text('integration_name').notNull(),
-  config: text('config').notNull().default('{}'), // JSON string
-  enabled: boolean('enabled').default(true),
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
-}, (table) => ({
-  uniqueProjectIntegration: unique().on(table.projectId, table.integrationType, table.integrationName),
-}));
+export const projectIntegrations = pgTable(
+  'project_integrations',
+  {
+    id: serial('id').primaryKey(),
+    projectId: integer('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    integrationType: text('integration_type').notNull(), // 'clerk', 'polar', 'stripe', 'custom'
+    integrationName: text('integration_name').notNull(),
+    config: text('config').notNull().default('{}'), // JSON string
+    enabled: boolean('enabled').default(true),
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  table => ({
+    uniqueProjectIntegration: unique('project_integrations_unique_key').on(
+      table.projectId,
+      table.integrationType,
+      table.integrationName
+    ),
+  })
+);
 
 export const usersRelations = relations(users, ({ many }) => ({
   projects: many(projects),
@@ -281,12 +293,15 @@ export const githubSyncSessionsRelations = relations(githubSyncSessions, ({ one 
   }),
 }));
 
-export const projectEnvironmentVariablesRelations = relations(projectEnvironmentVariables, ({ one }) => ({
-  project: one(projects, {
-    fields: [projectEnvironmentVariables.projectId],
-    references: [projects.id],
-  }),
-}));
+export const projectEnvironmentVariablesRelations = relations(
+  projectEnvironmentVariables,
+  ({ one }) => ({
+    project: one(projects, {
+      fields: [projectEnvironmentVariables.projectId],
+      references: [projects.id],
+    }),
+  })
+);
 
 export const projectIntegrationsRelations = relations(projectIntegrations, ({ one }) => ({
   project: one(projects, {
