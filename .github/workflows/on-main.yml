@@ -39,7 +39,7 @@ jobs:
         id: deploy
         run: |
           ssh ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_IP }} "cd /home/filippo/kosuke-core/ && git pull"
-          ssh ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_IP }} "cd /home/filippo/kosu-core/ && docker compose -f docker-compose.production.yml up --build -d"
+          ssh ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_IP }} "cd /home/filippo/kosuke-core/ && docker compose -f docker-compose.production.yml up --build -d"
 
       - name: Notify Slack - Success
         if: success()
