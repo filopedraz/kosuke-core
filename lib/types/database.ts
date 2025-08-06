@@ -29,13 +29,13 @@ export interface TableData {
   returned_rows: number;
   limit: number;
   offset: number;
-  data: Record<string, any>[];
+  data: Record<string, unknown>[];
 }
 
 export interface QueryResult {
   columns: string[];
   rows: number;
-  data: Record<string, any>[];
+  data: Record<string, unknown>[];
   query: string;
 }
 

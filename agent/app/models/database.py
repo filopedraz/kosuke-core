@@ -1,17 +1,21 @@
+from typing import Any
+
 from pydantic import BaseModel
-from typing import List, Optional, Any, Dict
+
 
 class Column(BaseModel):
     name: str
     type: str
     nullable: bool
     primary_key: bool
-    foreign_key: Optional[str] = None
+    foreign_key: str | None = None
+
 
 class TableSchema(BaseModel):
     name: str
-    columns: List[Column]
+    columns: list[Column]
     row_count: int
+
 
 class DatabaseInfo(BaseModel):
     connected: bool
@@ -19,8 +23,10 @@ class DatabaseInfo(BaseModel):
     tables_count: int
     database_size: str
 
+
 class DatabaseSchema(BaseModel):
-    tables: List[TableSchema]
+    tables: list[TableSchema]
+
 
 class TableData(BaseModel):
     table_name: str
@@ -28,13 +34,15 @@ class TableData(BaseModel):
     returned_rows: int
     limit: int
     offset: int
-    data: List[Dict[str, Any]]
+    data: list[dict[str, Any]]
+
 
 class QueryResult(BaseModel):
-    columns: List[str]
+    columns: list[str]
     rows: int
-    data: List[Dict[str, Any]]
+    data: list[dict[str, Any]]
     query: str
+
 
 class QueryRequest(BaseModel):
     query: str

@@ -1,29 +1,34 @@
 'use client';
 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Database, Table, Search, Play } from 'lucide-react';
-import { SchemaViewer } from './schema-viewer';
-import { TableBrowser } from './table-browser';
-import { QueryRunner } from './query-runner';
-import { ConnectionStatus } from './connection-status';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useDatabaseInfo } from '@/hooks/use-database-info';
 import type { DatabaseTabProps } from '@/lib/types';
+import { Database, Play, Search, Table } from 'lucide-react';
+import { ConnectionStatus } from './connection-status';
+import { QueryRunner } from './query-runner';
+import { SchemaViewer } from './schema-viewer';
+import { DatabaseTabSkeleton } from './skeletons/database-tab-skeleton';
+import { TableBrowser } from './table-browser';
 
 export function DatabaseTab({ projectId, sessionId }: DatabaseTabProps) {
   const { data: dbInfo, isLoading } = useDatabaseInfo(projectId, sessionId);
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-muted-foreground">Loading database information...</div>
-      </div>
-    );
+    return <DatabaseTabSkeleton />;
   }
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col h-full p-6 space-y-6">
+      <div className="flex justify-between items-center">
+        <div className="flex items-center gap-2">
+          <Database className="h-5 w-5 text-primary" />
+          <h1 className="text-2xl font-semibold">Database Management</h1>
+        </div>
+        <ConnectionStatus connected={dbInfo?.connected || false} />
+      </div>
+
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -33,11 +38,10 @@ export function DatabaseTab({ projectId, sessionId }: DatabaseTabProps) {
                 Project Database
               </CardTitle>
               <CardDescription>
-                Manage your project's SQLite database
+                Manage your project&apos;s SQLite database
                 {sessionId ? ` (Session: ${sessionId})` : ' (Main Branch)'}
               </CardDescription>
             </div>
-            <ConnectionStatus connected={dbInfo?.connected || false} />
           </div>
         </CardHeader>
         <CardContent>
@@ -64,7 +68,7 @@ export function DatabaseTab({ projectId, sessionId }: DatabaseTabProps) {
       </Card>
 
       <Tabs defaultValue="schema" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList>
           <TabsTrigger value="schema" className="flex items-center gap-2">
             <Table className="w-4 h-4" />
             Schema
@@ -79,15 +83,15 @@ export function DatabaseTab({ projectId, sessionId }: DatabaseTabProps) {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="schema" className="mt-6">
+        <TabsContent value="schema" className="space-y-6 pt-6 pb-12">
           <SchemaViewer projectId={projectId} sessionId={sessionId} />
         </TabsContent>
 
-        <TabsContent value="browse" className="mt-6">
+        <TabsContent value="browse" className="space-y-6 pt-6 pb-12">
           <TableBrowser projectId={projectId} sessionId={sessionId} />
         </TabsContent>
 
-        <TabsContent value="query" className="mt-6">
+        <TabsContent value="query" className="space-y-6 pt-6 pb-12">
           <QueryRunner projectId={projectId} sessionId={sessionId} />
         </TabsContent>
       </Tabs>

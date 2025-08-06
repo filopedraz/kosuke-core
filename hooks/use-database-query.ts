@@ -11,7 +11,7 @@ export function useDatabaseQuery(projectId: number, sessionId?: string | null) {
       const url = sessionId
         ? `/api/projects/${projectId}/chat-sessions/${sessionId}/database/query`
         : `/api/projects/${projectId}/database/query`;
-      
+
       const response = await fetch(url, {
         method: 'POST',
         headers: {
@@ -28,14 +28,14 @@ export function useDatabaseQuery(projectId: number, sessionId?: string | null) {
       const data = await response.json();
       return data;
     },
-    onError: (error) => {
+    onError: error => {
       toast({
         title: 'Query Error',
         description: error.message,
         variant: 'destructive',
       });
     },
-    onSuccess: (data) => {
+    onSuccess: data => {
       toast({
         title: 'Query Executed',
         description: `Query returned ${data.rows} row${data.rows !== 1 ? 's' : ''}`,

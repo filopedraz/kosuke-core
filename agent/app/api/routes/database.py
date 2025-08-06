@@ -1,11 +1,20 @@
-from fastapi import APIRouter, HTTPException, Query
-from app.services.database_service import DatabaseService
-from app.models.database import DatabaseInfo, DatabaseSchema, TableData, QueryResult, QueryRequest
 import logging
+
+from fastapi import APIRouter
+from fastapi import HTTPException
+from fastapi import Query
+
+from app.models.database import DatabaseInfo
+from app.models.database import DatabaseSchema
+from app.models.database import QueryRequest
+from app.models.database import QueryResult
+from app.models.database import TableData
+from app.services.database_service import DatabaseService
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
 
 @router.get("/database/info/{project_id}", response_model=DatabaseInfo)
 async def get_database_info(project_id: int):
@@ -16,7 +25,8 @@ async def get_database_info(project_id: int):
         return DatabaseInfo(**info)
     except Exception as e:
         logger.error(f"Error getting database info for project {project_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
 
 @router.get("/database/schema/{project_id}", response_model=DatabaseSchema)
 async def get_database_schema(project_id: int):
@@ -27,14 +37,12 @@ async def get_database_schema(project_id: int):
         return DatabaseSchema(**schema)
     except Exception as e:
         logger.error(f"Error getting database schema for project {project_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
 
 @router.get("/database/table/{project_id}/{table_name}", response_model=TableData)
 async def get_table_data(
-    project_id: int,
-    table_name: str,
-    limit: int = Query(100, ge=1, le=1000),
-    offset: int = Query(0, ge=0)
+    project_id: int, table_name: str, limit: int = Query(100, ge=1, le=1000), offset: int = Query(0, ge=0)
 ):
     """Get data from a specific table with pagination"""
     try:
@@ -43,7 +51,8 @@ async def get_table_data(
         return TableData(**table_data)
     except Exception as e:
         logger.error(f"Error getting table data for project {project_id}, table {table_name}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
 
 @router.post("/database/query/{project_id}", response_model=QueryResult)
 async def execute_query(project_id: int, query_request: QueryRequest):
@@ -54,9 +63,11 @@ async def execute_query(project_id: int, query_request: QueryRequest):
         return QueryResult(**result)
     except Exception as e:
         logger.error(f"Error executing query for project {project_id}: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
 
 # Session-specific database endpoints
+
 
 @router.get("/database/info/{project_id}/{session_id}", response_model=DatabaseInfo)
 async def get_session_database_info(project_id: int, session_id: str):
@@ -67,7 +78,8 @@ async def get_session_database_info(project_id: int, session_id: str):
         return DatabaseInfo(**info)
     except Exception as e:
         logger.error(f"Error getting database info for project {project_id}, session {session_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
 
 @router.get("/database/schema/{project_id}/{session_id}", response_model=DatabaseSchema)
 async def get_session_database_schema(project_id: int, session_id: str):
@@ -78,7 +90,8 @@ async def get_session_database_schema(project_id: int, session_id: str):
         return DatabaseSchema(**schema)
     except Exception as e:
         logger.error(f"Error getting database schema for project {project_id}, session {session_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
 
 @router.get("/database/table/{project_id}/{session_id}/{table_name}", response_model=TableData)
 async def get_session_table_data(
@@ -86,7 +99,7 @@ async def get_session_table_data(
     session_id: str,
     table_name: str,
     limit: int = Query(100, ge=1, le=1000),
-    offset: int = Query(0, ge=0)
+    offset: int = Query(0, ge=0),
 ):
     """Get data from a specific table in a session database with pagination"""
     try:
@@ -94,8 +107,11 @@ async def get_session_table_data(
         table_data = await db_service.get_table_data(table_name, limit, offset)
         return TableData(**table_data)
     except Exception as e:
-        logger.error(f"Error getting table data for project {project_id}, session {session_id}, table {table_name}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(
+            f"Error getting table data for project {project_id}, session {session_id}, table {table_name}: {e}"
+        )
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
 
 @router.post("/database/query/{project_id}/{session_id}", response_model=QueryResult)
 async def execute_session_query(project_id: int, session_id: str, query_request: QueryRequest):
@@ -106,4 +122,4 @@ async def execute_session_query(project_id: int, session_id: str, query_request:
         return QueryResult(**result)
     except Exception as e:
         logger.error(f"Error executing query for project {project_id}, session {session_id}: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e

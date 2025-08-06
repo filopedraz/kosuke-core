@@ -1,22 +1,23 @@
+import { auth } from '@/lib/auth/server';
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string; table: string } }
+  { params }: { params: Promise<{ id: string; table: string }> }
 ) {
   try {
-    const { userId } = auth();
+    const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const projectId = parseInt(params.id);
+    const { id, table } = await params;
+    const projectId = parseInt(id);
     if (isNaN(projectId)) {
       return NextResponse.json({ error: 'Invalid project ID' }, { status: 400 });
     }
 
-    const tableName = params.table;
+    const tableName = table;
     if (!tableName) {
       return NextResponse.json({ error: 'Table name is required' }, { status: 400 });
     }

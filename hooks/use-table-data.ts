@@ -14,23 +14,23 @@ export function useTableData(
       if (!tableName) {
         throw new Error('Table name is required');
       }
-      
+
       const params = new URLSearchParams({
         limit: limit.toString(),
         offset: offset.toString(),
       });
-      
+
       // Use session-specific API when sessionId is provided, otherwise use main database
       const url = sessionId
         ? `/api/projects/${projectId}/chat-sessions/${sessionId}/database/tables/${tableName}?${params}`
         : `/api/projects/${projectId}/database/tables/${tableName}?${params}`;
-      
+
       const response = await fetch(url);
-      
+
       if (!response.ok) {
         throw new Error('Failed to fetch table data');
       }
-      
+
       const data = await response.json();
       return data;
     },

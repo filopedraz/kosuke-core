@@ -1,24 +1,24 @@
 'use client';
 
-import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Play, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Textarea } from '@/components/ui/textarea';
 import { useDatabaseQuery } from '@/hooks/use-database-query';
-import { QueryRunnerSkeleton } from './skeletons/query-runner-skeleton';
-import type { QueryRunnerProps, QueryResult } from '@/lib/types';
+import { Loader2, Play } from 'lucide-react';
+import { useState } from 'react';
+
+import type { QueryResult, QueryRunnerProps } from '@/lib/types';
 
 export function QueryRunner({ projectId, sessionId }: QueryRunnerProps) {
   const [query, setQuery] = useState('SELECT * FROM sqlite_master WHERE type=\'table\';');
   const [result, setResult] = useState<QueryResult | null>(null);
-  
+
   const { mutate: executeQuery, isPending } = useDatabaseQuery(projectId, sessionId);
 
   const handleExecuteQuery = () => {
     if (!query.trim()) return;
-    
+
     executeQuery(query, {
       onSuccess: (data) => {
         setResult(data);
@@ -47,7 +47,7 @@ export function QueryRunner({ projectId, sessionId }: QueryRunnerProps) {
             <div className="text-sm text-muted-foreground">
               Only SELECT queries are allowed for security reasons
             </div>
-            <Button 
+            <Button
               onClick={handleExecuteQuery}
               disabled={isPending || !query.trim()}
             >

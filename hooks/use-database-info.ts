@@ -9,7 +9,7 @@ export function useDatabaseInfo(projectId: number, sessionId?: string | null) {
       const url = sessionId
         ? `/api/projects/${projectId}/chat-sessions/${sessionId}/database/info`
         : `/api/projects/${projectId}/database/info`;
-      
+
       const response = await fetch(url);
       if (!response.ok) {
         throw new Error('Failed to fetch database info');

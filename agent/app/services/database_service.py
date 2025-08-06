@@ -1,135 +1,246 @@
-import sqlite3
-import os
-from typing import List, Dict, Any, Optional
-from app.utils.config import settings
 import logging
+import os
+import re
+from typing import Any
+
+import asyncpg
 
 logger = logging.getLogger(__name__)
 
+
+def _validate_table_name(table_name: str) -> str:
+    """Validate and sanitize table name to prevent SQL injection"""
+    # Only allow alphanumeric characters, underscores, and hyphens
+    if not re.match(r"^[a-zA-Z0-9_-]+$", table_name):
+        raise ValueError(f"Invalid table name: {table_name}")
+    return table_name
+
+
 class DatabaseService:
-    def __init__(self, project_id: int, session_id: str = None):
+    def __init__(self, project_id: int, session_id: str | None = None):
         self.project_id = project_id
         self.session_id = session_id
-        
+
         # Use session-specific database if sessionId is provided, otherwise use main database
         if session_id:
-            self.db_path = f"{settings.PROJECTS_DIR}/{project_id}/sessions/{session_id}/database.sqlite"
+            self.db_name = f"kosuke_project_{project_id}_session_{session_id}"
         else:
-            self.db_path = f"{settings.PROJECTS_DIR}/{project_id}/database.sqlite"
+            # For main branch, use a consistent main database name
+            self.db_name = f"kosuke_project_{project_id}_main"
 
-    def _get_connection(self) -> sqlite3.Connection:
+        # PostgreSQL connection parameters
+        self.db_host = "postgres"
+        self.db_port = 5432
+        self.db_user = "postgres"
+        self.db_password = os.getenv("POSTGRES_PASSWORD", "postgres")
+
+    async def _get_connection(self) -> asyncpg.Connection:
         """Get database connection"""
-        if not os.path.exists(self.db_path):
-            # Create database if it doesn't exist
-            os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
-            conn = sqlite3.connect(self.db_path)
-            conn.close()
+        try:
+            return await asyncpg.connect(
+                host=self.db_host,
+                port=self.db_port,
+                user=self.db_user,
+                password=self.db_password,
+                database=self.db_name,
+            )
+        except asyncpg.InvalidCatalogNameError:
+            # Database doesn't exist, create it
+            await self._create_database()
+            # Try connecting again
+            return await asyncpg.connect(
+                host=self.db_host,
+                port=self.db_port,
+                user=self.db_user,
+                password=self.db_password,
+                database=self.db_name,
+            )
 
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row
-        return conn
+    async def _create_database(self):
+        """Create the database if it doesn't exist"""
+        # Connect to postgres database to create the new one
+        conn = await asyncpg.connect(
+            host=self.db_host, port=self.db_port, user=self.db_user, password=self.db_password, database="postgres"
+        )
 
-    async def get_database_info(self) -> Dict[str, Any]:
+        try:
+            await conn.execute(f'CREATE DATABASE "{self.db_name}"')
+            logger.info(f"Created database: {self.db_name}")
+        except asyncpg.exceptions.DuplicateDatabaseError:
+            logger.debug(f"Database {self.db_name} already exists")
+        finally:
+            await conn.close()
+
+    async def _get_database_size(self) -> str:
+        """Get database size"""
+        try:
+            conn = await asyncpg.connect(
+                host=self.db_host, port=self.db_port, user=self.db_user, password=self.db_password, database="postgres"
+            )
+
+            # Query database size
+            size_query = """
+                SELECT pg_size_pretty(pg_database_size($1)) as size
+            """
+            result = await conn.fetchval(size_query, self.db_name)
+            await conn.close()
+            return result or "0 KB"
+        except Exception:
+            return "0 KB"
+
+    async def get_database_info(self) -> dict[str, Any]:
         """Get basic database information"""
         try:
-            conn = self._get_connection()
-            cursor = conn.cursor()
+            conn = await self._get_connection()
 
             # Get table count
-            cursor.execute("SELECT COUNT(*) FROM sqlite_master WHERE type='table'")
-            tables_count = cursor.fetchone()[0]
+            tables_query = """
+                SELECT COUNT(*)
+                FROM information_schema.tables
+                WHERE table_schema = 'public'
+            """
+            tables_count = await conn.fetchval(tables_query)
 
             # Get database size
-            db_size = os.path.getsize(self.db_path) if os.path.exists(self.db_path) else 0
-            db_size_str = f"{db_size / 1024:.1f} KB" if db_size < 1024*1024 else f"{db_size / (1024*1024):.1f} MB"
+            db_size = await self._get_database_size()
 
-            conn.close()
+            await conn.close()
 
             return {
                 "connected": True,
-                "database_path": self.db_path,
+                "database_path": f"postgres://{self.db_host}:{self.db_port}/{self.db_name}",
                 "tables_count": tables_count,
-                "database_size": db_size_str
+                "database_size": db_size,
             }
         except Exception as e:
             logger.error(f"Error getting database info: {e}")
             return {
                 "connected": False,
-                "database_path": self.db_path,
+                "database_path": f"postgres://{self.db_host}:{self.db_port}/{self.db_name}",
                 "tables_count": 0,
-                "database_size": "0 KB"
+                "database_size": "0 KB",
             }
 
-    async def get_schema(self) -> Dict[str, Any]:
+    async def get_schema(self) -> dict[str, Any]:
         """Get database schema information"""
         try:
-            conn = self._get_connection()
-            cursor = conn.cursor()
+            conn = await self._get_connection()
 
-            # Get all tables
-            cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
-            table_names = [row[0] for row in cursor.fetchall()]
+            # Get all tables in public schema
+            tables_query = """
+                SELECT table_name
+                FROM information_schema.tables
+                WHERE table_schema = 'public'
+                ORDER BY table_name
+            """
+            table_rows = await conn.fetch(tables_query)
+            table_names = [row[0] for row in table_rows]
 
             tables = []
             for table_name in table_names:
-                # Get table info
-                cursor.execute(f"PRAGMA table_info({table_name})")
-                columns_info = cursor.fetchall()
+                # Get table columns
+                columns_query = """
+                    SELECT
+                        column_name,
+                        data_type,
+                        is_nullable,
+                        column_default
+                    FROM information_schema.columns
+                    WHERE table_schema = 'public' AND table_name = $1
+                    ORDER BY ordinal_position
+                """
+                columns_info = await conn.fetch(columns_query, table_name)
 
-                # Get row count
-                cursor.execute(f"SELECT COUNT(*) FROM {table_name}")
-                row_count = cursor.fetchone()[0]
+                # Get primary keys
+                pk_query = """
+                    SELECT column_name
+                    FROM information_schema.table_constraints tc
+                    JOIN information_schema.key_column_usage kcu
+                        ON tc.constraint_name = kcu.constraint_name
+                    WHERE tc.table_name = $1
+                        AND tc.constraint_type = 'PRIMARY KEY'
+                """
+                pk_rows = await conn.fetch(pk_query, table_name)
+                primary_keys = {row[0] for row in pk_rows}
 
                 # Get foreign keys
-                cursor.execute(f"PRAGMA foreign_key_list({table_name})")
-                foreign_keys = {row[3]: f"{row[2]}.{row[4]}" for row in cursor.fetchall()}
+                fk_query = """
+                    SELECT
+                        kcu.column_name,
+                        ccu.table_name AS foreign_table_name,
+                        ccu.column_name AS foreign_column_name
+                    FROM information_schema.table_constraints AS tc
+                    JOIN information_schema.key_column_usage AS kcu
+                        ON tc.constraint_name = kcu.constraint_name
+                    JOIN information_schema.constraint_column_usage AS ccu
+                        ON ccu.constraint_name = tc.constraint_name
+                    WHERE tc.constraint_type = 'FOREIGN KEY' AND tc.table_name = $1
+                """
+                fk_rows = await conn.fetch(fk_query, table_name)
+                foreign_keys = {row[0]: f"{row[1]}.{row[2]}" for row in fk_rows}
+
+                # Get row count
+                validated_table_name = _validate_table_name(table_name)
+                # nosemgrep: python.sqlalchemy.security.sqlalchemy-execute-raw-query.sqlalchemy-execute-raw-query
+                count_query = f'SELECT COUNT(*) FROM "{validated_table_name}"'  # noqa: S608
+                row_count = await conn.fetchval(count_query)
 
                 columns = []
                 for col in columns_info:
-                    columns.append({
-                        "name": col[1],
-                        "type": col[2],
-                        "nullable": not col[3],
-                        "primary_key": bool(col[5]),
-                        "foreign_key": foreign_keys.get(col[1])
-                    })
+                    columns.append(
+                        {
+                            "name": col[0],
+                            "type": col[1],
+                            "nullable": col[2] == "YES",
+                            "primary_key": col[0] in primary_keys,
+                            "foreign_key": foreign_keys.get(col[0]),
+                        }
+                    )
 
-                tables.append({
-                    "name": table_name,
-                    "columns": columns,
-                    "row_count": row_count
-                })
+                tables.append(
+                    {
+                        "name": table_name,
+                        "columns": columns,
+                        "row_count": row_count,
+                    }
+                )
 
-            conn.close()
+            await conn.close()
             return {"tables": tables}
 
         except Exception as e:
             logger.error(f"Error getting database schema: {e}")
-            raise Exception(f"Failed to get database schema: {str(e)}")
+            raise Exception(f"Failed to get database schema: {e!s}") from e
 
-    async def get_table_data(self, table_name: str, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+    async def get_table_data(self, table_name: str, limit: int = 100, offset: int = 0) -> dict[str, Any]:
         """Get data from a specific table"""
         try:
-            conn = self._get_connection()
-            cursor = conn.cursor()
+            # Validate table name first to prevent SQL injection
+            validated_table_name = _validate_table_name(table_name)
+            conn = await self._get_connection()
 
             # Validate table exists
-            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (table_name,))
-            if not cursor.fetchone():
-                raise Exception(f"Table '{table_name}' does not exist")
+            table_check_query = """
+                SELECT table_name
+                FROM information_schema.tables
+                WHERE table_schema = 'public' AND table_name = $1
+            """
+            table_exists = await conn.fetchval(table_check_query, validated_table_name)
+            if not table_exists:
+                raise Exception(f"Table '{validated_table_name}' does not exist")
 
             # Get total count
-            cursor.execute(f"SELECT COUNT(*) FROM {table_name}")
-            total_rows = cursor.fetchone()[0]
+            count_query = f'SELECT COUNT(*) FROM "{validated_table_name}"'  # noqa: S608
+            total_rows = await conn.fetchval(count_query)
 
             # Get data with pagination
-            cursor.execute(f"SELECT * FROM {table_name} LIMIT ? OFFSET ?", (limit, offset))
-            rows = cursor.fetchall()
+            data_query = f'SELECT * FROM "{validated_table_name}" LIMIT $1 OFFSET $2'  # noqa: S608
+            rows = await conn.fetch(data_query, limit, offset)
 
             # Convert to list of dicts
             data = [dict(row) for row in rows]
 
-            conn.close()
+            await conn.close()
 
             return {
                 "table_name": table_name,
@@ -137,42 +248,40 @@ class DatabaseService:
                 "returned_rows": len(data),
                 "limit": limit,
                 "offset": offset,
-                "data": data
+                "data": data,
             }
 
         except Exception as e:
             logger.error(f"Error getting table data: {e}")
-            raise Exception(f"Failed to get table data: {str(e)}")
+            raise Exception(f"Failed to get table data: {e!s}") from e
 
-    async def execute_query(self, query: str) -> Dict[str, Any]:
+    async def execute_query(self, query: str) -> dict[str, Any]:
         """Execute a SELECT query safely"""
         try:
             # Only allow SELECT queries for security
             query_upper = query.strip().upper()
-            if not query_upper.startswith('SELECT'):
+            if not query_upper.startswith("SELECT"):
                 raise Exception("Only SELECT queries are allowed")
 
-            conn = self._get_connection()
-            cursor = conn.cursor()
+            conn = await self._get_connection()
 
-            cursor.execute(query)
-            rows = cursor.fetchall()
+            rows = await conn.fetch(query)
 
-            # Get column names
-            columns = [description[0] for description in cursor.description] if cursor.description else []
+            # Get column names from the first row if available
+            columns = list(rows[0].keys()) if rows else []
 
             # Convert to list of dicts
-            data = [dict(zip(columns, row)) for row in rows]
+            data = [dict(row) for row in rows]
 
-            conn.close()
+            await conn.close()
 
             return {
                 "columns": columns,
                 "rows": len(data),
                 "data": data,
-                "query": query
+                "query": query,
             }
 
         except Exception as e:
             logger.error(f"Error executing query: {e}")
-            raise Exception(f"Failed to execute query: {str(e)}")
+            raise Exception(f"Failed to execute query: {e!s}") from e
