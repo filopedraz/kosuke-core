@@ -27,7 +27,7 @@ const sendMessage = async (
   contentBlockCallback?: (contentBlocks: ContentBlock[]) => void,
   setAssistantIdCallback?: (id: number) => void,
   abortController?: AbortController,
-  chatSessionId?: number | null
+  sessionId?: string | null
 ): Promise<{
   message: ApiChatMessage;
   success: boolean;
@@ -40,6 +40,11 @@ const sendMessage = async (
   expectingWebhookUpdate?: boolean;
 }> => {
   try {
+    // Ensure we have a sessionId
+    if (!sessionId) {
+      throw new Error('Session ID is required for sending messages');
+    }
+
     // For image uploads, use FormData
     let requestBody: FormData | string;
     const requestHeaders: HeadersInit = {};
@@ -57,7 +62,7 @@ const sendMessage = async (
       requestBody = formData;
 
       // For image uploads, expect JSON response
-      const response = await fetch(`/api/projects/${projectId}/chat`, {
+      const response = await fetch(`/api/projects/${projectId}/chat-sessions/${sessionId}`, {
         method: 'POST',
         body: requestBody,
         signal: abortController?.signal,
@@ -78,10 +83,9 @@ const sendMessage = async (
         content,
         includeContext: options?.includeContext || false,
         contextFiles: options?.contextFiles || [],
-        chat_session_id: chatSessionId,
       });
 
-      const response = await fetch(`/api/projects/${projectId}/chat`, {
+      const response = await fetch(`/api/projects/${projectId}/chat-sessions/${sessionId}`, {
         method: 'POST',
         headers: requestHeaders,
         body: requestBody,
@@ -402,7 +406,7 @@ const sendMessage = async (
 // Hook for sending messages with streaming support
 export function useSendMessage(
   projectId: number,
-  chatSessionId?: number | null,
+  activeChatSessionId?: number | null,
   sessionId?: string | null
 ) {
   const queryClient = useQueryClient();
@@ -433,6 +437,11 @@ export function useSendMessage(
   // Mutation for sending messages
   const mutation = useMutation({
     mutationFn: (args: { content: string; options?: MessageOptions }) => {
+      // Ensure we have a sessionId for the new endpoint
+      if (!sessionId) {
+        throw new Error('Session ID is required for sending messages');
+      }
+
       // Set up streaming state and callback
       const abortController = new AbortController();
 
@@ -467,190 +476,62 @@ export function useSendMessage(
         contentBlockCallback,
         setAssistantIdCallback,
         abortController,
-        chatSessionId
+        sessionId
       );
     },
     onMutate: async newMessage => {
-      // Cancel any outgoing refetches for both project-wide and session-specific queries
-      await queryClient.cancelQueries({ queryKey: ['messages', projectId] });
-      if (chatSessionId && sessionId) {
-        // Also cancel session-specific queries if we're in a session
-        await queryClient.cancelQueries({
-          queryKey: ['chat-session-messages', projectId, sessionId],
-        });
-        await queryClient.cancelQueries({ queryKey: ['chat-sessions', projectId] });
-      }
+      // Cancel any outgoing refetches for session-specific queries
+      await queryClient.cancelQueries({ queryKey: ['chat-session-messages', projectId, sessionId] });
 
-      // Snapshot the previous values
-      const previousMessages = queryClient.getQueryData(['messages', projectId]);
-      const previousSessionMessages =
-        chatSessionId && sessionId
-          ? queryClient.getQueryData(['chat-session-messages', projectId, sessionId])
-          : null;
+      // Snapshot the previous messages
+      const previousMessages = queryClient.getQueryData(['chat-session-messages', projectId, sessionId]);
 
-      // Create optimistic content that includes image information if present
-      const optimisticContent = newMessage.content;
-
-      // Create optimistic user message
-      const newUserMessage: ChatMessageProps = {
-        id: Date.now(),
-        content: optimisticContent,
-        role: 'user',
-        timestamp: new Date(),
-        isLoading: false,
-      };
-
-      // Optimistically update the project-wide query
-      queryClient.setQueryData(['messages', projectId], (old: unknown) => {
-        if (!old || typeof old !== 'object' || !('messages' in old)) return old;
-        const typedOld = old as { messages: ChatMessageProps[] };
-
-        return {
-          ...typedOld,
-          messages: [...typedOld.messages, newUserMessage],
-        };
-      });
-
-      // If we're in a session, also optimistically update the session-specific query
-      if (chatSessionId && sessionId) {
-        queryClient.setQueryData(
-          ['chat-session-messages', projectId, sessionId],
-          (old: unknown) => {
-            if (!old || typeof old !== 'object' || !('messages' in old)) {
-              // If no previous session data, create a new structure
-              return {
-                messages: [newUserMessage],
-                sessionInfo: {
-                  id: chatSessionId,
-                  sessionId: sessionId,
-                  title: 'Chat Session',
-                  status: 'active',
-                  messageCount: 1,
-                },
-              };
-            }
-
-            const typedOld = old as {
-              messages: ChatMessageProps[];
-              sessionInfo?: {
-                id: number;
-                sessionId: string;
-                title: string;
-                status: string;
-                messageCount: number;
-              };
-            };
-
-            return {
-              ...typedOld,
-              messages: [...typedOld.messages, newUserMessage],
-              sessionInfo: typedOld.sessionInfo
-                ? {
-                    ...typedOld.sessionInfo,
-                    messageCount: typedOld.messages.length + 1,
-                  }
-                : undefined,
-            };
-          }
-        );
-      }
-
-      // If there's an image, generate its data URL and update the optimistic message
-      if (newMessage.options?.imageFile) {
-        const file = newMessage.options.imageFile;
-        try {
-          const dataUrl = await readFileAsDataURL(file);
-          const imageMarkdown = `[Attached Image](${dataUrl})`;
-
-          // Update the optimistic content with the image markdown
-          const updatedOptimisticContent = newMessage.content.trim()
-            ? `${newMessage.content}\n\n${imageMarkdown}`
-            : imageMarkdown;
-
-          // Update the query data again with the image included
-          queryClient.setQueryData(['messages', projectId], (old: unknown) => {
-            if (!old || typeof old !== 'object' || !('messages' in old)) return old;
-            const typedOld = old as { messages: ChatMessageProps[] };
-
-            const updatedMessages = [...typedOld.messages];
-            const lastMessageIndex = updatedMessages.length - 1;
-
-            if (lastMessageIndex >= 0 && updatedMessages[lastMessageIndex].role === 'user') {
-              updatedMessages[lastMessageIndex] = {
-                ...updatedMessages[lastMessageIndex],
-                content: updatedOptimisticContent,
-              };
-            }
-
-            return {
-              ...typedOld,
-              messages: updatedMessages,
-            };
-          });
-        } catch (error) {
-          console.error('Error creating data URL for optimistic image:', error);
-        }
-      }
-
-      // Return a context object with the snapshots
-      return {
-        previousMessages,
-        previousSessionMessages: previousSessionMessages,
-      };
+      return { previousMessages };
     },
     onError: (error, _, context) => {
       // If there's an error, roll back to the previous state
       if (context?.previousMessages) {
-        queryClient.setQueryData(['messages', projectId], context.previousMessages);
+        queryClient.setQueryData(['chat-session-messages', projectId, sessionId], context.previousMessages);
       }
 
-      // Also roll back session-specific query if applicable
-      if (context?.previousSessionMessages && chatSessionId && sessionId) {
-        queryClient.setQueryData(
-          ['chat-session-messages', projectId, sessionId],
-          context.previousSessionMessages
-        );
-      }
+      // Clear streaming state on error
+      setStreamingState({
+        isStreaming: false,
+        expectingWebhookUpdate: false,
+        streamingContentBlocks: [],
+        streamingAssistantMessageId: null,
+        streamAbortController: null,
+      });
+
+      console.error('Message sending failed:', error);
     },
-    onSuccess: data => {
-      // If we're expecting a webhook update, set the flag and delay invalidation
-      if ('expectingWebhookUpdate' in data && data.expectingWebhookUpdate) {
-        setStreamingState(prev => ({
-          ...prev,
-          expectingWebhookUpdate: true,
-        }));
+    onSuccess: (data) => {
+      // Mark that we're expecting a webhook update
+      setStreamingState(prev => ({
+        ...prev,
+        expectingWebhookUpdate: true,
+      }));
 
-        // Start a timer to stop expecting webhook updates after a reasonable time
-        setTimeout(() => {
-          setStreamingState(prev => ({
-            ...prev,
-            expectingWebhookUpdate: false,
-          }));
-        }, 10000); // 10 second timeout
-      } else {
-        // Immediate invalidation for non-streaming messages (like image uploads)
-        queryClient.invalidateQueries({ queryKey: ['messages', projectId] });
-        if (chatSessionId && sessionId) {
-          // Also invalidate session-specific queries
-          queryClient.invalidateQueries({
-            queryKey: ['chat-session-messages', projectId, sessionId],
-          });
-          queryClient.invalidateQueries({ queryKey: ['chat-sessions', projectId] });
-        }
+      // If this was an image upload (non-streaming), invalidate queries immediately
+      if (data.expectingWebhookUpdate === false) {
+        queryClient.invalidateQueries({ 
+          queryKey: ['chat-session-messages', projectId, sessionId] 
+        });
+        
+        // Update session list to reflect new message count
+        queryClient.invalidateQueries({ queryKey: ['chat-sessions', projectId] });
       }
     },
     onSettled: () => {
       // Add a delay before invalidating queries to allow webhook to save data
       setTimeout(async () => {
         // Invalidate and wait for the query to settle before clearing streaming state
-        await queryClient.invalidateQueries({ queryKey: ['messages', projectId] });
-        if (chatSessionId && sessionId) {
-          // Also invalidate session-specific queries
-          await queryClient.invalidateQueries({
-            queryKey: ['chat-session-messages', projectId, sessionId],
-          });
-          await queryClient.invalidateQueries({ queryKey: ['chat-sessions', projectId] });
-        }
+        await queryClient.invalidateQueries({ 
+          queryKey: ['chat-session-messages', projectId, sessionId] 
+        });
+        
+        // Also invalidate session list to update message counts
+        await queryClient.invalidateQueries({ queryKey: ['chat-sessions', projectId] });
 
         // Always trigger preview refresh after streaming finishes and we fetch the assistant message
         const fileUpdatedEvent = new CustomEvent('file-updated', {

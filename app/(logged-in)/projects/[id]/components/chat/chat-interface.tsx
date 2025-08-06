@@ -8,7 +8,6 @@ import { cn } from '@/lib/utils';
 import { useUser } from '@clerk/nextjs';
 
 // Import types and hooks
-import { useChatMessages } from '@/hooks/use-chat-messages';
 import { useChatSessionMessages } from '@/hooks/use-chat-sessions';
 import { useChatState } from '@/hooks/use-chat-state';
 import { useSendMessage } from '@/hooks/use-send-message';
@@ -42,15 +41,19 @@ export default function ChatInterface({
     imageUrl?: string;
   } | null>(null);
 
-  // Custom hooks for business logic
+  // Ensure we have a sessionId - this is now required
+  if (!sessionId) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <p className="text-muted-foreground">No session selected</p>
+      </div>
+    );
+  }
+
+  // Custom hooks for business logic - all session-based now
   const sendMessageMutation = useSendMessage(projectId, activeChatSessionId, sessionId);
-
-  // Use session-specific messages if we have a sessionId, otherwise use project-wide messages
-  const sessionMessagesQuery = useChatSessionMessages(projectId, sessionId || '');
-  const projectMessagesQuery = useChatMessages(projectId, initialMessages, initialIsLoading, sendMessageMutation.expectingWebhookUpdate);
-
-  const messagesQuery = sessionId ? sessionMessagesQuery : projectMessagesQuery;
-  const chatState = useChatState(projectId);
+  const messagesQuery = useChatSessionMessages(projectId, sessionId);
+  const chatState = useChatState(projectId, sessionId);
 
   // Extract data from hooks
   const {
