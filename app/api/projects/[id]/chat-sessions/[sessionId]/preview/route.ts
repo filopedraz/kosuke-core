@@ -5,6 +5,7 @@ import { AGENT_SERVICE_URL } from '@/lib/constants';
 import { db } from '@/lib/db/drizzle';
 import { chatSessions, projects } from '@/lib/db/schema';
 import { and, eq } from 'drizzle-orm';
+import { getProjectEnvironmentVariables } from '@/lib/api/environment';
 
 /**
  * GET /api/projects/[id]/chat-sessions/[sessionId]/preview
@@ -90,6 +91,9 @@ export async function GET(
     // If container is not running, automatically start it
     if (!result.running && result.url === null) {
       try {
+        // Fetch environment variables for the project
+        const envVars = await getProjectEnvironmentVariables(projectId);
+
         const startResponse = await fetch(`${AGENT_SERVICE_URL}/api/preview/start`, {
           method: 'POST',
           headers: {
@@ -98,7 +102,7 @@ export async function GET(
           body: JSON.stringify({
             project_id: projectId,
             session_id: sessionId,
-            env_vars: {}, // TODO: Add environment variables from database
+            env_vars: envVars,
           }),
         });
 
@@ -212,6 +216,9 @@ export async function POST(
       );
     }
 
+    // Fetch environment variables for the project
+    const envVars = await getProjectEnvironmentVariables(projectId);
+
     // Start preview via Python agent
     const response = await fetch(`${AGENT_SERVICE_URL}/api/preview/start`, {
       method: 'POST',
@@ -221,7 +228,7 @@ export async function POST(
       body: JSON.stringify({
         project_id: projectId,
         session_id: sessionId,
-        env_vars: {}, // TODO: Add environment variables from database
+        env_vars: envVars,
       }),
     });
 

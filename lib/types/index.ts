@@ -9,3 +9,16 @@ export * from './infrastructure';
 export * from './preview';
 export * from './project';
 export * from './user';
+
+// Environment Variables
+export type {
+  EnvironmentVariable,
+  CreateEnvironmentVariableData,
+  UpdateEnvironmentVariableData,
+  Integration,
+  CreateIntegrationData,
+  UpdateIntegrationData,
+  IntegrationTemplate,
+  EnvironmentVariableFromDB,
+  IntegrationFromDB,
+} from './environment';

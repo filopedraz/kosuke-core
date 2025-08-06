@@ -1,0 +1,38 @@
+'use client';
+
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Settings } from 'lucide-react';
+import DefaultBranchSettings from './default-branch-settings';
+import { EnvironmentVariables } from './environment-variables';
+
+interface SettingsTabProps {
+  projectId: number;
+}
+
+export function SettingsTab({ projectId }: SettingsTabProps) {
+  return (
+    <div className="flex flex-col h-full p-6 space-y-6">
+      <div className="flex justify-between items-center">
+        <div className="flex items-center gap-2">
+          <Settings className="h-5 w-5 text-primary" />
+          <h1 className="text-2xl font-semibold">Project Settings</h1>
+        </div>
+      </div>
+
+      <Tabs defaultValue="environment" className="w-full">
+        <TabsList>
+          <TabsTrigger value="environment">Environment Variables</TabsTrigger>
+          <TabsTrigger value="branch">Default Branch</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="environment" className="space-y-6 pt-6 pb-12">
+          <EnvironmentVariables projectId={projectId} />
+        </TabsContent>
+
+        <TabsContent value="branch" className="space-y-6 pt-6 pb-12">
+          <DefaultBranchSettings projectId={projectId} />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
