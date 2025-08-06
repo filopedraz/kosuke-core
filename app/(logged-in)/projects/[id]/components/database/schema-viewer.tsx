@@ -1,12 +1,12 @@
 'use client';
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Table, Key, Hash, Type } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useDatabaseSchema } from '@/hooks/use-database-schema';
-import { SchemaViewerSkeleton } from './skeletons/schema-viewer-skeleton';
 import type { SchemaViewerProps } from '@/lib/types';
+import { Hash, Key, Table, Type } from 'lucide-react';
+import { SchemaViewerSkeleton } from './skeletons/schema-viewer-skeleton';
 
 export function SchemaViewer({ projectId, sessionId }: SchemaViewerProps) {
   const { data: schema, isLoading, error } = useDatabaseSchema(projectId, sessionId);
@@ -29,11 +29,12 @@ export function SchemaViewer({ projectId, sessionId }: SchemaViewerProps) {
 
   if (!schema?.tables || schema.tables.length === 0) {
     return (
-      <Card>
-        <CardContent className="pt-6">
-          <div className="text-center text-muted-foreground">No tables found in database</div>
-        </CardContent>
-      </Card>
+      <div className="flex flex-col items-center justify-center h-64 text-center">
+        <h3 className="text-xl font-medium">No Tables Found</h3>
+        <p className="text-muted-foreground mt-2">
+          This database doesn&apos;t have any tables yet.
+        </p>
+      </div>
     );
   }
 

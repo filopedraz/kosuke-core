@@ -39,7 +39,7 @@ export function QueryRunnerSkeleton() {
                 ))}
               </div>
             </div>
-            
+
             {/* Result rows skeleton */}
             {Array.from({ length: 6 }).map((_, rowIndex) => (
               <div key={rowIndex} className="border-b p-4">

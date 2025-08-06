@@ -1,15 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useDatabaseSchema } from '@/hooks/use-database-schema';
 import { useTableData } from '@/hooks/use-table-data';
-import { TableBrowserSkeleton } from './skeletons/table-browser-skeleton';
 import type { TableBrowserProps } from '@/lib/types';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useState } from 'react';
+import { TableBrowserSkeleton } from './skeletons/table-browser-skeleton';
 
 export function TableBrowser({ projectId, sessionId }: TableBrowserProps) {
   const [selectedTable, setSelectedTable] = useState<string | null>(null);

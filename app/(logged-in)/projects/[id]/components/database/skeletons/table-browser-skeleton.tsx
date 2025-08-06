@@ -36,7 +36,7 @@ export function TableBrowserSkeleton() {
                 ))}
               </div>
             </div>
-            
+
             {/* Table rows skeleton */}
             {Array.from({ length: 8 }).map((_, rowIndex) => (
               <div key={rowIndex} className="border-b p-4">
