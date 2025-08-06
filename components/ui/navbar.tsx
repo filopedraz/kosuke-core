@@ -32,7 +32,7 @@ import {
 import { cn } from '@/lib/utils';
 
 type NavbarProps = {
-  variant?: 'standard' | 'project' | 'waitlist';
+  variant?: 'standard' | 'project';
   projectProps?: {
     projectName: string;
     currentView: 'preview' | 'code' | 'branding' | 'settings' | 'database';
@@ -124,21 +124,7 @@ export default function Navbar({ variant = 'standard', projectProps, className }
     );
   };
 
-  // Waitlist navbar variant
-  if (variant === 'waitlist') {
-    return (
-      <div className="w-full border-b border-border">
-        <header className={cn('bg-background w-full h-14', className)}>
-          <div className="w-full h-full px-6 sm:px-8 md:px-16 lg:px-24 flex justify-between items-center max-w-screen-2xl mx-auto">
-            <Link href="/" className="flex items-center">
-              <CircleIcon className="h-6 w-6 text-primary" />
-              <span className="ml-2 text-xl text-foreground">Kosuke</span>
-            </Link>
-          </div>
-        </header>
-      </div>
-    );
-  }
+
 
   // Standard navbar for most pages
   if (variant === 'standard') {
