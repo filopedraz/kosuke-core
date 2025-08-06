@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useToast } from '@/hooks/use-toast';
-import type { PreviewStatus, UsePreviewPanelOptions, UsePreviewPanelReturn } from '@/lib/types';
+import type { PreviewStatus, UsePreviewPanelOptions, UsePreviewPanelReturn, GitUpdateStatus } from '@/lib/types';
 import { useStartPreview } from './use-preview-status';
 
 export function usePreviewPanel({
@@ -25,6 +25,7 @@ export function usePreviewPanel({
   const [iframeKey, setIframeKey] = useState(0);
   const [isDownloading, setIsDownloading] = useState(false);
   const [isRequestInProgress, setIsRequestInProgress] = useState(false);
+  const [gitStatus, setGitStatus] = useState<GitUpdateStatus | null>(null);
 
   // Check if the preview server is ready
   const checkServerHealth = useCallback(async (url: string): Promise<boolean> => {
@@ -119,6 +120,7 @@ export function usePreviewPanel({
       setStatus('loading');
       setProgress(0);
       setError(null);
+      setGitStatus(null); // Reset git status on new fetch
 
       try {
         // Use main branch API when no session is selected
@@ -144,6 +146,26 @@ export function usePreviewPanel({
         const data = await response.json();
         console.log(`[Preview Panel] Preview status response:`, data);
 
+        // Handle git status information for main branch
+        if (data.git_status && (!sessionId || sessionId === 'main')) {
+          setGitStatus(data.git_status);
+          console.log('[Preview Panel] Git status:', data.git_status);
+          
+          // Show toast for git updates
+          if (data.git_status.action === 'pulled' && data.git_status.commits_pulled > 0) {
+            toast({
+              title: 'Updated to latest version',
+              description: `Pulled ${data.git_status.commits_pulled} new commit${data.git_status.commits_pulled === 1 ? '' : 's'}`,
+            });
+          } else if (data.git_status.action === 'error') {
+            toast({
+              variant: 'destructive',
+              title: 'Git update failed',
+              description: data.git_status.message,
+            });
+          }
+        }
+
         if (data.previewUrl || data.url) {
           // Use the direct preview URL (handle both previewUrl and url for compatibility)
           const url = data.previewUrl || data.url;
@@ -167,7 +189,7 @@ export function usePreviewPanel({
         setIsRequestInProgress(false);
       }
     },
-    [projectId, sessionId, pollServerUntilReady]
+    [projectId, sessionId, pollServerUntilReady, toast]
   );
 
   // Update ref when fetchPreviewUrl changes
@@ -270,6 +292,17 @@ export function usePreviewPanel({
 
   // Get the status message based on current status
   const getStatusMessage = useCallback(() => {
+    // Show git status message when updating main branch
+    if (status === 'loading' && gitStatus) {
+      if (gitStatus.action === 'pulled') {
+        return gitStatus.commits_pulled > 0 
+          ? `Updated with ${gitStatus.commits_pulled} new commit${gitStatus.commits_pulled === 1 ? '' : 's'}`
+          : 'Already up to date';
+      } else if (gitStatus.action === 'cached') {
+        return 'Using cached version, loading preview...';
+      }
+    }
+    
     switch (status) {
       case 'ready':
         return 'Preview is ready!';
@@ -278,7 +311,7 @@ export function usePreviewPanel({
       case 'error':
         return error || 'Error loading preview.';
     }
-  }, [status, error]);
+  }, [status, error, gitStatus]);
 
   // Get the status icon type based on current status
   const getStatusIconType = useCallback(() => {
@@ -322,6 +355,7 @@ export function usePreviewPanel({
     iframeKey,
     isDownloading,
     isStarting,
+    gitStatus,
 
     // Actions
     handleRefresh,
