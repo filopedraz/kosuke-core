@@ -7,7 +7,7 @@ import { db } from '@/lib/db/drizzle';
 import { chatMessages, chatSessions, projects } from '@/lib/db/schema';
 import { getGitHubToken } from '@/lib/github/auth';
 import { uploadFile } from '@/lib/storage';
-import { and, eq } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 
 // Schema for sending a message - support both formats with chat session
 const sendMessageSchema = z.union([
