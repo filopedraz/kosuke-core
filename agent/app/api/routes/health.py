@@ -1,5 +1,6 @@
 import platform
 from datetime import datetime
+from pathlib import Path
 
 import psutil
 from fastapi import APIRouter
@@ -32,6 +33,13 @@ async def health_check():
                 "model_name": settings.model_name,
                 "projects_dir": settings.projects_dir,
                 "log_level": settings.log_level,
+                "host_workspace_dir": settings.HOST_WORKSPACE_DIR,
+            },
+            "environment": {
+                "docker_detected": Path("/.dockerenv").exists(),
+                "docker_socket_available": Path("/var/run/docker.sock").exists(),
+                "projects_dir_exists": Path(settings.projects_dir).exists(),
+                "projects_dir_absolute": str(Path(settings.projects_dir).resolve()),
             },
             "system": {
                 "platform": platform.system(),

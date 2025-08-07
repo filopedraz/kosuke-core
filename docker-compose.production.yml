@@ -66,7 +66,7 @@ services:
     container_name: kosuke_agent
     volumes:
       - ./agent:/app:cached
-      - ./projects:/app/projects:cached
+      - /opt/kosuke/projects:/app/projects:cached
       - /var/run/docker.sock:/var/run/docker.sock # Allow agent to manage preview containers
     env_file:
       - ./agent/.env

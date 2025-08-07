@@ -231,13 +231,28 @@ class GitHubService:
         try:
             project_path = Path(settings.projects_dir) / str(request.project_id)
 
+            # Ensure the projects directory exists
+            project_path.parent.mkdir(parents=True, exist_ok=True)
+            logger.info(f"Projects directory ensured: {project_path.parent}")
+
             # Remove existing project directory if it exists
             if project_path.exists():
+                logger.info(f"Removing existing project directory: {project_path}")
                 shutil.rmtree(project_path)
 
             # Clone repository
             logger.info(f"Cloning repository {request.repo_url} to project {request.project_id}")
+            logger.info(f"Target path: {project_path}")
             git.Repo.clone_from(request.repo_url, project_path)
+
+            # Verify clone success
+            if project_path.exists():
+                files_count = len(list(project_path.rglob("*")))
+                logger.info(f"Clone successful: {files_count} items in project directory")
+                if files_count == 0:
+                    logger.warning("Project directory is empty after clone - possible authentication issue")
+            else:
+                raise Exception("Project directory not created after clone")
 
             # Keep repository on main branch after cloning
             # Branches will be created per chat session, not per project
@@ -247,6 +262,8 @@ class GitHubService:
             return str(project_path)
         except Exception as e:
             logger.error(f"Error cloning repository: {e}")
+            logger.error(f"Settings projects_dir: {settings.projects_dir}")
+            logger.error(f"Target project_path: {project_path}")
             raise Exception(f"Failed to clone repository: {e!s}") from e
 
     def start_sync_session(self, project_id: int, session_id: str) -> None:

@@ -24,6 +24,16 @@ logging.basicConfig(
 async def startup_tasks():
     """Startup tasks to run when the application starts"""
     logger = logging.getLogger(__name__)
+
+    # Ensure projects directory exists
+    try:
+        from app.services.fs_service import fs_service
+
+        await fs_service.ensure_projects_dir()
+        logger.info(f"✅ Projects directory ensured: {fs_service.projects_dir}")
+    except Exception as e:
+        logger.error(f"❌ Failed to ensure projects directory: {e}")
+
     try:
         # Initialize DockerService to ensure preview image is available
         from app.services.docker_service import DockerService
