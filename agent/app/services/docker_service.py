@@ -368,48 +368,48 @@ class DockerService:
             url = f"http://localhost:{host_port}"
 
         # Run container creation in executor with timeout
-        loop = asyncio.get_event_loop()
-        container = await asyncio.wait_for(
-            loop.run_in_executor(
-                None,
-                lambda: self.client.containers.run(
-                    image=settings.preview_default_image,
-                    name=container_name,
-                    command=None,
-                    ports=ports,
-                    volumes={str(host_session_path): {"bind": "/app", "mode": "rw"}},
-                    working_dir="/app",
-                    environment=environment,
-                    network=network,
-                    labels=labels,
-                    detach=True,
-                    auto_remove=False,
-                ),
-            ),
-            timeout=30.0,
-        )
+        # loop = asyncio.get_event_loop()
+        # container = await asyncio.wait_for(
+        #     loop.run_in_executor(
+        #         None,
+        #         lambda: self.client.containers.run(
+        #             image=settings.preview_default_image,
+        #             name=container_name,
+        #             command=None,
+        #             ports=ports,
+        #             volumes={str(host_session_path): {"bind": "/app", "mode": "rw"}},
+        #             working_dir="/app",
+        #             environment=environment,
+        #             network=network,
+        #             labels=labels,
+        #             detach=True,
+        #             auto_remove=False,
+        #         ),
+        #     ),
+        #     timeout=30.0,
+        # )
 
-        # Convert git_status dict to GitUpdateStatus model if present
-        git_update_status = None
-        if git_status:
-            git_update_status = GitUpdateStatus(**git_status)
+        # # Convert git_status dict to GitUpdateStatus model if present
+        # git_update_status = None
+        # if git_status:
+        #     git_update_status = GitUpdateStatus(**git_status)
 
-        container_info = ContainerInfo(
-            project_id=project_id,
-            session_id=session_id,
-            container_id=container.id,
-            container_name=container_name,
-            port=host_port if not settings.TRAEFIK_ENABLED else 3000,  # Use 3000 for Traefik, actual port for direct
-            url=url,
-            compilation_complete=False,
-            git_status=git_update_status,
-        )
+        # container_info = ContainerInfo(
+        #     project_id=project_id,
+        #     session_id=session_id,
+        #     container_id=container.id,
+        #     container_name=container_name,
+        #     port=host_port if not settings.TRAEFIK_ENABLED else 3000,  # Use 3000 for Traefik, actual port for direct
+        #     url=url,
+        #     compilation_complete=False,
+        #     git_status=git_update_status,
+        # )
 
-        container_key = (project_id, session_id)
-        self.containers[container_key] = container_info
+        # container_key = (project_id, session_id)
+        # self.containers[container_key] = container_info
 
-        # Start compilation monitoring without blocking
-        _monitor_task = asyncio.create_task(self._monitor_compilation_async(project_id, session_id))
+        # # Start compilation monitoring without blocking
+        # _monitor_task = asyncio.create_task(self._monitor_compilation_async(project_id, session_id))
 
         return url
 
