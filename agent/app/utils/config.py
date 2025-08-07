@@ -114,6 +114,9 @@ class Settings:
         self.PREVIEW_BASE_DOMAIN: str = os.getenv("PREVIEW_BASE_DOMAIN", "kosuke.app")
         self.TRAEFIK_ENABLED: bool = os.getenv("TRAEFIK_ENABLED", "false").lower() == "true"
 
+        # Docker-in-Docker settings
+        self.HOST_WORKSPACE_DIR: str = os.getenv("HOST_WORKSPACE_DIR", "")
+
     def validate_settings(self) -> bool:
         """Validate required settings"""
         if not self.anthropic_api_key:
@@ -152,6 +155,7 @@ class Settings:
             "main_domain": self.MAIN_DOMAIN,
             "preview_base_domain": self.PREVIEW_BASE_DOMAIN,
             "traefik_enabled": self.TRAEFIK_ENABLED,
+            "host_workspace_dir": self.HOST_WORKSPACE_DIR,
         }
 
 

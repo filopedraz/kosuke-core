@@ -76,6 +76,7 @@ services:
       - NEXTJS_URL=http://nextjs:3000
       - TRAEFIK_ENABLED=true
       - PREVIEW_BASE_DOMAIN=kosuke.app
+      - HOST_WORKSPACE_DIR=/opt/kosuke
     networks:
       - kosuke_network
     depends_on:

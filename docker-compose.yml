@@ -46,7 +46,7 @@ services:
       - PYTHONUNBUFFERED=1
       - NEXTJS_URL=http://host.docker.internal:3000
       - WEBHOOK_SECRET=dev-secret-change-in-production
-      - HOST_WORKSPACE_DIR=${PWD} # Pass the host workspace directory for Docker-in-Docker volume mounting
+      - HOST_WORKSPACE_DIR=${PWD}
     depends_on:
       - postgres
     networks:

@@ -43,16 +43,25 @@ class DockerService:
         """Get the correct host path for projects directory"""
         # Check if we're running in Docker-in-Docker
         if Path("/.dockerenv").exists() and Path("/var/run/docker.sock").exists():
-            # Docker-in-Docker setup
-            host_workspace_dir = os.getenv("HOST_WORKSPACE_DIR")
+            # Docker-in-Docker setup - we need the actual host path for volume mounts
+            host_workspace_dir = settings.HOST_WORKSPACE_DIR
             if host_workspace_dir:
                 host_projects_dir = Path(host_workspace_dir) / "projects"
                 logger.info(f"Using HOST_WORKSPACE_DIR: {host_projects_dir}")
-                return str(host_projects_dir)
+                return str(host_projects_dir.resolve())
 
-            # Fallback for Docker-in-Docker
-            logger.warning("Docker-in-Docker detected, using assumed host path: ./projects")
-            return "./projects"
+            # In production, get the current working directory which should be absolute
+            # The projects directory is mounted at /app/projects, but we need the host path
+            current_dir = Path.cwd()
+            if current_dir == Path("/app"):
+                # We're in the mounted directory, use the expected host path structure
+                # In production, this should be set via HOST_WORKSPACE_DIR
+                logger.warning("Docker-in-Docker detected without HOST_WORKSPACE_DIR, using /opt/kosuke/projects")
+                return "/opt/kosuke/projects"
+
+            # Fallback - use absolute path of current working directory
+            projects_path = current_dir / "projects"
+            return str(projects_path.resolve())
 
         # Running on host - find workspace root
         current_dir = Path.cwd()
@@ -61,12 +70,12 @@ class DockerService:
             workspace_root = workspace_root.parent
 
         if (workspace_root / "projects").exists():
-            return str(workspace_root / "projects")
+            return str((workspace_root / "projects").resolve())
 
-        # Fallback - create projects directory
+        # Fallback - create projects directory with absolute path
         projects_path = current_dir / "projects"
         projects_path.mkdir(parents=True, exist_ok=True)
-        return str(projects_path)
+        return str(projects_path.resolve())
 
     async def is_docker_available(self) -> bool:
         """Check if Docker is available with timeout"""
@@ -238,9 +247,13 @@ class DockerService:
         """Get the host path for the session"""
         if session_id == "main":
             # For main branch, use the main project directory
-            return Path(self.host_projects_dir) / str(project_id)
-        # For chat sessions, use the session subdirectory
-        return Path(self.host_projects_dir) / str(project_id) / "sessions" / session_id
+            session_path = Path(self.host_projects_dir) / str(project_id)
+        else:
+            # For chat sessions, use the session subdirectory
+            session_path = Path(self.host_projects_dir) / str(project_id) / "sessions" / session_id
+
+        # Ensure we return an absolute path
+        return session_path.resolve()
 
     async def _ensure_session_environment(self, project_id: int, session_id: str) -> dict | None:
         """
@@ -276,6 +289,12 @@ class DockerService:
     ) -> str:
         """Create a new container for the session"""
         host_session_path = self._get_host_session_path(project_id, session_id)
+
+        # Validate that we have an absolute path
+        if not host_session_path.is_absolute():
+            error_msg = f"Host session path must be absolute, got: {host_session_path}"
+            logger.error(error_msg)
+            raise ValueError(error_msg)
 
         logger.info(
             f"Mounting host path {host_session_path} to container /app for project {project_id} session {session_id}"
