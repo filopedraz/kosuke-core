@@ -10,7 +10,7 @@ export default function LoggedOutLayout({ children }: { children: React.ReactNod
     <div className="flex flex-col min-h-screen">
       <Navbar variant="standard" />
       <div className="flex-1 flex flex-col">
-        <main className="flex flex-1 flex-col w-full pt-[60px]">{children}</main>
+        <main className="flex-1 w-full">{children}</main>
         <Footer />
       </div>
     </div>

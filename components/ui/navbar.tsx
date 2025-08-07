@@ -124,8 +124,6 @@ export default function Navbar({ variant = 'standard', projectProps, className }
     );
   };
 
-
-
   // Standard navbar for most pages
   if (variant === 'standard') {
     return (
