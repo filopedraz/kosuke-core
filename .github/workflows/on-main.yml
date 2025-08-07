@@ -40,7 +40,7 @@ jobs:
         run: |
           ssh ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_IP }} "cd /home/filippo/kosuke-core/ && git pull"
           ssh ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_IP }} "cd /home/filippo/kosuke-core/ && docker compose -f docker-compose.production.yml up --build -d"
-          ssh ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_IP }} "cd /home/filippo/kosuke-core/ && npm run db:push"
+          ssh ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_IP }} "cd /home/filippo/kosuke-core/ && docker compose -f docker-compose.production.yml exec web npm run db:push"
 
       - name: Notify Slack - Success
         if: success()
