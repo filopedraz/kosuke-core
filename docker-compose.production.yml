@@ -105,4 +105,6 @@ volumes:
 
 networks:
   kosuke_network:
-    external: false
+    name: kosuke_network
+    driver: bridge
+    attachable: true
