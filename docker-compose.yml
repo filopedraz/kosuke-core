@@ -8,6 +8,8 @@ services:
       - '54323:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - kosuke_network
 
   nextjs:
     build:
@@ -26,6 +28,8 @@ services:
     depends_on:
       - postgres
       - agent
+    networks:
+      - kosuke_network
     restart: unless-stopped
 
   agent:
@@ -50,7 +54,7 @@ services:
     depends_on:
       - postgres
     networks:
-      - default
+      - kosuke_network
     restart: unless-stopped
     healthcheck:
       test:
@@ -68,3 +72,7 @@ services:
 volumes:
   postgres_data:
   next_build_cache:
+
+networks:
+  kosuke_network:
+    external: false

@@ -5,6 +5,7 @@ import secrets
 from pathlib import Path
 
 import docker
+from docker.errors import ImageNotFound
 from docker.errors import NotFound
 
 from app.models.preview import ContainerInfo
@@ -38,6 +39,33 @@ class DockerService:
         # Determine the correct host projects directory
         self.host_projects_dir = self._get_host_projects_dir()
         logger.info(f"DockerService initialized with host projects directory: {self.host_projects_dir}")
+
+        # Ensure default preview image is available
+        self._image_pull_task = asyncio.create_task(self._ensure_preview_image())
+
+    async def _ensure_preview_image(self) -> None:
+        """Ensure the preview Docker image is available locally"""
+        try:
+            image_name = settings.preview_default_image
+            logger.info(f"Checking if preview image {image_name} is available locally")
+
+            # Run image inspection in executor to avoid blocking
+            loop = asyncio.get_event_loop()
+            try:
+                await asyncio.wait_for(loop.run_in_executor(None, self.client.images.get, image_name), timeout=5.0)
+                logger.info(f"Preview image {image_name} is available locally")
+            except (ImageNotFound, asyncio.TimeoutError):
+                logger.info(f"Preview image {image_name} not found locally, pulling from registry...")
+
+                # Pull the image
+                await asyncio.wait_for(
+                    loop.run_in_executor(None, lambda: self.client.images.pull(image_name)),
+                    timeout=300.0,  # 5 minutes timeout for pulling
+                )
+                logger.info(f"Successfully pulled preview image {image_name}")
+        except Exception as e:
+            logger.error(f"Failed to ensure preview image {settings.preview_default_image}: {e}")
+            logger.warning("Container creation may fail if image is not available")
 
     def _get_host_projects_dir(self) -> str:
         """Get the correct host path for projects directory"""
@@ -143,10 +171,17 @@ class DockerService:
 
             try:
                 db_name = f"kosuke_project_{project_id}_session_{session_id}"
-                await asyncio.wait_for(conn.execute(f'CREATE DATABASE "{db_name}"'), timeout=5.0)
-                logger.info(f"Created database for project {project_id} session {session_id}")
-            except asyncpg.exceptions.DuplicateDatabaseError:
-                logger.debug(f"Database for project {project_id} session {session_id} already exists")
+
+                # Check if database exists first
+                result = await conn.fetchval("SELECT 1 FROM pg_database WHERE datname = $1", db_name)
+
+                if result:
+                    logger.debug(f"Database for project {project_id} session {session_id} already exists")
+                else:
+                    await asyncio.wait_for(conn.execute(f'CREATE DATABASE "{db_name}"'), timeout=5.0)
+                    logger.info(f"Created database for project {project_id} session {session_id}")
+            except Exception as db_error:
+                logger.error(f"Database operation error for project {project_id} session {session_id}: {db_error}")
             finally:
                 await conn.close()
 
@@ -196,7 +231,7 @@ class DockerService:
 
                 # If starting failed, remove the container so we can create a new one
                 logger.info(f"Removing failed container {container_name}")
-                await asyncio.wait_for(loop.run_in_executor(None, container.remove, True), timeout=5.0)
+                await asyncio.wait_for(loop.run_in_executor(None, lambda: container.remove(force=True)), timeout=5.0)
 
         except (NotFound, asyncio.TimeoutError):
             # Container doesn't exist or timeout
@@ -302,6 +337,9 @@ class DockerService:
 
         environment = self._prepare_container_environment(project_id, session_id, env_vars)
 
+        # Ensure the preview image is available before creating container
+        await self._ensure_preview_image()
+
         # Determine if we're using Traefik or traditional port mapping
         if settings.TRAEFIK_ENABLED:
             # Use Traefik routing - no port mapping needed
@@ -330,7 +368,7 @@ class DockerService:
             # Traditional port mapping for development
             host_port = self._get_random_port()
             ports = {"3000/tcp": host_port}
-            network = "kosuke-core_default"
+            network = "kosuke_network"
             labels = {
                 "kosuke.project_id": str(project_id),
                 "kosuke.session_id": session_id,
@@ -486,8 +524,8 @@ class DockerService:
             )
 
             # Stop and remove container
-            await asyncio.wait_for(loop.run_in_executor(None, container.stop, 5), timeout=10.0)
-            await asyncio.wait_for(loop.run_in_executor(None, container.remove, True), timeout=5.0)
+            await asyncio.wait_for(loop.run_in_executor(None, lambda: container.stop(timeout=5)), timeout=10.0)
+            await asyncio.wait_for(loop.run_in_executor(None, lambda: container.remove(force=True)), timeout=5.0)
 
         except (NotFound, asyncio.TimeoutError):
             # Container already removed or timeout

@@ -20,6 +20,21 @@ logging.basicConfig(
     ],
 )
 
+
+async def startup_tasks():
+    """Startup tasks to run when the application starts"""
+    logger = logging.getLogger(__name__)
+    try:
+        # Initialize DockerService to ensure preview image is available
+        from app.services.docker_service import DockerService
+
+        _docker_service = DockerService()
+        logger.info("✅ DockerService initialized and preview image check started")
+    except Exception as e:
+        logger.error(f"❌ Failed to initialize DockerService during startup: {e}")
+        # Don't fail startup if Docker service init fails - let individual requests handle it
+
+
 app = FastAPI(title="Agentic Coding Pipeline", description="AI-powered code generation microservice", version="1.0.0")
 
 # CORS middleware
@@ -42,6 +57,14 @@ app.include_router(revert.router, prefix="/api", tags=["revert"])
 
 # Also include root endpoint
 app.include_router(health.router, tags=["root"])
+
+
+# Startup event
+@app.on_event("startup")
+async def startup_event():
+    """Run startup tasks when the application starts"""
+    await startup_tasks()
+
 
 if __name__ == "__main__":
     import uvicorn
