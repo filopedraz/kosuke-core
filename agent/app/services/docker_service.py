@@ -75,7 +75,21 @@ class DockerService:
             host_workspace_dir = settings.HOST_WORKSPACE_DIR
             if host_workspace_dir:
                 host_projects_dir = Path(host_workspace_dir) / "projects"
-                logger.info(f"Using HOST_WORKSPACE_DIR: {host_projects_dir}")
+                logger.info(f"Docker-in-Docker detected. HOST_WORKSPACE_DIR: {host_workspace_dir}")
+                logger.info(f"Calculated host projects dir: {host_projects_dir}")
+                logger.info(f"Resolved path: {host_projects_dir.resolve()}")
+
+                # Validate the path exists from the container's perspective
+                container_projects_path = Path("/app/projects")
+                if container_projects_path.exists():
+                    logger.info(f"✅ Container projects path exists: {container_projects_path}")
+                    files_count = (
+                        len(list(container_projects_path.iterdir())) if container_projects_path.is_dir() else 0
+                    )
+                    logger.info(f"Files in container projects dir: {files_count}")
+                else:
+                    logger.warning(f"❌ Container projects path does not exist: {container_projects_path}")
+
                 return str(host_projects_dir.resolve())
 
             # In production, get the current working directory which should be absolute
@@ -331,6 +345,21 @@ class DockerService:
             logger.error(error_msg)
             raise ValueError(error_msg)
 
+        # Debug path information
+        logger.info(f"🔍 Container creation debug for project {project_id}, session {session_id}:")
+        logger.info(f"  📁 Host session path: {host_session_path}")
+        logger.info(f"  📍 Path exists: {host_session_path.exists()}")
+        logger.info(f"  📋 Is directory: {host_session_path.is_dir()}")
+        if host_session_path.exists() and host_session_path.is_dir():
+            files_count = len(list(host_session_path.iterdir()))
+            logger.info(f"  📊 Files in directory: {files_count}")
+            if files_count > 0:
+                # Show first few items for debugging
+                items = list(host_session_path.iterdir())[:5]
+                logger.info(f"  📂 First few items: {[item.name for item in items]}")
+        else:
+            logger.warning(f"❌ Host session path does not exist or is not a directory: {host_session_path}")
+
         logger.info(
             f"Mounting host path {host_session_path} to container /app for project {project_id} session {session_id}"
         )
@@ -417,6 +446,12 @@ class DockerService:
         container_key = (project_id, session_id)
         self.containers[container_key] = container_info
 
+        # Debug container creation success
+        logger.info(f"✅ Container created successfully: {container_name}")
+        logger.info(f"   🔗 Container ID: {container.id}")
+        logger.info(f"   🌐 URL: {url}")
+        logger.info(f"   🔧 Using Traefik: {settings.TRAEFIK_ENABLED}")
+
         # Start compilation monitoring without blocking
         _monitor_task = asyncio.create_task(self._monitor_compilation_async(project_id, session_id))
 
@@ -489,6 +524,9 @@ class DockerService:
 
             container_info = self.containers[container_key]
 
+            # First, verify the volume mount is working
+            await self._verify_container_mount(project_id, session_id, container_info.container_id)
+
             # Wait for container to be responsive (max 60 seconds)
             start_time = asyncio.get_event_loop().time()
             timeout = 60.0
@@ -508,6 +546,30 @@ class DockerService:
 
         except Exception as e:
             logger.error(f"Error monitoring compilation for project {project_id} session {session_id}: {e}")
+
+    async def _verify_container_mount(self, project_id: int, session_id: str, container_id: str) -> None:
+        """Verify that the volume mount is working correctly by checking files inside the container"""
+        try:
+            loop = asyncio.get_event_loop()
+            container = await asyncio.wait_for(
+                loop.run_in_executor(None, self.client.containers.get, container_id), timeout=5.0
+            )
+
+            # Execute ls command in the container to check mounted files
+            exec_result = await asyncio.wait_for(
+                loop.run_in_executor(None, lambda: container.exec_run("ls -la /app", detach=False)), timeout=10.0
+            )
+
+            if exec_result.exit_code == 0:
+                output = exec_result.output.decode("utf-8")
+                logger.info(f"📂 Container {container_id} /app contents:")
+                for line in output.strip().split("\n"):
+                    logger.info(f"   {line}")
+            else:
+                logger.warning(f"❌ Failed to list /app contents in container {container_id}")
+
+        except Exception as e:
+            logger.warning(f"Could not verify container mount for {container_id}: {e}")
 
     async def stop_preview(self, project_id: int, session_id: str) -> None:
         """Stop preview container for project session (non-blocking)"""
