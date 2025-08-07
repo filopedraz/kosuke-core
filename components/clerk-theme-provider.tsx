@@ -22,7 +22,7 @@ export function ClerkThemeProvider({ children }: ClerkThemeProviderProps) {
           colorDanger: 'var(--destructive)',
           colorSuccess: 'var(--primary)',
           colorWarning: 'var(--secondary)',
-          fontFamily: 'var(--font-geist-sans)',
+          fontFamily: 'var(--geist-sans)',
           borderRadius: 'var(--radius-sm)',
         },
         elements: {
