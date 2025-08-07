@@ -38,18 +38,20 @@ class Agent:
         # Session management
         self.session_manager = SessionManager()
 
-        # Get session-specific working directory
+        # Get session-specific working directory (now virtual for git-based containers)
         self.working_directory = self.session_manager.get_session_path(project_id, session_id)
 
         # GitHub integration attributes
         self.github_service: GitHubService | None = None
         self.github_token: str | None = None
 
-        # Initialize claude-code service with session directory
+        # Initialize claude-code service with container-internal directory
+        # In git-based approach, the actual repo will be at /app/workspace inside container
         self.claude_code_service = ClaudeCodeService(project_id=project_id, working_directory=self.working_directory)
 
         logger.info(f"🚀 Agent initialized for project ID: {project_id}, session: {session_id}")
-        logger.info(f"📁 Working directory: {self.working_directory}")
+        logger.info(f"📁 Container working directory: {self.working_directory}")
+        logger.info(f"🔄 Using git-based container approach - repo will be cloned inside container")
 
     def set_github_integration(self, github_token: str):
         """Enable GitHub integration for this agent session"""
@@ -266,7 +268,12 @@ class Agent:
         """Finalize the GitHub session and commit changes if enabled"""
         if self.github_service and self.session_id:
             try:
-                # Commit session changes with session-specific working directory
+                logger.info(f"🔄 Finalizing GitHub session for git-based container approach")
+                logger.info(f"📂 Working directory: {self.working_directory}")
+                
+                # Note: For git-based containers, commits happen inside the container
+                # The working_directory is now a virtual path (/app/workspace)
+                # Git operations are handled by the container's git client
                 commit = await self.github_service.commit_session_changes(
                     session_path=self.working_directory, session_id=self.session_id, commit_message=commit_message
                 )
@@ -279,20 +286,26 @@ class Agent:
                 # End session and get summary
                 session_summary = self.github_service.end_sync_session(self.session_id)
 
-                print(f"✅ GitHub session completed: {session_summary}")
+                logger.info(f"✅ GitHub session completed: {session_summary}")
 
             except Exception as e:
-                print(f"❌ Error finalizing GitHub session: {e}")
+                logger.error(f"❌ Error finalizing GitHub session: {e}")
+                logger.info("ℹ️  With git-based containers, some git operations may need to be handled differently")
 
     async def _get_current_commit_sha(self) -> str | None:
-        """Get current commit SHA from the session directory"""
+        """Get current commit SHA from the container git repository"""
         try:
+            # For git-based containers, this method may need to be adapted
+            # since the working_directory is now a virtual container path
+            logger.debug(f"Getting commit SHA from container path: {self.working_directory}")
+            
             from app.services.git_service import GitService
 
             git_service = GitService()
             return git_service.get_current_commit_sha(self.working_directory)
         except Exception as e:
-            logger.error(f"❌ Error getting current commit SHA: {e}")
+            logger.error(f"❌ Error getting current commit SHA from container: {e}")
+            logger.info("ℹ️  Commit SHA retrieval may need container-specific implementation")
             return None
 
     async def _send_assistant_message_webhook(

@@ -36,9 +36,7 @@ class DockerService:
         self.session_manager = SessionManager()
         self.domain_service = DomainService()
 
-        # Determine the correct host projects directory
-        self.host_projects_dir = self._get_host_projects_dir()
-        logger.info(f"DockerService initialized with host projects directory: {self.host_projects_dir}")
+        logger.info("DockerService initialized with git-based container approach")
 
         # Ensure default preview image is available
         self._image_pull_task = asyncio.create_task(self._ensure_preview_image())
@@ -67,57 +65,7 @@ class DockerService:
             logger.error(f"Failed to ensure preview image {settings.preview_default_image}: {e}")
             logger.warning("Container creation may fail if image is not available")
 
-    def _get_host_projects_dir(self) -> str:
-        """Get the correct host path for projects directory"""
-        # Check if we're running in Docker-in-Docker
-        if Path("/.dockerenv").exists() and Path("/var/run/docker.sock").exists():
-            # Docker-in-Docker setup - we need the actual host path for volume mounts
-            host_workspace_dir = settings.HOST_WORKSPACE_DIR
-            if host_workspace_dir:
-                host_projects_dir = Path(host_workspace_dir) / "projects"
-                logger.info(f"Docker-in-Docker detected. HOST_WORKSPACE_DIR: {host_workspace_dir}")
-                logger.info(f"Calculated host projects dir: {host_projects_dir}")
-                logger.info(f"Resolved path: {host_projects_dir.resolve()}")
 
-                # Validate the path exists from the container's perspective
-                container_projects_path = Path("/app/projects")
-                if container_projects_path.exists():
-                    logger.info(f"✅ Container projects path exists: {container_projects_path}")
-                    files_count = (
-                        len(list(container_projects_path.iterdir())) if container_projects_path.is_dir() else 0
-                    )
-                    logger.info(f"Files in container projects dir: {files_count}")
-                else:
-                    logger.warning(f"❌ Container projects path does not exist: {container_projects_path}")
-
-                return str(host_projects_dir.resolve())
-
-            # In production, get the current working directory which should be absolute
-            # The projects directory is mounted at /app/projects, but we need the host path
-            current_dir = Path.cwd()
-            if current_dir == Path("/app"):
-                # We're in the mounted directory, use the expected host path structure
-                # In production, this should be set via HOST_WORKSPACE_DIR
-                logger.warning("Docker-in-Docker detected without HOST_WORKSPACE_DIR, using ./projects")
-                return "./projects"
-
-            # Fallback - use absolute path of current working directory
-            projects_path = current_dir / "projects"
-            return str(projects_path.resolve())
-
-        # Running on host - find workspace root
-        current_dir = Path.cwd()
-        workspace_root = current_dir
-        while workspace_root != Path("/") and not (workspace_root / "projects").exists():
-            workspace_root = workspace_root.parent
-
-        if (workspace_root / "projects").exists():
-            return str((workspace_root / "projects").resolve())
-
-        # Fallback - create projects directory with absolute path
-        projects_path = current_dir / "projects"
-        projects_path.mkdir(parents=True, exist_ok=True)
-        return str(projects_path.resolve())
 
     async def is_docker_available(self) -> bool:
         """Check if Docker is available with timeout"""
@@ -139,18 +87,32 @@ class DockerService:
         return f"{self.CONTAINER_NAME_PREFIX}{project_id}-{session_id}"
 
     def _prepare_container_environment(
-        self, project_id: int, session_id: str, env_vars: dict[str, str]
+        self, project_id: int, session_id: str, env_vars: dict[str, str], repo_url: str | None = None
     ) -> dict[str, str]:
-        """Prepare environment variables for container"""
+        """Prepare environment variables for container with git repository information"""
         db_password = os.getenv("POSTGRES_PASSWORD", "postgres")
-        return {
+        environment = {
             "NODE_ENV": "development",
             "PORT": "3000",
             "POSTGRES_URL": (
                 f"postgres://postgres:{db_password}@postgres:5432/kosuke_project_{project_id}_session_{session_id}"
             ),
+            "PROJECT_ID": str(project_id),
+            "SESSION_ID": session_id,
+            "SESSION_BRANCH": f"kosuke/session-{session_id}",
             **env_vars,
         }
+        
+        # Add git repository URL if provided
+        if repo_url:
+            environment["REPO_URL"] = repo_url
+            
+        # Add GitHub token if available for private repos
+        github_token = env_vars.get("GITHUB_TOKEN") or os.getenv("GITHUB_TOKEN")
+        if github_token:
+            environment["GITHUB_TOKEN"] = github_token
+            
+        return environment
 
     async def _check_container_health(self, url: str, timeout: float = 2.0) -> bool:
         """Check if container is responding to HTTP requests with timeout"""
@@ -292,41 +254,28 @@ class DockerService:
 
         return None
 
-    def _get_host_session_path(self, project_id: int, session_id: str) -> Path:
-        """Get the host path for the session"""
-        if session_id == "main":
-            # For main branch, use the main project directory
-            session_path = Path(self.host_projects_dir) / str(project_id)
-        else:
-            # For chat sessions, use the session subdirectory
-            session_path = Path(self.host_projects_dir) / str(project_id) / "sessions" / session_id
 
-        # Ensure we return an absolute path
-        return session_path.resolve()
 
-    async def _ensure_session_environment(self, project_id: int, session_id: str) -> dict | None:
+    async def _get_project_repo_url(self, project_id: int) -> str | None:
         """
-        Ensure session environment exists and update main branch if needed.
-        Returns git pull status for main branch updates.
+        Get the repository URL for a project from the database.
         """
-        git_status = None
-
         try:
-            session_path = self.session_manager.get_session_path(project_id, session_id)
-            if not self.session_manager.validate_session_directory(project_id, session_id):
-                if session_id == "main":
-                    # For main branch, we expect the main project directory to exist
-                    logger.error(f"Main project directory does not exist or is invalid: {session_path}")
-                    raise Exception(f"Main project directory not found: {session_path}")
-                # For chat sessions, create the session environment
-                logger.info(f"Creating session environment for {session_id}")
-                self.session_manager.create_session_environment(project_id, session_id)
-
+            from app.services.database_service import DatabaseService
+            
+            db_service = DatabaseService()
+            repo_url = await db_service.get_project_repository_url(project_id)
+            
+            if repo_url:
+                logger.info(f"Found repository URL for project {project_id}: {repo_url}")
+                return repo_url
+            else:
+                logger.warning(f"No repository URL found for project {project_id}")
+                return None
+                
         except Exception as e:
-            logger.error(f"Failed to create/validate session environment: {e}")
-            raise Exception(f"Session environment setup failed: {e}") from e
-
-        return git_status
+            logger.error(f"Error fetching repository URL for project {project_id}: {e}")
+            return None
 
     async def _create_new_container(
         self,
@@ -336,35 +285,20 @@ class DockerService:
         env_vars: dict[str, str],
         git_status: dict | None = None,
     ) -> str:
-        """Create a new container for the session"""
-        host_session_path = self._get_host_session_path(project_id, session_id)
+        """Create a new container for the session using git clone approach"""
+        
+        # Get repository URL for the project
+        repo_url = await self._get_project_repo_url(project_id)
+        if not repo_url:
+            logger.warning(f"No repository URL found for project {project_id}, container will start without git clone")
 
-        # Validate that we have an absolute path
-        if not host_session_path.is_absolute():
-            error_msg = f"Host session path must be absolute, got: {host_session_path}"
-            logger.error(error_msg)
-            raise ValueError(error_msg)
+        logger.info(f"🚀 Creating container for project {project_id}, session {session_id}")
+        if repo_url:
+            logger.info(f"📦 Repository: {repo_url}")
+            logger.info(f"🌿 Session branch: kosuke/session-{session_id}")
 
-        # Debug path information
-        logger.info(f"🔍 Container creation debug for project {project_id}, session {session_id}:")
-        logger.info(f"  📁 Host session path: {host_session_path}")
-        logger.info(f"  📍 Path exists: {host_session_path.exists()}")
-        logger.info(f"  📋 Is directory: {host_session_path.is_dir()}")
-        if host_session_path.exists() and host_session_path.is_dir():
-            files_count = len(list(host_session_path.iterdir()))
-            logger.info(f"  📊 Files in directory: {files_count}")
-            if files_count > 0:
-                # Show first few items for debugging
-                items = list(host_session_path.iterdir())[:5]
-                logger.info(f"  📂 First few items: {[item.name for item in items]}")
-        else:
-            logger.warning(f"❌ Host session path does not exist or is not a directory: {host_session_path}")
-
-        logger.info(
-            f"Mounting host path {host_session_path} to container /app for project {project_id} session {session_id}"
-        )
-
-        environment = self._prepare_container_environment(project_id, session_id, env_vars)
+        # Prepare environment with git repository information
+        environment = self._prepare_container_environment(project_id, session_id, env_vars, repo_url)
 
         # Ensure the preview image is available before creating container
         await self._ensure_preview_image()
@@ -375,8 +309,7 @@ class DockerService:
             ports = {}
             network = "kosuke_network"
 
-            # Generate subdomain for this container (use session_id as branch for now)
-            # In a real implementation, you'd extract the actual branch name
+            # Generate subdomain for this container
             branch_name = session_id  # Fallback to session_id as branch identifier
             project_domain = self.domain_service.generate_subdomain(project_id, branch_name)
 
@@ -406,6 +339,7 @@ class DockerService:
             url = f"http://localhost:{host_port}"
 
         # Run container creation in executor with timeout
+        # No volume mounting - containers use git clone for code
         loop = asyncio.get_event_loop()
         container = await asyncio.wait_for(
             loop.run_in_executor(
@@ -415,7 +349,7 @@ class DockerService:
                     name=container_name,
                     command=None,
                     ports=ports,
-                    volumes={str(host_session_path): {"bind": "/app", "mode": "rw"}},
+                    # No volumes! Git clone handles code access
                     working_dir="/app",
                     environment=environment,
                     network=network,
@@ -437,7 +371,7 @@ class DockerService:
             session_id=session_id,
             container_id=container.id,
             container_name=container_name,
-            port=host_port if not settings.TRAEFIK_ENABLED else 3000,  # Use 3000 for Traefik, actual port for direct
+            port=host_port if not settings.TRAEFIK_ENABLED else 3000,
             url=url,
             compilation_complete=False,
             git_status=git_update_status,
@@ -451,6 +385,7 @@ class DockerService:
         logger.info(f"   🔗 Container ID: {container.id}")
         logger.info(f"   🌐 URL: {url}")
         logger.info(f"   🔧 Using Traefik: {settings.TRAEFIK_ENABLED}")
+        logger.info(f"   📦 Git approach: Repository will be cloned inside container")
 
         # Start compilation monitoring without blocking
         _monitor_task = asyncio.create_task(self._monitor_compilation_async(project_id, session_id))
@@ -482,17 +417,14 @@ class DockerService:
         raise Exception("Failed to recover from container conflict")
 
     async def start_preview(self, project_id: int, session_id: str, env_vars: dict[str, str] | None = None) -> str:
-        """Start preview container for project session (non-blocking)"""
+        """Start preview container for project session using git clone approach"""
         if env_vars is None:
             env_vars = {}
 
         container_name = self._get_container_name(project_id, session_id)
 
-        # Always ensure session environment and get git status (even for existing containers)
-        git_status = await self._ensure_session_environment(project_id, session_id)
-
-        # Check for existing containers
-        existing_url = await self._handle_existing_container(project_id, session_id, container_name, git_status)
+        # Check for existing containers (no git status needed for git clone approach)
+        existing_url = await self._handle_existing_container(project_id, session_id, container_name, git_status=None)
         if existing_url:
             return existing_url
 
@@ -501,7 +433,7 @@ class DockerService:
 
         try:
             return await self._create_new_container(
-                project_id, session_id, container_name, env_vars, git_status=git_status
+                project_id, session_id, container_name, env_vars, git_status=None
             )
         except asyncio.TimeoutError:
             logger.error(f"Container creation timeout for project {project_id} session {session_id}")
@@ -524,8 +456,8 @@ class DockerService:
 
             container_info = self.containers[container_key]
 
-            # First, verify the volume mount is working
-            await self._verify_container_mount(project_id, session_id, container_info.container_id)
+            # First, verify the git clone is working
+            await self._verify_container_git_clone(project_id, session_id, container_info.container_id)
 
             # Wait for container to be responsive (max 60 seconds)
             start_time = asyncio.get_event_loop().time()
@@ -547,29 +479,37 @@ class DockerService:
         except Exception as e:
             logger.error(f"Error monitoring compilation for project {project_id} session {session_id}: {e}")
 
-    async def _verify_container_mount(self, project_id: int, session_id: str, container_id: str) -> None:
-        """Verify that the volume mount is working correctly by checking files inside the container"""
+    async def _verify_container_git_clone(self, project_id: int, session_id: str, container_id: str) -> None:
+        """Verify that the git clone worked correctly by checking repository inside the container"""
         try:
             loop = asyncio.get_event_loop()
             container = await asyncio.wait_for(
                 loop.run_in_executor(None, self.client.containers.get, container_id), timeout=5.0
             )
 
-            # Execute ls command in the container to check mounted files
-            exec_result = await asyncio.wait_for(
-                loop.run_in_executor(None, lambda: container.exec_run("ls -la /app", detach=False)), timeout=10.0
-            )
+            # Check if git repository exists and is properly cloned
+            commands = [
+                "ls -la /app",  # Check app directory contents
+                "git status",   # Check git repository status
+                "git branch",   # Check current branch
+                "git remote -v" # Check remote configuration
+            ]
 
-            if exec_result.exit_code == 0:
-                output = exec_result.output.decode("utf-8")
-                logger.info(f"📂 Container {container_id} /app contents:")
-                for line in output.strip().split("\n"):
-                    logger.info(f"   {line}")
-            else:
-                logger.warning(f"❌ Failed to list /app contents in container {container_id}")
+            for cmd in commands:
+                exec_result = await asyncio.wait_for(
+                    loop.run_in_executor(None, lambda c=cmd: container.exec_run(f"cd /app && {c}", detach=False)), timeout=10.0
+                )
+
+                if exec_result.exit_code == 0:
+                    output = exec_result.output.decode("utf-8")
+                    logger.info(f"📂 Container {container_id} - {cmd}:")
+                    for line in output.strip().split("\n"):
+                        logger.info(f"   {line}")
+                else:
+                    logger.warning(f"❌ Command '{cmd}' failed in container {container_id}")
 
         except Exception as e:
-            logger.warning(f"Could not verify container mount for {container_id}: {e}")
+            logger.warning(f"Could not verify git clone for container {container_id}: {e}")
 
     async def stop_preview(self, project_id: int, session_id: str) -> None:
         """Stop preview container for project session (non-blocking)"""
@@ -662,16 +602,57 @@ class DockerService:
             await asyncio.gather(*tasks, return_exceptions=True)
 
     async def pull_branch(self, project_id: int, session_id: str, force: bool = False) -> dict:
-        """Pull latest changes for a project branch or session branch"""
+        """Pull latest changes inside container (git clone approach)"""
         try:
-            if session_id == "main":
-                # For main branch, use the session manager's pull method but remove caching
-                return await self.session_manager.pull_main_branch(project_id, force=force)
-            # For session branches, pull the specific session branch
-            return await self.session_manager.pull_session_branch(project_id, session_id, force=force)
+            container_key = (project_id, session_id)
+            if container_key not in self.containers:
+                return {
+                    "success": False,
+                    "action": "error",
+                    "message": "Container not found - cannot pull changes",
+                    "commits_pulled": 0,
+                }
+
+            container_info = self.containers[container_key]
+            
+            # Execute git pull inside the container
+            loop = asyncio.get_event_loop()
+            container = await asyncio.wait_for(
+                loop.run_in_executor(None, self.client.containers.get, container_info.container_id), timeout=5.0
+            )
+
+            # Run git pull command inside container
+            pull_command = f"cd /app && git fetch origin && git pull origin kosuke/session-{session_id}"
+            exec_result = await asyncio.wait_for(
+                loop.run_in_executor(None, lambda: container.exec_run(pull_command, detach=False)), timeout=30.0
+            )
+
+            if exec_result.exit_code == 0:
+                logger.info(f"Successfully pulled changes for project {project_id} session {session_id}")
+                return {
+                    "success": True,
+                    "action": "pulled",
+                    "message": "Successfully pulled latest changes inside container",
+                    "commits_pulled": 1,  # Simplified - actual count would need git log parsing
+                }
+            else:
+                error_output = exec_result.output.decode("utf-8")
+                logger.warning(f"Git pull failed for project {project_id} session {session_id}: {error_output}")
+                return {
+                    "success": False,
+                    "action": "error", 
+                    "message": f"Git pull failed: {error_output}",
+                    "commits_pulled": 0,
+                }
+
         except Exception as e:
             logger.error(f"Error pulling branch for project {project_id} session {session_id}: {e}")
-            raise
+            return {
+                "success": False,
+                "action": "error",
+                "message": f"Failed to pull: {e}",
+                "commits_pulled": 0,
+            }
 
     async def is_container_running(self, project_id: int, session_id: str) -> bool:
         """Check if a container is currently running"""

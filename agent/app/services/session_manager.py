@@ -13,234 +13,48 @@ logger = logging.getLogger(__name__)
 
 class SessionManager:
     """
-    Manages isolated session environments for chat sessions.
+    Manages session metadata for git-based container approach.
 
-    Each chat session gets its own directory with a complete git checkout,
-    allowing for complete isolation between sessions.
+    With the new git clone approach, sessions are managed entirely within containers.
+    This class now tracks session metadata rather than managing filesystem directories.
     """
 
     def __init__(self):
         self.sessions: dict[str, dict] = {}
-        # Track last pull time for main branches per project
-        self.last_main_pull: dict[int, datetime] = {}
-        self.PULL_CACHE_MINUTES = 60
-        logger.info("SessionManager initialized")
+        logger.info("SessionManager initialized for git-based container approach")
 
     async def pull_main_branch(self, project_id: int, force: bool = False, default_branch: str = "main") -> dict:
         """
-        Pull latest changes for main project directory (manual operation).
-        Always performs pull when called, ignoring cache unless force=False.
-
-        Args:
-            project_id: Project identifier
-            force: If True, always pull. If False, respect cache
-            default_branch: Default branch to pull from
-
-        Returns:
-            dict: Update status with success/error information and commit count
+        Legacy method - git pulls now happen inside containers.
+        This method is kept for API compatibility but returns a deprecation notice.
         """
-        try:
-            main_project_path = Path(settings.projects_dir) / str(project_id)
-
-            # Check cache only if force=False
-            if not force:
-                last_pull = self.last_main_pull.get(project_id)
-                now = datetime.now()
-
-                if last_pull and (now - last_pull) < timedelta(minutes=self.PULL_CACHE_MINUTES):
-                    minutes_since_pull = int((now - last_pull).total_seconds() / 60)
-                    logger.info(
-                        f"Skipping git pull for project {project_id} - last pulled {minutes_since_pull} minutes ago"
-                    )
-                    return {
-                        "success": True,
-                        "action": "cached",
-                        "message": f"Using cached version from {minutes_since_pull} minutes ago",
-                        "commits_pulled": 0,
-                        "last_pull_time": last_pull.isoformat(),
-                    }
-
-            # Ensure main project exists
-            if not main_project_path.exists():
-                raise Exception(f"Main project directory does not exist: {main_project_path}")
-
-            # Initialize git repo
-            repo = git.Repo(main_project_path)
-
-            # Get current commit hash before pull
-            current_commit = repo.head.commit.hexsha
-
-            logger.info(f"Pulling main branch for project {project_id} from {default_branch}")
-
-            try:
-                # Fetch latest changes
-                logger.info(f"Fetching latest changes for project {project_id}")
-                repo.remotes.origin.fetch()
-
-                # Always use hard reset for manual pulls
-                logger.info(f"Performing hard reset for project {project_id}")
-                repo.git.reset("--hard", f"origin/{default_branch}")
-
-            except git.exc.GitCommandError as e:
-                logger.error(f"Hard reset failed for project {project_id}: {e}")
-                raise Exception(f"Failed to pull: {e}") from e
-
-            # Get new commit hash and count commits pulled
-            new_commit = repo.head.commit.hexsha
-            commits_pulled = 0
-
-            if current_commit != new_commit:
-                # Count commits between old and new
-                try:
-                    commits = list(repo.iter_commits(f"{current_commit}..{new_commit}"))
-                    commits_pulled = len(commits)
-                    logger.info(f"Pulled {commits_pulled} new commits for project {project_id}")
-                except git.exc.GitCommandError:
-                    # If we can't count commits, at least we know something changed
-                    commits_pulled = 1
-                    logger.info(f"Updated project {project_id} (commit count unavailable)")
-            else:
-                logger.info(f"No new commits for project {project_id}")
-
-            # Update cache
-            now = datetime.now()
-            self.last_main_pull[project_id] = now
-
-            return {
-                "success": True,
-                "action": "pulled",
-                "message": f"Updated with {commits_pulled} new commits" if commits_pulled > 0 else "Already up to date",
-                "commits_pulled": commits_pulled,
-                "last_pull_time": now.isoformat(),
-                "previous_commit": current_commit[:8],
-                "new_commit": new_commit[:8],
-            }
-
-        except Exception as e:
-            logger.error(f"❌ Failed to pull main branch for project {project_id}: {e}")
-            return {
-                "success": False,
-                "action": "error",
-                "message": f"Failed to pull: {e}",
-                "commits_pulled": 0,
-                "error": str(e),
-            }
+        logger.warning(f"pull_main_branch called for project {project_id} - this operation now happens inside containers")
+        return {
+            "success": True,
+            "action": "deprecated",
+            "message": "Git operations now happen inside containers during clone",
+            "commits_pulled": 0,
+        }
 
     async def update_main_branch(self, project_id: int, default_branch: str = "main") -> dict:
         """
-        Update main project directory with latest changes from remote.
-        Uses 60-minute caching to avoid unnecessary pulls.
-
-        Args:
-            project_id: Project identifier
-            default_branch: Default branch to pull from
-
-        Returns:
-            dict: Update status with success/error information and commit count
+        Legacy method - git operations now happen inside containers.
+        This method is kept for API compatibility but returns a deprecation notice.
         """
-        try:
-            main_project_path = Path(settings.projects_dir) / str(project_id)
-
-            # Check if we need to pull (60-minute cache)
-            last_pull = self.last_main_pull.get(project_id)
-            now = datetime.now()
-
-            if last_pull and (now - last_pull) < timedelta(minutes=self.PULL_CACHE_MINUTES):
-                minutes_since_pull = int((now - last_pull).total_seconds() / 60)
-                logger.info(
-                    f"Skipping git pull for project {project_id} - last pulled {minutes_since_pull} minutes ago"
-                )
-                return {
-                    "success": True,
-                    "action": "cached",
-                    "message": f"Using cached version from {minutes_since_pull} minutes ago",
-                    "commits_pulled": 0,
-                    "last_pull_time": last_pull.isoformat(),
-                }
-
-            # Ensure main project exists
-            if not main_project_path.exists():
-                raise Exception(f"Main project directory does not exist: {main_project_path}")
-
-            # Initialize git repo
-            repo = git.Repo(main_project_path)
-
-            # Get current commit hash before pull
-            current_commit = repo.head.commit.hexsha
-
-            logger.info(f"Updating main branch for project {project_id} from {default_branch}")
-
-            try:
-                # Fetch latest changes
-                logger.info(f"Fetching latest changes for project {project_id}")
-                repo.remotes.origin.fetch()
-
-                # Try regular pull first
-                logger.info(f"Attempting git pull for project {project_id}")
-                repo.git.pull("origin", default_branch)
-
-            except git.exc.GitCommandError as e:
-                logger.warning(f"Regular pull failed for project {project_id}, attempting hard reset: {e}")
-
-                # Hard pull: reset to remote state
-                try:
-                    # Reset to remote branch
-                    repo.git.reset("--hard", f"origin/{default_branch}")
-                    logger.info(f"Successfully performed hard reset for project {project_id}")
-
-                except git.exc.GitCommandError as hard_error:
-                    logger.error(f"Hard reset also failed for project {project_id}: {hard_error}")
-                    raise Exception(f"Both regular pull and hard reset failed: {hard_error}") from hard_error
-
-            # Get new commit hash and count commits pulled
-            new_commit = repo.head.commit.hexsha
-            commits_pulled = 0
-
-            if current_commit != new_commit:
-                # Count commits between old and new
-                try:
-                    commits = list(repo.iter_commits(f"{current_commit}..{new_commit}"))
-                    commits_pulled = len(commits)
-                    logger.info(f"Pulled {commits_pulled} new commits for project {project_id}")
-                except git.exc.GitCommandError:
-                    # If we can't count commits, at least we know something changed
-                    commits_pulled = 1
-                    logger.info(f"Updated project {project_id} (commit count unavailable)")
-            else:
-                logger.info(f"No new commits for project {project_id}")
-
-            # Update cache
-            self.last_main_pull[project_id] = now
-
-            return {
-                "success": True,
-                "action": "pulled",
-                "message": f"Updated with {commits_pulled} new commits" if commits_pulled > 0 else "Already up to date",
-                "commits_pulled": commits_pulled,
-                "last_pull_time": now.isoformat(),
-                "previous_commit": current_commit[:8],
-                "new_commit": new_commit[:8],
-            }
-
-        except Exception as e:
-            logger.error(f"❌ Failed to update main branch for project {project_id}: {e}")
-            return {
-                "success": False,
-                "action": "error",
-                "message": f"Failed to update: {e}",
-                "commits_pulled": 0,
-                "error": str(e),
-            }
+        logger.warning(f"update_main_branch called for project {project_id} - this operation now happens inside containers")
+        return {
+            "success": True,
+            "action": "deprecated",
+            "message": "Git operations now happen inside containers during clone",
+            "commits_pulled": 0,
+        }
 
     def create_session_environment(self, project_id: int, session_id: str, base_branch: str = "main") -> str:
         """
-        Create isolated environment for chat session.
+        Create session metadata for git-based container approach.
 
-        1. Create session directory: /projects/{project_id}/sessions/{session_id}/
-        2. Clone repository to session directory
-        3. Checkout base_branch (from project.default_branch)
-        4. Create session branch: kosuke/chat-{session_id}
-        5. Return session directory path
+        With the new git clone approach, session environments are created inside containers.
+        This method now only tracks session metadata.
 
         Args:
             project_id: Project identifier
@@ -248,90 +62,35 @@ class SessionManager:
             base_branch: Branch to create session from (default: main)
 
         Returns:
-            str: Path to session directory
-
-        Raises:
-            Exception: If session creation fails
+            str: Virtual session path (for compatibility)
         """
-        try:
-            # Define paths
-            main_project_path = Path(settings.projects_dir) / str(project_id)
-            sessions_dir = Path(settings.projects_dir) / str(project_id) / "sessions"
-            session_path = sessions_dir / session_id
+        session_branch_name = f"kosuke/session-{session_id}"
+        virtual_path = f"/app/sessions/{project_id}/{session_id}"
+        
+        logger.info(f"Creating session metadata for {session_id} in project {project_id}")
+        logger.info(f"Session branch: {session_branch_name}")
+        logger.info(f"Git clone and branching will happen inside container")
 
-            logger.info(f"Creating session environment for {session_id} in project {project_id}")
+        # Track session metadata
+        self.sessions[session_id] = {
+            "project_id": project_id,
+            "session_path": virtual_path,
+            "branch_name": session_branch_name,
+            "base_branch": base_branch,
+            "created_at": datetime.now(),
+            "status": "active",
+            "approach": "git_clone_container",
+        }
 
-            # Ensure main project exists
-            if not main_project_path.exists():
-                raise Exception(f"Main project directory does not exist: {main_project_path}")
-
-            # Create sessions directory if it doesn't exist
-            sessions_dir.mkdir(exist_ok=True)
-
-            # Remove existing session directory if it exists
-            if session_path.exists():
-                logger.warning(f"Session directory already exists, removing: {session_path}")
-                shutil.rmtree(session_path)
-
-            # Clone the main project to the session directory
-            logger.info(f"Cloning project from {main_project_path} to {session_path}")
-            main_repo = git.Repo(main_project_path)
-
-            # Get the remote URL from the main repository
-            remote_url = main_repo.remote().url
-
-            # Clone the repository to session directory
-            session_repo = git.Repo.clone_from(remote_url, session_path)
-
-            # Checkout the base branch
-            logger.info(f"Checking out base branch: {base_branch}")
-            try:
-                session_repo.git.checkout(base_branch)
-            except git.exc.GitCommandError as e:
-                logger.warning(f"Failed to checkout {base_branch}, using current branch: {e}")
-
-            # Create session-specific branch
-            session_branch_name = f"kosuke/chat-{session_id}"
-            logger.info(f"Creating session branch: {session_branch_name}")
-
-            try:
-                session_repo.create_head(session_branch_name)
-                session_repo.heads[session_branch_name].checkout()
-                logger.info(f"Successfully created and checked out session branch: {session_branch_name}")
-            except git.exc.GitCommandError as e:
-                logger.error(f"Failed to create session branch: {e}")
-                # Continue with current branch if branch creation fails
-
-            # Track session
-            self.sessions[session_id] = {
-                "project_id": project_id,
-                "session_path": str(session_path),
-                "branch_name": session_branch_name,
-                "base_branch": base_branch,
-                "created_at": datetime.now(),
-                "status": "active",
-            }
-
-            logger.info(f"✅ Session environment created successfully: {session_path}")
-            return str(session_path)
-
-        except Exception as e:
-            logger.error(f"❌ Failed to create session environment for {session_id}: {e}")
-            # Cleanup on failure
-            if session_path.exists():
-                try:
-                    shutil.rmtree(session_path)
-                except Exception as cleanup_error:
-                    logger.error(f"Failed to cleanup failed session directory: {cleanup_error}")
-            raise Exception(f"Failed to create session environment: {e}") from e
+        logger.info(f"✅ Session metadata created successfully for {session_id}")
+        return virtual_path
 
     def cleanup_session_environment(self, project_id: int, session_id: str) -> bool:
         """
-        Clean up session environment when session ends.
+        Clean up session metadata when session ends.
 
-        1. Remove session directory
-        2. Free up disk space
-        3. Update session status to 'cleaned'
+        With git-based containers, cleanup only involves removing session metadata.
+        Container cleanup is handled by DockerService.
 
         Args:
             project_id: Project identifier
@@ -341,44 +100,38 @@ class SessionManager:
             bool: True if cleanup successful, False otherwise
         """
         try:
-            session_path = Path(settings.projects_dir) / str(project_id) / "sessions" / session_id
-
-            if session_path.exists():
-                logger.info(f"Cleaning up session environment: {session_path}")
-                shutil.rmtree(session_path)
-                logger.info(f"✅ Session directory removed: {session_path}")
-            else:
-                logger.warning(f"Session directory not found for cleanup: {session_path}")
+            logger.info(f"Cleaning up session metadata for {session_id} in project {project_id}")
 
             # Update session status
             if session_id in self.sessions:
                 self.sessions[session_id]["status"] = "cleaned"
                 logger.info(f"Session {session_id} marked as cleaned")
+            else:
+                logger.warning(f"Session {session_id} not found in metadata")
 
+            logger.info(f"✅ Session metadata cleaned for {session_id}")
             return True
 
         except Exception as e:
-            logger.error(f"❌ Failed to cleanup session environment for {session_id}: {e}")
+            logger.error(f"❌ Failed to cleanup session metadata for {session_id}: {e}")
             return False
 
     def get_session_path(self, project_id: int, session_id: str) -> str:
         """
-        Get the file system path for a session.
+        Get the virtual session path for git-based container approach.
+
+        With containers using git clone, this returns the container-internal path
+        where the repository will be cloned.
 
         Args:
             project_id: Project identifier
             session_id: Session identifier
 
         Returns:
-            str: Path to session directory
+            str: Virtual container path where git repo will be cloned
         """
-        # Special case: "main" session uses main project directory
-        if session_id == "main":
-            main_project_path = Path(settings.projects_dir) / str(project_id)
-            return str(main_project_path)
-
-        session_path = Path(settings.projects_dir) / str(project_id) / "sessions" / session_id
-        return str(session_path)
+        # For git clone approach, all sessions use /app/workspace inside container
+        return "/app/workspace"
 
     def get_session_info(self, session_id: str) -> dict | None:
         """
@@ -439,136 +192,45 @@ class SessionManager:
 
     def validate_session_directory(self, project_id: int, session_id: str) -> bool:
         """
-        Validate that session directory exists and is properly set up.
+        Validate session metadata for git-based container approach.
+
+        With containers using git clone, validation checks if session metadata exists.
 
         Args:
             project_id: Project identifier
             session_id: Session identifier
 
         Returns:
-            bool: True if session directory is valid
+            bool: True if session metadata is valid
         """
         try:
-            session_path = Path(self.get_session_path(project_id, session_id))
-
-            # Check if directory exists
-            if not session_path.exists():
-                logger.warning(f"Session directory does not exist: {session_path}")
-                return False
-
-            # Check if it's a git repository
-            try:
-                git.Repo(session_path)
-                if session_id == "main":
-                    logger.debug(f"Main project directory is valid git repository: {session_path}")
+            # Check if session metadata exists
+            if session_id in self.sessions:
+                session = self.sessions[session_id]
+                if session["project_id"] == project_id and session["status"] == "active":
+                    logger.debug(f"Session {session_id} metadata is valid for project {project_id}")
+                    return True
                 else:
-                    logger.debug(f"Session directory is valid git repository: {session_path}")
-                return True
-            except git.exc.InvalidGitRepositoryError:
-                if session_id == "main":
-                    logger.error(f"Main project directory is not a valid git repository: {session_path}")
-                else:
-                    logger.error(f"Session directory is not a valid git repository: {session_path}")
+                    logger.warning(f"Session {session_id} metadata mismatch or inactive")
+                    return False
+            else:
+                logger.warning(f"Session {session_id} metadata does not exist")
                 return False
 
         except Exception as e:
-            logger.error(f"Error validating session directory: {e}")
+            logger.error(f"Error validating session metadata: {e}")
             return False
 
     async def pull_session_branch(self, project_id: int, session_id: str, force: bool = False) -> dict:
         """
-        Pull latest changes for a session branch from its remote branch.
-
-        Args:
-            project_id: Project identifier
-            session_id: Session identifier
-            force: If True, always pull (ignored for now, sessions always pull)
-
-        Returns:
-            dict: Update status with success/error information and commit count
+        Legacy method - git pulls now happen inside containers.
+        This method is kept for API compatibility but returns a deprecation notice.
         """
-        try:
-            session_path = Path(self.get_session_path(project_id, session_id))
-
-            # Ensure session directory exists
-            if not session_path.exists():
-                raise Exception(f"Session directory does not exist: {session_path}")
-
-            # Initialize git repo
-            repo = git.Repo(session_path)
-
-            # Get the session branch name
-            session_branch_name = f"kosuke/chat-{session_id}"
-
-            # Get current commit hash before pull
-            current_commit = repo.head.commit.hexsha
-
-            logger.info(f"Pulling session branch {session_branch_name} for project {project_id}")
-
-            # Fetch latest changes from remote
-            logger.info(f"Fetching latest changes for session {session_id}")
-            repo.remotes.origin.fetch()
-
-            # Check if remote branch exists
-            remote_branch = f"origin/{session_branch_name}"
-            try:
-                repo.commit(remote_branch)
-                remote_exists = True
-            except git.exc.BadName:
-                remote_exists = False
-                logger.info(f"Remote branch {session_branch_name} doesn't exist, no changes to pull")
-
-            if remote_exists:
-                # Hard reset to remote session branch
-                logger.info(f"Performing hard reset to {remote_branch}")
-                repo.git.reset("--hard", remote_branch)
-            else:
-                # No remote branch exists yet, this is normal for new sessions
-                logger.info(f"No remote branch {session_branch_name} found, session is up to date")
-                return {
-                    "success": True,
-                    "action": "no_remote",
-                    "message": "No remote branch found, session is up to date",
-                    "commits_pulled": 0,
-                    "last_pull_time": datetime.now().isoformat(),
-                }
-
-            # Get new commit hash and count commits pulled
-            new_commit = repo.head.commit.hexsha
-            commits_pulled = 0
-
-            if current_commit != new_commit:
-                # Count commits between old and new
-                try:
-                    commits = list(repo.iter_commits(f"{current_commit}..{new_commit}"))
-                    commits_pulled = len(commits)
-                    logger.info(f"Pulled {commits_pulled} new commits for session {session_id}")
-                except git.exc.GitCommandError:
-                    # If we can't count commits, at least we know something changed
-                    commits_pulled = 1
-                    logger.info(f"Updated session {session_id} (commit count unavailable)")
-            else:
-                logger.info(f"No new commits for session {session_id}")
-
-            now = datetime.now()
-            return {
-                "success": True,
-                "action": "pulled",
-                "message": f"Updated with {commits_pulled} new commits" if commits_pulled > 0 else "Already up to date",
-                "commits_pulled": commits_pulled,
-                "last_pull_time": now.isoformat(),
-                "previous_commit": current_commit[:8],
-                "new_commit": new_commit[:8],
-                "branch_name": session_branch_name,
-            }
-
-        except Exception as e:
-            logger.error(f"❌ Failed to pull session branch for project {project_id} session {session_id}: {e}")
-            return {
-                "success": False,
-                "action": "error",
-                "message": f"Failed to pull session branch: {e}",
-                "commits_pulled": 0,
-                "error": str(e),
-                "branch_name": f"kosuke/chat-{session_id}",
-            }
+        logger.warning(f"pull_session_branch called for project {project_id} session {session_id} - this operation now happens inside containers")
+        return {
+            "success": True,
+            "action": "deprecated",
+            "message": "Git operations now happen inside containers",
+            "commits_pulled": 0,
+            "branch_name": f"kosuke/session-{session_id}",
+        }
