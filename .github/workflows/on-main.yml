@@ -31,6 +31,9 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.PROD_SERVER_ID_RSA }}" > ~/.ssh/id_rsa
           echo "StrictHostKeyChecking no" >> ~/.ssh/config
+          echo "ConnectTimeout 30" >> ~/.ssh/config
+          echo "ServerAliveInterval 60" >> ~/.ssh/config
+          echo "ServerAliveCountMax 3" >> ~/.ssh/config
           chmod 400 ~/.ssh/config
           chmod 600 ~/.ssh/id_rsa
           chmod 700 ~/.ssh
