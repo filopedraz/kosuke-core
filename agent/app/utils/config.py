@@ -182,3 +182,18 @@ except ValueError as e:
 except Exception as e:
     logger.warning(f"⚠️ Configuration warning: {e}")
     logger.warning("   Some settings may use default values")
+
+# Add Digital Ocean Spaces configuration
+
+# Digital Ocean Spaces (S3-compatible) configuration
+DO_SPACES_ACCESS_KEY: str = os.getenv("DO_SPACES_ACCESS_KEY", "")
+DO_SPACES_SECRET_KEY: str = os.getenv("DO_SPACES_SECRET_KEY", "")
+DO_SPACES_REGION: str = os.getenv("DO_SPACES_REGION", "nyc3")
+DO_SPACES_BUCKET: str = os.getenv("DO_SPACES_BUCKET", "kosuke-projects")
+
+# Database configuration for file storage
+DB_HOST: str = os.getenv("DB_HOST", "localhost")
+DB_PORT: int = int(os.getenv("DB_PORT", "5432"))
+DB_USER: str = os.getenv("DB_USER", "postgres")
+DB_PASSWORD: str = os.getenv("DB_PASSWORD", "postgres")
+DB_NAME: str = os.getenv("DB_NAME", "kosuke")
