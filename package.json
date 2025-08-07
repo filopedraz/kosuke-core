@@ -81,6 +81,7 @@
     "drizzle-orm": "^0.44.4",
     "embla-carousel-react": "^8.6.0",
     "framer-motion": "^12.9.2",
+    "geist": "^1.4.2",
     "get-port": "^7.1.0",
     "input-otp": "^1.4.2",
     "jose": "^6.0.8",

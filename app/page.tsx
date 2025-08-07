@@ -24,7 +24,7 @@ export default function Home() {
       if (clerkUser && dbUser) {
         redirect('/projects');
       } else {
-        redirect('/waitlist');
+        redirect('/sign-in');
       }
     }
   }, [isLoading, clerkUser, dbUser]);

@@ -5,7 +5,7 @@ import Navbar from '@/components/ui/navbar';
 type SharedLayoutProps = {
   children: React.ReactNode;
   showNavbar?: boolean;
-  variant?: 'standard' | 'project' | 'waitlist';
+  variant?: 'standard' | 'project';
   projectProps?: {
     projectName: string;
     currentView: 'preview' | 'code' | 'branding' | 'settings' | 'database';

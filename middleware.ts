@@ -7,7 +7,6 @@ const isPublicRoute = createRouteMatcher([
   '/api/webhooks(.*)',
   '/api/projects/(.*)/webhook(.*)', // Allow project webhook endpoints
   '/home',
-  '/waitlist',
   '/api/webhooks/clerk',
 ]);
 
