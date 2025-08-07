@@ -1,15 +1,13 @@
+import { GeistMono, GeistSans } from 'geist/font';
 import type { Metadata, Viewport } from 'next';
-import { Inter } from 'next/font/google';
-import { ReactNode } from 'react';
 import Script from 'next/script';
+import { ReactNode } from 'react';
 import './globals.css';
 
 import { ClerkThemeProvider } from '@/components/clerk-theme-provider';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
 import Providers from './providers';
-
-const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   title: 'Kosuke',
@@ -31,7 +29,11 @@ interface RootLayoutProps {
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <ClerkThemeProvider>
-      <html lang="en" className={inter.className} suppressHydrationWarning>
+      <html
+        lang="en"
+        className={`${GeistSans.variable} ${GeistMono.variable} dark`}
+        suppressHydrationWarning
+      >
         <body className="min-h-[100dvh] bg-background text-foreground overflow-x-hidden">
           <Script
             defer
