@@ -238,6 +238,8 @@ class GitHubService:
             if project_path.exists():
                 shutil.rmtree(project_path)
 
+            time.sleep(30)
+
             # Clone repository
             logger.info(f"Cloning repository {request.repo_url} to project {request.project_id} at {project_path}")
             response = git.Repo.clone_from(request.repo_url, project_path)
