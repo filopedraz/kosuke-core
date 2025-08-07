@@ -183,12 +183,7 @@ Project Guidelines & Cursor Rules
             "Always explain your reasoning and provide clear documentation for any modifications."
         )
 
-        cursor_rules = self._get_cursor_rules()
         system_prompt_parts = [base_system_prompt]
-
-        if cursor_rules:
-            system_prompt_parts.append(cursor_rules)
-            logger.info("📋 Added cursor rules to system prompt")
 
         system_prompt = "\n\n".join(system_prompt_parts)
         logger.info(f"📋 System prompt length: {len(system_prompt)} characters")
