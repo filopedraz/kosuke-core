@@ -236,7 +236,7 @@ class GitHubService:
                 shutil.rmtree(project_path)
 
             # Clone repository
-            logger.info(f"Cloning repository {request.repo_url} to project {request.project_id}")
+            logger.info(f"Cloning repository {request.repo_url} to project {request.project_id} at {project_path}")
             response = git.Repo.clone_from(request.repo_url, project_path)
             logger.info(f"Clone response: {response}")
 
