@@ -23,7 +23,6 @@ COPY --from=deps /app/package.json ./package.json
 # Copy only the necessary files for the build
 COPY next.config.* .
 COPY tsconfig.json .
-COPY next-env.d.ts .
 COPY tailwind.config.* .
 COPY postcss.config.* .
 COPY drizzle.config.* .
