@@ -23,14 +23,21 @@ COPY --from=deps /app/package.json ./package.json
 # Copy only the necessary files for the build
 COPY next.config.* .
 COPY tsconfig.json .
+COPY next-env.d.ts .
 COPY tailwind.config.* .
 COPY postcss.config.* .
 COPY drizzle.config.* .
+COPY eslint.config.* .
+COPY jest.config.* .
+COPY jest.setup.* .
+COPY components.json .
+COPY middleware.ts .
 COPY public ./public
 COPY app ./app
 COPY components ./components
 COPY lib ./lib
 COPY hooks ./hooks
+COPY scripts ./scripts
 COPY .env* ./
 
 # Enable Turbo build
@@ -64,7 +71,9 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/.env* ./
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nextjs:nodejs /app/drizzle.config.* ./
-COPY --from=builder --chown=nextjs:nodejs /app/lib/db ./lib/db
+COPY --from=builder --chown=nextjs:nodejs /app/middleware.ts ./
+COPY --from=builder --chown=nextjs:nodejs /app/lib ./lib
+COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts
 
 USER nextjs
 
@@ -73,4 +82,4 @@ ENV HOSTNAME="0.0.0.0"
 
 EXPOSE 3000
 
-CMD ["node", "server.js"] 
+CMD ["node", "server.js"]
