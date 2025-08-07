@@ -237,7 +237,8 @@ class GitHubService:
 
             # Clone repository
             logger.info(f"Cloning repository {request.repo_url} to project {request.project_id}")
-            git.Repo.clone_from(request.repo_url, project_path)
+            response = git.Repo.clone_from(request.repo_url, project_path)
+            logger.info(f"Clone response: {response}")
 
             # Keep repository on main branch after cloning
             # Branches will be created per chat session, not per project
