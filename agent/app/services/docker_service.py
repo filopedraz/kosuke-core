@@ -367,6 +367,10 @@ class DockerService:
             }
             url = f"http://localhost:{host_port}"
 
+        logger.info(
+            f"Mounting host path {host_session_path} to container /app for project {project_id} session {session_id}"
+        )
+
         # Run container creation in executor with timeout
         # loop = asyncio.get_event_loop()
         # container = await asyncio.wait_for(
