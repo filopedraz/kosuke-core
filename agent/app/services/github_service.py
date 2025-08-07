@@ -110,6 +110,7 @@ class GitHubService:
 
             # Make API call
             response = requests.post(api_url, json=payload, headers=headers, timeout=30)
+            logger.info(f"Response from GitHub API after creating repository from template: {response.json()}")
             return self._handle_api_response(response, template_repo)
 
         except requests.exceptions.RequestException as req_error:
@@ -213,8 +214,6 @@ class GitHubService:
             if project_path.exists():
                 shutil.rmtree(project_path)
 
-            time.sleep(30)
-
             # Clone repository
             logger.info(f"Importing repository {request.repo_url} to project {request.project_id}")
             git.Repo.clone_from(request.repo_url, project_path)
@@ -238,16 +237,13 @@ class GitHubService:
             if project_path.exists():
                 shutil.rmtree(project_path)
 
-            time.sleep(30)
+            logger.info("Sleeping for 15 seconds to ensure github repo has been created")
+            time.sleep(15)
 
             # Clone repository
             logger.info(f"Cloning repository {request.repo_url} to project {request.project_id} at {project_path}")
             response = git.Repo.clone_from(request.repo_url, project_path)
             logger.info(f"Clone response: {response}")
-
-            # Keep repository on main branch after cloning
-            # Branches will be created per chat session, not per project
-            logger.info("Repository cloned and ready for chat-based branching")
 
             logger.info(f"Successfully cloned repository to project {request.project_id}")
             return str(project_path)
