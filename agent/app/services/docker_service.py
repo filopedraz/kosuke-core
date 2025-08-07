@@ -71,25 +71,16 @@ class DockerService:
         """Get the correct host path for projects directory"""
         # Check if we're running in Docker-in-Docker
         if Path("/.dockerenv").exists() and Path("/var/run/docker.sock").exists():
-            # Docker-in-Docker setup - we need the actual host path for volume mounts
-            host_workspace_dir = settings.HOST_WORKSPACE_DIR
+            # Docker-in-Docker setup
+            host_workspace_dir = os.getenv("HOST_WORKSPACE_DIR")
             if host_workspace_dir:
                 host_projects_dir = Path(host_workspace_dir) / "projects"
                 logger.info(f"Using HOST_WORKSPACE_DIR: {host_projects_dir}")
-                return str(host_projects_dir.resolve())
+                return str(host_projects_dir)
 
-            # In production, get the current working directory which should be absolute
-            # The projects directory is mounted at /app/projects, but we need the host path
-            current_dir = Path.cwd()
-            if current_dir == Path("/app"):
-                # We're in the mounted directory, use the expected host path structure
-                # In production, this should be set via HOST_WORKSPACE_DIR
-                logger.warning("Docker-in-Docker detected without HOST_WORKSPACE_DIR, using /opt/kosuke/projects")
-                return "/opt/kosuke/projects"
-
-            # Fallback - use absolute path of current working directory
-            projects_path = current_dir / "projects"
-            return str(projects_path.resolve())
+            # Fallback for Docker-in-Docker
+            logger.warning("Docker-in-Docker detected, using assumed host path: ./projects")
+            return "./projects"
 
         # Running on host - find workspace root
         current_dir = Path.cwd()
@@ -98,12 +89,12 @@ class DockerService:
             workspace_root = workspace_root.parent
 
         if (workspace_root / "projects").exists():
-            return str((workspace_root / "projects").resolve())
+            return str(workspace_root / "projects")
 
-        # Fallback - create projects directory with absolute path
+        # Fallback - create projects directory
         projects_path = current_dir / "projects"
         projects_path.mkdir(parents=True, exist_ok=True)
-        return str(projects_path.resolve())
+        return str(projects_path)
 
     async def is_docker_available(self) -> bool:
         """Check if Docker is available with timeout"""
