@@ -1,5 +1,5 @@
 {
-  "id": "6a6109eb-d6d5-418d-a623-8b31f461b89f",
+  "id": "23a2c08e-dc0c-4467-aca4-6af0e558d297",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -16,7 +16,7 @@
         },
         "user_id": {
           "name": "user_id",
-          "type": "integer",
+          "type": "text",
           "primaryKey": false,
           "notNull": false
         },
@@ -42,12 +42,12 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "activity_logs_user_id_users_id_fk": {
-          "name": "activity_logs_user_id_users_id_fk",
+        "activity_logs_user_id_users_clerk_user_id_fk": {
+          "name": "activity_logs_user_id_users_clerk_user_id_fk",
           "tableFrom": "activity_logs",
           "tableTo": "users",
           "columnsFrom": ["user_id"],
-          "columnsTo": ["id"],
+          "columnsTo": ["clerk_user_id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -74,9 +74,15 @@
           "primaryKey": false,
           "notNull": true
         },
+        "chat_session_id": {
+          "name": "chat_session_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
         "user_id": {
           "name": "user_id",
-          "type": "integer",
+          "type": "text",
           "primaryKey": false,
           "notNull": false
         },
@@ -90,7 +96,19 @@
           "name": "content",
           "type": "text",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
+        },
+        "blocks": {
+          "name": "blocks",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "model_type": {
+          "name": "model_type",
+          "type": "varchar(20)",
+          "primaryKey": false,
+          "notNull": false
         },
         "timestamp": {
           "name": "timestamp",
@@ -98,6 +116,36 @@
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
+        },
+        "tokens_input": {
+          "name": "tokens_input",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tokens_output": {
+          "name": "tokens_output",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "context_tokens": {
+          "name": "context_tokens",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "commit_sha": {
+          "name": "commit_sha",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {},
@@ -111,18 +159,173 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "chat_messages_user_id_users_id_fk": {
-          "name": "chat_messages_user_id_users_id_fk",
+        "chat_messages_chat_session_id_chat_sessions_id_fk": {
+          "name": "chat_messages_chat_session_id_chat_sessions_id_fk",
+          "tableFrom": "chat_messages",
+          "tableTo": "chat_sessions",
+          "columnsFrom": ["chat_session_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "chat_messages_user_id_users_clerk_user_id_fk": {
+          "name": "chat_messages_user_id_users_clerk_user_id_fk",
           "tableFrom": "chat_messages",
           "tableTo": "users",
           "columnsFrom": ["user_id"],
-          "columnsTo": ["id"],
+          "columnsTo": ["clerk_user_id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.chat_sessions": {
+      "name": "chat_sessions",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "project_id": {
+          "name": "project_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "title": {
+          "name": "title",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "session_id": {
+          "name": "session_id",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "github_branch_name": {
+          "name": "github_branch_name",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "varchar(20)",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'active'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "last_activity_at": {
+          "name": "last_activity_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "message_count": {
+          "name": "message_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 0
+        },
+        "is_default": {
+          "name": "is_default",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "branch_merged_at": {
+          "name": "branch_merged_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "branch_merged_by": {
+          "name": "branch_merged_by",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "merge_commit_sha": {
+          "name": "merge_commit_sha",
+          "type": "varchar(40)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pull_request_number": {
+          "name": "pull_request_number",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "chat_sessions_project_id_projects_id_fk": {
+          "name": "chat_sessions_project_id_projects_id_fk",
+          "tableFrom": "chat_sessions",
+          "tableTo": "projects",
+          "columnsFrom": ["project_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "chat_sessions_user_id_users_clerk_user_id_fk": {
+          "name": "chat_sessions_user_id_users_clerk_user_id_fk",
+          "tableFrom": "chat_sessions",
+          "tableTo": "users",
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["clerk_user_id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "chat_sessions_session_id_unique": {
+          "name": "chat_sessions_session_id_unique",
+          "nullsNotDistinct": false,
+          "columns": ["session_id"]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -209,6 +412,307 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.github_sync_sessions": {
+      "name": "github_sync_sessions",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "project_id": {
+          "name": "project_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "trigger_type": {
+          "name": "trigger_type",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "varchar(20)",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'running'"
+        },
+        "changes": {
+          "name": "changes",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "started_at": {
+          "name": "started_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        },
+        "completed_at": {
+          "name": "completed_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "logs": {
+          "name": "logs",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "github_sync_sessions_project_id_projects_id_fk": {
+          "name": "github_sync_sessions_project_id_projects_id_fk",
+          "tableFrom": "github_sync_sessions",
+          "tableTo": "projects",
+          "columnsFrom": ["project_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.project_commits": {
+      "name": "project_commits",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "project_id": {
+          "name": "project_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "commit_sha": {
+          "name": "commit_sha",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "commit_message": {
+          "name": "commit_message",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "commit_url": {
+          "name": "commit_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "files_changed": {
+          "name": "files_changed",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 0
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "project_commits_project_id_projects_id_fk": {
+          "name": "project_commits_project_id_projects_id_fk",
+          "tableFrom": "project_commits",
+          "tableTo": "projects",
+          "columnsFrom": ["project_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.project_environment_variables": {
+      "name": "project_environment_variables",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "project_id": {
+          "name": "project_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "key": {
+          "name": "key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "value": {
+          "name": "value",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "is_secret": {
+          "name": "is_secret",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "project_environment_variables_project_id_projects_id_fk": {
+          "name": "project_environment_variables_project_id_projects_id_fk",
+          "tableFrom": "project_environment_variables",
+          "tableTo": "projects",
+          "columnsFrom": ["project_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "project_env_vars_unique_key": {
+          "name": "project_env_vars_unique_key",
+          "nullsNotDistinct": false,
+          "columns": ["project_id", "key"]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.project_integrations": {
+      "name": "project_integrations",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "project_id": {
+          "name": "project_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "integration_type": {
+          "name": "integration_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "integration_name": {
+          "name": "integration_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "config": {
+          "name": "config",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'"
+        },
+        "enabled": {
+          "name": "enabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "project_integrations_project_id_projects_id_fk": {
+          "name": "project_integrations_project_id_projects_id_fk",
+          "tableFrom": "project_integrations",
+          "tableTo": "projects",
+          "columnsFrom": ["project_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "project_integrations_unique_key": {
+          "name": "project_integrations_unique_key",
+          "nullsNotDistinct": false,
+          "columns": ["project_id", "integration_type", "integration_name"]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.projects": {
       "name": "projects",
       "schema": "",
@@ -233,13 +737,13 @@
         },
         "user_id": {
           "name": "user_id",
-          "type": "integer",
+          "type": "text",
           "primaryKey": false,
           "notNull": true
         },
         "created_by": {
           "name": "created_by",
-          "type": "integer",
+          "type": "text",
           "primaryKey": false,
           "notNull": true
         },
@@ -264,30 +768,69 @@
           "notNull": false,
           "default": false
         },
-        "config": {
-          "name": "config",
-          "type": "json",
+        "github_repo_url": {
+          "name": "github_repo_url",
+          "type": "text",
           "primaryKey": false,
           "notNull": false
+        },
+        "github_owner": {
+          "name": "github_owner",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "github_repo_name": {
+          "name": "github_repo_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "github_branch": {
+          "name": "github_branch",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'main'"
+        },
+        "auto_commit": {
+          "name": "auto_commit",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": true
+        },
+        "last_github_sync": {
+          "name": "last_github_sync",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "default_branch": {
+          "name": "default_branch",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'main'"
         }
       },
       "indexes": {},
       "foreignKeys": {
-        "projects_user_id_users_id_fk": {
-          "name": "projects_user_id_users_id_fk",
+        "projects_user_id_users_clerk_user_id_fk": {
+          "name": "projects_user_id_users_clerk_user_id_fk",
           "tableFrom": "projects",
           "tableTo": "users",
           "columnsFrom": ["user_id"],
-          "columnsTo": ["id"],
+          "columnsTo": ["clerk_user_id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "projects_created_by_users_id_fk": {
-          "name": "projects_created_by_users_id_fk",
+        "projects_created_by_users_clerk_user_id_fk": {
+          "name": "projects_created_by_users_clerk_user_id_fk",
           "tableFrom": "projects",
           "tableTo": "users",
           "columnsFrom": ["created_by"],
-          "columnsTo": ["id"],
+          "columnsTo": ["clerk_user_id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -298,89 +841,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.subscription_products": {
-      "name": "subscription_products",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "stripe_product_id": {
-          "name": "stripe_product_id",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "stripe_price_id": {
-          "name": "stripe_price_id",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "name": {
-          "name": "name",
-          "type": "varchar(100)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "description": {
-          "name": "description",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "tier": {
-          "name": "tier",
-          "type": "varchar(20)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "price": {
-          "name": "price",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "features": {
-          "name": "features",
-          "type": "json",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "subscription_products_stripe_product_id_unique": {
-          "name": "subscription_products_stripe_product_id_unique",
-          "nullsNotDistinct": false,
-          "columns": ["stripe_product_id"]
-        }
-      },
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.subscriptions": {
-      "name": "subscriptions",
+    "public.user_github_tokens": {
+      "name": "user_github_tokens",
       "schema": "",
       "columns": {
         "id": {
@@ -391,92 +853,52 @@
         },
         "user_id": {
           "name": "user_id",
-          "type": "integer",
+          "type": "text",
           "primaryKey": false,
           "notNull": true
         },
-        "stripe_subscription_id": {
-          "name": "stripe_subscription_id",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "stripe_price_id": {
-          "name": "stripe_price_id",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "product_id": {
-          "name": "product_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "status": {
-          "name": "status",
-          "type": "varchar(50)",
+        "github_token": {
+          "name": "github_token",
+          "type": "text",
           "primaryKey": false,
           "notNull": true
         },
-        "current_period_start": {
-          "name": "current_period_start",
-          "type": "timestamp",
+        "github_username": {
+          "name": "github_username",
+          "type": "text",
           "primaryKey": false,
           "notNull": false
         },
-        "current_period_end": {
-          "name": "current_period_end",
-          "type": "timestamp",
+        "token_scope": {
+          "name": "token_scope",
+          "type": "text[]",
           "primaryKey": false,
           "notNull": false
-        },
-        "cancel_at_period_end": {
-          "name": "cancel_at_period_end",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": false,
-          "default": false
         },
         "created_at": {
           "name": "created_at",
           "type": "timestamp",
           "primaryKey": false,
-          "notNull": true,
+          "notNull": false,
           "default": "now()"
         },
         "updated_at": {
           "name": "updated_at",
           "type": "timestamp",
           "primaryKey": false,
-          "notNull": true,
+          "notNull": false,
           "default": "now()"
-        },
-        "canceled_at": {
-          "name": "canceled_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false
         }
       },
       "indexes": {},
       "foreignKeys": {
-        "subscriptions_user_id_users_id_fk": {
-          "name": "subscriptions_user_id_users_id_fk",
-          "tableFrom": "subscriptions",
+        "user_github_tokens_user_id_users_clerk_user_id_fk": {
+          "name": "user_github_tokens_user_id_users_clerk_user_id_fk",
+          "tableFrom": "user_github_tokens",
           "tableTo": "users",
           "columnsFrom": ["user_id"],
-          "columnsTo": ["id"],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "subscriptions_product_id_subscription_products_id_fk": {
-          "name": "subscriptions_product_id_subscription_products_id_fk",
-          "tableFrom": "subscriptions",
-          "tableTo": "subscription_products",
-          "columnsFrom": ["product_id"],
-          "columnsTo": ["id"],
-          "onDelete": "no action",
+          "columnsTo": ["clerk_user_id"],
+          "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
@@ -490,9 +912,9 @@
       "name": "users",
       "schema": "",
       "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
+        "clerk_user_id": {
+          "name": "clerk_user_id",
+          "type": "text",
           "primaryKey": true,
           "notNull": true
         },
@@ -505,12 +927,6 @@
         "email": {
           "name": "email",
           "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "password_hash": {
-          "name": "password_hash",
-          "type": "text",
           "primaryKey": false,
           "notNull": true
         },
@@ -527,18 +943,19 @@
           "notNull": false,
           "default": false
         },
+        "pipeline_preference": {
+          "name": "pipeline_preference",
+          "type": "varchar(20)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'claude-code'"
+        },
         "role": {
           "name": "role",
           "type": "varchar(20)",
           "primaryKey": false,
           "notNull": true,
           "default": "'member'"
-        },
-        "stripe_customer_id": {
-          "name": "stripe_customer_id",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": false
         },
         "created_at": {
           "name": "created_at",
