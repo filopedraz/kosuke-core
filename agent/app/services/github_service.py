@@ -1,5 +1,6 @@
 import logging
 import shutil
+import time
 from datetime import datetime
 from pathlib import Path
 
@@ -211,6 +212,8 @@ class GitHubService:
             # Remove existing project directory if it exists
             if project_path.exists():
                 shutil.rmtree(project_path)
+
+            time.sleep(30)
 
             # Clone repository
             logger.info(f"Importing repository {request.repo_url} to project {request.project_id}")
