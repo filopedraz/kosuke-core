@@ -84,8 +84,8 @@ class DockerService:
             if current_dir == Path("/app"):
                 # We're in the mounted directory, use the expected host path structure
                 # In production, this should be set via HOST_WORKSPACE_DIR
-                logger.warning("Docker-in-Docker detected without HOST_WORKSPACE_DIR, using /opt/kosuke/projects")
-                return "/opt/kosuke/projects"
+                logger.warning("Docker-in-Docker detected without HOST_WORKSPACE_DIR, using ./projects")
+                return "./projects"
 
             # Fallback - use absolute path of current working directory
             projects_path = current_dir / "projects"

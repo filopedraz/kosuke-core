@@ -66,7 +66,7 @@ services:
     container_name: kosuke_agent
     volumes:
       - ./agent:/app:cached
-      - /opt/kosuke/projects:/app/projects:cached
+      - ./projects:/app/projects:cached
       - /var/run/docker.sock:/var/run/docker.sock # Allow agent to manage preview containers
     env_file:
       - ./agent/.env
@@ -76,7 +76,7 @@ services:
       - NEXTJS_URL=http://nextjs:3000
       - TRAEFIK_ENABLED=true
       - PREVIEW_BASE_DOMAIN=kosuke.app
-      - HOST_WORKSPACE_DIR=/opt/kosuke
+      - HOST_WORKSPACE_DIR={PWD}
     networks:
       - kosuke_network
     depends_on:
