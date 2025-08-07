@@ -57,12 +57,10 @@ export default function Navbar({ variant = 'standard', projectProps, className }
 
   const handleLogout = async () => {
     try {
-      await signOut();
-      router.push('/home');
-      router.refresh();
+      await signOut({ redirectUrl: '/home' });
     } catch (error) {
       console.error('Error signing out:', error);
-      // Always redirect and refresh regardless of success/failure
+      // Fallback redirect if signOut fails
       router.push('/home');
       router.refresh();
     }
@@ -127,13 +125,19 @@ export default function Navbar({ variant = 'standard', projectProps, className }
   // Standard navbar for most pages
   if (variant === 'standard') {
     return (
-      <div className="w-full border-b border-border">
+      <div className="w-full border-b border-border relative z-50">
         <header className={cn('bg-background w-full h-14', className)}>
           <div className="w-full h-full px-6 sm:px-8 md:px-16 lg:px-24 flex justify-between items-center max-w-screen-2xl mx-auto">
-            <Link href="/" className="flex items-center">
+            <div
+              className="flex items-center hover:opacity-80 transition-opacity cursor-pointer"
+              onClick={() => {
+                console.log('Kosuke logo clicked, navigating to /home');
+                router.push('/home');
+              }}
+            >
               <CircleIcon className="h-6 w-6 text-primary" />
               <span className="ml-2 text-xl text-foreground">Kosuke</span>
-            </Link>
+            </div>
             {renderUserSection()}
           </div>
         </header>
