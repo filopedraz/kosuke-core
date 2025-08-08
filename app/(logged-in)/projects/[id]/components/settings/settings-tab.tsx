@@ -42,7 +42,7 @@ export function SettingsTab({ projectId }: SettingsTabProps) {
         </TabsContent>
 
         <TabsContent value="production" className="space-y-6 pt-6 pb-12">
-          <ProductionSettings projectId={projectId} />
+          <ProductionSettings />
         </TabsContent>
       </Tabs>
     </div>
