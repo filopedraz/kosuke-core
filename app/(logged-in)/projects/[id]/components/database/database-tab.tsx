@@ -94,10 +94,8 @@ export function DatabaseTab({ projectId, sessionId }: DatabaseTabProps) {
             </div>
           </TabsContent>
 
-          <TabsContent value="browse" className="flex-1 overflow-y-auto pt-6 pb-12">
-            <div className="space-y-6">
-              <TableBrowser projectId={projectId} sessionId={sessionId} />
-            </div>
+          <TabsContent value="browse" className="flex-1 overflow-hidden pt-6 pb-6">
+            <TableBrowser projectId={projectId} sessionId={sessionId} />
           </TabsContent>
 
           <TabsContent value="query" className="flex-1 overflow-y-auto pt-6 pb-12">
