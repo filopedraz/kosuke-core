@@ -1,8 +1,9 @@
+import asyncio
 import logging
 import shutil
-import time
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import quote
 
 import git
 import requests
@@ -32,6 +33,62 @@ class GitHubService:
 
         # Store sync sessions for tracking changes across commits
         self.sync_sessions: dict[str, dict] = {}
+
+    def _make_authenticated_url(self, repo_url: str) -> str:
+        """Return a GitHub HTTPS URL embedding the token for auth.
+
+        - Supports both HTTPS and SSH input URLs
+        - Returns original URL if no token is available
+        - Never logs or returns token in logs elsewhere
+        """
+        token = self.github_token
+        if not token:
+            return repo_url
+
+        # Ensure token is URL-safe in userinfo
+        encoded_token = quote(token, safe="")
+
+        try:
+            if repo_url.startswith("git@github.com:"):
+                # Convert SSH to HTTPS with token
+                repo_path = repo_url.replace("git@github.com:", "")
+                if not repo_path.endswith(".git"):
+                    repo_path = f"{repo_path}.git"
+                return f"https://oauth2:{encoded_token}@github.com/{repo_path}"
+
+            if repo_url.startswith("https://github.com/"):
+                # Insert token into HTTPS URL
+                rest = repo_url.replace("https://github.com/", "")
+                # Preserve .git if present; no need to force
+                return f"https://oauth2:{encoded_token}@github.com/{rest}"
+
+            # Fallback: return original
+            return repo_url
+        except Exception:
+            # On any parsing error, fall back to original URL
+            return repo_url
+
+    def _make_sanitized_https_url(self, repo_url: str) -> str:
+        """Return a sanitized HTTPS URL without credentials for origin config."""
+        try:
+            if repo_url.startswith("git@github.com:"):
+                repo_path = repo_url.replace("git@github.com:", "")
+                if not repo_path.endswith(".git"):
+                    repo_path = f"{repo_path}.git"
+                return f"https://github.com/{repo_path}"
+
+            if repo_url.startswith("https://github.com/"):
+                # Strip any embedded credentials if present
+                rest = repo_url.split("github.com/", 1)[1]
+                return f"https://github.com/{rest}"
+
+            if repo_url.startswith("https://oauth2:") and "@github.com/" in repo_url:
+                rest = repo_url.split("@github.com/", 1)[1]
+                return f"https://github.com/{rest}"
+
+            return repo_url
+        except Exception:
+            return repo_url
 
     async def create_repository(self, request: CreateRepoRequest) -> GitHubRepo:
         """Create a new GitHub repository from Kosuke template"""
@@ -214,9 +271,19 @@ class GitHubService:
             if project_path.exists():
                 shutil.rmtree(project_path)
 
-            # Clone repository
-            logger.info(f"Importing repository {request.repo_url} to project {request.project_id}")
-            git.Repo.clone_from(request.repo_url, project_path)
+            # Clone repository using authenticated URL to support private repos
+            sanitized_for_log = self._make_sanitized_https_url(request.repo_url)
+            auth_url = self._make_authenticated_url(request.repo_url)
+            logger.info(f"Importing repository {sanitized_for_log} to project {request.project_id}")
+            repo = git.Repo.clone_from(auth_url, project_path)
+
+            # After clone, sanitize remote URL to remove token
+            try:
+                origin = repo.remote(name="origin")
+                origin.set_url(self._make_sanitized_https_url(request.repo_url))
+            except Exception as sanitize_error:
+                # Non-fatal if we cannot sanitize
+                logger.debug(f"Failed to sanitize remote URL after import: {sanitize_error}")
 
             # Keep repository on main branch after cloning
             # Branches will be created per chat session, not per project
@@ -238,12 +305,20 @@ class GitHubService:
                 shutil.rmtree(project_path)
 
             logger.info("Sleeping for 15 seconds to ensure github repo has been created")
-            time.sleep(15)
+            await asyncio.sleep(15)
 
-            # Clone repository
-            logger.info(f"Cloning repository {request.repo_url} to project {request.project_id} at {project_path}")
-            response = git.Repo.clone_from(request.repo_url, project_path)
-            logger.info(f"Clone response: {response}")
+            # Clone repository using authenticated URL to support private repos
+            sanitized_for_log = self._make_sanitized_https_url(request.repo_url)
+            auth_url = self._make_authenticated_url(request.repo_url)
+            logger.info(f"Cloning repository {sanitized_for_log} to project {request.project_id} at {project_path}")
+            repo = git.Repo.clone_from(auth_url, project_path)
+            # After clone, sanitize remote URL to remove token
+            try:
+                origin = repo.remote(name="origin")
+                origin.set_url(self._make_sanitized_https_url(request.repo_url))
+            except Exception as sanitize_error:
+                logger.debug(f"Failed to sanitize remote URL after clone: {sanitize_error}")
+            logger.info("Clone completed")
 
             logger.info(f"Successfully cloned repository to project {request.project_id}")
             return str(project_path)
