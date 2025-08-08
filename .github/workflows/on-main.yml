@@ -44,6 +44,7 @@ jobs:
           ssh ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_IP }} "cd /home/filippo/kosuke-core/ && git pull"
           ssh ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_IP }} "cd /home/filippo/kosuke-core/ && docker compose -f docker-compose.production.yml up --build -d"
           ssh ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_IP }} "cd /home/filippo/kosuke-core/ && docker compose -f docker-compose.production.yml exec nextjs npm run db:push"
+          ssh ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_IP }} "docker system prune -af --volumes"
 
       - name: Notify Slack - Success
         if: success()
