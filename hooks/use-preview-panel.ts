@@ -29,27 +29,18 @@ export function usePreviewPanel({
   const [error, setError] = useState<string | null>(null);
   const [iframeKey, setIframeKey] = useState(0);
   const [isDownloading, setIsDownloading] = useState(false);
-  const [isRequestInProgress, setIsRequestInProgress] = useState(false);
+  const requestInFlightRef = useRef(false);
   const [gitStatus, setGitStatus] = useState<GitUpdateStatus | null>(null);
 
-  // Check if the preview server is ready
+  // Check if the preview server is ready by requiring a 200 from server-side probe
   const checkServerHealth = useCallback(async (url: string): Promise<boolean> => {
     try {
-      // Create a controller to timeout the request after 3 seconds
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3000);
-
-      // With no-cors mode, we can't read the response, but if the fetch succeeds, the server is up
-      await fetch(url, {
-        method: 'HEAD',
-        mode: 'no-cors',
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeoutId);
-      return true; // If we get here, the server is responding
+      const healthUrl = `/api/preview/health?url=${encodeURIComponent(url)}&timeout=3000`;
+      const response = await fetch(healthUrl, { method: 'GET' });
+      if (!response.ok) return false;
+      const data: { ok: boolean; status?: number } = await response.json();
+      return Boolean(data.ok);
     } catch (error) {
-      // Only log every 5th failure to reduce console noise
       if (Math.random() < 0.2) {
         console.log(
           '[Preview Panel] Health check failed (sample):',
@@ -62,9 +53,9 @@ export function usePreviewPanel({
 
   // Poll the server until it's ready
   const pollServerUntilReady = useCallback(
-    async (url: string, maxAttempts = 30) => {
+    async (url: string, maxAttempts = 60) => {
       console.log(
-        '[Preview Panel] Starting health check polling (will wait 5s before first attempt)'
+        '[Preview Panel] Starting health check polling (waiting for HTTP 200; will wait 5s before first attempt)'
       );
       let attempts = 0;
 
@@ -86,7 +77,7 @@ export function usePreviewPanel({
           setProgress(100);
         } else {
           console.log(
-            `[Preview Panel] Health check attempt ${attempts}/${maxAttempts} failed, retrying in 3s`
+            `[Preview Panel] Health check attempt ${attempts}/${maxAttempts} failed (non-200), retrying in 3s`
           );
           // Use longer delays for more patient polling
           const delay = attempts <= 3 ? 5000 : 3000; // 5s for first 3 attempts, then 3s
@@ -106,22 +97,14 @@ export function usePreviewPanel({
   // Fetch the preview URL
   const fetchPreviewUrl = useCallback(
     async (forceStart: boolean = false) => {
-      // Prevent duplicate requests using functional state update
-      let shouldProceed = false;
-      setIsRequestInProgress(prev => {
-        if (prev) {
-          console.log(
-            `[Preview Panel] Request already in progress for project ${projectId}, skipping`
-          );
-          return prev; // Don't change state, request already in progress
-        }
-        shouldProceed = true;
-        return true; // Set to true, we'll proceed
-      });
-
-      if (!shouldProceed) {
+      // Prevent duplicate requests using a ref-based lock
+      if (requestInFlightRef.current) {
+        console.log(
+          `[Preview Panel] Request already in progress for project ${projectId}, skipping`
+        );
         return;
       }
+      requestInFlightRef.current = true;
       setStatus('loading');
       setProgress(0);
       setError(null);
@@ -180,10 +163,10 @@ export function usePreviewPanel({
         setError(error instanceof Error ? error.message : 'Failed to load preview');
         setStatus('error');
       } finally {
-        setIsRequestInProgress(false);
+        requestInFlightRef.current = false;
       }
     },
-    [projectId, sessionId, pollServerUntilReady, toast]
+    [projectId, sessionId, pollServerUntilReady]
   );
 
   // Update ref when fetchPreviewUrl changes

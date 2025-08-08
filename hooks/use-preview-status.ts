@@ -1,9 +1,4 @@
-import type {
-  PreviewStatusResponse,
-  ServerHealthOptions,
-  StartPreviewResponse,
-  StopPreviewResponse,
-} from '@/lib/types';
+import type { PreviewStatusResponse, StartPreviewResponse, StopPreviewResponse } from '@/lib/types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 // Hook for fetching preview status
@@ -88,25 +83,4 @@ export function useStopPreview(projectId: number, sessionId: string | null) {
       });
     },
   });
-}
-
-// Utility function for server health checks
-export async function checkServerHealth(options: ServerHealthOptions): Promise<boolean> {
-  const { url, timeout = 3000 } = options;
-
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeout);
-
-    await fetch(url, {
-      method: 'HEAD',
-      mode: 'no-cors',
-      signal: controller.signal,
-    });
-
-    clearTimeout(timeoutId);
-    return true;
-  } catch {
-    return false;
-  }
 }
