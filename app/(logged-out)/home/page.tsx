@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { motion } from 'framer-motion';
 import { ArrowRight, Code2, Database, Lock, Rocket, Sparkles, Star, Zap } from 'lucide-react';
 import { useEffect } from 'react';
+import { FeaturesBentoGrid } from './components/features-bento-grid';
 
 // Developer-centric collaboration features
 const coreFeatures = [
@@ -193,7 +194,7 @@ export default function HomePage() {
       </section>
 
       {/* Bento Grid Features */}
-      {/* <FeaturesBentoGrid /> */}
+      <FeaturesBentoGrid />
 
       {/* Private Alpha CTA */}
       <section id="cta-section" className="py-16 sm:py-32 pb-24 sm:pb-48 px-4 sm:px-6">
