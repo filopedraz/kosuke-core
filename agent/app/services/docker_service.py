@@ -181,6 +181,53 @@ class DockerService:
         except Exception as e:
             logger.error(f"Error creating database for project {project_id} session {session_id}: {e}")
 
+    def _generate_container_url(self, container, container_name: str) -> dict | None:
+        """Generate URL for a container based on setup (Traefik vs traditional)"""
+        if settings.TRAEFIK_ENABLED:
+            # For Traefik setup, extract domain from labels
+            labels = container.labels or {}
+            project_id = labels.get("kosuke.project_id")
+            branch_name = labels.get("kosuke.branch", "main")
+            if project_id and branch_name:
+                try:
+                    domain = self.domain_service.generate_subdomain(int(project_id), branch_name)
+                    url = f"https://{domain}"
+                    logger.info(f"Found Traefik container {container_name} with domain: {domain}")
+                    return {"container": container, "host_port": 3000, "url": url}
+                except Exception as e:
+                    logger.error(f"Failed to generate domain for Traefik container {container_name}: {e}")
+        else:
+            # Traditional port mapping
+            ports = container.ports
+            if "3000/tcp" in ports and ports["3000/tcp"]:
+                host_port = int(ports["3000/tcp"][0]["HostPort"])
+                return {"container": container, "host_port": host_port, "url": f"http://localhost:{host_port}"}
+
+        logger.warning(f"Running container {container_name} has no accessible URL configuration")
+        return None
+
+    async def _start_existing_container(self, container, container_name: str) -> dict | None:
+        """Start an existing container and return its info"""
+        loop = asyncio.get_event_loop()
+        logger.info(f"Attempting to start existing container {container_name}")
+
+        try:
+            await asyncio.wait_for(loop.run_in_executor(None, container.start), timeout=10.0)
+
+            # Reload container to get updated status and ports
+            await asyncio.wait_for(loop.run_in_executor(None, container.reload), timeout=5.0)
+
+            if container.status == "running":
+                return self._generate_container_url(container, container_name)
+        except Exception as start_error:
+            logger.warning(f"Failed to start existing container {container_name}: {start_error}")
+
+            # If starting failed, remove the container so we can create a new one
+            logger.info(f"Removing failed container {container_name}")
+            await asyncio.wait_for(loop.run_in_executor(None, lambda: container.remove(force=True)), timeout=5.0)
+
+        return None
+
     async def _get_existing_container(self, container_name: str) -> dict | None:
         """Get existing container info in executor to avoid blocking"""
         try:
@@ -192,37 +239,9 @@ class DockerService:
             logger.info(f"Found existing container {container_name} with status: {container.status}")
 
             if container.status == "running":
-                # Container is running, get port info
-                ports = container.ports
-                if "3000/tcp" in ports and ports["3000/tcp"]:
-                    host_port = int(ports["3000/tcp"][0]["HostPort"])
-                    return {"container": container, "host_port": host_port, "url": f"http://localhost:{host_port}"}
-                logger.warning(f"Running container {container_name} has no port mapping")
-            elif container.status in ["created", "exited", "dead"]:
-                # Container exists but not running, try to start it
-                logger.info(f"Attempting to start existing container {container_name}")
-                try:
-                    await asyncio.wait_for(loop.run_in_executor(None, container.start), timeout=10.0)
-
-                    # Reload container to get updated status and ports
-                    await asyncio.wait_for(loop.run_in_executor(None, container.reload), timeout=5.0)
-
-                    if container.status == "running":
-                        ports = container.ports
-                        if "3000/tcp" in ports and ports["3000/tcp"]:
-                            host_port = int(ports["3000/tcp"][0]["HostPort"])
-                            logger.info(f"Successfully started existing container {container_name} on port {host_port}")
-                            return {
-                                "container": container,
-                                "host_port": host_port,
-                                "url": f"http://localhost:{host_port}",
-                            }
-                except Exception as start_error:
-                    logger.warning(f"Failed to start existing container {container_name}: {start_error}")
-
-                # If starting failed, remove the container so we can create a new one
-                logger.info(f"Removing failed container {container_name}")
-                await asyncio.wait_for(loop.run_in_executor(None, lambda: container.remove(force=True)), timeout=5.0)
+                return self._generate_container_url(container, container_name)
+            if container.status in ["created", "exited", "dead"]:
+                return await self._start_existing_container(container, container_name)
 
         except (NotFound, asyncio.TimeoutError):
             # Container doesn't exist or timeout
@@ -421,25 +440,44 @@ class DockerService:
         """Handle container name conflict by trying to recover existing container"""
         logger.info(
             f"Container name conflict for project {project_id} session {session_id}, "
-            "attempting to recover existing container"
+            f"attempting to recover existing container: {container_name}"
         )
-        existing = await self._get_existing_container(container_name)
-        if existing:
-            logger.info(f"Successfully recovered existing container for project {project_id} session {session_id}")
-            container_info = ContainerInfo(
-                project_id=project_id,
-                session_id=session_id,
-                container_id=existing["container"].id,
-                container_name=container_name,
-                port=existing["host_port"],
-                url=existing["url"],
-                compilation_complete=True,
-                git_status=None,  # No git status for conflict recovery
+
+        try:
+            existing = await self._get_existing_container(container_name)
+            if existing:
+                logger.info(
+                    f"Successfully recovered existing container {container_name} for "
+                    f"project {project_id} session {session_id}. URL: {existing['url']}, "
+                    f"Port: {existing['host_port']}"
+                )
+                container_info = ContainerInfo(
+                    project_id=project_id,
+                    session_id=session_id,
+                    container_id=existing["container"].id,
+                    container_name=container_name,
+                    port=existing["host_port"],
+                    url=existing["url"],
+                    compilation_complete=True,
+                    git_status=None,  # No git status for conflict recovery
+                )
+                container_key = (project_id, session_id)
+                self.containers[container_key] = container_info
+                return existing["url"]
+            logger.error(
+                f"Container conflict detected but could not recover container {container_name} for "
+                f"project {project_id} session {session_id}. Container may be in invalid state."
             )
-            container_key = (project_id, session_id)
-            self.containers[container_key] = container_info
-            return existing["url"]
-        raise Exception("Failed to recover from container conflict")
+        except Exception as e:
+            logger.error(
+                f"Error while attempting to recover container {container_name} for "
+                f"project {project_id} session {session_id}: {e}"
+            )
+
+        raise Exception(
+            f"Failed to recover from container conflict for {container_name}. "
+            "Please try stopping the preview and starting again."
+        )
 
     async def start_preview(self, project_id: int, session_id: str, env_vars: dict[str, str] | None = None) -> str:
         """Start preview container for project session (non-blocking)"""
@@ -447,6 +485,9 @@ class DockerService:
             env_vars = {}
 
         container_name = self._get_container_name(project_id, session_id)
+        logger.info(
+            f"Starting preview for project {project_id} session {session_id} " f"with container name: {container_name}"
+        )
 
         # Always ensure session environment and get git status (even for existing containers)
         git_status = await self._ensure_session_environment(project_id, session_id)
@@ -454,6 +495,10 @@ class DockerService:
         # Check for existing containers
         existing_url = await self._handle_existing_container(project_id, session_id, container_name, git_status)
         if existing_url:
+            logger.info(
+                f"Found existing container for project {project_id} session {session_id}, "
+                f"returning URL: {existing_url}"
+            )
             return existing_url
 
         # Ensure session database (don't wait for it to complete)
@@ -471,6 +516,7 @@ class DockerService:
 
             # If it's a container name conflict, try to recover the existing container
             if "Conflict" in str(e) and "already in use" in str(e):
+                logger.info(f"Detected container name conflict for {container_name}, attempting recovery")
                 return await self._handle_container_conflict(project_id, session_id, container_name)
 
             raise Exception(f"Failed to create container: {e}") from e
