@@ -127,11 +127,29 @@ export default function ProjectCreationModal({
     return activeTab === 'create' ? 'Create Project' : 'Import Project';
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    // Only trigger on Enter key
+    if (e.key !== 'Enter') return;
+    
+    // Don't trigger if focus is on textarea (description field)
+    if (e.target instanceof HTMLTextAreaElement) return;
+    
+    // Don't trigger if form cannot be submitted
+    if (!canSubmit() || isCreating) return;
+    
+    // Prevent default form submission behavior
+    e.preventDefault();
+    
+    // Trigger project creation
+    handleCreateProject();
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className="p-0 overflow-hidden border border-border bg-card shadow-lg rounded-md"
         style={{ maxWidth: '512px' }}
+        onKeyDown={handleKeyDown}
       >
         <DialogTitle className="sr-only">
           {activeTab === 'create' ? 'Create New Project' : 'Import from GitHub'}
