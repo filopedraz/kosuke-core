@@ -17,16 +17,16 @@ export function FeaturesBentoGrid() {
           transition={{ duration: 0.6 }}
         >
           <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-3 sm:mb-4 font-mono">
-            # Why developers choose this
+            # Bottom-Up Approach
           </h2>
-          <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto font-sans px-2">
-            Every component designed for speed, security, and scale
+          <p className="text-base sm:text-lg text-muted-foreground max-w-3xl mx-auto font-sans px-2">
+            We are not going to throw out software development best practices and lifecycle because of AI. We won’t skip pull requests or commit straight to main. Keep a developer-first experience while empowering non-developers to contribute as product builders.
           </p>
         </motion.div>
 
         <div className="max-w-6xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-            {/* Large feature card */}
+            {/* Large principle card */}
             <motion.div
               className="lg:col-span-2 lg:row-span-2"
               initial={{ opacity: 0, y: 20 }}
@@ -41,34 +41,31 @@ export function FeaturesBentoGrid() {
                       <div className="p-2 rounded-lg bg-emerald-500/20">
                         <Rocket className="h-5 w-5 sm:h-6 sm:w-6 text-emerald-500" />
                       </div>
-                      <h3 className="text-lg sm:text-xl font-semibold font-mono">
-                        Ship in Minutes
-                      </h3>
+                      <h3 className="text-lg sm:text-xl font-semibold font-mono">Bottom-Up Approach</h3>
                     </div>
                     <p className="text-sm sm:text-base text-muted-foreground font-sans mb-4 sm:mb-6 leading-relaxed">
-                      Complete full-stack application with authentication, database, billing, and
-                      deployment. Everything integrated and configured - just clone and ship.
+                      Code remains the source of truth. Keep PRs, reviews, and a proper SDLC. The goal is to increase contributions across the same repository without sacrificing rigor.
                     </p>
                   </div>
                   <div className="space-y-2 text-sm font-mono">
                     <div className="flex justify-between text-emerald-500">
-                      <span>Clone to Deploy</span>
-                      <span>&lt; 5 min</span>
+                      <span>SDLC</span>
+                      <span>Preserved</span>
                     </div>
                     <div className="flex justify-between text-emerald-500">
-                      <span>Auth + DB + Billing</span>
-                      <span>✓ Included</span>
+                      <span>PRs</span>
+                      <span>Required</span>
                     </div>
                     <div className="flex justify-between text-emerald-500">
-                      <span>Production Ready</span>
-                      <span>Day 1</span>
+                      <span>Contributors</span>
+                      <span>Developers + Builders</span>
                     </div>
                   </div>
                 </CardContent>
               </Card>
             </motion.div>
 
-            {/* Auth card */}
+            {/* Keep best practices */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -79,16 +76,16 @@ export function FeaturesBentoGrid() {
                 <CardContent className="p-0">
                   <div className="flex items-center gap-2 mb-3 sm:mb-4">
                     <Lock className="h-4 w-4 sm:h-5 sm:w-5 text-blue-500" />
-                    <h3 className="text-base sm:text-lg font-semibold font-mono">Secure Auth</h3>
+                    <h3 className="text-base sm:text-lg font-semibold font-mono">Keep Best Practices</h3>
                   </div>
                   <p className="text-sm text-muted-foreground font-sans">
-                    Clerk integration with social logins, MFA, and enterprise SSO ready.
+                    Don’t bypass reviews or quality gates. Maintain tests, CI, and a healthy branching strategy.
                   </p>
                 </CardContent>
               </Card>
             </motion.div>
 
-            {/* Database card */}
+            {/* Developer-first */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -99,16 +96,16 @@ export function FeaturesBentoGrid() {
                 <CardContent className="p-0">
                   <div className="flex items-center gap-2 mb-3 sm:mb-4">
                     <Database className="h-4 w-4 sm:h-5 sm:w-5 text-purple-500" />
-                    <h3 className="text-base sm:text-lg font-semibold font-mono">Type-Safe DB</h3>
+                    <h3 className="text-base sm:text-lg font-semibold font-mono">Developer-First</h3>
                   </div>
                   <p className="text-sm text-muted-foreground font-sans">
-                    Drizzle ORM with PostgreSQL. Migrations, relations, and full TypeScript support.
+                    Code is the single source of truth. AI augments workflows without replacing engineering ownership.
                   </p>
                 </CardContent>
               </Card>
             </motion.div>
 
-            {/* Billing card */}
+            {/* Empower contributors */}
             <motion.div
               className="md:col-span-2"
               initial={{ opacity: 0, y: 20 }}
@@ -121,17 +118,14 @@ export function FeaturesBentoGrid() {
                   <div className="flex items-center justify-between mb-3 sm:mb-4">
                     <div className="flex items-center gap-2">
                       <Rocket className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-500" />
-                      <h3 className="text-base sm:text-lg font-semibold font-mono">
-                        Revenue Ready
-                      </h3>
+                      <h3 className="text-base sm:text-lg font-semibold font-mono">Empower Contributors</h3>
                     </div>
                     <Badge variant="outline" className="font-mono text-xs">
-                      Polar + Stripe
+                      Git-native
                     </Badge>
                   </div>
                   <p className="text-sm text-muted-foreground font-sans">
-                    Complete subscription management with webhooks, usage tracking, and analytics.
-                    Start monetizing from day one.
+                    Enable non-developers to contribute safely to the same repository, evolving into product builders with workflows that respect the repo.
                   </p>
                 </CardContent>
               </Card>
