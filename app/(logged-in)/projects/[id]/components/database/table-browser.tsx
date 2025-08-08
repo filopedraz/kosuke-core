@@ -5,12 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useDatabaseSchema } from '@/hooks/use-database-schema';
 import { useTableData } from '@/hooks/use-table-data';
 import type { TableBrowserProps } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { BarChart3, ChevronLeft, ChevronRight, Columns, Database, Table as TableIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Database, Table as TableIcon } from 'lucide-react';
 import { useState } from 'react';
 import { TableBrowserSkeleton } from './skeletons/table-browser-skeleton';
 
@@ -38,7 +37,7 @@ export function TableBrowser({ projectId, sessionId }: TableBrowserProps) {
     <div className="flex h-full max-h-[700px] gap-6">
       {/* Left Sidebar - Tables List */}
       <Card className="w-72 flex flex-col">
-        <CardHeader className="pb-3">
+        <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-base">
             <Database className="w-5 h-5" />
             Database Tables
@@ -48,7 +47,7 @@ export function TableBrowser({ projectId, sessionId }: TableBrowserProps) {
           </CardDescription>
         </CardHeader>
         <CardContent className="flex-1 p-0">
-          <ScrollArea className="h-[500px]">
+          <ScrollArea className="h-[520px]">
             {tables.length === 0 ? (
               <div className="p-6 text-center text-muted-foreground text-sm">
                 No tables found
@@ -100,7 +99,7 @@ export function TableBrowser({ projectId, sessionId }: TableBrowserProps) {
       <div className="flex-1 flex flex-col min-w-0">
         {selectedTable ? (
           <Card className="flex-1 flex flex-col">
-            <CardHeader className="pb-4">
+            <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle className="text-xl">{selectedTable}</CardTitle>
@@ -118,114 +117,91 @@ export function TableBrowser({ projectId, sessionId }: TableBrowserProps) {
               </div>
             </CardHeader>
 
-            <CardContent className="flex-1 flex flex-col space-y-4 pb-6">
-              <Tabs defaultValue="data" className="flex-1 flex flex-col">
-                <TabsList className="grid w-fit grid-cols-2">
-                  <TabsTrigger value="data" className="flex items-center gap-2">
-                    <BarChart3 className="w-4 h-4" />
-                    Data
-                  </TabsTrigger>
-                  <TabsTrigger value="structure" className="flex items-center gap-2">
-                    <Columns className="w-4 h-4" />
-                    Structure
-                  </TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="data" className="flex-1 flex flex-col space-y-4">
-                  {dataLoading ? (
-                    <div className="flex-1 flex items-center justify-center">
-                      <div className="text-muted-foreground">Loading table data...</div>
-                    </div>
-                  ) : error ? (
-                    <div className="flex-1 flex items-center justify-center">
-                      <div className="text-center text-destructive space-y-2">
-                        <p className="font-medium">Error loading table data</p>
-                        <p className="text-sm">{error.message}</p>
-                      </div>
-                    </div>
-                  ) : tableData && tableData.data.length > 0 ? (
-                    <>
-                      {/* Table with horizontal scroll */}
-                      <div className="flex-1 border rounded-lg">
-                        <ScrollArea className="h-[400px] w-full">
-                          <Table>
-                            <TableHeader>
-                              <TableRow>
-                                {Object.keys(tableData.data[0]).map(column => (
-                                  <TableHead key={column} className="min-w-32 bg-muted/30 font-semibold">
-                                    {column}
-                                  </TableHead>
-                                ))}
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {tableData.data.map((row, index) => (
-                                <TableRow key={index}>
-                                  {Object.values(row).map((value, colIndex) => (
-                                    <TableCell key={colIndex} className="min-w-32 font-mono text-xs">
-                                      {value === null ? (
-                                        <span className="text-muted-foreground italic">NULL</span>
-                                      ) : (
-                                        <div className="truncate max-w-48" title={String(value)}>
-                                          {String(value)}
-                                        </div>
-                                      )}
-                                    </TableCell>
-                                  ))}
-                                </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
-                          <ScrollBar orientation="horizontal" />
-                        </ScrollArea>
-                      </div>
-
-                      {/* Pagination */}
-                      <div className="flex items-center justify-between pt-2">
-                        <div className="text-sm text-muted-foreground">
-                          Showing <span className="font-medium">{tableData.offset + 1}–{Math.min(tableData.offset + tableData.returned_rows, tableData.total_rows)}</span> of <span className="font-medium">{tableData.total_rows.toLocaleString()}</span> rows
-                        </div>
-                        <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setCurrentPage(p => Math.max(0, p - 1))}
-                            disabled={currentPage === 0}
-                          >
-                            <ChevronLeft className="w-4 h-4 mr-1" />
-                            Previous
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setCurrentPage(p => p + 1)}
-                            disabled={tableData.offset + tableData.returned_rows >= tableData.total_rows}
-                          >
-                            Next
-                            <ChevronRight className="w-4 h-4 ml-1" />
-                          </Button>
-                        </div>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="flex-1 flex items-center justify-center">
-                      <div className="text-center text-muted-foreground space-y-2">
-                        <TableIcon className="w-12 h-12 mx-auto opacity-40" />
-                        <p className="font-medium">No data found</p>
-                        <p className="text-sm">This table appears to be empty</p>
-                      </div>
-                    </div>
-                  )}
-                </TabsContent>
-
-                <TabsContent value="structure" className="flex-1">
-                  <div className="text-center text-muted-foreground py-12">
-                    <Columns className="w-12 h-12 mx-auto opacity-40 mb-4" />
-                    <p className="font-medium">Table Structure</p>
-                    <p className="text-sm">Column definitions and schema information will be displayed here</p>
+            <CardContent className="flex-1 flex flex-col space-y-3 pb-4">
+              {dataLoading ? (
+                <div className="flex-1 flex items-center justify-center">
+                  <div className="text-muted-foreground">Loading table data...</div>
+                </div>
+              ) : error ? (
+                <div className="flex-1 flex items-center justify-center">
+                  <div className="text-center text-destructive space-y-2">
+                    <p className="font-medium">Error loading table data</p>
+                    <p className="text-sm">{error.message}</p>
                   </div>
-                </TabsContent>
-              </Tabs>
+                </div>
+              ) : tableData && tableData.data.length > 0 ? (
+                <>
+                  {/* Table with horizontal scroll */}
+                  <div className="flex-1 border rounded-lg">
+                    <ScrollArea className="h-[440px] w-full">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            {Object.keys(tableData.data[0]).map(column => (
+                              <TableHead key={column} className="min-w-32 bg-muted/30 font-semibold">
+                                {column}
+                              </TableHead>
+                            ))}
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {tableData.data.map((row, index) => (
+                            <TableRow key={index}>
+                              {Object.values(row).map((value, colIndex) => (
+                                <TableCell key={colIndex} className="min-w-32 font-mono text-xs">
+                                  {value === null ? (
+                                    <span className="text-muted-foreground italic">NULL</span>
+                                  ) : (
+                                    <div className="truncate max-w-48" title={String(value)}>
+                                      {String(value)}
+                                    </div>
+                                  )}
+                                </TableCell>
+                              ))}
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                      <ScrollBar orientation="horizontal" />
+                    </ScrollArea>
+                  </div>
+
+                  {/* Pagination */}
+                  <div className="flex items-center justify-between pt-1">
+                    <div className="text-sm text-muted-foreground">
+                      Showing <span className="font-medium">{tableData.offset + 1}–{Math.min(tableData.offset + tableData.returned_rows, tableData.total_rows)}</span> of <span className="font-medium">{tableData.total_rows.toLocaleString()}</span> rows
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(p => Math.max(0, p - 1))}
+                        disabled={currentPage === 0}
+                      >
+                        <ChevronLeft className="w-4 h-4 mr-1" />
+                        Previous
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(p => p + 1)}
+                        disabled={tableData.offset + tableData.returned_rows >= tableData.total_rows}
+                      >
+                        Next
+                        <ChevronRight className="w-4 h-4 ml-1" />
+                      </Button>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="flex-1 flex items-center justify-center">
+                  <div className="text-center text-muted-foreground space-y-2">
+                    <TableIcon className="w-12 h-12 mx-auto opacity-40" />
+                    <p className="font-medium">No data found</p>
+                    <p className="text-sm">This table appears to be empty</p>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         ) : (
