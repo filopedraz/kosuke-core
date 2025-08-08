@@ -57,7 +57,7 @@ export function RepositoryPreview({ settings, mode, repositoryUrl }: RepositoryP
               href={repositoryUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
+              className="text-xs text-primary hover:underline hover:text-primary/80"
             >
               View on GitHub →
             </a>
