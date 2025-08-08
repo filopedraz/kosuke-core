@@ -20,7 +20,9 @@ export function FeaturesBentoGrid() {
             # Bottom-Up Approach
           </h2>
           <p className="text-base sm:text-lg text-muted-foreground max-w-3xl mx-auto font-sans px-2">
-            We are not going to throw out software development best practices and lifecycle because of AI. We won’t skip pull requests or commit straight to main. Keep a developer-first experience while empowering non-developers to contribute as product builders.
+            We are not going to throw out software development best practices and lifecycle because
+            of AI. We won’t skip pull requests or commit straight to main. Keep a developer-first
+            experience while empowering non-developers to contribute as product builders.
           </p>
         </motion.div>
 
@@ -41,10 +43,14 @@ export function FeaturesBentoGrid() {
                       <div className="p-2 rounded-lg bg-emerald-500/20">
                         <Rocket className="h-5 w-5 sm:h-6 sm:w-6 text-emerald-500" />
                       </div>
-                      <h3 className="text-lg sm:text-xl font-semibold font-mono">Bottom-Up Approach</h3>
+                      <h3 className="text-lg sm:text-xl font-semibold font-mono">
+                        Bottom-Up Approach
+                      </h3>
                     </div>
                     <p className="text-sm sm:text-base text-muted-foreground font-sans mb-4 sm:mb-6 leading-relaxed">
-                      Code remains the source of truth. Keep PRs, reviews, and a proper SDLC. The goal is to increase contributions across the same repository without sacrificing rigor.
+                      Code remains the source of truth. Keep PRs, reviews, and a proper SDLC. The
+                      goal is to increase contributions across the same repository without
+                      sacrificing rigor.
                     </p>
                   </div>
                   <div className="space-y-2 text-sm font-mono">
@@ -76,10 +82,13 @@ export function FeaturesBentoGrid() {
                 <CardContent className="p-0">
                   <div className="flex items-center gap-2 mb-3 sm:mb-4">
                     <Lock className="h-4 w-4 sm:h-5 sm:w-5 text-blue-500" />
-                    <h3 className="text-base sm:text-lg font-semibold font-mono">Keep Best Practices</h3>
+                    <h3 className="text-base sm:text-lg font-semibold font-mono">
+                      Keep Best Practices
+                    </h3>
                   </div>
                   <p className="text-sm text-muted-foreground font-sans">
-                    Don’t bypass reviews or quality gates. Maintain tests, CI, and a healthy branching strategy.
+                    Don’t bypass reviews or quality gates. Maintain tests, CI, and a healthy
+                    branching strategy.
                   </p>
                 </CardContent>
               </Card>
@@ -96,10 +105,13 @@ export function FeaturesBentoGrid() {
                 <CardContent className="p-0">
                   <div className="flex items-center gap-2 mb-3 sm:mb-4">
                     <Database className="h-4 w-4 sm:h-5 sm:w-5 text-purple-500" />
-                    <h3 className="text-base sm:text-lg font-semibold font-mono">Developer-First</h3>
+                    <h3 className="text-base sm:text-lg font-semibold font-mono">
+                      Developer-First
+                    </h3>
                   </div>
                   <p className="text-sm text-muted-foreground font-sans">
-                    Code is the single source of truth. AI augments workflows without replacing engineering ownership.
+                    Code is the single source of truth. AI augments workflows without replacing
+                    engineering ownership.
                   </p>
                 </CardContent>
               </Card>
@@ -118,14 +130,17 @@ export function FeaturesBentoGrid() {
                   <div className="flex items-center justify-between mb-3 sm:mb-4">
                     <div className="flex items-center gap-2">
                       <Rocket className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-500" />
-                      <h3 className="text-base sm:text-lg font-semibold font-mono">Empower Contributors</h3>
+                      <h3 className="text-base sm:text-lg font-semibold font-mono">
+                        Empower Contributors
+                      </h3>
                     </div>
                     <Badge variant="outline" className="font-mono text-xs">
                       Git-native
                     </Badge>
                   </div>
                   <p className="text-sm text-muted-foreground font-sans">
-                    Enable non-developers to contribute safely to the same repository, evolving into product builders with workflows that respect the repo.
+                    Enable non-developers to contribute safely to the same repository, evolving into
+                    product builders with workflows that respect the repo.
                   </p>
                 </CardContent>
               </Card>

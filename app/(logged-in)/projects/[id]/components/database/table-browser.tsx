@@ -2,14 +2,17 @@
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useDatabaseSchema } from '@/hooks/use-database-schema';
 import { useTableData } from '@/hooks/use-table-data';
 import type { TableBrowserProps } from '@/lib/types';
-import { ChevronLeft, ChevronRight, Table, Database } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { BarChart3, ChevronLeft, ChevronRight, Columns, Database, Table as TableIcon } from 'lucide-react';
 import { useState } from 'react';
 import { TableBrowserSkeleton } from './skeletons/table-browser-skeleton';
-import { cn } from '@/lib/utils';
 
 export function TableBrowser({ projectId, sessionId }: TableBrowserProps) {
   const [selectedTable, setSelectedTable] = useState<string | null>(null);
@@ -32,167 +35,211 @@ export function TableBrowser({ projectId, sessionId }: TableBrowserProps) {
   const tables = schema?.tables || [];
 
   return (
-    <div className="flex h-full max-h-[600px] border rounded-lg overflow-hidden bg-background">
+    <div className="flex h-full max-h-[700px] gap-6">
       {/* Left Sidebar - Tables List */}
-      <div className="w-64 border-r bg-muted/20 flex flex-col">
-        <div className="p-4 border-b bg-muted/30">
-          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-            <Database className="w-4 h-4" />
-            Tables ({tables.length})
-          </div>
-        </div>
-        
-        <div className="flex-1 overflow-y-auto">
-          {tables.length === 0 ? (
-            <div className="p-4 text-center text-muted-foreground text-sm">
-              No tables found
-            </div>
-          ) : (
-            <div className="p-2 space-y-1">
-              {tables.map(table => (
-                <button
-                  key={table.name}
-                  onClick={() => {
-                    setSelectedTable(table.name);
-                    setCurrentPage(0);
-                  }}
-                  className={cn(
-                    "w-full text-left p-3 rounded-md hover:bg-muted/50 transition-colors group",
-                    selectedTable === table.name && "bg-muted border"
-                  )}
-                >
-                  <div className="flex items-center gap-2">
-                    <Table className="w-4 h-4 text-muted-foreground group-hover:text-foreground" />
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium text-sm truncate">{table.name}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {table.row_count.toLocaleString()} rows
+      <Card className="w-72 flex flex-col">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Database className="w-5 h-5" />
+            Database Tables
+          </CardTitle>
+          <CardDescription>
+            {tables.length} {tables.length === 1 ? 'table' : 'tables'} available
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex-1 p-0">
+          <ScrollArea className="h-[500px]">
+            {tables.length === 0 ? (
+              <div className="p-6 text-center text-muted-foreground text-sm">
+                No tables found
+              </div>
+            ) : (
+              <div className="p-3 space-y-1">
+                {tables.map(table => (
+                  <button
+                    key={table.name}
+                    onClick={() => {
+                      setSelectedTable(table.name);
+                      setCurrentPage(0);
+                    }}
+                    className={cn(
+                      "w-full text-left p-3 rounded-lg hover:bg-muted/70 transition-all duration-200 group border",
+                      selectedTable === table.name
+                        ? "bg-muted border-border shadow-sm"
+                        : "border-transparent hover:border-border/50"
+                    )}
+                  >
+                    <div className="flex items-center gap-3">
+                      <TableIcon className={cn(
+                        "w-4 h-4 transition-colors",
+                        selectedTable === table.name
+                          ? "text-foreground"
+                          : "text-muted-foreground group-hover:text-foreground"
+                      )} />
+                      <div className="flex-1 min-w-0">
+                        <div className={cn(
+                          "font-medium text-sm truncate transition-colors",
+                          selectedTable === table.name ? "text-foreground" : "text-foreground/90"
+                        )}>
+                          {table.name}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {table.row_count.toLocaleString()} rows
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </ScrollArea>
+        </CardContent>
+      </Card>
 
       {/* Right Content Area */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-w-0">
         {selectedTable ? (
-          <>
-            {/* Header */}
-            <div className="p-4 border-b bg-muted/10">
+          <Card className="flex-1 flex flex-col">
+            <CardHeader className="pb-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="font-semibold text-lg">{selectedTable}</h3>
+                  <CardTitle className="text-xl">{selectedTable}</CardTitle>
                   {tableData && (
-                    <p className="text-sm text-muted-foreground">
+                    <CardDescription>
                       {tableData.total_rows.toLocaleString()} total rows
-                    </p>
+                    </CardDescription>
                   )}
                 </div>
                 {tableData && (
-                  <Badge variant="secondary" className="text-xs">
-                    {tableData.returned_rows} of {tableData.total_rows}
+                  <Badge variant="secondary" className="font-mono">
+                    {tableData.returned_rows} / {tableData.total_rows}
                   </Badge>
                 )}
               </div>
-            </div>
+            </CardHeader>
 
-            {/* Table Content */}
-            <div className="flex-1 overflow-hidden">
-              {dataLoading ? (
-                <div className="flex items-center justify-center h-full">
-                  <div className="text-muted-foreground">Loading table data...</div>
-                </div>
-              ) : error ? (
-                <div className="flex items-center justify-center h-full">
-                  <div className="text-center text-destructive">
-                    <p className="font-medium">Error loading table data</p>
-                    <p className="text-sm">{error.message}</p>
-                  </div>
-                </div>
-              ) : tableData && tableData.data.length > 0 ? (
-                <div className="h-full flex flex-col">
-                  {/* Table */}
-                  <div className="flex-1 overflow-auto">
-                    <table className="w-full text-sm">
-                      <thead className="sticky top-0 bg-background border-b">
-                        <tr>
-                          {Object.keys(tableData.data[0]).map(column => (
-                            <th key={column} className="p-3 text-left font-medium bg-muted/20 border-r last:border-r-0">
-                              {column}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {tableData.data.map((row, index) => (
-                          <tr key={index} className="border-b hover:bg-muted/20">
-                            {Object.values(row).map((value, colIndex) => (
-                              <td key={colIndex} className="p-3 font-mono border-r last:border-r-0">
-                                {value === null ? (
-                                  <span className="text-muted-foreground italic text-xs">NULL</span>
-                                ) : (
-                                  <span className="text-xs">{String(value)}</span>
-                                )}
-                              </td>
-                            ))}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+            <CardContent className="flex-1 flex flex-col space-y-4 pb-6">
+              <Tabs defaultValue="data" className="flex-1 flex flex-col">
+                <TabsList className="grid w-fit grid-cols-2">
+                  <TabsTrigger value="data" className="flex items-center gap-2">
+                    <BarChart3 className="w-4 h-4" />
+                    Data
+                  </TabsTrigger>
+                  <TabsTrigger value="structure" className="flex items-center gap-2">
+                    <Columns className="w-4 h-4" />
+                    Structure
+                  </TabsTrigger>
+                </TabsList>
 
-                  {/* Pagination */}
-                  <div className="p-4 border-t bg-muted/10 flex items-center justify-between">
-                    <div className="text-xs text-muted-foreground">
-                      Showing {tableData.offset + 1}–{Math.min(tableData.offset + tableData.returned_rows, tableData.total_rows)} of {tableData.total_rows.toLocaleString()}
+                <TabsContent value="data" className="flex-1 flex flex-col space-y-4">
+                  {dataLoading ? (
+                    <div className="flex-1 flex items-center justify-center">
+                      <div className="text-muted-foreground">Loading table data...</div>
                     </div>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setCurrentPage(p => Math.max(0, p - 1))}
-                        disabled={currentPage === 0}
-                      >
-                        <ChevronLeft className="w-4 h-4" />
-                        Previous
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setCurrentPage(p => p + 1)}
-                        disabled={tableData.offset + tableData.returned_rows >= tableData.total_rows}
-                      >
-                        Next
-                        <ChevronRight className="w-4 h-4" />
-                      </Button>
+                  ) : error ? (
+                    <div className="flex-1 flex items-center justify-center">
+                      <div className="text-center text-destructive space-y-2">
+                        <p className="font-medium">Error loading table data</p>
+                        <p className="text-sm">{error.message}</p>
+                      </div>
                     </div>
+                  ) : tableData && tableData.data.length > 0 ? (
+                    <>
+                      {/* Table with horizontal scroll */}
+                      <div className="flex-1 border rounded-lg">
+                        <ScrollArea className="h-[400px] w-full">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                {Object.keys(tableData.data[0]).map(column => (
+                                  <TableHead key={column} className="min-w-32 bg-muted/30 font-semibold">
+                                    {column}
+                                  </TableHead>
+                                ))}
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {tableData.data.map((row, index) => (
+                                <TableRow key={index}>
+                                  {Object.values(row).map((value, colIndex) => (
+                                    <TableCell key={colIndex} className="min-w-32 font-mono text-xs">
+                                      {value === null ? (
+                                        <span className="text-muted-foreground italic">NULL</span>
+                                      ) : (
+                                        <div className="truncate max-w-48" title={String(value)}>
+                                          {String(value)}
+                                        </div>
+                                      )}
+                                    </TableCell>
+                                  ))}
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                          <ScrollBar orientation="horizontal" />
+                        </ScrollArea>
+                      </div>
+
+                      {/* Pagination */}
+                      <div className="flex items-center justify-between pt-2">
+                        <div className="text-sm text-muted-foreground">
+                          Showing <span className="font-medium">{tableData.offset + 1}–{Math.min(tableData.offset + tableData.returned_rows, tableData.total_rows)}</span> of <span className="font-medium">{tableData.total_rows.toLocaleString()}</span> rows
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCurrentPage(p => Math.max(0, p - 1))}
+                            disabled={currentPage === 0}
+                          >
+                            <ChevronLeft className="w-4 h-4 mr-1" />
+                            Previous
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCurrentPage(p => p + 1)}
+                            disabled={tableData.offset + tableData.returned_rows >= tableData.total_rows}
+                          >
+                            Next
+                            <ChevronRight className="w-4 h-4 ml-1" />
+                          </Button>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex-1 flex items-center justify-center">
+                      <div className="text-center text-muted-foreground space-y-2">
+                        <TableIcon className="w-12 h-12 mx-auto opacity-40" />
+                        <p className="font-medium">No data found</p>
+                        <p className="text-sm">This table appears to be empty</p>
+                      </div>
+                    </div>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="structure" className="flex-1">
+                  <div className="text-center text-muted-foreground py-12">
+                    <Columns className="w-12 h-12 mx-auto opacity-40 mb-4" />
+                    <p className="font-medium">Table Structure</p>
+                    <p className="text-sm">Column definitions and schema information will be displayed here</p>
                   </div>
-                </div>
-              ) : (
-                <div className="flex items-center justify-center h-full">
-                  <div className="text-center text-muted-foreground">
-                    <Table className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                    <p>No data found in this table</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </>
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </Card>
         ) : (
-          // Empty state when no table is selected
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center text-muted-foreground max-w-sm">
-              <Database className="w-12 h-12 mx-auto mb-4 opacity-30" />
-              <h3 className="font-medium mb-2">Select a table to browse</h3>
-              <p className="text-sm">
-                Choose a table from the sidebar to view its data and structure.
-              </p>
-            </div>
-          </div>
+          <Card className="flex-1 flex items-center justify-center">
+            <CardContent className="text-center space-y-4 py-12">
+              <Database className="w-16 h-16 mx-auto text-muted-foreground/40" />
+              <div className="space-y-2">
+                <h3 className="text-lg font-semibold">Select a table to browse</h3>
+                <p className="text-muted-foreground max-w-sm">
+                  Choose a table from the sidebar to view its data, structure, and browse through records.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
         )}
       </div>
     </div>
