@@ -37,7 +37,7 @@ export function TableBrowser({ projectId, sessionId }: TableBrowserProps) {
     <div className="flex h-full max-h-[700px] gap-6">
       {/* Left Sidebar - Tables List */}
       <Card className="w-72 flex flex-col">
-        <CardHeader className="pb-2">
+        <CardHeader className="pb-0">
           <CardTitle className="flex items-center gap-2 text-base">
             <Database className="w-5 h-5" />
             Database Tables
@@ -99,7 +99,7 @@ export function TableBrowser({ projectId, sessionId }: TableBrowserProps) {
       <div className="flex-1 flex flex-col min-w-0">
         {selectedTable ? (
           <Card className="flex-1 flex flex-col">
-            <CardHeader className="pb-2">
+            <CardHeader className="pb-0">
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle className="text-xl">{selectedTable}</CardTitle>
@@ -150,7 +150,9 @@ export function TableBrowser({ projectId, sessionId }: TableBrowserProps) {
                               {Object.values(row).map((value, colIndex) => (
                                 <TableCell key={colIndex} className="min-w-32 font-mono text-xs">
                                   {value === null ? (
-                                    <span className="text-muted-foreground italic">NULL</span>
+                                    <Badge variant="outline" className="text-xs font-mono text-muted-foreground border-muted-foreground/30">
+                                      NULL
+                                    </Badge>
                                   ) : (
                                     <div className="truncate max-w-48" title={String(value)}>
                                       {String(value)}
