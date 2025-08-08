@@ -21,12 +21,15 @@ class DatabaseService:
         self.project_id = project_id
         self.session_id = session_id
 
-        # Use session-specific database if sessionId is provided, otherwise use main database
-        if session_id:
+        # Prefer session-specific database for any session, and for main branch prefer the
+        # 'session_main' database (where migrations/tables live). Fall back to legacy 'main'.
+        if session_id and session_id != "main":
             self.db_name = f"kosuke_project_{project_id}_session_{session_id}"
+            self.fallback_db_name: str | None = None
         else:
-            # For main branch, use a consistent main database name
-            self.db_name = f"kosuke_project_{project_id}_main"
+            # No session provided or explicit 'main' → prefer session_main
+            self.db_name = f"kosuke_project_{project_id}_session_main"
+            self.fallback_db_name = f"kosuke_project_{project_id}_main"
 
         # PostgreSQL connection parameters
         self.db_host = "postgres"
@@ -35,7 +38,7 @@ class DatabaseService:
         self.db_password = os.getenv("POSTGRES_PASSWORD", "postgres")
 
     async def _get_connection(self) -> asyncpg.Connection:
-        """Get database connection"""
+        """Get database connection, preferring session_main for main branch with fallback to main"""
         try:
             return await asyncpg.connect(
                 host=self.db_host,
@@ -45,9 +48,27 @@ class DatabaseService:
                 database=self.db_name,
             )
         except asyncpg.InvalidCatalogNameError:
-            # Database doesn't exist, create it
+            # If preferred DB does not exist, try fallback (legacy 'main') before creating anything
+            if getattr(self, "fallback_db_name", None):
+                try:
+                    conn = await asyncpg.connect(
+                        host=self.db_host,
+                        port=self.db_port,
+                        user=self.db_user,
+                        password=self.db_password,
+                        database=self.fallback_db_name,
+                    )
+                    # Switch to fallback for future operations
+                    self.db_name = self.fallback_db_name  # type: ignore[assignment]
+                    self.fallback_db_name = None
+                    return conn
+                except asyncpg.InvalidCatalogNameError:
+                    # Fallback also missing; proceed to create the preferred DB
+                    pass
+
+            # Create the preferred database when neither exists
             await self._create_database()
-            # Try connecting again
+            # Try connecting again to the preferred DB
             return await asyncpg.connect(
                 host=self.db_host,
                 port=self.db_port,
