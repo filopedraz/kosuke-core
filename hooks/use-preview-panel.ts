@@ -32,6 +32,17 @@ export function usePreviewPanel({
   const [isRequestInProgress, setIsRequestInProgress] = useState(false);
   const [gitStatus, setGitStatus] = useState<GitUpdateStatus | null>(null);
 
+  // Track and cancel any in-flight polling cycles when a new one starts or on unmount
+  const pollIdRef = useRef(0);
+  const isUnmountedRef = useRef(false);
+  useEffect(() => {
+    return () => {
+      isUnmountedRef.current = true;
+      // Invalidate any ongoing poll cycles
+      pollIdRef.current += 1;
+    };
+  }, []);
+
   // Check if the preview server is ready
   const checkServerHealth = useCallback(async (url: string): Promise<boolean> => {
     try {
@@ -62,39 +73,64 @@ export function usePreviewPanel({
 
   // Poll the server until it's ready
   const pollServerUntilReady = useCallback(
-    async (url: string, maxAttempts = 30) => {
+    async (url: string) => {
       console.log(
         '[Preview Panel] Starting health check polling (will wait 5s before first attempt)'
       );
+
+      // Bump poll id to cancel any previous polling cycles
+      const currentPollId = ++pollIdRef.current;
       let attempts = 0;
 
+      const computeProgress = (numAttempts: number) => {
+        // Saturating progress that slowly approaches 90% over time
+        // 1→30%, 2→40%, 3→50%, 4→60%, 5→70%, 6→78%, 7→84%, 8→88%, 9+→90%
+        const base = 20;
+        const increment = Math.floor(Math.log2(numAttempts + 1) * 10);
+        return Math.min(90, base + increment);
+      };
+
+      const nextDelayMs = (numAttempts: number) => {
+        // Backoff: first 3 attempts 5s, then exponential up to 30s
+        if (numAttempts <= 3) return 5000;
+        const exp = Math.min(5, numAttempts - 3); // cap exponent growth
+        return Math.min(30000, 2000 * 2 ** exp);
+      };
+
       const poll = async () => {
-        if (attempts >= maxAttempts) {
-          setError('Server failed to start after multiple attempts');
-          setStatus('error');
+        // Stop if a newer poll started or component unmounted
+        if (currentPollId !== pollIdRef.current || isUnmountedRef.current) {
           return;
         }
 
-        attempts++;
-        setProgress(Math.min(90, Math.floor((attempts / maxAttempts) * 100)));
+        attempts += 1;
+        const progressValue = computeProgress(attempts);
+        if (!isUnmountedRef.current) setProgress(progressValue);
 
         const isHealthy = await checkServerHealth(url);
+
+        // Stop if a newer poll started or component unmounted after await
+        if (currentPollId !== pollIdRef.current || isUnmountedRef.current) {
+          return;
+        }
 
         if (isHealthy) {
           console.log('[Preview Panel] Server is healthy');
           setStatus('ready');
           setProgress(100);
-        } else {
-          console.log(
-            `[Preview Panel] Health check attempt ${attempts}/${maxAttempts} failed, retrying in 3s`
-          );
-          // Use longer delays for more patient polling
-          const delay = attempts <= 3 ? 5000 : 3000; // 5s for first 3 attempts, then 3s
-          setTimeout(poll, delay);
+          return;
         }
+
+        const delay = nextDelayMs(attempts);
+        console.log(
+          `[Preview Panel] Health check attempt ${attempts} failed, retrying in ${Math.round(
+            delay / 1000
+          )}s`
+        );
+        setTimeout(poll, delay);
       };
 
-      // Wait 5 seconds before starting health checks to give container time to start
+      // Initial wait to give container/proxy time to initialize
       setTimeout(poll, 5000);
     },
     [checkServerHealth]
