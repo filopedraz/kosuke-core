@@ -2,12 +2,14 @@
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useDatabaseSchema } from '@/hooks/use-database-schema';
 import { useTableData } from '@/hooks/use-table-data';
 import type { TableBrowserProps } from '@/lib/types';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { ChevronLeft, ChevronRight, Database, Table as TableIcon } from 'lucide-react';
 import { useState } from 'react';
 import { TableBrowserSkeleton } from './skeletons/table-browser-skeleton';
 
@@ -32,117 +34,192 @@ export function TableBrowser({ projectId, sessionId }: TableBrowserProps) {
   const tables = schema?.tables || [];
 
   return (
-    <div className="space-y-4">
-      {/* Table selector */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Select Table</CardTitle>
+    <div className="flex h-full max-h-[700px] gap-6">
+      {/* Left Sidebar - Tables List */}
+      <Card className="w-72 flex flex-col">
+        <CardHeader className="pb-0">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Database className="w-5 h-5" />
+            Database Tables
+          </CardTitle>
+          <CardDescription>
+            {tables.length} {tables.length === 1 ? 'table' : 'tables'} available
+          </CardDescription>
         </CardHeader>
-        <CardContent>
-          <Select value={selectedTable || ''} onValueChange={setSelectedTable}>
-            <SelectTrigger>
-              <SelectValue placeholder="Choose a table to browse" />
-            </SelectTrigger>
-            <SelectContent>
-              {tables.map(table => (
-                <SelectItem key={table.name} value={table.name}>
-                  {table.name} ({table.row_count} rows)
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <CardContent className="flex-1 p-0">
+          <ScrollArea className="h-[520px]">
+            {tables.length === 0 ? (
+              <div className="p-6 text-center text-muted-foreground text-sm">
+                No tables found
+              </div>
+            ) : (
+              <div className="p-3 space-y-1">
+                {tables.map(table => (
+                  <button
+                    key={table.name}
+                    onClick={() => {
+                      setSelectedTable(table.name);
+                      setCurrentPage(0);
+                    }}
+                    className={cn(
+                      "w-full text-left p-3 rounded-lg hover:bg-muted/70 transition-all duration-200 group border",
+                      selectedTable === table.name
+                        ? "bg-muted border-border shadow-sm"
+                        : "border-transparent hover:border-border/50"
+                    )}
+                  >
+                    <div className="flex items-center gap-3">
+                      <TableIcon className={cn(
+                        "w-4 h-4 transition-colors",
+                        selectedTable === table.name
+                          ? "text-foreground"
+                          : "text-muted-foreground group-hover:text-foreground"
+                      )} />
+                      <div className="flex-1 min-w-0">
+                        <div className={cn(
+                          "font-medium text-sm truncate transition-colors",
+                          selectedTable === table.name ? "text-foreground" : "text-foreground/90"
+                        )}>
+                          {table.name}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {table.row_count.toLocaleString()} rows
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </ScrollArea>
         </CardContent>
       </Card>
 
-      {/* Table data */}
-      {selectedTable && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>{selectedTable}</CardTitle>
-              {tableData && (
-                <Badge variant="secondary">
-                  {tableData.total_rows} total rows
-                </Badge>
-              )}
-            </div>
-          </CardHeader>
-          <CardContent>
-            {dataLoading ? (
-              <div className="flex items-center justify-center h-32">
-                <div className="text-muted-foreground">Loading table data...</div>
-              </div>
-            ) : error ? (
-              <div className="text-center text-destructive">
-                Error loading table data: {error.message}
-              </div>
-            ) : tableData && tableData.data.length > 0 ? (
-              <>
-                {/* Table */}
-                <div className="rounded-md border overflow-auto max-h-96">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b bg-muted/50">
-                        {Object.keys(tableData.data[0]).map(column => (
-                          <th key={column} className="p-2 text-left font-medium">
-                            {column}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {tableData.data.map((row, index) => (
-                        <tr key={index} className="border-b">
-                          {Object.values(row).map((value, colIndex) => (
-                            <td key={colIndex} className="p-2 font-mono text-sm">
-                              {value === null ? (
-                                <span className="text-muted-foreground italic">NULL</span>
-                              ) : (
-                                String(value)
-                              )}
-                            </td>
-                          ))}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+      {/* Right Content Area */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {selectedTable ? (
+          <Card className="flex-1 flex flex-col">
+            <CardHeader className="pb-0">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-xl">{selectedTable}</CardTitle>
+                  {tableData && (
+                    <CardDescription>
+                      {tableData.total_rows.toLocaleString()} total rows
+                    </CardDescription>
+                  )}
                 </div>
+                {tableData && (
+                  <Badge variant="secondary" className="font-mono">
+                    {tableData.returned_rows} / {tableData.total_rows}
+                  </Badge>
+                )}
+              </div>
+            </CardHeader>
 
-                {/* Pagination */}
-                <div className="flex items-center justify-between mt-4">
-                  <div className="text-sm text-muted-foreground">
-                    Showing {tableData.offset + 1} to {Math.min(tableData.offset + tableData.returned_rows, tableData.total_rows)} of {tableData.total_rows} rows
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(p => Math.max(0, p - 1))}
-                      disabled={currentPage === 0}
-                    >
-                      <ChevronLeft className="w-4 h-4" />
-                      Previous
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(p => p + 1)}
-                      disabled={tableData.offset + tableData.returned_rows >= tableData.total_rows}
-                    >
-                      Next
-                      <ChevronRight className="w-4 h-4" />
-                    </Button>
+            <CardContent className="flex-1 flex flex-col space-y-3 pb-4">
+              {dataLoading ? (
+                <div className="flex-1 flex items-center justify-center">
+                  <div className="text-muted-foreground">Loading table data...</div>
+                </div>
+              ) : error ? (
+                <div className="flex-1 flex items-center justify-center">
+                  <div className="text-center text-destructive space-y-2">
+                    <p className="font-medium">Error loading table data</p>
+                    <p className="text-sm">{error.message}</p>
                   </div>
                 </div>
-              </>
-            ) : (
-              <div className="text-center text-muted-foreground">
-                No data found in this table
+              ) : tableData && tableData.data.length > 0 ? (
+                <>
+                  {/* Table with horizontal scroll */}
+                  <div className="flex-1 border rounded-lg">
+                    <ScrollArea className="h-[440px] w-full">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            {Object.keys(tableData.data[0]).map(column => (
+                              <TableHead key={column} className="min-w-32 bg-muted/30 font-semibold">
+                                {column}
+                              </TableHead>
+                            ))}
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {tableData.data.map((row, index) => (
+                            <TableRow key={index}>
+                              {Object.values(row).map((value, colIndex) => (
+                                <TableCell key={colIndex} className="min-w-32 font-mono text-xs">
+                                  {value === null ? (
+                                    <Badge variant="outline" className="text-xs font-mono text-muted-foreground border-muted-foreground/30">
+                                      NULL
+                                    </Badge>
+                                  ) : (
+                                    <div className="truncate max-w-48" title={String(value)}>
+                                      {String(value)}
+                                    </div>
+                                  )}
+                                </TableCell>
+                              ))}
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                      <ScrollBar orientation="horizontal" />
+                    </ScrollArea>
+                  </div>
+
+                  {/* Pagination */}
+                  <div className="flex items-center justify-between pt-1">
+                    <div className="text-sm text-muted-foreground">
+                      Showing <span className="font-medium">{tableData.offset + 1}–{Math.min(tableData.offset + tableData.returned_rows, tableData.total_rows)}</span> of <span className="font-medium">{tableData.total_rows.toLocaleString()}</span> rows
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(p => Math.max(0, p - 1))}
+                        disabled={currentPage === 0}
+                      >
+                        <ChevronLeft className="w-4 h-4 mr-1" />
+                        Previous
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(p => p + 1)}
+                        disabled={tableData.offset + tableData.returned_rows >= tableData.total_rows}
+                      >
+                        Next
+                        <ChevronRight className="w-4 h-4 ml-1" />
+                      </Button>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="flex-1 flex items-center justify-center">
+                  <div className="text-center text-muted-foreground space-y-2">
+                    <TableIcon className="w-12 h-12 mx-auto opacity-40" />
+                    <p className="font-medium">No data found</p>
+                    <p className="text-sm">This table appears to be empty</p>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        ) : (
+          <Card className="flex-1 flex items-center justify-center">
+            <CardContent className="text-center space-y-4 py-12">
+              <Database className="w-16 h-16 mx-auto text-muted-foreground/40" />
+              <div className="space-y-2">
+                <h3 className="text-lg font-semibold">Select a table to browse</h3>
+                <p className="text-muted-foreground max-w-sm">
+                  Choose a table from the sidebar to view its data, structure, and browse through records.
+                </p>
               </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
+            </CardContent>
+          </Card>
+        )}
+      </div>
     </div>
   );
 }
