@@ -46,21 +46,17 @@ export function usePreviewPanel({
   // Check if the preview server is ready
   const checkServerHealth = useCallback(async (url: string): Promise<boolean> => {
     try {
-      // Create a controller to timeout the request after 3 seconds
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3000);
-
-      // With no-cors mode, we can't read the response, but if the fetch succeeds, the server is up
-      await fetch(url, {
-        method: 'HEAD',
-        mode: 'no-cors',
+      const timeoutId = setTimeout(() => controller.abort(), 4000);
+      const res = await fetch(`/api/preview/health?url=${encodeURIComponent(url)}`, {
+        method: 'GET',
         signal: controller.signal,
       });
-
       clearTimeout(timeoutId);
-      return true; // If we get here, the server is responding
+      if (!res.ok) return false;
+      const data = await res.json();
+      return Boolean(data?.ok === true && data?.status === 200);
     } catch (error) {
-      // Only log every 5th failure to reduce console noise
       if (Math.random() < 0.2) {
         console.log(
           '[Preview Panel] Health check failed (sample):',
