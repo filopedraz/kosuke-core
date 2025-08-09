@@ -14,6 +14,28 @@ from app.utils.config import settings
 logger = logging.getLogger(__name__)
 
 
+SYSTEM_PROMPT = """
+You are an expert UI/UX designer and color specialist.
+Your task is to generate a cohesive, modern, and accessible color palette for
+both light and dark modes for a web application.
+
+You will receive a short list of user-provided keywords in the user message.
+Generate the palette to be consistent with, inspired by, and reflective of
+those keywords (tone, mood, industry, style), while still adhering to the
+accessibility and structural requirements below.
+
+CRITICAL INSTRUCTIONS:
+1. Return ALL existing color variables with their exact names — do not miss any.
+2. IGNORE ALL EXISTING COLOR VALUES — only keep variable names and generate entirely new values.
+3. Ensure proper contrast ratios for accessibility (WCAG AA compliance).
+4. Create a balanced palette with primary, secondary, accent, and semantic colors.
+5. Maintain semantic meaning (e.g., destructive should be red-based).
+6. Output MUST be a valid JSON array of color objects, and nothing else.
+7. Use OKLCH values as a plain string 'L C H' (no oklch()). Typical chroma range up to 0.4.
+8. Include both light_value and dark_value when appropriate; scope is usually 'root'.
+"""
+
+
 class ColorPaletteService:
     """
     Service for generating AI-powered color palettes using Claude
@@ -236,59 +258,16 @@ class ColorPaletteService:
             for color in existing_colors
         ]
 
-        system_prompt = (
-            "You are an expert UI/UX designer and color specialist. "
-            "Your task is to generate a cohesive, modern, and accessible "
-            "color palette for both light and dark modes.\n\n"
-            "Follow these requirements:\n"
-            "1. CRITICAL: Return ALL existing color variables with their exact names - "
-            "do not miss any!\n"
-            "2. IGNORE ALL EXISTING COLOR VALUES - only keep the variable names and "
-            "generate entirely new color values\n"
-            "3. Ensure proper contrast ratios for accessibility (WCAG AA compliance)\n"
-            "4. Create a balanced palette with primary, secondary, and accent colors\n"
-            "5. Maintain semantic meaning of color variables (e.g., destructive should be red-based)\n"
-            "6. Format ALL output as a valid JSON array of color objects\n"
-            "7. All colors should be in OKLCH format as string like '0.65 0.15 180' "
-            "(lightness chroma hue, NOT oklch(0.65 0.15 180))\n"
-            "8. Return only the JSON array, no explanations or additional text\n"
-            "9. IMPORTANT: Your response MUST include ALL existing color variables without exception\n"
-            "10. Use OKLCH values: lightness (0-1), chroma (0-0.4 typical), hue (0-360 degrees)\n\n"
-            "Example output format:\n"
-            "[\n"
-            "  {\n"
-            "    'name': '--background',\n"
-            "    'light_value': '1 0 0',\n"
-            "    'dark_value': '0.145 0 0',\n"
-            "    'scope': 'root'\n"
-            "  },\n"
-            "  {\n"
-            "    'name': '--foreground',\n"
-            "    'light_value': '0.145 0 0',\n"
-            "    'dark_value': '0.985 0 0',\n"
-            "    'scope': 'root'\n"
-            "  },\n"
-            "  {\n"
-            "    'name': '--primary',\n"
-            "    'light_value': '0.488 0.243 264.376',\n"
-            "    'dark_value': '0.646 0.222 41.116',\n"
-            "    'scope': 'root'\n"
-            "  }\n"
-            "]"
+        # Build system content using the global SYSTEM_PROMPT and include dynamic context
+        system_content = (
+            SYSTEM_PROMPT
+            + "\n\nExisting color variables (names only, include ALL in output):\n"
+            + json.dumps(existing_colors_json, indent=2)
+            + f"\n\nProject ID: {project_id}"
         )
 
-        keyword_text = f"Keywords to influence the palette: {keywords}" if keywords else ""
-        user_prompt = (
-            "Generate a color palette for my website. Here are my existing color variables "
-            "which MUST ALL be included in your response:\n"
-            f"{json.dumps(existing_colors_json, indent=2)}\n\n"
-            f"Project ID: {project_id}\n"
-            f"{keyword_text}\n\n"
-            "Create a cohesive, modern color palette"
-            f'{" with influence from the provided keywords" if keywords else ""}. '
-            "You MUST include ALL existing color variables in your response - "
-            "do not miss any variables that were in the input list."
-        )
+        # Per spec, the user prompt should include only the optional keywords
+        user_prompt = keywords or ""
 
         try:
             logger.info("🤖 Calling Claude for color generation...")
@@ -296,20 +275,19 @@ class ColorPaletteService:
             # One-shot call with short timeout and single retry on transient errors
             async def _call_once():
                 return await self.client.messages.create(
-                    model="claude-3-7-sonnet-20250219",
+                    model=settings.model_name,
                     max_tokens=4000,
                     temperature=0.7,
-                    system=system_prompt,
+                    system=system_content,
                     messages=[{"role": "user", "content": user_prompt}],
                 )
 
             try:
                 response = await _call_once()
-            except Exception as first_error:
+            except Exception:
                 import asyncio
-                import random
 
-                await asyncio.sleep(0.2 + random.random() * 0.3)
+                await asyncio.sleep(0.3)
                 response = await _call_once()
 
             response_text = response.content[0].text
@@ -352,14 +330,14 @@ class ColorPaletteService:
         if len(parts) != 3:
             raise ValueError(f"Invalid {scope} OKLCH for {var_name}: expected 'L C H' (3 parts)")
         try:
-            L, C, H = float(parts[0]), float(parts[1]), float(parts[2])
-        except Exception:
-            raise ValueError(f"Invalid {scope} OKLCH for {var_name}: non-numeric components")
-        if not (0.0 <= L <= 1.0):
+            lightness, chroma, hue = float(parts[0]), float(parts[1]), float(parts[2])
+        except Exception as exc:
+            raise ValueError(f"Invalid {scope} OKLCH for {var_name}: non-numeric components") from exc
+        if not (0.0 <= lightness <= 1.0):
             raise ValueError(f"Invalid {scope} OKLCH for {var_name}: L out of range [0,1]")
-        if not (0.0 <= C <= 0.5):
+        if not (0.0 <= chroma <= 0.5):
             raise ValueError(f"Invalid {scope} OKLCH for {var_name}: C out of range [0,0.5]")
-        if not (0.0 <= H <= 360.0):
+        if not (0.0 <= hue <= 360.0):
             raise ValueError(f"Invalid {scope} OKLCH for {var_name}: H out of range [0,360]")
 
     async def _find_globals_css(self, project_id: int) -> Path | None:
