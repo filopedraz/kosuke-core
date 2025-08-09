@@ -55,8 +55,11 @@ class FileSystemService:
             # Ensure the directory exists
             file_path.parent.mkdir(parents=True, exist_ok=True)
 
-            async with aiofiles.open(file_path, "w", encoding="utf-8") as f:
+            # Atomic write: write to temp then rename
+            tmp_path = str(file_path) + ".tmp"
+            async with aiofiles.open(tmp_path, "w", encoding="utf-8") as f:
                 await f.write(content)
+            os.replace(tmp_path, file_path)
         except Exception as error:
             logger.error(f"Failed to create file {file_path}: {error}")
             raise error
@@ -68,8 +71,11 @@ class FileSystemService:
         Mirrors the TypeScript updateFile function from lib/fs/operations.ts
         """
         try:
-            async with aiofiles.open(file_path, "w", encoding="utf-8") as f:
+            # Atomic write: write to temp then rename
+            tmp_path = file_path + ".tmp"
+            async with aiofiles.open(tmp_path, "w", encoding="utf-8") as f:
                 await f.write(content)
+            os.replace(tmp_path, file_path)
         except Exception as error:
             logger.error(f"Failed to update file {file_path}: {error}")
             raise error
@@ -285,5 +291,4 @@ class FileSystemService:
         return nodes
 
 
-# Global instance
-fs_service = FileSystemService()
+# Deprecated: use app.utils.providers.get_fs_service instead of module singletons

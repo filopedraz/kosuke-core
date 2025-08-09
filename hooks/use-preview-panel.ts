@@ -1,12 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useToast } from '@/hooks/use-toast';
-import type {
-  GitUpdateStatus,
-  PreviewStatus,
-  UsePreviewPanelOptions,
-  UsePreviewPanelReturn,
-} from '@/lib/types';
+import type { PreviewStatus, UsePreviewPanelOptions, UsePreviewPanelReturn } from '@/lib/types';
 import { useStartPreview } from './use-preview-status';
 
 export function usePreviewPanel({
@@ -30,7 +25,7 @@ export function usePreviewPanel({
   const [iframeKey, setIframeKey] = useState(0);
   const [isDownloading, setIsDownloading] = useState(false);
   const requestInFlightRef = useRef(false);
-  const [gitStatus, setGitStatus] = useState<GitUpdateStatus | null>(null);
+  // Removed gitStatus from status flow; pull flow handles its own toasts
 
   // Check if the preview server is ready by requiring a 200 from server-side probe
   const checkServerHealth = useCallback(async (url: string): Promise<boolean> => {
@@ -108,7 +103,7 @@ export function usePreviewPanel({
       setStatus('loading');
       setProgress(0);
       setError(null);
-      setGitStatus(null); // Reset git status on new fetch
+      // No git status in status/start flows
 
       try {
         // Use main branch API when no session is selected
@@ -134,14 +129,7 @@ export function usePreviewPanel({
         const data = await response.json();
         console.log(`[Preview Panel] Preview status response:`, data);
 
-        // Handle git status information (for manual pulls only now)
-        if (data.git_status && (!sessionId || sessionId === 'main')) {
-          setGitStatus(data.git_status);
-          console.log('[Preview Panel] Git status:', data.git_status);
-
-          // Note: Toast notifications for git updates are now handled by the pull hook
-          // since we removed automatic pulling
-        }
+        // git status is no longer included here; handled by pull endpoint only
 
         if (data.previewUrl || data.url) {
           // Use the direct preview URL (handle both previewUrl and url for compatibility)
@@ -321,7 +309,7 @@ export function usePreviewPanel({
     iframeKey,
     isDownloading,
     isStarting,
-    gitStatus,
+    // gitStatus removed
 
     // Actions
     handleRefresh,

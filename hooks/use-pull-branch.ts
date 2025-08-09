@@ -41,15 +41,15 @@ export function usePullBranch({ projectId, sessionId, onSuccess, onError }: UseP
       const branchText = sessionId ? `session ${sessionId}` : 'main branch';
 
       if (data.success) {
-        const commitCount = data.git_status.commits_pulled;
-        const action = data.git_status.action;
+        const commitCount = data.pullResult.commitsPulled;
+        const changed = data.pullResult.changed;
 
-        if (action === 'pulled' && commitCount > 0) {
+        if (changed && commitCount > 0) {
           toast({
             title: 'Successfully pulled changes',
             description: `Updated ${branchText} with ${commitCount} new commit${commitCount === 1 ? '' : 's'}`,
           });
-        } else if (action === 'no_remote') {
+        } else if (data.pullResult.message?.toLowerCase().includes('no remote')) {
           toast({
             title: 'Branch up to date',
             description: `No remote branch found for ${branchText}`,
@@ -68,7 +68,7 @@ export function usePullBranch({ projectId, sessionId, onSuccess, onError }: UseP
           });
         }
       } else {
-        throw new Error(data.git_status.message || 'Pull operation failed');
+        throw new Error(data.pullResult?.message || 'Pull operation failed');
       }
 
       onSuccess?.(data);

@@ -8,7 +8,7 @@ from anthropic import AsyncAnthropic
 from app.models.branding import ApplyPaletteResponse
 from app.models.branding import ColorPaletteResponse
 from app.models.branding import ColorVariable
-from app.services.fs_service import fs_service
+from app.services.fs_service import FileSystemService
 from app.utils.config import settings
 
 logger = logging.getLogger(__name__)
@@ -35,20 +35,20 @@ class ColorPaletteService:
         try:
             logger.info(f"🎨 Generating color palette for project {project_id}")
 
-            # Analyze project content
-            project_content = await self._analyze_project_content(project_id)
-
             # Extract existing colors if not provided
             if existing_colors is None:
                 existing_colors = await self._extract_existing_colors(project_id)
 
             logger.info(f"📊 Found {len(existing_colors)} existing colors")
-            logger.info(f"🔍 Project content length: {len(project_content)} characters")
 
             # Generate colors using Claude
-            generated_colors = await self._generate_colors_with_claude(
-                project_id, project_content, keywords, existing_colors
-            )
+            generated_colors = await self._generate_colors_with_claude(project_id, keywords, existing_colors)
+
+            # Validate all generated color values strictly before returning
+            for color in generated_colors:
+                self._validate_oklch(color.light_value, color.name, scope="light")
+                if color.dark_value:
+                    self._validate_oklch(color.dark_value, color.name, scope="dark")
 
             # Apply colors if requested
             applied = False
@@ -61,7 +61,7 @@ class ColorPaletteService:
                 message=f"Successfully generated {len(generated_colors)} colors",
                 colors=generated_colors,
                 applied=applied,
-                project_content=project_content[:200] + "..." if len(project_content) > 200 else project_content,
+                project_content="",
             )
 
         except Exception as error:
@@ -85,13 +85,19 @@ class ColorPaletteService:
                 )
 
             # Read current CSS content
-            css_content = await fs_service.read_file(str(globals_path))
+            css_content = await FileSystemService().read_file(str(globals_path))
+
+            # Validate all provided colors strictly before applying
+            for color in colors:
+                self._validate_oklch(color.light_value, color.name, scope="light")
+                if color.dark_value:
+                    self._validate_oklch(color.dark_value, color.name, scope="dark")
 
             # Apply color variables to CSS
             updated_css = await self._apply_colors_to_css(css_content, colors)
 
-            # Write updated CSS back to file
-            await fs_service.update_file(str(globals_path), updated_css)
+            # Write updated CSS back to file atomically
+            await FileSystemService().update_file(str(globals_path), updated_css)
 
             logger.info(f"✅ Successfully applied {len(colors)} colors to globals.css")
 
@@ -107,46 +113,6 @@ class ColorPaletteService:
                 success=False, message=f"Failed to apply color palette: {error!s}", applied_colors=0
             )
 
-    async def _analyze_project_content(self, project_id: int) -> str:
-        """
-        Analyze project content to understand the theme and context
-        """
-        try:
-            project_path = fs_service.get_project_path(project_id)
-
-            # Look for main content files
-            content_files = [
-                "app/page.tsx",
-                "app/page.jsx",
-                "app/layout.tsx",
-                "app/layout.jsx",
-                "pages/index.tsx",
-                "pages/index.jsx",
-                "README.md",
-                "package.json",
-            ]
-
-            combined_content = []
-
-            for file_path in content_files:
-                full_path = project_path / file_path
-                if full_path.exists():
-                    try:
-                        content = await fs_service.read_file(str(full_path))
-                        # Limit content length to avoid huge prompts
-                        if len(content) > 1000:
-                            content = content[:1000] + "..."
-                        combined_content.append(f"=== {file_path} ===\n{content}\n")
-                    except Exception as e:
-                        logger.warning(f"⚠️ Could not read {file_path}: {e}")
-                        continue
-
-            return "\n".join(combined_content)
-
-        except Exception as error:
-            logger.warning(f"⚠️ Error analyzing project content: {error}")
-            return ""
-
     async def _extract_existing_colors(self, project_id: int) -> list[ColorVariable]:
         """
         Extract existing CSS color variables from globals.css
@@ -156,7 +122,7 @@ class ColorPaletteService:
             if not globals_path:
                 return []
 
-            css_content = await fs_service.read_file(str(globals_path))
+            css_content = await FileSystemService().read_file(str(globals_path))
 
             colors = []
 
@@ -259,7 +225,7 @@ class ColorPaletteService:
         return variables
 
     async def _generate_colors_with_claude(
-        self, project_id: int, project_content: str, keywords: str, existing_colors: list[ColorVariable]
+        self, project_id: int, keywords: str, existing_colors: list[ColorVariable]
     ) -> list[ColorVariable]:
         """
         Use Claude to generate a color palette
@@ -311,19 +277,12 @@ class ColorPaletteService:
             "]"
         )
 
-        content_summary = (
-            f"Project content summary (for context):{project_content[:500]}"
-            f'{"..." if len(project_content) > 500 else ""}'
-            if project_content
-            else ""
-        )
         keyword_text = f"Keywords to influence the palette: {keywords}" if keywords else ""
         user_prompt = (
             "Generate a color palette for my website. Here are my existing color variables "
             "which MUST ALL be included in your response:\n"
             f"{json.dumps(existing_colors_json, indent=2)}\n\n"
             f"Project ID: {project_id}\n"
-            f"{content_summary}\n"
             f"{keyword_text}\n\n"
             "Create a cohesive, modern color palette"
             f'{" with influence from the provided keywords" if keywords else ""}. '
@@ -334,13 +293,24 @@ class ColorPaletteService:
         try:
             logger.info("🤖 Calling Claude for color generation...")
 
-            response = await self.client.messages.create(
-                model="claude-3-7-sonnet-20250219",
-                max_tokens=4000,
-                temperature=0.5,
-                system=system_prompt,
-                messages=[{"role": "user", "content": user_prompt}],
-            )
+            # One-shot call with short timeout and single retry on transient errors
+            async def _call_once():
+                return await self.client.messages.create(
+                    model="claude-3-7-sonnet-20250219",
+                    max_tokens=4000,
+                    temperature=0.7,
+                    system=system_prompt,
+                    messages=[{"role": "user", "content": user_prompt}],
+                )
+
+            try:
+                response = await _call_once()
+            except Exception as first_error:
+                import asyncio
+                import random
+
+                await asyncio.sleep(0.2 + random.random() * 0.3)
+                response = await _call_once()
 
             response_text = response.content[0].text
             logger.info(f"📝 Claude response length: {len(response_text)} characters")
@@ -373,11 +343,30 @@ class ColorPaletteService:
             logger.error(f"❌ Error calling Claude: {error}")
             raise error
 
+    def _validate_oklch(self, value: str | None, var_name: str, scope: str = "light") -> None:
+        """Validate OKLCH value string 'L C H'; raise ValueError on invalid."""
+        if not value or not isinstance(value, str):
+            raise ValueError(f"Invalid {scope} OKLCH for {var_name}: missing value")
+        # Expect three floats separated by spaces
+        parts = value.strip().split()
+        if len(parts) != 3:
+            raise ValueError(f"Invalid {scope} OKLCH for {var_name}: expected 'L C H' (3 parts)")
+        try:
+            L, C, H = float(parts[0]), float(parts[1]), float(parts[2])
+        except Exception:
+            raise ValueError(f"Invalid {scope} OKLCH for {var_name}: non-numeric components")
+        if not (0.0 <= L <= 1.0):
+            raise ValueError(f"Invalid {scope} OKLCH for {var_name}: L out of range [0,1]")
+        if not (0.0 <= C <= 0.5):
+            raise ValueError(f"Invalid {scope} OKLCH for {var_name}: C out of range [0,0.5]")
+        if not (0.0 <= H <= 360.0):
+            raise ValueError(f"Invalid {scope} OKLCH for {var_name}: H out of range [0,360]")
+
     async def _find_globals_css(self, project_id: int) -> Path | None:
         """
         Find the globals.css file in the project
         """
-        project_path = fs_service.get_project_path(project_id)
+        project_path = FileSystemService().get_project_path(project_id)
 
         # Common locations for globals.css
         possible_paths = [
@@ -437,7 +426,3 @@ class ColorPaletteService:
             return css_content[:import_end] + f"\n\n{new_block}\n" + css_content[import_end:]
         # Insert at beginning
         return f"{new_block}\n\n{css_content}"
-
-
-# Global instance
-color_palette_service = ColorPaletteService()

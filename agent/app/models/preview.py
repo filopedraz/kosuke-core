@@ -19,17 +19,12 @@ class ContainerInfo(BaseModel):
     container_name: str
     port: int
     url: str
-    compilation_complete: bool = False
-    is_responding: bool = False
-    git_status: GitUpdateStatus | None = None
 
 
 class PreviewStatus(BaseModel):
     running: bool
     url: str | None = None
-    compilation_complete: bool
     is_responding: bool
-    git_status: GitUpdateStatus | None = None
 
 
 class StartPreviewRequest(BaseModel):
@@ -43,6 +38,15 @@ class StopPreviewRequest(BaseModel):
     session_id: str | None = None  # Optional for main branch
 
 
+class PullResult(BaseModel):
+    changed: bool
+    commits_pulled: int
+    message: str
+    previous_commit: str | None = None
+    new_commit: str | None = None
+    branch_name: str | None = None
+
+
 class PullRequest(BaseModel):
     project_id: int
     session_id: str | None = None  # Optional for main branch
@@ -51,5 +55,5 @@ class PullRequest(BaseModel):
 
 class PullResponse(BaseModel):
     success: bool
-    git_status: GitUpdateStatus
+    pullResult: PullResult
     container_restarted: bool = False

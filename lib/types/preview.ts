@@ -20,7 +20,14 @@ export interface PullRequest {
 
 export interface PullResponse {
   success: boolean;
-  git_status: GitUpdateStatus;
+  pullResult: {
+    changed: boolean;
+    commitsPulled: number;
+    message: string;
+    previousCommit?: string;
+    newCommit?: string;
+    branchName?: string;
+  };
   container_restarted: boolean;
 }
 
@@ -93,9 +100,7 @@ export interface PreviewStatusResponse {
   progress?: number;
   error?: string;
   running?: boolean;
-  compilation_complete?: boolean;
   is_responding?: boolean;
-  git_status?: GitUpdateStatus;
 }
 
 export interface StartPreviewResponse {
@@ -105,9 +110,8 @@ export interface StartPreviewResponse {
   error?: string;
   project_id?: number;
   session_id?: string;
-  compilation_complete?: boolean;
+  running?: boolean;
   is_responding?: boolean;
-  git_status?: GitUpdateStatus;
 }
 
 export interface StopPreviewResponse {

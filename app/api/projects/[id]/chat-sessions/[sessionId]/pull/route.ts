@@ -94,7 +94,20 @@ export async function POST(
     }
 
     const result = await response.json();
-    return NextResponse.json(result);
+    // Map backend snake_case to frontend camelCase for compatibility
+    const mapped = {
+      success: !!result.success,
+      container_restarted: !!result.container_restarted,
+      pullResult: {
+        changed: !!result.pullResult?.changed,
+        commitsPulled: Number(result.pullResult?.commits_pulled || 0),
+        message: result.pullResult?.message || '',
+        previousCommit: result.pullResult?.previous_commit || null,
+        newCommit: result.pullResult?.new_commit || null,
+        branchName: result.pullResult?.branch_name || null,
+      },
+    } as const;
+    return NextResponse.json(mapped);
 
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';

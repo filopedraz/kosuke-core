@@ -82,32 +82,6 @@ class ClaudeCodeService:
             logger.error(f"❌ Failed to list directory contents: {e}")
             raise
 
-    def _get_cursor_rules(self) -> str:
-        """
-        Fetch cursor rules from .cursor/rules/general.mdc if it exists
-        """
-        try:
-            cursor_rules_path = self.project_path / ".cursor" / "rules" / "general.mdc"
-            logger.debug(f"🔍 Looking for cursor rules at: {cursor_rules_path}")
-
-            if cursor_rules_path.exists():
-                rules_content = cursor_rules_path.read_text(encoding="utf-8")
-                logger.info(f"📋 Found cursor rules ({len(rules_content)} chars)")
-
-                return f"""
-================================================================
-Project Guidelines & Cursor Rules
-================================================================
-{rules_content}
-================================================================
-"""
-
-            logger.debug("📋 No cursor rules file found")
-            return ""
-        except Exception as e:
-            logger.warning(f"⚠️ Could not load cursor rules: {e}")
-            return ""
-
     async def run_agentic_query(self, prompt: str, max_turns: int = 25) -> AsyncGenerator[dict[str, Any], None]:
         """
         Run a query using the claude-code agentic pipeline with a single agent
@@ -124,16 +98,11 @@ Project Guidelines & Cursor Rules
         logger.info(f"🔄 Max turns: {max_turns}")
         logger.info(f"📁 Working directory: {self.project_path}")
 
-        # Count input tokens from prompt and system prompt
+        # Count input tokens only from user prompt (plain SDK usage)
         prompt_tokens = count_tokens(prompt)
-        system_prompt = self._build_system_prompt()
-        system_tokens = count_tokens(system_prompt)
-
-        # Add to input tokens (context tokens include system prompt)
         self.total_input_tokens += prompt_tokens
-        self.total_context_tokens += system_tokens
 
-        logger.info(f"📊 Input tokens: {prompt_tokens}, Context tokens: {system_tokens}")
+        logger.info(f"📊 Input tokens: {prompt_tokens}")
 
         try:
             # Setup options and run query
@@ -149,8 +118,7 @@ Project Guidelines & Cursor Rules
                 yield error_event
 
     def _setup_claude_code_options(self, max_turns: int) -> ClaudeCodeOptions:
-        """Setup claude-code options with system prompt and tools"""
-        system_prompt = self._build_system_prompt()
+        """Setup claude-code options with minimal configuration (no custom prompt)."""
         all_tools = self._get_available_tools()
 
         options = ClaudeCodeOptions(
@@ -158,36 +126,10 @@ Project Guidelines & Cursor Rules
             allowed_tools=all_tools,
             permission_mode="acceptEdits",
             max_turns=max_turns,
-            system_prompt=system_prompt,
         )
 
         self._log_options_config(options, all_tools)
         return options
-
-    def _build_system_prompt(self) -> str:
-        """Build the complete system prompt with cursor rules"""
-        base_system_prompt = (
-            "You are an expert software development assistant working on a Kosuke template project."
-            "\n\n"
-            "You can:\n\n"
-            "- Analyze code structure, architecture, and quality\n"
-            "- Read, create, modify, and organize files and directories\n"
-            "- Generate high-quality code following best practices\n"
-            "- Debug issues and provide solutions\n"
-            "- Implement features and improvements\n"
-            "- Work with Next.js, React, TypeScript, and modern web technologies\n\n"
-            "You have access to tools to read files, write files, run bash commands, and search through code.\n"
-            "Tool execution is handled automatically - when you decide to use a tool like Read, Write, or Bash,\n"
-            "it will be executed automatically and the results will be provided to you.\n\n"
-            "Be thorough in your analysis and make thoughtful, well-reasoned changes.\n"
-            "Always explain your reasoning and provide clear documentation for any modifications."
-        )
-
-        system_prompt_parts = [base_system_prompt]
-
-        system_prompt = "\n\n".join(system_prompt_parts)
-        logger.info(f"📋 System prompt length: {len(system_prompt)} characters")
-        return system_prompt
 
     def _get_available_tools(self) -> list[str]:
         """Get list of all available tools"""
@@ -354,41 +296,6 @@ Project Guidelines & Cursor Rules
         logger.error(f"❌ Error type: {type(error).__name__}")
         logger.exception("❌ Full error traceback:")
         yield {"type": "error", "message": error_msg}
-
-    def get_project_context(self) -> dict[str, Any]:
-        """
-        Get context information about the current project
-
-        Returns:
-            Project context including file structure
-        """
-        logger.info(f"📊 Getting project context for project {self.project_id}")
-
-        try:
-            project_files = [str(f) for f in self.project_path.rglob("*") if f.is_file()]
-
-            context = {
-                "project_id": self.project_id,
-                "project_path": str(self.project_path),
-                "project_files": project_files,
-            }
-
-            logger.info(f"📊 Project context: {len(project_files)} files found")
-            if project_files:
-                logger.debug(f"📊 Sample files: {project_files[:5]}")
-            else:
-                logger.warning("⚠️ No files found in project directory!")
-
-            return context
-
-        except Exception as e:
-            logger.error(f"❌ Failed to get project context: {e}")
-            return {
-                "project_id": self.project_id,
-                "project_path": str(self.project_path),
-                "project_files": [],
-                "error": str(e),
-            }
 
     def get_token_usage(self) -> dict[str, int]:
         """
