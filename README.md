@@ -7,12 +7,14 @@
 ### Running Locally
 
 ```bash
-# run postgres and minio
+# run the backend
 cp .env.example .env
+cp ./agent/.env.example ./agent/.env
 just run-backend
 # run the database migrations
 npm run db:push
 # run the frontend
+npm install
 npm run dev
 ```
 
