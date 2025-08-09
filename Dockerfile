@@ -22,6 +22,8 @@ COPY --from=deps /app/package.json ./package.json
 
 # Copy only the necessary files for the build
 COPY next.config.* .
+COPY sentry*.config.* .
+COPY instrumentation*.ts .
 COPY tsconfig.json .
 COPY tailwind.config.* .
 COPY postcss.config.* .
@@ -71,6 +73,8 @@ COPY --from=builder --chown=nextjs:nodejs /app/.env* ./
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nextjs:nodejs /app/drizzle.config.* ./
 COPY --from=builder --chown=nextjs:nodejs /app/middleware.ts ./
+COPY --from=builder --chown=nextjs:nodejs /app/sentry*.config.* ./
+COPY --from=builder --chown=nextjs:nodejs /app/instrumentation*.ts ./
 COPY --from=builder --chown=nextjs:nodejs /app/lib ./lib
 COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts
 

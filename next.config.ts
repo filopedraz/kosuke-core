@@ -1,4 +1,3 @@
-import { withSentryConfig } from '@sentry/nextjs';
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
@@ -6,6 +5,17 @@ const nextConfig: NextConfig = {
   output: 'standalone',
   experimental: {
     externalDir: true,
+  },
+  webpack: (config, { dev }) => {
+    if (dev) {
+      // Alias '@sentry/nextjs' to a tiny local stub in development
+      config.resolve = config.resolve || {};
+      config.resolve.alias = {
+        ...(config.resolve.alias || {}),
+        '@sentry/nextjs': require('path').resolve(__dirname, 'lib/stubs/sentry-nextjs.ts'),
+      } as Record<string, string>;
+    }
+    return config;
   },
   typescript: {
     ignoreBuildErrors: true,
@@ -69,6 +79,13 @@ const sentryOptions = {
   automaticVercelMonitors: true,
 };
 
-const config = isProd ? withSentryConfig(nextConfig, sentryOptions) : nextConfig;
+let config: NextConfig = nextConfig;
+if (isProd) {
+  // Use require here to avoid static ESM import in dev and to keep this file synchronous
+  // next.config.ts is transpiled to CJS by Next's require-hook
+
+  const { withSentryConfig } = require('@sentry/nextjs');
+  config = withSentryConfig(nextConfig, sentryOptions);
+}
 
 export default config;
