@@ -30,7 +30,7 @@ function ProjectsLoadingSkeleton() {
 
 export default function ProjectsPage() {
   const { clerkUser, dbUser, isLoading } = useUser();
-  const { data: projects, isLoading: isProjectsLoading, isFetching: isProjectsFetching } = useProjects({
+  const { data: projects, isLoading: isProjectsLoading } = useProjects({
     userId: clerkUser?.id || '',
     initialData: []
   });
@@ -72,7 +72,6 @@ export default function ProjectsPage() {
         <ProjectsHeader
           hasProjects={(projects?.length ?? 0) > 0}
           onCreateClick={() => setIsModalOpen(true)}
-          isRefreshing={isProjectsFetching}
         />
 
         <Suspense fallback={<ProjectsLoadingSkeleton />}>
