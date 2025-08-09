@@ -25,11 +25,11 @@ async def startup_tasks():
     """Startup tasks to run when the application starts"""
     logger = logging.getLogger(__name__)
     try:
-        # Initialize DockerService to ensure preview image is available
+        # Initialize DockerService to ensure preview image is pre-pulled
         from app.services.docker_service import DockerService
 
         _docker_service = DockerService()
-        logger.info("✅ DockerService initialized and preview image check started")
+        logger.info("✅ DockerService initialized and preview image pre-pull started")
     except Exception as e:
         logger.error(f"❌ Failed to initialize DockerService during startup: {e}")
         # Don't fail startup if Docker service init fails - let individual requests handle it

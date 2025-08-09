@@ -23,7 +23,7 @@ class SessionManager:
         self.sessions: dict[str, dict] = {}
         # Track last pull time for main branches per project
         self.last_main_pull: dict[int, datetime] = {}
-        self.PULL_CACHE_MINUTES = 60
+        self.PULL_CACHE_MINUTES = settings.git_pull_cache_minutes
         logger.info("SessionManager initialized")
 
     def _sanitize_remote_url(self, repo_url: str) -> str:

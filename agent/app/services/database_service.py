@@ -1,9 +1,10 @@
 import logging
-import os
 import re
 from typing import Any
 
 import asyncpg
+
+from app.utils.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -21,59 +22,31 @@ class DatabaseService:
         self.project_id = project_id
         self.session_id = session_id
 
-        # Prefer session-specific database for any session, and for main branch prefer the
-        # 'session_main' database (where migrations/tables live). Fall back to legacy 'main'.
-        if session_id and session_id != "main":
-            self.db_name = f"kosuke_project_{project_id}_session_{session_id}"
-            self.fallback_db_name: str | None = None
-        else:
-            # No session provided or explicit 'main' → prefer session_main
-            self.db_name = f"kosuke_project_{project_id}_session_main"
-            self.fallback_db_name = f"kosuke_project_{project_id}_main"
+        # Always use session-specific database pattern. Default to 'main' session if not provided.
+        effective_session_id = session_id or "main"
+        self.db_name = f"kosuke_project_{project_id}_session_{effective_session_id}"
 
-        # PostgreSQL connection parameters
-        self.db_host = "postgres"
-        self.db_port = 5432
-        self.db_user = "postgres"
-        self.db_password = os.getenv("POSTGRES_PASSWORD", "postgres")
+        # Database connection parameters are read directly from global settings
 
     async def _get_connection(self) -> asyncpg.Connection:
-        """Get database connection, preferring session_main for main branch with fallback to main"""
+        """Get database connection; creates the database if it does not exist."""
         try:
             return await asyncpg.connect(
-                host=self.db_host,
-                port=self.db_port,
-                user=self.db_user,
-                password=self.db_password,
+                host=settings.postgres_host,
+                port=settings.postgres_port,
+                user=settings.postgres_user,
+                password=settings.postgres_password,
                 database=self.db_name,
             )
         except asyncpg.InvalidCatalogNameError:
-            # If preferred DB does not exist, try fallback (legacy 'main') before creating anything
-            if getattr(self, "fallback_db_name", None):
-                try:
-                    conn = await asyncpg.connect(
-                        host=self.db_host,
-                        port=self.db_port,
-                        user=self.db_user,
-                        password=self.db_password,
-                        database=self.fallback_db_name,
-                    )
-                    # Switch to fallback for future operations
-                    self.db_name = self.fallback_db_name  # type: ignore[assignment]
-                    self.fallback_db_name = None
-                    return conn
-                except asyncpg.InvalidCatalogNameError:
-                    # Fallback also missing; proceed to create the preferred DB
-                    pass
-
-            # Create the preferred database when neither exists
+            # Create the preferred database when it does not exist
             await self._create_database()
             # Try connecting again to the preferred DB
             return await asyncpg.connect(
-                host=self.db_host,
-                port=self.db_port,
-                user=self.db_user,
-                password=self.db_password,
+                host=settings.postgres_host,
+                port=settings.postgres_port,
+                user=settings.postgres_user,
+                password=settings.postgres_password,
                 database=self.db_name,
             )
 
@@ -81,7 +54,11 @@ class DatabaseService:
         """Create the database if it doesn't exist"""
         # Connect to postgres database to create the new one
         conn = await asyncpg.connect(
-            host=self.db_host, port=self.db_port, user=self.db_user, password=self.db_password, database="postgres"
+            host=settings.postgres_host,
+            port=settings.postgres_port,
+            user=settings.postgres_user,
+            password=settings.postgres_password,
+            database="postgres",
         )
 
         try:
@@ -96,7 +73,11 @@ class DatabaseService:
         """Get database size"""
         try:
             conn = await asyncpg.connect(
-                host=self.db_host, port=self.db_port, user=self.db_user, password=self.db_password, database="postgres"
+                host=settings.postgres_host,
+                port=settings.postgres_port,
+                user=settings.postgres_user,
+                password=settings.postgres_password,
+                database="postgres",
             )
 
             # Query database size
@@ -129,7 +110,7 @@ class DatabaseService:
 
             return {
                 "connected": True,
-                "database_path": f"postgres://{self.db_host}:{self.db_port}/{self.db_name}",
+                "database_path": f"postgres://{settings.postgres_host}:{settings.postgres_port}/{self.db_name}",
                 "tables_count": tables_count,
                 "database_size": db_size,
             }
@@ -137,7 +118,7 @@ class DatabaseService:
             logger.error(f"Error getting database info: {e}")
             return {
                 "connected": False,
-                "database_path": f"postgres://{self.db_host}:{self.db_port}/{self.db_name}",
+                "database_path": f"postgres://{settings.postgres_host}:{settings.postgres_port}/{self.db_name}",
                 "tables_count": 0,
                 "database_size": "0 KB",
             }

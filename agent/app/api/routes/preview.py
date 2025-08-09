@@ -8,6 +8,7 @@ from fastapi import HTTPException
 from app.models.preview import PreviewStatus
 from app.models.preview import PullRequest
 from app.models.preview import PullResponse
+from app.models.preview import PullResult
 from app.models.preview import StartPreviewRequest
 from app.models.preview import StopPreviewRequest
 from app.services.docker_service import DockerService
@@ -34,28 +35,17 @@ async def start_preview(
         session_id = request.session_id or "main"
         url = await docker_service.start_preview(request.project_id, session_id, request.env_vars)
 
-        # Get the full status including git information
+        # Get the full status
         status = await docker_service.get_preview_status(request.project_id, session_id)
 
-        response = {
+        return {
             "success": True,
             "url": url,
             "project_id": request.project_id,
             "session_id": session_id,
-            "compilation_complete": status.compilation_complete,
+            "running": status.running,
             "is_responding": status.is_responding,
         }
-
-        # Include git status when available (for main branch previews and recovered containers)
-        if status.git_status:
-            response["git_status"] = {
-                "success": status.git_status.success,
-                "action": status.git_status.action,
-                "message": status.git_status.message,
-                "commits_pulled": status.git_status.commits_pulled,
-            }
-
-        return response
     except HTTPException:
         raise  # Re-raise HTTPExceptions without modification
     except Exception as e:
@@ -138,8 +128,17 @@ async def pull_project(
                 await docker_service.restart_preview_container(request.project_id, session_id)
                 container_restarted = True
 
+        pull_result = PullResult(
+            changed=bool(git_status.get("commits_pulled", 0) > 0),
+            commits_pulled=int(git_status.get("commits_pulled", 0)),
+            message=str(git_status.get("message", "")),
+            previous_commit=git_status.get("previous_commit"),
+            new_commit=git_status.get("new_commit"),
+            branch_name=git_status.get("branch_name"),
+        )
+
         return PullResponse(
-            success=git_status.get("success", False), git_status=git_status, container_restarted=container_restarted
+            success=git_status.get("success", False), pullResult=pull_result, container_restarted=container_restarted
         )
     except Exception as e:
         session_id = request.session_id or "main"

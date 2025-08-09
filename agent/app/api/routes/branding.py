@@ -1,6 +1,7 @@
 import logging
 
 from fastapi import APIRouter
+from fastapi import Depends
 from fastapi import HTTPException
 from fastapi import Path
 
@@ -8,7 +9,8 @@ from app.models.branding import ApplyPaletteRequest
 from app.models.branding import ApplyPaletteResponse
 from app.models.branding import ColorPaletteRequest
 from app.models.branding import ColorPaletteResponse
-from app.services.color_palette_service import color_palette_service
+from app.services.color_palette_service import ColorPaletteService
+from app.utils.providers import get_color_palette_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -18,6 +20,7 @@ router = APIRouter()
 async def generate_color_palette(
     project_id: int = Path(..., description="Project ID", ge=1),
     request: ColorPaletteRequest = ...,
+    color_palette_service: ColorPaletteService = Depends(get_color_palette_service),
 ) -> ColorPaletteResponse:
     """
     Generate a color palette for a project using AI analysis
@@ -51,6 +54,7 @@ async def generate_color_palette(
 async def apply_color_palette(
     project_id: int = Path(..., description="Project ID", ge=1),
     request: ApplyPaletteRequest = ...,
+    color_palette_service: ColorPaletteService = Depends(get_color_palette_service),
 ) -> ApplyPaletteResponse:
     """
     Apply a color palette to the project's globals.css file
@@ -74,7 +78,10 @@ async def apply_color_palette(
 
 
 @router.get("/projects/{project_id}/branding/colors")
-async def get_existing_colors(project_id: int = Path(..., description="Project ID", ge=1)) -> dict:
+async def get_existing_colors(
+    project_id: int = Path(..., description="Project ID", ge=1),
+    color_palette_service: ColorPaletteService = Depends(get_color_palette_service),
+) -> dict:
     """
     Get existing color variables from the project's CSS files
 
