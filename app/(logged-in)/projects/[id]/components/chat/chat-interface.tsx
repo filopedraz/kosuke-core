@@ -108,13 +108,13 @@ export default function ChatInterface({
     }
   }, [isStreaming, streamingContentBlocks, streamingAssistantMessageId]);
 
-  // Scroll to bottom when messages change or streaming updates
+  // Scroll to top when messages change or streaming updates (newest at top)
   useEffect(() => {
     const scrollTimeout = setTimeout(() => {
       if (messagesEndRef.current) {
         messagesEndRef.current.scrollIntoView({
           behavior: 'smooth',
-          block: 'end'
+          block: 'start'
         });
       }
     }, 100);
@@ -172,12 +172,15 @@ export default function ChatInterface({
     return true;
   });
 
-  // Enhance messages with showAvatar property
-  const enhancedMessages = filteredMessages.map((message, index) => {
+  // Reverse order so newest messages appear at the top
+  const displayMessages = [...filteredMessages].reverse();
+
+  // Enhance messages with showAvatar property based on display order
+  const enhancedMessages = displayMessages.map((message, index) => {
     let showAvatar = true;
 
     if (index > 0) {
-      const prevMessage = filteredMessages[index - 1];
+      const prevMessage = displayMessages[index - 1];
       if (prevMessage.role === message.role) {
         showAvatar = false;
       }
@@ -199,6 +202,7 @@ export default function ChatInterface({
 
       <ScrollArea className="flex-1 overflow-y-auto">
         <div className="flex flex-col">
+          <div ref={messagesEndRef} />
           {messages.length === 0 && isLoadingMessages ? (
             <div className="flex items-center justify-center h-32">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -350,7 +354,8 @@ export default function ChatInterface({
 
 
 
-          <div ref={messagesEndRef} className="pb-6" />
+          {/* Anchor is at the top now; bottom spacer kept for padding */}
+          <div className="pb-6" />
         </div>
       </ScrollArea>
 

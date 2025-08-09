@@ -173,7 +173,7 @@ export default function ChatMessage({
     <div
       className={cn(
         'flex w-full max-w-[95%] mx-auto gap-3 p-4',
-        isUser ? 'bg-background' : 'bg-background',
+        isUser ? 'flex-row-reverse' : 'flex-row',
         !showAvatar && 'pt-1', // Reduce top padding for consecutive messages
         isLoading && 'opacity-50',
         hasError && !isUser && 'border-l-2 border-l-destructive/40', // Red left border for error messages
@@ -203,13 +203,13 @@ export default function ChatMessage({
         <div className="w-8" />
       )}
 
-      <div className="flex-1 space-y-2">
+      <div className={cn('flex-1 space-y-2', isUser && 'items-end text-right')}>
         {showAvatar && ( // Only show header for first message in a sequence
-          <div className="flex items-center justify-between group">
+          <div className={cn('flex items-center justify-between group', isUser && 'flex-row-reverse') }>
             <h4>
               {isUser ? 'You' : 'AI Assistant'}
             </h4>
-            <div className="flex items-center gap-2">
+            <div className={cn('flex items-center gap-2', isUser && 'flex-row-reverse') }>
               {/* Add revert button for assistant messages with commit SHA */}
               {!isUser && id && projectId && chatSessionId && sessionId && commitSha && (
                 <MessageRevertButton
@@ -241,6 +241,7 @@ export default function ChatMessage({
           // Render regular text/image content
           <div className={cn(
               "prose prose-xs dark:prose-invert max-w-none text-sm [overflow-wrap:anywhere]",
+              isUser && 'ml-auto',
               !showAvatar && "mt-0", // Remove top margin for consecutive messages
               hasError && !isUser && "text-muted-foreground" // Muted text for error messages
             )}>
@@ -273,7 +274,7 @@ export default function ChatMessage({
                 </div>
               ) : (
                 // Render image
-                <div key={i} className="my-2 inline-block max-w-[400px]">
+                <div key={i} className={cn("my-2 inline-block max-w-[400px]", isUser && 'ml-auto')}>
                   <div className="flex items-center gap-3 bg-card rounded-md p-2 px-3 border border-border">
                     <div className="relative w-12 h-12 rounded-sm bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
                       <div
