@@ -12,12 +12,12 @@ from app.models.preview import PullResult
 from app.models.preview import StartPreviewRequest
 from app.models.preview import StopPreviewRequest
 from app.services.docker_service import DockerService
+from app.utils.providers import get_github_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-# Dependency to get Docker service
 async def get_docker_service() -> DockerService:
     return DockerService()
 
@@ -117,7 +117,9 @@ async def pull_project(
         # Use "main" as default session_id for main branch pulls
         session_id = request.session_id or "main"
 
-        git_status = await docker_service.pull_branch(request.project_id, session_id, force=request.force)
+        # Prefer GitHubService for branch pulling (initialized via provider)
+        github_service = get_github_service("", local_only=True)
+        git_status = await github_service.pull_branch(request.project_id, session_id, force=request.force)
 
         # Check if we need to restart the container to apply changes
         container_restarted = False
@@ -156,10 +158,3 @@ async def get_project_preview_urls(
     except Exception as e:
         logger.error(f"Error getting preview URLs for project {project_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to get preview URLs: {e}") from e
-
-
-@router.get("/preview/health")
-async def preview_health(docker_service: Annotated[DockerService, Depends(get_docker_service)]):
-    """Check preview service health"""
-    docker_available = await docker_service.is_docker_available()
-    return {"status": "healthy" if docker_available else "unhealthy", "docker_available": docker_available}

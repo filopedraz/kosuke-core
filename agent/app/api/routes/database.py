@@ -66,9 +66,6 @@ async def execute_query(project_id: int, query_request: QueryRequest):
         raise HTTPException(status_code=400, detail=str(e)) from e
 
 
-# Session-specific database endpoints
-
-
 @router.get("/database/info/{project_id}/{session_id}", response_model=DatabaseInfo)
 async def get_session_database_info(project_id: int, session_id: str):
     """Get database information for a specific session"""

@@ -289,6 +289,3 @@ class FileSystemService:
         nodes.sort(key=lambda x: (x["type"] == "file", x["name"].lower()))
 
         return nodes
-
-
-# Deprecated: use app.utils.providers.get_fs_service instead of module singletons

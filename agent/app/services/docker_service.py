@@ -256,15 +256,6 @@ class DockerService:
             is_responding = await self._check_container_health(url)
         return PreviewStatus(running=True, url=url, is_responding=is_responding)
 
-    async def pull_branch(self, project_id: int, session_id: str, force: bool = False) -> dict:
-        try:
-            if session_id == "main":
-                return await self.session_manager.pull_main_branch(project_id, force=force)
-            return await self.session_manager.pull_session_branch(project_id, session_id, force=force)
-        except Exception as e:
-            logger.error(f"Error pulling branch for project {project_id} session {session_id}: {e}")
-            raise
-
     async def is_container_running(self, project_id: int, session_id: str) -> bool:
         container_name = self._get_container_name(project_id, session_id)
         container = await self._get_container_by_name(container_name)

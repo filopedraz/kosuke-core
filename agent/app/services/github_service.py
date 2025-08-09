@@ -14,6 +14,7 @@ from app.models.github import CreateRepoRequest
 from app.models.github import GitHubCommit
 from app.models.github import GitHubRepo
 from app.models.github import ImportRepoRequest
+from app.services.session_manager import SessionManager
 from app.utils.config import settings
 
 logger = logging.getLogger(__name__)
@@ -23,6 +24,7 @@ class GitHubService:
     def __init__(self, github_token: str, local_only: bool = False):
         self.github_token = github_token
         self.local_only = local_only
+        self.session_manager = SessionManager()
 
         if not local_only:
             self.github = Github(github_token)
@@ -33,6 +35,28 @@ class GitHubService:
 
         # Store sync sessions for tracking changes across commits
         self.sync_sessions: dict[str, dict] = {}
+
+    def get_current_commit_sha(self, session_path: str | Path) -> str | None:
+        """Return current commit SHA for the given working directory."""
+        try:
+            repo = git.Repo(session_path)
+            return repo.head.commit.hexsha
+        except Exception as e:
+            logger.error(f"Error getting current commit SHA for {session_path}: {e}")
+            return None
+
+    async def pull_branch(self, project_id: int, session_id: str, force: bool = False) -> dict:
+        """Pull latest changes for main or session branch using SessionManager.
+
+        This operation uses local git and does not require GitHub API access.
+        """
+        try:
+            if session_id == "main":
+                return await self.session_manager.pull_main_branch(project_id, force=force)
+            return await self.session_manager.pull_session_branch(project_id, session_id, force=force)
+        except Exception as e:
+            logger.error(f"Error pulling branch for project {project_id} session {session_id}: {e}")
+            raise
 
     def _make_authenticated_url(self, repo_url: str) -> str:
         """Return a GitHub HTTPS URL embedding the token for auth.

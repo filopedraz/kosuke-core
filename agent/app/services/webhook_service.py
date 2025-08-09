@@ -161,7 +161,3 @@ class WebhookService:
             },
         }
         return await self._send_webhook_with_retry(endpoint, data)
-
-
-# Global webhook service instance
-webhook_service = WebhookService()
