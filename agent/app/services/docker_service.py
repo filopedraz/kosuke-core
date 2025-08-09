@@ -1,6 +1,5 @@
 import asyncio
 import logging
-import os
 from pathlib import Path
 
 import docker
@@ -27,7 +26,6 @@ class DockerService:
             logger.error(f"Failed to initialize Docker client: {e}")
             raise RuntimeError(f"Docker client initialization failed: {e}") from e
 
-        self.CONTAINER_NAME_PREFIX = "kosuke-preview-"
         self.session_manager = SessionManager()
         self.domain_service = DomainService()
         self.host_projects_dir = self._get_host_projects_dir()
@@ -60,38 +58,36 @@ class DockerService:
             logger.error(f"Failed to ensure preview image {settings.preview_default_image}: {e}")
 
     def _get_host_projects_dir(self) -> str:
-        if Path("/.dockerenv").exists() and Path("/var/run/docker.sock").exists():
-            host_workspace_dir = os.getenv("HOST_WORKSPACE_DIR")
-            if host_workspace_dir:
-                host_projects_dir = Path(host_workspace_dir) / "projects"
-                logger.info(f"Using HOST_WORKSPACE_DIR: {host_projects_dir}")
-                return str(host_projects_dir)
-            logger.warning("Docker-in-Docker detected, using assumed host path: ./projects")
-            return "./projects"
+        """Resolve the host projects directory for Docker-in-Docker.
 
-        current_dir = Path.cwd()
-        workspace_root = current_dir
-        while workspace_root != Path("/") and not (workspace_root / "projects").exists():
-            workspace_root = workspace_root.parent
-        if (workspace_root / "projects").exists():
-            return str(workspace_root / "projects")
-        projects_path = current_dir / "projects"
-        projects_path.mkdir(parents=True, exist_ok=True)
-        return str(projects_path)
+        This application requires running under Docker-in-Docker (DinD). The absolute
+        path to the workspace root on the host must be provided via HOST_WORKSPACE_DIR.
+        """
+        host_workspace_dir = settings.host_workspace_dir
+        if not host_workspace_dir:
+            raise RuntimeError(
+                "HOST_WORKSPACE_DIR is required when running inside Docker-in-Docker. "
+                "Set the environment variable HOST_WORKSPACE_DIR to the absolute path of the workspace root on the host."
+            )
+        host_projects_dir = Path(host_workspace_dir) / "projects"
+        logger.info(f"Using HOST_WORKSPACE_DIR: {host_projects_dir}")
+        return str(host_projects_dir)
 
     def _get_container_name(self, project_id: int, session_id: str) -> str:
-        return f"{self.CONTAINER_NAME_PREFIX}{project_id}-{session_id}"
+        return f"{settings.preview_container_name_prefix}{project_id}-{session_id}"
 
     def _prepare_container_environment(
         self, project_id: int, session_id: str, env_vars: dict[str, str]
     ) -> dict[str, str]:
-        db_password = os.getenv("POSTGRES_PASSWORD", "postgres")
+        postgres_url = (
+            f"postgres://{settings.postgres_user}:{settings.postgres_password}"
+            f"@{settings.postgres_host}:{settings.postgres_port}"
+            f"/kosuke_project_{project_id}_session_{session_id}"
+        )
         return {
             "NODE_ENV": "development",
             "PORT": "3000",
-            "POSTGRES_URL": (
-                f"postgres://postgres:{db_password}@postgres:5432/kosuke_project_{project_id}_session_{session_id}"
-            ),
+            "POSTGRES_URL": postgres_url,
             **env_vars,
         }
 
@@ -145,7 +141,7 @@ class DockerService:
                 return f"https://{domain}"
             # Fallback from container name
             try:
-                _, project_session = container.name.replace(self.CONTAINER_NAME_PREFIX, "").split("-", 1)
+                _, project_session = container.name.replace(settings.preview_container_name_prefix, "").split("-", 1)
                 pid = int(project_session.split("-", 1)[0])
                 sid = project_session.split("-", 1)[1]
                 domain = self.domain_service.generate_subdomain(pid, sid)
@@ -289,7 +285,7 @@ class DockerService:
 
     async def get_project_preview_urls(self, project_id: int) -> dict:
         try:
-            name_prefix = f"{self.CONTAINER_NAME_PREFIX}{project_id}-"
+            name_prefix = f"{settings.preview_container_name_prefix}{project_id}-"
             loop = asyncio.get_event_loop()
             containers = await loop.run_in_executor(
                 None, lambda: self.client.containers.list(all=True, filters={"name": name_prefix})

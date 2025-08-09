@@ -94,6 +94,8 @@ class Settings:
         self.preview_health_path: str = os.getenv("PREVIEW_HEALTH_PATH", "/")
         # Docker network name used to attach preview containers
         self.preview_network: str = os.getenv("PREVIEW_NETWORK", "kosuke_network")
+        # Container name prefix for preview containers
+        self.preview_container_name_prefix: str = os.getenv("PREVIEW_CONTAINER_NAME_PREFIX", "kosuke-preview-")
 
         # Template repository settings
         self.template_repository: str = os.getenv("TEMPLATE_REPOSITORY", "filopedraz/kosuke-template")
@@ -123,7 +125,7 @@ class Settings:
         self.traefik_enabled: bool = os.getenv("TRAEFIK_ENABLED", "false").lower() == "true"
 
         # Docker-in-Docker settings
-        self.HOST_WORKSPACE_DIR: str = os.getenv("HOST_WORKSPACE_DIR", "")
+        self.host_workspace_dir: str = os.getenv("HOST_WORKSPACE_DIR", "")
 
         # Git settings
         self.git_pull_cache_minutes: int = int(os.getenv("GIT_PULL_CACHE_MINUTES", "60"))
@@ -155,6 +157,7 @@ class Settings:
             "router_mode": self.router_mode,
             "preview_health_path": self.preview_health_path,
             "preview_network": self.preview_network,
+            "preview_container_name_prefix": self.preview_container_name_prefix,
             "postgres_host": self.postgres_host,
             "postgres_port": self.postgres_port,
             "postgres_db": self.postgres_db,
@@ -169,7 +172,7 @@ class Settings:
             "main_domain": self.main_domain,
             "preview_base_domain": self.preview_base_domain,
             "traefik_enabled": self.traefik_enabled,
-            "host_workspace_dir": self.HOST_WORKSPACE_DIR,
+            "host_workspace_dir": self.host_workspace_dir,
             "git_pull_cache_minutes": self.git_pull_cache_minutes,
         }
 
