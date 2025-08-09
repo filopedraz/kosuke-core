@@ -16,8 +16,8 @@ export default function ProjectGrid({ userId, initialProjects }: ProjectGridProp
     initialData: initialProjects,
   });
 
-  // Show skeleton during initial load or subsequent fetches when we don't have reliable data yet
-  if (isLoading || (isFetching && !projects?.length)) {
+  // Always show skeletons whenever loading or fetching
+  if (isLoading || isFetching) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {Array.from({ length: 6 }).map((_, index) => (
