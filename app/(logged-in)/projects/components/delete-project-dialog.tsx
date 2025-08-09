@@ -1,8 +1,10 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
 import { Loader2, Trash } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -11,7 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
 import { useDeleteProject } from '@/hooks/use-projects';
 import type { Project } from '@/lib/db/schema';
 
@@ -30,9 +32,10 @@ export default function DeleteProjectDialog({
   const [deleteStage, setDeleteStage] = useState<string | null>(null);
   const [deleteProgress, setDeleteProgress] = useState(0);
   const [isCompleting, setIsCompleting] = useState(false);
+  const [deleteRepo, setDeleteRepo] = useState(false);
   const timersRef = useRef<NodeJS.Timeout[]>([]);
   const operationStartedRef = useRef<boolean>(false);
-  
+
   // Clear timers on unmount
   useEffect(() => {
     return () => {
@@ -40,7 +43,7 @@ export default function DeleteProjectDialog({
       timersRef.current = [];
     };
   }, []);
-  
+
   // Handle the deletion progress visualization
   useEffect(() => {
     // When operation starts
@@ -48,11 +51,11 @@ export default function DeleteProjectDialog({
       operationStartedRef.current = true;
       setDeleteStage('Preparing to delete project...');
       setDeleteProgress(10);
-      
+
       // Clear any existing timers
       timersRef.current.forEach(timer => clearTimeout(timer));
       timersRef.current = [];
-      
+
       // Set up progressive indicators for better UX
       const stages = [
         { time: 800, stage: 'Cleaning up project files...', progress: 25 },
@@ -61,7 +64,7 @@ export default function DeleteProjectDialog({
         // Don't go to 100% - we'll do that when operation actually completes
         { time: 6000, stage: 'Finalizing deletion...', progress: 85 },
       ];
-      
+
       stages.forEach(({ time, stage, progress }) => {
         const timer = setTimeout(() => {
           if (isPending) {
@@ -69,21 +72,21 @@ export default function DeleteProjectDialog({
             setDeleteProgress(progress);
           }
         }, time);
-        
+
         timersRef.current.push(timer);
       });
     }
-    
+
     // When operation succeeds
     if (isSuccess && !isCompleting && operationStartedRef.current) {
       setDeleteStage('Project deleted successfully!');
       setDeleteProgress(100);
       setIsCompleting(true);
-      
+
       // Add a delay before closing to show the success state
       const timer = setTimeout(() => {
         onOpenChange(false);
-        
+
         // Reset state after dialog closes
         setTimeout(() => {
           setDeleteStage(null);
@@ -92,10 +95,10 @@ export default function DeleteProjectDialog({
           operationStartedRef.current = false;
         }, 300);
       }, 1000);
-      
+
       timersRef.current.push(timer);
     }
-    
+
     // When operation errors
     if (isError && operationStartedRef.current) {
       setDeleteStage('Error deleting project. Please try again.');
@@ -109,9 +112,9 @@ export default function DeleteProjectDialog({
       // Reset state for new deletion attempt
       operationStartedRef.current = false;
       setIsCompleting(false);
-      
+
       // Trigger the deletion
-      deleteProject(project.id);
+      deleteProject({ projectId: project.id, deleteRepo });
     } catch (error) {
       console.error('Error deleting project:', error);
       setDeleteStage('Error deleting project. Please try again.');
@@ -130,18 +133,19 @@ export default function DeleteProjectDialog({
             <Trash className="h-5 w-5 text-destructive" />
             <DialogTitle>Delete Project</DialogTitle>
           </div>
-          <DialogDescription>
+
+        </DialogHeader>
+
+        <DialogDescription>
             {!isPending && !isSuccess ? (
               <>Are you sure you want to delete &quot;{project.name}&quot;? This action cannot be undone
               and all project files will be permanently removed.</>
             ) : (
               <>Deleting project files. This may take a moment, please don&apos;t close this window.</>
             )}
-          </DialogDescription>
-        </DialogHeader>
-        
-        {(isPending || isSuccess) && (
-          <div className="py-4">
+
+{(isPending || isSuccess) && (
+          <div className="gap-2 mt-2">
             <div className="flex items-center mb-2">
               {isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -151,7 +155,7 @@ export default function DeleteProjectDialog({
               <span className="text-sm text-muted-foreground">{deleteStage}</span>
             </div>
             <div className="w-full bg-secondary h-2 rounded-full overflow-hidden">
-              <div 
+              <div
                 className={`h-full transition-all duration-500 ease-in-out ${
                   isSuccess ? 'bg-green-500' : 'bg-primary'
                 }`}
@@ -161,10 +165,22 @@ export default function DeleteProjectDialog({
           </div>
         )}
 
+        {Boolean(project.githubOwner && project.githubRepoName) && !isPending && !isSuccess && (
+          <div className="flex items-center gap-2 mt-2">
+            <Checkbox id="delete-repo" checked={deleteRepo} onCheckedChange={v => setDeleteRepo(Boolean(v))} />
+            <Label htmlFor="delete-repo" className="text-sm text-muted-foreground">
+              Also delete the associated GitHub repository
+            </Label>
+          </div>
+        )}
+        </DialogDescription>
+
+
+
         <DialogFooter className="mt-4">
-          <Button 
-            variant="outline" 
-            onClick={() => onOpenChange(false)} 
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
             disabled={isPending || isCompleting}
           >
             Cancel
@@ -187,4 +203,4 @@ export default function DeleteProjectDialog({
       </DialogContent>
     </Dialog>
   );
-} 
+}

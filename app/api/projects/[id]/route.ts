@@ -6,6 +6,7 @@ import { ApiResponseHandler } from '@/lib/api/responses';
 import { auth } from '@/lib/auth/server';
 import { db } from '@/lib/db/drizzle';
 import { projects } from '@/lib/db/schema';
+import { getGitHubToken } from '@/lib/github/auth';
 import { eq } from 'drizzle-orm';
 
 // Schema for updating a project
@@ -138,6 +139,15 @@ export async function DELETE(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
+    // Read delete options from request body (optional)
+    let deleteRepo = false;
+    try {
+      const body = await request.json();
+      deleteRepo = Boolean(body?.deleteRepo);
+    } catch {
+      // No body provided; keep defaults
+    }
+
     // First, try to stop the project preview if it's running
     try {
       console.log(`Stopping preview for project ${projectId} before archiving`);
@@ -160,6 +170,33 @@ export async function DELETE(
     } catch (previewError) {
       // Log but continue - we still want to archive the project even if stopping the preview fails
       console.error(`Error stopping preview for project ${projectId}:`, previewError);
+    }
+
+    // Optionally delete the associated GitHub repository
+    if (deleteRepo && project.githubOwner && project.githubRepoName) {
+      try {
+        const githubToken = await getGitHubToken(userId);
+        if (!githubToken) {
+          console.warn('GitHub token not found; skipping repository deletion');
+        } else {
+          const apiUrl = `https://api.github.com/repos/${project.githubOwner}/${project.githubRepoName}`;
+          const ghResponse = await fetch(apiUrl, {
+            method: 'DELETE',
+            headers: {
+              Authorization: `token ${githubToken}`,
+              Accept: 'application/vnd.github+json',
+            },
+          });
+          if (ghResponse.ok) {
+            console.log(`Deleted GitHub repository ${project.githubOwner}/${project.githubRepoName}`);
+          } else {
+            const errText = await ghResponse.text();
+            console.error('Failed to delete GitHub repository:', ghResponse.status, errText);
+          }
+        }
+      } catch (ghError) {
+        console.error('Error deleting GitHub repository:', ghError);
+      }
     }
 
     // Archive the project
