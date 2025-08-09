@@ -386,6 +386,10 @@ describe('useDeleteProject', () => {
     });
     expect(mockFetch).toHaveBeenCalledWith('/api/projects/1', {
       method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ deleteRepo: false }),
     });
   });
 

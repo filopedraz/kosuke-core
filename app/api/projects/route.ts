@@ -1,4 +1,4 @@
-import { desc, eq } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -41,7 +41,7 @@ export async function GET() {
     const userProjects = await db
       .select()
       .from(projects)
-      .where(eq(projects.userId, userId))
+      .where(and(eq(projects.userId, userId), eq(projects.isArchived, false)))
       .orderBy(desc(projects.createdAt));
 
     return NextResponse.json(userProjects);

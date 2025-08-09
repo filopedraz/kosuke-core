@@ -130,8 +130,10 @@ export function useCreateProject() {
 export function useDeleteProject() {
   const queryClient = useQueryClient();
 
-  return useMutation<number, Error, number>({
-    mutationFn: async projectId => {
+  return useMutation<number, Error, number | { projectId: number; deleteRepo?: boolean }>({
+    mutationFn: async input => {
+      const { projectId, deleteRepo } =
+        typeof input === 'number' ? { projectId: input, deleteRepo: false } : input;
       // Allow more time for deletion to complete
       const timeoutDuration = 30000; // 30 seconds
 
@@ -175,6 +177,8 @@ export function useDeleteProject() {
       // Always proceed with project deletion even if file deletion failed
       const response = await fetch(`/api/projects/${projectId}`, {
         method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deleteRepo: Boolean(deleteRepo) }),
       });
 
       if (!response.ok) {
