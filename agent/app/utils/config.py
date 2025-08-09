@@ -99,9 +99,9 @@ class Settings:
         self.template_repository: str = os.getenv("TEMPLATE_REPOSITORY", "filopedraz/kosuke-template")
 
         # Database settings
-        self.postgres_host: str = os.getenv("POSTGRES_HOST", "localhost")
+        self.postgres_host: str = os.getenv("POSTGRES_HOST", "postgres")
         self.postgres_port: int = int(os.getenv("POSTGRES_PORT", "5432"))
-        self.postgres_db: str = os.getenv("POSTGRES_DB", "kosuke")
+        self.postgres_db: str = os.getenv("POSTGRES_DB", "postgres")
         self.postgres_user: str = os.getenv("POSTGRES_USER", "postgres")
         self.postgres_password: str = os.getenv("POSTGRES_PASSWORD", "password")
 
