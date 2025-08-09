@@ -1,6 +1,6 @@
 'use client';
 
-import { CheckCircle, Download, ExternalLink, GitBranch, Github, GitPullRequest, Loader2, RefreshCw, XCircle } from 'lucide-react';
+import { CheckCircle, Download, ExternalLink, GitBranch, Github, GitPullRequest, Loader2, Monitor, RefreshCw, Smartphone, XCircle } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -21,6 +21,8 @@ import { usePreviewPanel } from '@/hooks/use-preview-panel';
 import { usePullBranch } from '@/hooks/use-pull-branch';
 import { cn } from '@/lib/utils';
 import DownloadingModal from './downloading-modal';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { useState } from 'react';
 
 interface PreviewPanelProps {
   projectId: number;
@@ -59,6 +61,9 @@ export default function PreviewPanel({
     sessionId,
     projectName,
   });
+
+  // Device mode state (no persistence)
+  const [deviceMode, setDeviceMode] = useState<'desktop' | 'mobile'>('desktop');
 
   // Pull branch hook
   const { mutateAsync: pullBranch, isPending: isPulling } = usePullBranch({
@@ -158,105 +163,138 @@ export default function PreviewPanel({
               </TooltipContent>
             </Tooltip>
           </div>
-        <div className="flex items-center space-x-1">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
+          <div className="flex items-center space-x-1">
+            {/* Device toggle - placed to the left of the Download button */}
+            <ToggleGroup
+              type="single"
+              value={deviceMode}
+              onValueChange={(val) => val && setDeviceMode(val as 'desktop' | 'mobile')}
+              variant="outline"
+              size="sm"
+              className="mr-1"
+              aria-label="Device mode"
+            >
+              <ToggleGroupItem value="desktop" aria-label="Desktop view" title="Desktop view">
+                <Monitor className="h-4 w-4" />
+              </ToggleGroupItem>
+              <ToggleGroupItem value="mobile" aria-label="Mobile view" title="Mobile view">
+                <Smartphone className="h-4 w-4" />
+              </ToggleGroupItem>
+            </ToggleGroup>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  aria-label="Download project"
+                  title="Download project"
+                  disabled={isDownloading}
+                >
+                  <Download className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem
+                  className="flex items-center"
+                  disabled
+                >
+                  <Github className="mr-2 h-4 w-4" />
+                  <span>Create GitHub Repo</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="flex items-center"
+                  onClick={handleDownloadZip}
+                  disabled={isDownloading}
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  <span>Download ZIP</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            {previewUrl && status === 'ready' && (
               <Button
                 variant="ghost"
                 size="sm"
-                aria-label="Download project"
-                title="Download project"
-                disabled={isDownloading}
+                onClick={openInNewTab}
+                aria-label="Open in new tab"
+                title="Open in new tab"
               >
-                <Download className="h-4 w-4" />
+                <ExternalLink className="h-4 w-4" />
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuItem
-                className="flex items-center"
-                disabled
-              >
-                <Github className="mr-2 h-4 w-4" />
-                <span>Create GitHub Repo</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className="flex items-center"
-                onClick={handleDownloadZip}
-                disabled={isDownloading}
-              >
-                <Download className="mr-2 h-4 w-4" />
-                <span>Download ZIP</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          {previewUrl && status === 'ready' && (
+            )}
             <Button
               variant="ghost"
               size="sm"
-              onClick={openInNewTab}
-              aria-label="Open in new tab"
-              title="Open in new tab"
+              onClick={() => handleRefresh()}
+              disabled={status === 'loading'}
+              aria-label="Refresh preview"
+              title="Refresh preview"
             >
-              <ExternalLink className="h-4 w-4" />
+              <RefreshCw className={cn("h-4 w-4", status === 'loading' && "animate-spin")} />
             </Button>
-          )}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => handleRefresh()}
-            disabled={status === 'loading'}
-            aria-label="Refresh preview"
-            title="Refresh preview"
-          >
-            <RefreshCw className={cn("h-4 w-4", status === 'loading' && "animate-spin")} />
-          </Button>
+          </div>
         </div>
-      </div>
-      <div className="flex-1 overflow-hidden">
-        <div className="h-full w-full">
-          {status !== 'ready' ? (
-            <div className="flex h-full items-center justify-center flex-col p-6">
-              {renderStatusIcon()}
-              <span className="text-sm font-medium mt-4 mb-2">{getStatusMessage()}</span>
-              {status === 'loading' && (
-                <Progress value={progress} className="h-1.5 w-full max-w-xs mt-2" />
-              )}
-              {status === 'error' && (
+        <div className="flex-1 overflow-hidden">
+          <div className={cn("h-full w-full", deviceMode === 'mobile' ? 'flex items-stretch justify-center' : '')}>
+            {status !== 'ready' ? (
+              <div className="flex h-full items-center justify-center flex-col p-6">
+                {renderStatusIcon()}
+                <span className="text-sm font-medium mt-4 mb-2">{getStatusMessage()}</span>
+                {status === 'loading' && (
+                  <Progress value={progress} className="h-1.5 w-full max-w-xs mt-2" />
+                )}
+                {status === 'error' && (
+                  <button
+                    onClick={handleTryAgain}
+                    className="mt-4 text-primary hover:underline disabled:opacity-50"
+                    disabled={isStarting}
+                    data-testid="try-again-button"
+                  >
+                    {isStarting ? 'Starting...' : 'Try again'}
+                  </button>
+                )}
+              </div>
+            ) : previewUrl ? (
+              deviceMode === 'mobile' ? (
+                <div className="h-full w-full overflow-auto">
+                  <div className="h-full py-2 flex justify-center">
+                    <div className="h-full w-[390px] max-w-full border rounded-xl shadow bg-background">
+                      <iframe
+                        key={iframeKey}
+                        src={previewUrl}
+                        className="h-full w-[390px] border-0 rounded-xl"
+                        title={`Preview of ${projectName}`}
+                        sandbox="allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-popups-to-escape-sandbox allow-presentation allow-same-origin allow-scripts allow-downloads"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <iframe
+                  key={iframeKey}
+                  src={previewUrl}
+                  className="h-full w-full border-0"
+                  title={`Preview of ${projectName}`}
+                  sandbox="allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-popups-to-escape-sandbox allow-presentation allow-same-origin allow-scripts allow-downloads"
+                />
+              )
+            ) : (
+              <div className="flex h-full flex-col items-center justify-center p-4">
+                <p className="mb-4 text-center text-muted-foreground">
+                  No preview available yet. Click the refresh button to generate a preview.
+                </p>
                 <button
-                  onClick={handleTryAgain}
-                  className="mt-4 text-primary hover:underline disabled:opacity-50"
-                  disabled={isStarting}
-                  data-testid="try-again-button"
+                  onClick={() => handleRefresh(true)}
+                  className="text-primary hover:underline"
+                  data-testid="generate-preview-button"
                 >
-                  {isStarting ? 'Starting...' : 'Try again'}
+                  Generate Preview
                 </button>
-              )}
-            </div>
-          ) : previewUrl ? (
-            <iframe
-              key={iframeKey}
-              src={previewUrl}
-              className="h-full w-full border-0"
-              title={`Preview of ${projectName}`}
-              sandbox="allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-popups-to-escape-sandbox allow-presentation allow-same-origin allow-scripts allow-downloads"
-            />
-          ) : (
-            <div className="flex h-full flex-col items-center justify-center p-4">
-              <p className="mb-4 text-center text-muted-foreground">
-                No preview available yet. Click the refresh button to generate a preview.
-              </p>
-              <button
-                onClick={() => handleRefresh(true)}
-                className="text-primary hover:underline"
-                data-testid="generate-preview-button"
-              >
-                Generate Preview
-              </button>
-            </div>
-          )}
+              </div>
+            )}
+          </div>
         </div>
-      </div>
-      <DownloadingModal open={isDownloading} />
+        <DownloadingModal open={isDownloading} />
       </div>
     </TooltipProvider>
   );
