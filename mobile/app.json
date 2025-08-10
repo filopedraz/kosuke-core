@@ -1,15 +1,20 @@
 {
   "expo": {
-    "name": "mobile",
-    "slug": "mobile",
+    "name": "kosuke",
+    "slug": "kosuke",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "mobile",
+    "scheme": "kosuke",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.joandko.kosuke",
+      "buildNumber": "1",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -25,6 +30,7 @@
     },
     "plugins": [
       "expo-router",
+      "sentry-expo",
       [
         "expo-splash-screen",
         {
@@ -35,6 +41,11 @@
         }
       ]
     ],
+    "extra": {
+      "API_BASE_URL": "https://kosuke.ai/api",
+      "CLERK_PUBLISHABLE_KEY": "pk_test_cHJpbWFyeS1kb25rZXktNDkuY2xlcmsuYWNjb3VudHMuZGV2JA",
+      "SENTRY_DSN": "https://9d63971f39fa9f4799e0a75224c46d05@o4508021471576064.ingest.de.sentry.io/4509820516761680"
+    },
     "experiments": {
       "typedRoutes": true
     }
