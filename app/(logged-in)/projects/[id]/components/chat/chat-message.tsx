@@ -164,10 +164,6 @@ export default function ChatMessage({
     );
   }
 
-
-
-
-
   // Regular layout for user messages and simple assistant messages
   return (
     <div
