@@ -113,7 +113,7 @@ async def stop_all_previews(docker_service: Annotated[DockerService, Depends(get
 async def pull_project(
     request: PullRequest,
     docker_service: Annotated[DockerService, Depends(get_docker_service)],
-    github_token: str | None = Header(default=None, alias="X-GitHub-Token"),
+    github_token: str = Header(..., alias="X-GitHub-Token"),
 ) -> PullResponse:
     """Pull latest changes for a project or session"""
     try:
@@ -121,7 +121,7 @@ async def pull_project(
         session_id = request.session_id or "main"
 
         # Perform pull via SessionManager logic, using GitHubService for authenticated fetch if needed
-        github_service = get_github_service(github_token or "")
+        github_service = get_github_service(github_token)
         # Use SessionManager directly to orchestrate pull
         from app.services.session_manager import SessionManager
 

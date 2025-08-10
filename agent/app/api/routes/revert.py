@@ -3,6 +3,7 @@ from datetime import datetime
 from pathlib import Path
 
 from fastapi import APIRouter
+from fastapi import Header
 from fastapi import HTTPException
 
 from app.models.revert import RevertRequest
@@ -16,7 +17,7 @@ router = APIRouter()
 
 
 @router.post("/revert", response_model=RevertResponse)
-async def revert_to_commit(request: RevertRequest):
+async def revert_to_commit(request: RevertRequest, github_token: str = Header(..., alias="X-GitHub-Token")):
     """
     Revert session to specific commit SHA
     """
@@ -26,8 +27,8 @@ async def revert_to_commit(request: RevertRequest):
         )
 
         session_manager = get_session_manager()
-        # For local Git operations, no token required for checkout/backup
-        git_service = get_github_service("")
+        # For local Git operations, token is still required to ensure consistent auth context
+        git_service = get_github_service(github_token)
 
         # Get session path
         session_path_str = session_manager.get_session_path(request.project_id, request.session_id)

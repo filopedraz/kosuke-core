@@ -2,6 +2,7 @@ import { auth } from '@/lib/auth/server';
 import { AGENT_SERVICE_URL } from '@/lib/constants';
 import { db } from '@/lib/db/drizzle';
 import { projects } from '@/lib/db/schema';
+import { getGitHubToken } from '@/lib/github/auth';
 import { eq } from 'drizzle-orm';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -53,11 +54,21 @@ export async function POST(
     const body = await request.json().catch(() => ({}));
     const force = body.force || false;
 
+    // Get user's GitHub token (mandatory for network git ops)
+    const githubToken = await getGitHubToken(userId);
+    if (!githubToken) {
+      return NextResponse.json(
+        { error: 'GitHub not connected' },
+        { status: 400 }
+      );
+    }
+
     // Proxy request to Python agent
     const response = await fetch(`${AGENT_SERVICE_URL}/api/preview/pull`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'X-GitHub-Token': githubToken,
       },
       body: JSON.stringify({
         project_id: projectId,
