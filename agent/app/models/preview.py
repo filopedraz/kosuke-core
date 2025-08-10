@@ -29,13 +29,13 @@ class PreviewStatus(BaseModel):
 
 class StartPreviewRequest(BaseModel):
     project_id: int
-    session_id: str | None = None  # Optional for main branch
+    session_id: str
     env_vars: dict[str, str] = {}
 
 
 class StopPreviewRequest(BaseModel):
     project_id: int
-    session_id: str | None = None  # Optional for main branch
+    session_id: str
 
 
 class PullResult(BaseModel):
@@ -49,11 +49,11 @@ class PullResult(BaseModel):
 
 class PullRequest(BaseModel):
     project_id: int
-    session_id: str | None = None  # Optional for main branch
+    session_id: str
     force: bool = False  # Force pull (ignore cache)
 
 
 class PullResponse(BaseModel):
     success: bool
-    pullResult: PullResult
+    pull_request: PullResult
     container_restarted: bool = False

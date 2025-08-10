@@ -24,6 +24,7 @@ class CreateRepoRequest(BaseModel):
     description: str | None = None
     private: bool = True
     template_repo: str | None = None
+    project_id: int | None = None
 
 
 class ImportRepoRequest(BaseModel):

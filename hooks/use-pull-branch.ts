@@ -5,7 +5,7 @@ import type { PullRequest, PullResponse } from '@/lib/types';
 
 interface UsePullBranchOptions {
   projectId: number;
-  sessionId?: string;
+  sessionId: string;
   onSuccess?: (data: PullResponse) => void;
   onError?: (error: Error) => void;
 }
@@ -15,10 +15,8 @@ export function usePullBranch({ projectId, sessionId, onSuccess, onError }: UseP
 
   return useMutation({
     mutationFn: async (pullRequest: PullRequest = {}): Promise<PullResponse> => {
-      // Determine the correct endpoint based on whether we have a session
-      const url = sessionId
-        ? `/api/projects/${projectId}/chat-sessions/${sessionId}/pull`
-        : `/api/projects/${projectId}/pull`;
+      // Always use session-scoped endpoint
+      const url = `/api/projects/${projectId}/chat-sessions/${sessionId}/pull`;
 
       const response = await fetch(url, {
         method: 'POST',
@@ -38,7 +36,7 @@ export function usePullBranch({ projectId, sessionId, onSuccess, onError }: UseP
       return response.json();
     },
     onSuccess: data => {
-      const branchText = sessionId ? `session ${sessionId}` : 'main branch';
+      const branchText = `session ${sessionId}`;
 
       if (data.success) {
         const commitCount = data.pullResult.commitsPulled;
@@ -74,7 +72,7 @@ export function usePullBranch({ projectId, sessionId, onSuccess, onError }: UseP
       onSuccess?.(data);
     },
     onError: error => {
-      const branchText = sessionId ? `session ${sessionId}` : 'main branch';
+      const branchText = `session ${sessionId}`;
 
       console.error(`Error pulling ${branchText}:`, error);
       toast({

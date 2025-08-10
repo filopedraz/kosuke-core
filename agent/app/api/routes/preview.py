@@ -32,8 +32,8 @@ async def start_preview(
         if not await docker_service.is_docker_available():
             raise HTTPException(status_code=503, detail="Docker is not available")
 
-        # Use "main" as default session_id for main branch previews
-        session_id = request.session_id or "main"
+        # Require explicit session_id and start preview
+        session_id = request.session_id
         url = await docker_service.start_preview(request.project_id, session_id, request.env_vars)
 
         # Get the full status
@@ -50,7 +50,7 @@ async def start_preview(
     except HTTPException:
         raise  # Re-raise HTTPExceptions without modification
     except Exception as e:
-        session_id = request.session_id or "main"
+        session_id = request.session_id
         logger.error(f"Error starting preview for project {request.project_id} session {session_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to start preview: {e!s}") from e
 
@@ -61,12 +61,12 @@ async def stop_preview(
 ):
     """Stop a preview for a project session"""
     try:
-        # Use "main" as default session_id for main branch previews
-        session_id = request.session_id or "main"
+        # Require explicit session_id
+        session_id = request.session_id
         await docker_service.stop_preview(request.project_id, session_id)
         return {"success": True, "project_id": request.project_id, "session_id": session_id}
     except Exception as e:
-        session_id = request.session_id or "main"
+        session_id = request.session_id
         logger.error(f"Error stopping preview for project {request.project_id} session {session_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to stop preview: {e!s}") from e
 
@@ -81,20 +81,6 @@ async def get_preview_status_with_session(
         return await docker_service.get_preview_status(project_id, session_id)
     except Exception as e:
         logger.error(f"Error getting preview status for project {project_id} session {session_id}: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to get preview status: {e!s}") from e
-
-
-@router.get("/preview/status/{project_id}")
-async def get_preview_status_main_branch(
-    project_id: int, docker_service: Annotated[DockerService, Depends(get_docker_service)]
-) -> PreviewStatus:
-    """Get preview status for a project main branch (no session)"""
-
-    try:
-        # Use "main" as default session_id for main branch previews
-        return await docker_service.get_preview_status(project_id, "main")
-    except Exception as e:
-        logger.error(f"Error getting preview status for project {project_id} main branch: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to get preview status: {e!s}") from e
 
 
@@ -117,8 +103,8 @@ async def pull_project(
 ) -> PullResponse:
     """Pull latest changes for a project or session"""
     try:
-        # Use "main" as default session_id for main branch pulls
-        session_id = request.session_id or "main"
+        # Require explicit session_id for pull
+        session_id = request.session_id
 
         # Perform pull via SessionManager logic, using GitHubService for authenticated fetch if needed
         github_service = get_github_service(github_token)
@@ -126,14 +112,9 @@ async def pull_project(
         from app.services.session_manager import SessionManager
 
         session_manager = SessionManager()
-        if session_id == "main":
-            git_status = await session_manager.pull_main_branch(
-                request.project_id, force=request.force, github_service=github_service
-            )
-        else:
-            git_status = await session_manager.pull_session_branch(
-                request.project_id, session_id, force=request.force, github_service=github_service
-            )
+        git_status = await session_manager.pull_session_branch(
+            request.project_id, session_id, force=request.force, github_service=github_service
+        )
 
         # Check if we need to restart the container to apply changes
         container_restarted = False
@@ -154,10 +135,10 @@ async def pull_project(
         )
 
         return PullResponse(
-            success=git_status.get("success", False), pullResult=pull_result, container_restarted=container_restarted
+            success=git_status.get("success", False), pull_request=pull_result, container_restarted=container_restarted
         )
     except Exception as e:
-        session_id = request.session_id or "main"
+        session_id = request.session_id
         logger.error(f"Error pulling project {request.project_id} session {session_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to pull: {e!s}") from e
 

@@ -1,5 +1,6 @@
 import logging
 import shutil
+import time
 from datetime import datetime
 from pathlib import Path
 from urllib.parse import quote
@@ -111,9 +112,7 @@ class GitHubService:
             return repo_url
 
     async def create_repository(self, request: CreateRepoRequest) -> GitHubRepo:
-        """Create a new GitHub repository from Kosuke template"""
-        if self.local_only:
-            raise Exception("GitHub API operations not available in local-only mode")
+        """Create a new GitHub repository from Kosuke template and clone it locally if project_id is provided."""
         try:
             template_repo = request.template_repo or settings.template_repository
             logger.info(f"Creating repository '{request.name}' from template: {template_repo}")
@@ -124,7 +123,22 @@ class GitHubService:
             self._check_repository_name_availability(request.name)
 
             # Create repository via GitHub API
-            return await self._create_repository_from_template(request, template_repo, user_info)
+            created_repo = await self._create_repository_from_template(request, template_repo, user_info)
+
+            time.sleep(10)
+
+            # Optionally clone locally if a project_id is provided
+            if getattr(request, "project_id", None) is not None:
+                try:
+                    from app.models.github import ImportRepoRequest
+
+                    clone_url = created_repo.url
+                    project_id = int(request.project_id)  # type: ignore[arg-type]
+                    await self.import_repository(ImportRepoRequest(repo_url=clone_url, project_id=project_id))
+                except Exception as clone_error:
+                    logger.error(f"Repository created but failed to clone locally: {clone_error}")
+
+            return created_repo
 
         except Exception as e:
             logger.error(f"Error creating repository '{request.name}': {e}")
@@ -244,11 +258,19 @@ class GitHubService:
     def _handle_validation_error(self, response: requests.Response) -> None:
         """Handle 422 validation errors from GitHub API"""
         error_data = response.json()
-        if "errors" in error_data:
-            for error in error_data["errors"]:
-                if "already exists" in error.get("message", "").lower():
-                    raise Exception("Repository name is already taken") from None
-        error_message = error_data.get("message", "Unknown validation error")
+        # GitHub returns either an array of strings or objects in `errors`
+        errors_list = error_data.get("errors", [])
+        for item in errors_list:
+            # Support both dict and string shapes
+            if isinstance(item, dict):
+                msg = str(item.get("message", "")).lower()
+            else:
+                msg = str(item).lower()
+
+            if "already exists" in msg or "name already exists" in msg:
+                raise Exception("Repository name is already taken") from None
+
+        error_message = str(error_data.get("message", "Unknown validation error"))
         raise Exception(f"Validation error: {error_message}") from None
 
     def _handle_creation_error(self, create_error: Exception) -> None:

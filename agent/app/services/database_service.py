@@ -22,11 +22,10 @@ class DatabaseService:
         self.project_id = project_id
         self.session_id = session_id
 
-        # Always use session-specific database pattern. Default to 'main' session if not provided.
-        effective_session_id = session_id or "main"
-        self.db_name = f"kosuke_project_{project_id}_session_{effective_session_id}"
-
-        # Database connection parameters are read directly from global settings
+        # Always use session-specific database pattern; require explicit session_id
+        if not session_id:
+            raise ValueError("session_id is required for DatabaseService")
+        self.db_name = f"kosuke_project_{project_id}_session_{session_id}"
 
     async def _get_connection(self) -> asyncpg.Connection:
         """Get database connection; creates the database if it does not exist."""

@@ -1,14 +1,11 @@
-import { useQuery } from '@tanstack/react-query';
 import type { DatabaseSchema } from '@/lib/types';
+import { useQuery } from '@tanstack/react-query';
 
-export function useDatabaseSchema(projectId: number, sessionId?: string | null) {
+export function useDatabaseSchema(projectId: number, sessionId: string) {
   return useQuery({
-    queryKey: ['database-schema', projectId, sessionId || 'main'],
+    queryKey: ['database-schema', projectId, sessionId],
     queryFn: async (): Promise<DatabaseSchema> => {
-      // Use session-specific API when sessionId is provided, otherwise use main database
-      const url = sessionId
-        ? `/api/projects/${projectId}/chat-sessions/${sessionId}/database/schema`
-        : `/api/projects/${projectId}/database/schema`;
+      const url = `/api/projects/${projectId}/chat-sessions/${sessionId}/database/schema`;
 
       const response = await fetch(url);
       if (!response.ok) {

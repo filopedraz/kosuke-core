@@ -23,7 +23,13 @@ async def create_repository(
         return await github_service.create_repository(request)
     except Exception as e:
         logger.error(f"Error creating repository: {e}")
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        # Provide cleaner error messages for common cases
+        message = str(e)
+        if message.startswith("Repository name is already taken"):
+            raise HTTPException(status_code=409, detail=message) from e
+        if message.startswith("Validation error:"):
+            raise HTTPException(status_code=422, detail=message) from e
+        raise HTTPException(status_code=500, detail=message) from e
 
 
 @router.post("/github/import-repo")

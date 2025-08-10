@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+import { getProjectEnvironmentVariables } from '@/lib/api/environment';
 import { auth } from '@/lib/auth/server';
 import { AGENT_SERVICE_URL } from '@/lib/constants';
 import { db } from '@/lib/db/drizzle';
 import { chatSessions, projects } from '@/lib/db/schema';
 import { and, eq } from 'drizzle-orm';
-import { getProjectEnvironmentVariables } from '@/lib/api/environment';
 
 /**
  * GET /api/projects/[id]/chat-sessions/[sessionId]/preview
@@ -52,22 +52,26 @@ export async function GET(
       );
     }
 
-    // Verify chat session exists and belongs to project
-    const [session] = await db
-      .select()
-      .from(chatSessions)
-      .where(
-        and(
-          eq(chatSessions.projectId, projectId),
-          eq(chatSessions.sessionId, sessionId)
-        )
-      );
+    // If this is the default branch, allow preview without a chat session record
+    const isDefaultBranchSession = sessionId === (project.defaultBranch || 'main');
+    if (!isDefaultBranchSession) {
+      // Verify chat session exists and belongs to project
+      const [session] = await db
+        .select()
+        .from(chatSessions)
+        .where(
+          and(
+            eq(chatSessions.projectId, projectId),
+            eq(chatSessions.sessionId, sessionId)
+          )
+        );
 
-    if (!session) {
-      return NextResponse.json(
-        { error: 'Chat session not found' },
-        { status: 404 }
-      );
+      if (!session) {
+        return NextResponse.json(
+          { error: 'Chat session not found' },
+          { status: 404 }
+        );
+      }
     }
 
     // Proxy request to Python agent
@@ -198,22 +202,25 @@ export async function POST(
       );
     }
 
-    // Verify chat session exists and belongs to project
-    const [session] = await db
-      .select()
-      .from(chatSessions)
-      .where(
-        and(
-          eq(chatSessions.projectId, projectId),
-          eq(chatSessions.sessionId, sessionId)
-        )
-      );
+    // If this is the default branch, allow starting preview without a chat session record
+    const isDefaultBranchSession = sessionId === project.defaultBranch;
+    if (!isDefaultBranchSession) {
+      const [session] = await db
+        .select()
+        .from(chatSessions)
+        .where(
+          and(
+            eq(chatSessions.projectId, projectId),
+            eq(chatSessions.sessionId, sessionId)
+          )
+        );
 
-    if (!session) {
-      return NextResponse.json(
-        { error: 'Chat session not found' },
-        { status: 404 }
-      );
+      if (!session) {
+        return NextResponse.json(
+          { error: 'Chat session not found' },
+          { status: 404 }
+        );
+      }
     }
 
     // Fetch environment variables for the project
@@ -310,22 +317,25 @@ export async function DELETE(
       );
     }
 
-    // Verify chat session exists and belongs to project
-    const [session] = await db
-      .select()
-      .from(chatSessions)
-      .where(
-        and(
-          eq(chatSessions.projectId, projectId),
-          eq(chatSessions.sessionId, sessionId)
-        )
-      );
+    // If this is the default branch, allow stopping preview without a chat session record
+    const isDefaultBranchSession = sessionId === (project.defaultBranch || 'main');
+    if (!isDefaultBranchSession) {
+      const [session] = await db
+        .select()
+        .from(chatSessions)
+        .where(
+          and(
+            eq(chatSessions.projectId, projectId),
+            eq(chatSessions.sessionId, sessionId)
+          )
+        );
 
-    if (!session) {
-      return NextResponse.json(
-        { error: 'Chat session not found' },
-        { status: 404 }
-      );
+      if (!session) {
+        return NextResponse.json(
+          { error: 'Chat session not found' },
+          { status: 404 }
+        );
+      }
     }
 
     // Proxy request to Python agent

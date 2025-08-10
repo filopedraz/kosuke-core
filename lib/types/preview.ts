@@ -122,8 +122,9 @@ export interface StopPreviewResponse {
 // Preview Panel Hook Types
 export interface UsePreviewPanelOptions {
   projectId: number;
-  sessionId: string | null;
+  sessionId: string;
   projectName: string;
+  enabled?: boolean;
 }
 
 export interface UsePreviewPanelReturn {

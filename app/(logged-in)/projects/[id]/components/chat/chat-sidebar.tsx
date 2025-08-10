@@ -363,6 +363,11 @@ export default function ChatSidebar({
                   id="title"
                   value={newChatTitle}
                   onChange={(e) => setNewChatTitle(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && newChatTitle.trim() && !isCreating) {
+                      handleCreateChat();
+                    }
+                  }}
                   className="h-11"
                   placeholder="Enter chat session title"
                   maxLength={100}

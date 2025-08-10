@@ -194,15 +194,16 @@ export default function ProjectPage({ params }: ProjectPageProps) {
   const sessionId = currentSession?.sessionId;
 
   // Preview should use session only when in chat interface view, not in sidebar list view
-  const previewSessionId = showSidebar ? null : (sessionId || null);
+  const previewSessionId = showSidebar ? null : sessionId;
 
-  // Preview management hooks - use null when in sidebar view (main branch)
+  // Preview management hooks - always call hooks; gate by enabled flag
   const { data: previewStatus, isLoading: isPreviewLoading } = usePreviewStatus(
     projectId,
-    previewSessionId,
-    false // Disable polling initially
+    sessionId ?? '',
+    false,
+    Boolean(sessionId)
   );
-  const { mutateAsync: startPreview } = useStartPreview(projectId, previewSessionId);
+  const { mutateAsync: startPreviewMutate } = useStartPreview(projectId, sessionId ?? '');
 
   // Reference to the ChatInterface component to maintain its state
   const chatInterfaceRef = useRef<HTMLDivElement>(null);
@@ -211,18 +212,18 @@ export default function ProjectPage({ params }: ProjectPageProps) {
 
   // Automatically start preview if not running (only once per project)
   useEffect(() => {
-    if (!isPreviewLoading && previewStatus && !previewStatus.url) {
+    if (sessionId && !isPreviewLoading && previewStatus && !previewStatus.url) {
       if (!previewStartAttempted.current.has(projectId)) {
         previewStartAttempted.current.add(projectId);
         console.log(`[ProjectPage] No preview URL found, starting preview for project ${projectId}`);
-        startPreview().catch((error) => {
+        startPreviewMutate().catch((error: unknown) => {
           console.error(`[ProjectPage] Error starting preview for project ${projectId}:`, error);
         });
       }
     } else if (previewStatus?.url) {
       console.log(`[ProjectPage] Preview already running for project ${projectId}:`, previewStatus.url);
     }
-  }, [projectId, previewStatus, isPreviewLoading, startPreview]);
+  }, [projectId, sessionId, previewStatus, isPreviewLoading, startPreviewMutate]);
 
   // Loading state
   if (isProjectLoading || !user) {
@@ -338,7 +339,7 @@ export default function ProjectPage({ params }: ProjectPageProps) {
             <PreviewPanel
               projectId={projectId}
               projectName={project.name}
-              sessionId={previewSessionId}
+              sessionId={sessionId ?? ''}
               branch={showSidebar ? undefined : currentBranch}
             />
           ) : currentView === 'code' ? (
@@ -354,10 +355,13 @@ export default function ProjectPage({ params }: ProjectPageProps) {
               projectId={projectId}
             />
           ) : currentView === 'database' ? (
-            <DatabaseTab
-              projectId={projectId}
-              sessionId={previewSessionId}
-            />
+            sessionId ? (
+              <DatabaseTab projectId={projectId} sessionId={sessionId} />
+            ) : (
+              <div className="flex h-full items-center justify-center p-6 text-muted-foreground">
+                Select a chat session to view its database.
+              </div>
+            )
           ) : (
             <BrandGuidelines
               projectId={projectId}

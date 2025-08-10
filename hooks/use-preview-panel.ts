@@ -8,10 +8,11 @@ export function usePreviewPanel({
   projectId,
   sessionId,
   projectName,
+  enabled = true,
 }: UsePreviewPanelOptions): UsePreviewPanelReturn {
   const { toast } = useToast();
 
-  // Initialize hooks - use null when no session is selected to fallback to main branch
+  // Initialize hooks - sessionId is required
   const { mutateAsync: startPreview, isPending: isStarting } = useStartPreview(
     projectId,
     sessionId
@@ -92,6 +93,10 @@ export function usePreviewPanel({
   // Fetch the preview URL
   const fetchPreviewUrl = useCallback(
     async (forceStart: boolean = false) => {
+      // Guard: require enabled and non-empty sessionId
+      if (!enabled || !sessionId) {
+        return;
+      }
       // Prevent duplicate requests using a ref-based lock
       if (requestInFlightRef.current) {
         console.log(
@@ -106,16 +111,12 @@ export function usePreviewPanel({
       // No git status in status/start flows
 
       try {
-        // Use main branch API when no session is selected
-        const sessionText = sessionId ? `session ${sessionId}` : 'main branch';
+        const sessionText = `session ${sessionId}`;
         console.log(
           `[Preview Panel] Fetching preview URL for project ${projectId} ${sessionText}${forceStart ? ' (forcing refresh)' : ''}`
         );
 
-        // Use session-specific or main branch API
-        const url = sessionId
-          ? `/api/projects/${projectId}/chat-sessions/${sessionId}/preview`
-          : `/api/projects/${projectId}/preview`;
+        const url = `/api/projects/${projectId}/chat-sessions/${sessionId}/preview`;
 
         const response = await fetch(url, {
           method: 'GET',
@@ -143,7 +144,7 @@ export function usePreviewPanel({
           throw new Error('No preview URL returned');
         }
       } catch (error) {
-        const sessionText = sessionId ? `session ${sessionId}` : 'main branch';
+        const sessionText = `session ${sessionId}`;
         console.error(
           `[Preview Panel] Error fetching preview for project ${projectId} ${sessionText}:`,
           error
@@ -154,7 +155,7 @@ export function usePreviewPanel({
         requestInFlightRef.current = false;
       }
     },
-    [projectId, sessionId, pollServerUntilReady]
+    [projectId, sessionId, pollServerUntilReady, enabled]
   );
 
   // Update ref when fetchPreviewUrl changes
@@ -164,10 +165,11 @@ export function usePreviewPanel({
 
   // Fetch the preview URL on component mount and when session changes
   useEffect(() => {
-    const sessionText = sessionId ? `session ${sessionId}` : 'main branch';
+    if (!enabled || !sessionId) return;
+    const sessionText = `session ${sessionId}`;
     console.log(`[Preview Panel] Initializing preview for project ${projectId} ${sessionText}`);
     fetchPreviewUrlRef.current?.();
-  }, [projectId, sessionId]); // Depend on both projectId and sessionId
+  }, [projectId, sessionId, enabled]); // Depend on both projectId and sessionId
 
   // Function to refresh the preview
   const handleRefresh = useCallback(
@@ -186,21 +188,13 @@ export function usePreviewPanel({
     console.log('[Preview Panel] Setting up refresh event listener for real-time updates');
 
     const handleRefreshPreview = (event: CustomEvent) => {
-      // Handle both session-specific and main branch refresh events
       const eventSessionId = event.detail.sessionId;
-      const isMainBranchEvent = !eventSessionId || eventSessionId === 'main';
       const isCurrentSession = eventSessionId === sessionId;
-      const isMainBranchActive = !sessionId;
-
-      if (
-        event.detail.projectId === projectId &&
-        (isCurrentSession || (isMainBranchEvent && isMainBranchActive))
-      ) {
-        const sessionText = sessionId ? `session ${sessionId}` : 'main branch';
+      if (event.detail.projectId === projectId && isCurrentSession) {
+        const sessionText = `session ${sessionId}`;
         console.log(
           `[Preview Panel] Received refresh event from chat streaming for ${sessionText}`
         );
-        // Use ref to avoid circular dependencies
         fetchPreviewUrlRef.current?.();
       }
     };

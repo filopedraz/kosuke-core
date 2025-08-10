@@ -1,7 +1,7 @@
 import logging
 import shutil
 from datetime import datetime
-from datetime import timedelta
+from datetime import timedelta  # noqa: F401  (kept for potential future cache policy)
 from pathlib import Path
 
 import git
@@ -22,121 +22,12 @@ class SessionManager:
 
     def __init__(self):
         self.sessions: dict[str, dict] = {}
-        # Track last pull time for main branches per project
-        self.last_main_pull: dict[int, datetime] = {}
+        # Track last pull time per session (optional, can be used for caching policies)
+        self.last_session_pull: dict[tuple[int, str], datetime] = {}
         logger.info("SessionManager initialized")
 
     def _sanitize_remote_url(self, repo_url: str) -> str:
         return sanitize_github_remote_url(repo_url)
-
-    async def pull_main_branch(
-        self,
-        project_id: int,
-        force: bool = False,
-        default_branch: str = "main",
-        github_service=None,
-    ) -> dict:
-        """
-        Pull latest changes for main project directory (manual operation).
-        Always performs pull when called, ignoring cache unless force=False.
-
-        Args:
-            project_id: Project identifier
-            force: If True, always pull. If False, respect cache
-            default_branch: Default branch to pull from
-
-        Returns:
-            dict: Update status with success/error information and commit count
-        """
-        try:
-            main_project_path = Path(settings.projects_dir) / str(project_id)
-
-            # Check cache only if force=False
-            if not force:
-                last_pull = self.last_main_pull.get(project_id)
-                now = datetime.now()
-
-                if last_pull and (now - last_pull) < timedelta(minutes=settings.git_pull_cache_minutes):
-                    minutes_since_pull = int((now - last_pull).total_seconds() / 60)
-                    logger.info(
-                        f"Skipping git pull for project {project_id} - last pulled {minutes_since_pull} minutes ago"
-                    )
-                    return {
-                        "success": True,
-                        "action": "cached",
-                        "message": f"Using cached version from {minutes_since_pull} minutes ago",
-                        "commits_pulled": 0,
-                        "last_pull_time": last_pull.isoformat(),
-                    }
-
-            # Ensure main project exists
-            if not main_project_path.exists():
-                raise Exception(f"Main project directory does not exist: {main_project_path}")
-
-            # Initialize git repo
-            repo = git.Repo(main_project_path)
-
-            # Get current commit hash before pull
-            current_commit = repo.head.commit.hexsha
-
-            logger.info(f"Pulling main branch for project {project_id} from {default_branch}")
-
-            try:
-                # Fetch latest changes (use authenticated fetch when token is provided)
-                logger.info(f"Fetching latest changes for project {project_id}")
-                if github_service is not None and getattr(github_service, "github_token", ""):
-                    github_service.fetch_with_auth(repo)
-                else:
-                    repo.remotes.origin.fetch()
-
-                # Always use hard reset for manual pulls
-                logger.info(f"Performing hard reset for project {project_id}")
-                repo.git.reset("--hard", f"origin/{default_branch}")
-
-            except git.exc.GitCommandError as e:
-                logger.error(f"Hard reset failed for project {project_id}: {e}")
-                raise Exception(f"Failed to pull: {e}") from e
-
-            # Get new commit hash and count commits pulled
-            new_commit = repo.head.commit.hexsha
-            commits_pulled = 0
-
-            if current_commit != new_commit:
-                # Count commits between old and new
-                try:
-                    commits = list(repo.iter_commits(f"{current_commit}..{new_commit}"))
-                    commits_pulled = len(commits)
-                    logger.info(f"Pulled {commits_pulled} new commits for project {project_id}")
-                except git.exc.GitCommandError:
-                    # If we can't count commits, at least we know something changed
-                    commits_pulled = 1
-                    logger.info(f"Updated project {project_id} (commit count unavailable)")
-            else:
-                logger.info(f"No new commits for project {project_id}")
-
-            # Update cache
-            now = datetime.now()
-            self.last_main_pull[project_id] = now
-
-            return {
-                "success": True,
-                "action": "pulled",
-                "message": f"Updated with {commits_pulled} new commits" if commits_pulled > 0 else "Already up to date",
-                "commits_pulled": commits_pulled,
-                "last_pull_time": now.isoformat(),
-                "previous_commit": current_commit[:8],
-                "new_commit": new_commit[:8],
-            }
-
-        except Exception as e:
-            logger.error(f"❌ Failed to pull main branch for project {project_id}: {e}")
-            return {
-                "success": False,
-                "action": "error",
-                "message": f"Failed to pull: {e}",
-                "commits_pulled": 0,
-                "error": str(e),
-            }
 
     def create_session_environment(self, project_id: int, session_id: str, base_branch: str = "main") -> str:
         """
@@ -324,11 +215,7 @@ class SessionManager:
         Returns:
             str: Path to session directory
         """
-        # Special case: "main" session uses main project directory
-        if session_id == "main":
-            main_project_path = Path(settings.projects_dir) / str(project_id)
-            return str(main_project_path)
-
+        # All sessions, including default branch, use dedicated session directories
         session_path = Path(settings.projects_dir) / str(project_id) / "sessions" / session_id
         return str(session_path)
 
@@ -411,16 +298,10 @@ class SessionManager:
             # Check if it's a git repository
             try:
                 git.Repo(session_path)
-                if session_id == "main":
-                    logger.debug(f"Main project directory is valid git repository: {session_path}")
-                else:
-                    logger.debug(f"Session directory is valid git repository: {session_path}")
+                logger.debug(f"Session directory is valid git repository: {session_path}")
                 return True
             except git.exc.InvalidGitRepositoryError:
-                if session_id == "main":
-                    logger.error(f"Main project directory is not a valid git repository: {session_path}")
-                else:
-                    logger.error(f"Session directory is not a valid git repository: {session_path}")
+                logger.error(f"Session directory is not a valid git repository: {session_path}")
                 return False
 
         except Exception as e:

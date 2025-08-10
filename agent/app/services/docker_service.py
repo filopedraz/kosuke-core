@@ -100,10 +100,7 @@ class DockerService:
             return False
 
     def _get_host_session_path(self, project_id: int, session_id: str) -> Path:
-        if session_id == "main":
-            session_path = Path(self.host_projects_dir) / str(project_id)
-        else:
-            session_path = Path(self.host_projects_dir) / str(project_id) / "sessions" / session_id
+        session_path = Path(self.host_projects_dir) / str(project_id) / "sessions" / session_id
         return session_path.resolve()
 
     async def _check_container_health(self, url: str, timeout: float = 2.0) -> bool:
@@ -135,7 +132,7 @@ class DockerService:
         labels = container.labels or {}
         if settings.router_mode == "traefik":
             project_id = labels.get("kosuke.project_id")
-            branch_name = labels.get("kosuke.branch", "main")
+            branch_name = labels.get("kosuke.branch")
             if project_id and branch_name:
                 domain = self.domain_service.generate_subdomain(int(project_id), branch_name)
                 return f"https://{domain}"
@@ -165,8 +162,6 @@ class DockerService:
         # Ensure session environment exists
         session_path = self.session_manager.get_session_path(project_id, session_id)
         if not self.session_manager.validate_session_directory(project_id, session_id):
-            if session_id == "main":
-                raise Exception(f"Main project directory not found: {session_path}")
             logger.info(f"Creating session environment for {session_id}")
             self.session_manager.create_session_environment(project_id, session_id)
 
@@ -285,7 +280,10 @@ class DockerService:
             for c in containers:
                 url = self._resolve_url_from_container(c)
                 labels = c.labels or {}
-                branch_name = labels.get("kosuke.branch", "main")
+                branch_name = (
+                    labels.get("kosuke.branch")
+                    or c.name.replace(settings.preview_container_name_prefix, "").split("-", 1)[1]
+                )
                 preview_urls.append(
                     {
                         "id": hash(c.name),
