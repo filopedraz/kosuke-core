@@ -55,12 +55,9 @@ async def chat_stream(request: ChatSessionRequest) -> StreamingResponse:
             agent = Agent(
                 project_id=request.project_id,
                 session_id=request.session_id,
+                github_token=request.github_token,
                 assistant_message_id=request.assistant_message_id,
             )
-
-            # Set GitHub integration if token provided
-            if request.github_token:
-                agent.set_github_integration(request.github_token)
 
         except Exception as agent_error:
             logger.error(f"❌ Failed to initialize Agent: {agent_error}")

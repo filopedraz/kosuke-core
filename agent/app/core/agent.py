@@ -5,11 +5,11 @@ import logging
 import time
 from collections.abc import AsyncGenerator
 
-from app.services.claude_code_service import ClaudeCodeService
-from app.services.github_service import GitHubService
 from app.services.session_manager import SessionManager
-from app.services.webhook_service import WebhookService
 from app.utils.observability import observe_agentic_workflow
+from app.utils.providers import get_claude_code_service
+from app.utils.providers import get_github_service
+from app.utils.providers import get_webhook_service
 
 logger = logging.getLogger(__name__)
 
@@ -27,11 +27,11 @@ class Agent:
     - GitHub integration for auto-commit functionality
     """
 
-    def __init__(self, project_id: int, session_id: str, assistant_message_id: int | None = None):
+    def __init__(self, project_id: int, session_id: str, github_token: str, assistant_message_id: int | None = None):
         self.project_id = project_id
         self.session_id = session_id
         self.assistant_message_id = assistant_message_id
-        self.webhook_service = WebhookService()
+        self.webhook_service = get_webhook_service()
         self.start_time = time.time()
         self.total_actions = 0
 
@@ -41,25 +41,17 @@ class Agent:
         # Get session-specific working directory
         self.working_directory = self.session_manager.get_session_path(project_id, session_id)
 
-        # GitHub integration attributes
-        self.github_service: GitHubService | None = None
-        self.github_token: str | None = None
+        # GitHub integration (mandatory)
+        self.github_token: str = github_token
+        self.github_service = get_github_service(github_token)
 
         # Initialize claude-code service with session directory
-        self.claude_code_service = ClaudeCodeService(project_id=project_id, working_directory=self.working_directory)
+        self.claude_code_service = get_claude_code_service(
+            project_id=project_id, working_directory=self.working_directory
+        )
 
         logger.info(f"🚀 Agent initialized for project ID: {project_id}, session: {session_id}")
         logger.info(f"📁 Working directory: {self.working_directory}")
-
-    def set_github_integration(self, github_token: str):
-        """Enable GitHub integration for this agent session"""
-        self.github_token = github_token
-        self.github_service = GitHubService(github_token)
-
-        # Start sync session
-        if self.github_service:
-            self.github_service.start_sync_session(self.project_id, self.session_id)
-            print(f"🔗 GitHub integration enabled for session {self.session_id}")
 
     @observe_agentic_workflow("claude-code-agentic-pipeline")
     async def run(
@@ -83,17 +75,7 @@ class Agent:
         text_state = {"active": False, "content": "", "all_blocks": []}
 
         try:
-            # Check if GitHub integration should be enabled
-            logger.info(
-                f"🔍 GitHub integration check: token={'✓' if github_token else '✗'}, " f"session={self.session_id}"
-            )
-            if github_token:
-                logger.info(f"🔗 Enabling GitHub integration for session {self.session_id}")
-                self.set_github_integration(github_token)
-            else:
-                raise ValueError(
-                    "Missing GitHub token. Start the session with a valid GitHub token to enable commits and tracking."
-                )
+            logger.info(f"🔍 GitHub integration active for session {self.session_id}")
 
             # Stream events from claude-code-sdk
             async for event in self.claude_code_service.run_agentic_query(prompt, max_turns):
