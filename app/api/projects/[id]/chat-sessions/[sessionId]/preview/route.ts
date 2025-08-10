@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-import { getProjectEnvironmentVariables } from '@/lib/api/environment';
 import { auth } from '@/lib/auth/server';
 import { AGENT_SERVICE_URL } from '@/lib/constants';
 import { db } from '@/lib/db/drizzle';
+import { getProjectEnvironmentVariables } from '@/lib/db/queries';
 import { chatSessions, projects } from '@/lib/db/schema';
 import { and, eq } from 'drizzle-orm';
 

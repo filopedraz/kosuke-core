@@ -3,7 +3,14 @@ import { and, asc, desc, eq, isNull } from 'drizzle-orm';
 import { auth } from '@/lib/auth/server';
 import { db } from '@/lib/db/drizzle';
 import type { Diff } from '@/lib/db/schema';
-import { activityLogs, chatMessages, diffs, projects, users } from '@/lib/db/schema';
+import {
+  activityLogs,
+  chatMessages,
+  diffs,
+  projectEnvironmentVariables,
+  projects,
+  users,
+} from '@/lib/db/schema';
 
 /**
  * Get current authenticated user with soft delete check
@@ -115,4 +122,32 @@ export async function getProjectWithDetails(id: number) {
     .leftJoin(users, eq(projects.createdBy, users.clerkUserId))
     .where(eq(projects.id, id))
     .limit(1);
+}
+
+/**
+ * Fetch environment variables for a project to use in preview containers
+ * Returns a key-value object suitable for Docker container environment
+ */
+export async function getProjectEnvironmentVariables(
+  projectId: number
+): Promise<Record<string, string>> {
+  try {
+    const variables = await db
+      .select({
+        key: projectEnvironmentVariables.key,
+        value: projectEnvironmentVariables.value,
+      })
+      .from(projectEnvironmentVariables)
+      .where(eq(projectEnvironmentVariables.projectId, projectId));
+
+    const envVars: Record<string, string> = {};
+    for (const variable of variables) {
+      envVars[variable.key] = variable.value;
+    }
+
+    return envVars;
+  } catch (error) {
+    console.error(`Failed to fetch environment variables for project ${projectId}:`, error);
+    return {};
+  }
 }
