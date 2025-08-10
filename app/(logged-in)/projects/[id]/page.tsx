@@ -190,40 +190,53 @@ export default function ProjectPage({ params }: ProjectPageProps) {
 
   // Get current session information
   const currentSession = sessions.find(session => session.id === activeChatSessionId);
-  const currentBranch = currentSession?.githubBranchName;
+  // Branch label is just the sessionId now
+  const currentBranch = currentSession?.sessionId;
   const sessionId = currentSession?.sessionId;
 
   // Preview should use session only when in chat interface view, not in sidebar list view
   const previewSessionId = showSidebar ? null : sessionId;
 
-  // Preview management hooks - always call hooks; gate by enabled flag
+  // Preview management hooks (scoped to the effective preview session)
   const { data: previewStatus, isLoading: isPreviewLoading } = usePreviewStatus(
     projectId,
-    sessionId ?? '',
+    previewSessionId ?? '',
     false,
-    Boolean(sessionId)
+    Boolean(previewSessionId)
   );
-  const { mutateAsync: startPreviewMutate } = useStartPreview(projectId, sessionId ?? '');
+  const { mutateAsync: startPreviewMutate } = useStartPreview(
+    projectId,
+    previewSessionId ?? ''
+  );
 
   // Reference to the ChatInterface component to maintain its state
   const chatInterfaceRef = useRef<HTMLDivElement>(null);
-  // Track if we've already attempted to start preview for this project
-  const previewStartAttempted = useRef<Set<number>>(new Set());
+  // Track if we've already attempted to start preview for this project/session pair
+  const previewStartAttempted = useRef<Set<string>>(new Set());
 
   // Automatically start preview if not running (only once per project)
   useEffect(() => {
-    if (sessionId && !isPreviewLoading && previewStatus && !previewStatus.url) {
-      if (!previewStartAttempted.current.has(projectId)) {
-        previewStartAttempted.current.add(projectId);
-        console.log(`[ProjectPage] No preview URL found, starting preview for project ${projectId}`);
+    if (previewSessionId && !isPreviewLoading && previewStatus && !previewStatus.url) {
+      const key = `${projectId}:${previewSessionId}`;
+      if (!previewStartAttempted.current.has(key)) {
+        previewStartAttempted.current.add(key);
+        console.log(
+          `[ProjectPage] No preview URL found, starting preview for project ${projectId} session ${previewSessionId}`
+        );
         startPreviewMutate().catch((error: unknown) => {
-          console.error(`[ProjectPage] Error starting preview for project ${projectId}:`, error);
+          console.error(
+            `[ProjectPage] Error starting preview for project ${projectId} session ${previewSessionId}:`,
+            error
+          );
         });
       }
     } else if (previewStatus?.url) {
-      console.log(`[ProjectPage] Preview already running for project ${projectId}:`, previewStatus.url);
+      console.log(
+        `[ProjectPage] Preview already running for project ${projectId} session ${previewSessionId}:`,
+        previewStatus.url
+      );
     }
-  }, [projectId, sessionId, previewStatus, isPreviewLoading, startPreviewMutate]);
+  }, [projectId, previewSessionId, previewStatus, isPreviewLoading, startPreviewMutate]);
 
   // Loading state
   if (isProjectLoading || !user) {
@@ -339,7 +352,7 @@ export default function ProjectPage({ params }: ProjectPageProps) {
             <PreviewPanel
               projectId={projectId}
               projectName={project.name}
-              sessionId={sessionId ?? ''}
+              sessionId={previewSessionId ?? ''}
               branch={showSidebar ? undefined : currentBranch}
             />
           ) : currentView === 'code' ? (

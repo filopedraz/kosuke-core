@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from contextlib import suppress
 from pathlib import Path
 
 import docker
@@ -67,7 +68,7 @@ class DockerService:
         if not host_workspace_dir:
             raise RuntimeError(
                 "HOST_WORKSPACE_DIR is required when running inside Docker-in-Docker. "
-                "Set the environment variable HOST_WORKSPACE_DIR to the absolute path of the workspace root on the host."
+                "Set HOST_WORKSPACE_DIR to the absolute path of the workspace root on the host."
             )
         host_projects_dir = Path(host_workspace_dir) / "projects"
         logger.info(f"Using HOST_WORKSPACE_DIR: {host_projects_dir}")
@@ -111,9 +112,8 @@ class DockerService:
             base_url = url.replace("localhost", "host.docker.internal")
             health_url = base_url.rstrip("/") + settings.preview_health_path
             timeout_config = aiohttp.ClientTimeout(total=timeout)
-            async with aiohttp.ClientSession(timeout=timeout_config) as session:
-                async with session.get(health_url) as response:
-                    return response.status == 200
+            async with aiohttp.ClientSession(timeout=timeout_config) as session, session.get(health_url) as response:
+                return response.status == 200
         except Exception as e:
             logger.debug(f"Health check failed for {url}: {e}")
             return False
@@ -121,12 +121,100 @@ class DockerService:
     async def _get_container_by_name(self, name: str):
         loop = asyncio.get_event_loop()
         try:
-            container = await asyncio.wait_for(
-                loop.run_in_executor(None, self.client.containers.get, name), timeout=5.0
-            )
-            return container
+            return await asyncio.wait_for(loop.run_in_executor(None, self.client.containers.get, name), timeout=5.0)
         except Exception:
             return None
+
+    async def _ensure_session_environment(self, project_id: int, session_id: str) -> None:
+        if not self.session_manager.validate_session_directory(project_id, session_id):
+            logger.info(f"Creating session environment for {session_id}")
+            self.session_manager.create_session_environment(project_id, session_id)
+
+    async def _get_existing_container_url_or_remove(self, container_name: str) -> str | None:
+        container = await self._get_container_by_name(container_name)
+        if not container:
+            return None
+        if container.status == "running":
+            url = self._resolve_url_from_container(container)
+            if url:
+                return url
+        # Try restart once
+        loop = asyncio.get_event_loop()
+        try:
+            await asyncio.wait_for(loop.run_in_executor(None, container.restart), timeout=30.0)
+            await asyncio.wait_for(loop.run_in_executor(None, container.reload), timeout=5.0)
+            if container.status == "running":
+                url = self._resolve_url_from_container(container)
+                if url:
+                    return url
+        except Exception as e:
+            logger.debug(f"Failed to restart existing container {container_name}: {e}")
+        # Force remove to allow clean recreate
+        with suppress(Exception):
+            await asyncio.wait_for(loop.run_in_executor(None, lambda: container.remove(force=True)), timeout=10.0)
+        return None
+
+    async def _run_container_with_retries(
+        self,
+        project_id: int,
+        session_id: str,
+        environment: dict[str, str],
+        host_session_path: Path,
+        container_name: str,
+    ) -> str:
+        await self._ensure_preview_image()
+        last_error: Exception | None = None
+        loop = asyncio.get_event_loop()
+        for attempt in range(1, 4):
+            ports, labels, url, host_port = self.adapter.prepare_run(project_id, session_id, container_name)
+            logger.info(f"Attempt {attempt}/3 to start preview container {container_name} using host port {host_port}")
+            try:
+                await asyncio.wait_for(
+                    loop.run_in_executor(
+                        None,
+                        lambda ports=ports, labels=labels: self.client.containers.run(
+                            image=settings.preview_default_image,
+                            name=container_name,
+                            command=None,
+                            ports=ports,
+                            volumes={str(host_session_path): {"bind": "/app", "mode": "rw"}},
+                            working_dir="/app",
+                            environment=environment,
+                            network=settings.preview_network,
+                            labels=labels,
+                            detach=True,
+                            auto_remove=False,
+                        ),
+                    ),
+                    timeout=60.0,
+                )
+                return url
+            except Exception as e:
+                last_error = e
+                message = str(e)
+                is_port_conflict = (
+                    "port is already allocated" in message
+                    or "address already in use" in message
+                    or "Bind for 0.0.0.0" in message
+                )
+                # Clean up any partially created container before retrying
+                existing = await self._get_container_by_name(container_name)
+                if existing:
+                    with suppress(Exception):
+                        await asyncio.wait_for(
+                            loop.run_in_executor(None, lambda c=existing: c.remove(force=True)), timeout=10.0
+                        )
+                if is_port_conflict and attempt < 3 and settings.router_mode == "port":
+                    logger.warning(
+                        f"Host port {host_port} is already in use for {container_name}. Retrying with a new port..."
+                    )
+                    await asyncio.sleep(0.2)
+                    continue
+                logger.error(f"Failed to start preview container {container_name} on attempt {attempt}: {message}")
+                break
+        if last_error:
+            raise last_error
+        raise RuntimeError("Failed to start preview container due to unknown error")
 
     def _resolve_url_from_container(self, container) -> str | None:
         labels = container.labels or {}
@@ -153,41 +241,18 @@ class DockerService:
         return None
 
     async def start_preview(self, project_id: int, session_id: str, env_vars: dict[str, str] | None = None) -> str:
-        if env_vars is None:
-            env_vars = {}
+        env_vars = env_vars or {}
 
         container_name = self._get_container_name(project_id, session_id)
         logger.info(f"Start preview for project {project_id} session {session_id} as {container_name}")
 
         # Ensure session environment exists
-        session_path = self.session_manager.get_session_path(project_id, session_id)
-        if not self.session_manager.validate_session_directory(project_id, session_id):
-            logger.info(f"Creating session environment for {session_id}")
-            self.session_manager.create_session_environment(project_id, session_id)
+        await self._ensure_session_environment(project_id, session_id)
 
-        # If container exists
-        container = await self._get_container_by_name(container_name)
-        if container:
-            if container.status == "running":
-                url = self._resolve_url_from_container(container)
-                if url:
-                    return url
-            # Try restart once
-            loop = asyncio.get_event_loop()
-            try:
-                await asyncio.wait_for(loop.run_in_executor(None, container.restart), timeout=30.0)
-                await asyncio.wait_for(loop.run_in_executor(None, container.reload), timeout=5.0)
-                if container.status == "running":
-                    url = self._resolve_url_from_container(container)
-                    if url:
-                        return url
-            except Exception:
-                pass
-            # Force remove and recreate
-            try:
-                await asyncio.wait_for(loop.run_in_executor(None, lambda: container.remove(force=True)), timeout=10.0)
-            except Exception:
-                logger.warning("Failed to remove existing container; attempting recreate anyway")
+        # Reuse existing running container if possible; otherwise ensure it's removed
+        url = await self._get_existing_container_url_or_remove(container_name)
+        if url:
+            return url
 
         # Create new container
         host_session_path = self._get_host_session_path(project_id, session_id)
@@ -195,31 +260,9 @@ class DockerService:
             raise ValueError(f"Host session path must be absolute, got: {host_session_path}")
 
         environment = self._prepare_container_environment(project_id, session_id, env_vars)
-        await self._ensure_preview_image()
-        ports, labels, url, _host_port = self.adapter.prepare_run(project_id, session_id, container_name)
-
-        loop = asyncio.get_event_loop()
-        await asyncio.wait_for(
-            loop.run_in_executor(
-                None,
-                lambda: self.client.containers.run(
-                    image=settings.preview_default_image,
-                    name=container_name,
-                    command=None,
-                    ports=ports,
-                    volumes={str(host_session_path): {"bind": "/app", "mode": "rw"}},
-                    working_dir="/app",
-                    environment=environment,
-                    network=settings.preview_network,
-                    labels=labels,
-                    detach=True,
-                    auto_remove=False,
-                ),
-            ),
-            timeout=60.0,
+        return await self._run_container_with_retries(
+            project_id, session_id, environment, host_session_path, container_name
         )
-
-        return url
 
     async def stop_preview(self, project_id: int, session_id: str) -> None:
         container_name = self._get_container_name(project_id, session_id)
@@ -227,14 +270,10 @@ class DockerService:
         if not container:
             return
         loop = asyncio.get_event_loop()
-        try:
+        with suppress(Exception):
             await asyncio.wait_for(loop.run_in_executor(None, lambda: container.stop(timeout=5)), timeout=15.0)
-        except Exception:
-            pass
-        try:
+        with suppress(Exception):
             await asyncio.wait_for(loop.run_in_executor(None, lambda: container.remove(force=True)), timeout=10.0)
-        except Exception:
-            pass
 
     async def get_preview_status(self, project_id: int, session_id: str) -> PreviewStatus:
         container_name = self._get_container_name(project_id, session_id)
