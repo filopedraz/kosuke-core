@@ -33,9 +33,6 @@ class GitHubService:
             self.github = None
             self.user = None
 
-        # Store sync sessions for tracking changes across commits
-        self.sync_sessions: dict[str, dict] = {}
-
     def get_current_commit_sha(self, session_path: str | Path) -> str | None:
         """Return current commit SHA for the given working directory."""
         try:
@@ -350,31 +347,14 @@ class GitHubService:
             logger.error(f"Error cloning repository: {e}")
             raise Exception(f"Failed to clone repository: {e!s}") from e
 
-    def start_sync_session(self, project_id: int, session_id: str) -> None:
-        """Start a new sync session for tracking changes"""
-        self.sync_sessions[session_id] = {
-            "project_id": project_id,
-            "files_changed": [],
-            "start_time": datetime.now(),
-            "status": "active",
-        }
-        logger.info(f"Started sync session {session_id} for project {project_id}")
+    # Deprecated: start_sync_session removed
 
-    def track_file_change(self, session_id: str, file_path: str) -> None:
-        """Track a file change in the current sync session"""
-        if session_id in self.sync_sessions:
-            session = self.sync_sessions[session_id]
-            if file_path not in session["files_changed"]:
-                session["files_changed"].append(file_path)
+    # Deprecated: track_file_change removed
 
     async def commit_session_changes(
         self, session_path: str, session_id: str, commit_message: str | None = None
     ) -> GitHubCommit | None:
-        """Commit all changes in the session-specific working directory to development branch"""
-        if session_id not in self.sync_sessions:
-            raise Exception(f"Sync session {session_id} not found")
-
-        session = self.sync_sessions[session_id]
+        """Commit all changes in the session-specific working directory to development branch (stateless)."""
 
         try:
             # Use the provided session path instead of the main project path
@@ -401,16 +381,9 @@ class GitHubService:
             # Push to remote
             self._push_to_remote(repo, branch_name)
 
-            # Update session and create response
-            self._update_session_completion(session, commit, branch_name)
-
-            # Update session with actual files changed
-            session["files_changed"] = changed_files
-
             return self._create_github_commit_response(commit, repo, changed_files, session_path)
 
         except Exception as e:
-            session["status"] = "failed"
             logger.error(f"Error committing changes for session {session_id}: {e}")
             raise Exception(f"Failed to commit changes: {e!s}") from e
 

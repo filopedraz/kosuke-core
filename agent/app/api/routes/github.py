@@ -56,54 +56,6 @@ async def clone_repository(request: CloneRepoRequest, github_token: str = Header
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
-@router.post("/github/start-session")
-async def start_sync_session(project_id: int, session_id: str, github_token: str = Header(..., alias="X-GitHub-Token")):
-    """Start a new sync session for tracking changes"""
-    try:
-        github_service = get_github_service(github_token)
-        github_service.start_sync_session(project_id, session_id)
-        return {"success": True, "session_id": session_id, "project_id": project_id}
-    except Exception as e:
-        logger.error(f"Error starting sync session: {e}")
-        raise HTTPException(status_code=500, detail=str(e)) from e
-
-
-@router.post("/github/track-change")
-async def track_file_change(session_id: str, file_path: str, github_token: str = Header(..., alias="X-GitHub-Token")):
-    """Track a file change in the current sync session"""
-    try:
-        github_service = get_github_service(github_token)
-        github_service.track_file_change(session_id, file_path)
-        return {"success": True}
-    except Exception as e:
-        logger.error(f"Error tracking file change: {e}")
-        raise HTTPException(status_code=500, detail=str(e)) from e
-
-
-@router.post("/github/commit-session")
-async def commit_session_changes(
-    session_id: str,
-    commit_message: str | None = None,
-    github_token: str = Header(..., alias="X-GitHub-Token"),
-):
-    """Commit all changes from a sync session"""
-    try:
-        github_service = get_github_service(github_token)
-        commit = await github_service.commit_session_changes(session_id, commit_message)
-
-        # End the session
-        summary = github_service.end_sync_session(session_id)
-
-        return {
-            "success": True,
-            "commit": commit.dict() if commit else None,
-            "session_summary": summary,
-        }
-    except Exception as e:
-        logger.error(f"Error committing session changes: {e}")
-        raise HTTPException(status_code=500, detail=str(e)) from e
-
-
 @router.get("/github/repo-info")
 async def get_repository_info(repo_url: str, github_token: str = Header(..., alias="X-GitHub-Token")) -> GitHubRepo:
     """Get information about a GitHub repository"""

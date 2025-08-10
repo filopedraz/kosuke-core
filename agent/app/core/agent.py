@@ -236,8 +236,6 @@ class Agent:
         await self._send_assistant_message_webhook(text_state["all_blocks"], success=False)
 
         # If we have GitHub integration and session fails, mark session as failed
-        if self.github_service and self.session_id and self.session_id in self.github_service.sync_sessions:
-            del self.github_service.sync_sessions[self.session_id]
 
     async def finalize_github_session(self, commit_message: str | None = None) -> tuple[str | None, dict | None]:
         """Finalize the GitHub session, commit changes, and return (commit_sha, session_summary)."""
@@ -247,9 +245,6 @@ class Agent:
             commit = await self.github_service.commit_session_changes(
                 session_path=self.working_directory, session_id=self.session_id, commit_message=commit_message
             )
-            # cleanup in-memory session tracking if exists
-            if self.session_id in self.github_service.sync_sessions:
-                del self.github_service.sync_sessions[self.session_id]
             return (commit.sha if commit else None), None
         except Exception as e:
             print(f"❌ Error finalizing GitHub session: {e}")
