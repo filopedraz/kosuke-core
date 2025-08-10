@@ -24,7 +24,6 @@ class SessionManager:
         self.sessions: dict[str, dict] = {}
         # Track last pull time for main branches per project
         self.last_main_pull: dict[int, datetime] = {}
-        self.PULL_CACHE_MINUTES = settings.git_pull_cache_minutes
         logger.info("SessionManager initialized")
 
     def _sanitize_remote_url(self, repo_url: str) -> str:
@@ -57,7 +56,7 @@ class SessionManager:
                 last_pull = self.last_main_pull.get(project_id)
                 now = datetime.now()
 
-                if last_pull and (now - last_pull) < timedelta(minutes=self.PULL_CACHE_MINUTES):
+                if last_pull and (now - last_pull) < timedelta(minutes=settings.git_pull_cache_minutes):
                     minutes_since_pull = int((now - last_pull).total_seconds() / 60)
                     logger.info(
                         f"Skipping git pull for project {project_id} - last pulled {minutes_since_pull} minutes ago"
@@ -453,7 +452,7 @@ class SessionManager:
             repo = git.Repo(session_path)
 
             # Get the session branch name
-            session_branch_name = f"kosuke/chat-{session_id}"
+            session_branch_name = f"{settings.session_branch_prefix}{session_id}"
 
             # Get current commit hash before pull
             current_commit = repo.head.commit.hexsha
