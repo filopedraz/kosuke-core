@@ -140,3 +140,19 @@ export interface ProjectGitHubSettings {
   isPrivate: boolean;
   autoInit: boolean;
 }
+
+// Branch and Pull Request summaries
+export interface BranchSummary {
+  name: string;
+  commitSha: string;
+  protected: boolean;
+}
+
+export interface PullRequestSummary {
+  number: number;
+  title: string;
+  state: 'open' | 'closed' | 'merged';
+  headRef: string;
+  baseRef: string;
+  url: string;
+}

@@ -129,6 +129,9 @@ class Settings:
 
         # Git settings
         self.git_pull_cache_minutes: int = int(os.getenv("GIT_PULL_CACHE_MINUTES", "60"))
+        # Branch naming for chat sessions (used by GitHubService)
+        # Example default: kosuke/chat-<sessionId>
+        self.session_branch_prefix: str = os.getenv("SESSION_BRANCH_PREFIX", "kosuke/chat-")
 
     def validate_settings(self) -> bool:
         """Validate required settings"""

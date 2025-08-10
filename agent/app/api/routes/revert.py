@@ -26,8 +26,8 @@ async def revert_to_commit(request: RevertRequest):
         )
 
         session_manager = get_session_manager()
-        # For local Git operations, we use local-only mode via provider
-        git_service = get_github_service("", local_only=True)
+        # For local Git operations, no token required for checkout/backup
+        git_service = get_github_service("")
 
         # Get session path
         session_path_str = session_manager.get_session_path(request.project_id, request.session_id)

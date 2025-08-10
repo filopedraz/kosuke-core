@@ -1,6 +1,6 @@
-import { useQuery } from '@tanstack/react-query';
-import type { GitHubRepository } from '@/lib/types/github';
 import type { ApiResponse } from '@/lib/api';
+import type { GitHubRepository } from '@/lib/types/github';
+import { useQuery } from '@tanstack/react-query';
 
 export function useGitHubRepositories(userId: string) {
   return useQuery({

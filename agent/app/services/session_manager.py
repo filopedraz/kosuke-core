@@ -6,6 +6,7 @@ from pathlib import Path
 
 import git
 
+from app.services.git_utils import sanitize_github_remote_url
 from app.utils.config import settings
 
 logger = logging.getLogger(__name__)
@@ -27,31 +28,15 @@ class SessionManager:
         logger.info("SessionManager initialized")
 
     def _sanitize_remote_url(self, repo_url: str) -> str:
-        """Return a sanitized HTTPS GitHub URL without embedded credentials.
+        return sanitize_github_remote_url(repo_url)
 
-        - Converts SSH format to HTTPS
-        - Strips any oauth2 credentials if present
-        - Leaves other URLs unchanged
-        """
-        try:
-            if repo_url.startswith("git@github.com:"):
-                repo_path = repo_url.replace("git@github.com:", "")
-                if not repo_path.endswith(".git"):
-                    repo_path = f"{repo_path}.git"
-                return f"https://github.com/{repo_path}"
-
-            if repo_url.startswith("https://oauth2:") and "@github.com/" in repo_url:
-                rest = repo_url.split("@github.com/", 1)[1]
-                return f"https://github.com/{rest}"
-
-            if repo_url.startswith("https://github.com/"):
-                return repo_url
-
-            return repo_url
-        except Exception:
-            return repo_url
-
-    async def pull_main_branch(self, project_id: int, force: bool = False, default_branch: str = "main") -> dict:
+    async def pull_main_branch(
+        self,
+        project_id: int,
+        force: bool = False,
+        default_branch: str = "main",
+        github_service=None,
+    ) -> dict:
         """
         Pull latest changes for main project directory (manual operation).
         Always performs pull when called, ignoring cache unless force=False.
@@ -98,9 +83,12 @@ class SessionManager:
             logger.info(f"Pulling main branch for project {project_id} from {default_branch}")
 
             try:
-                # Fetch latest changes
+                # Fetch latest changes (use authenticated fetch when token is provided)
                 logger.info(f"Fetching latest changes for project {project_id}")
-                repo.remotes.origin.fetch()
+                if github_service is not None and getattr(github_service, "github_token", ""):
+                    github_service.fetch_with_auth(repo)
+                else:
+                    repo.remotes.origin.fetch()
 
                 # Always use hard reset for manual pulls
                 logger.info(f"Performing hard reset for project {project_id}")
@@ -147,112 +135,6 @@ class SessionManager:
                 "success": False,
                 "action": "error",
                 "message": f"Failed to pull: {e}",
-                "commits_pulled": 0,
-                "error": str(e),
-            }
-
-    async def update_main_branch(self, project_id: int, default_branch: str = "main") -> dict:
-        """
-        Update main project directory with latest changes from remote.
-        Uses 60-minute caching to avoid unnecessary pulls.
-
-        Args:
-            project_id: Project identifier
-            default_branch: Default branch to pull from
-
-        Returns:
-            dict: Update status with success/error information and commit count
-        """
-        try:
-            main_project_path = Path(settings.projects_dir) / str(project_id)
-
-            # Check if we need to pull (60-minute cache)
-            last_pull = self.last_main_pull.get(project_id)
-            now = datetime.now()
-
-            if last_pull and (now - last_pull) < timedelta(minutes=self.PULL_CACHE_MINUTES):
-                minutes_since_pull = int((now - last_pull).total_seconds() / 60)
-                logger.info(
-                    f"Skipping git pull for project {project_id} - last pulled {minutes_since_pull} minutes ago"
-                )
-                return {
-                    "success": True,
-                    "action": "cached",
-                    "message": f"Using cached version from {minutes_since_pull} minutes ago",
-                    "commits_pulled": 0,
-                    "last_pull_time": last_pull.isoformat(),
-                }
-
-            # Ensure main project exists
-            if not main_project_path.exists():
-                raise Exception(f"Main project directory does not exist: {main_project_path}")
-
-            # Initialize git repo
-            repo = git.Repo(main_project_path)
-
-            # Get current commit hash before pull
-            current_commit = repo.head.commit.hexsha
-
-            logger.info(f"Updating main branch for project {project_id} from {default_branch}")
-
-            try:
-                # Fetch latest changes
-                logger.info(f"Fetching latest changes for project {project_id}")
-                repo.remotes.origin.fetch()
-
-                # Try regular pull first
-                logger.info(f"Attempting git pull for project {project_id}")
-                repo.git.pull("origin", default_branch)
-
-            except git.exc.GitCommandError as e:
-                logger.warning(f"Regular pull failed for project {project_id}, attempting hard reset: {e}")
-
-                # Hard pull: reset to remote state
-                try:
-                    # Reset to remote branch
-                    repo.git.reset("--hard", f"origin/{default_branch}")
-                    logger.info(f"Successfully performed hard reset for project {project_id}")
-
-                except git.exc.GitCommandError as hard_error:
-                    logger.error(f"Hard reset also failed for project {project_id}: {hard_error}")
-                    raise Exception(f"Both regular pull and hard reset failed: {hard_error}") from hard_error
-
-            # Get new commit hash and count commits pulled
-            new_commit = repo.head.commit.hexsha
-            commits_pulled = 0
-
-            if current_commit != new_commit:
-                # Count commits between old and new
-                try:
-                    commits = list(repo.iter_commits(f"{current_commit}..{new_commit}"))
-                    commits_pulled = len(commits)
-                    logger.info(f"Pulled {commits_pulled} new commits for project {project_id}")
-                except git.exc.GitCommandError:
-                    # If we can't count commits, at least we know something changed
-                    commits_pulled = 1
-                    logger.info(f"Updated project {project_id} (commit count unavailable)")
-            else:
-                logger.info(f"No new commits for project {project_id}")
-
-            # Update cache
-            self.last_main_pull[project_id] = now
-
-            return {
-                "success": True,
-                "action": "pulled",
-                "message": f"Updated with {commits_pulled} new commits" if commits_pulled > 0 else "Already up to date",
-                "commits_pulled": commits_pulled,
-                "last_pull_time": now.isoformat(),
-                "previous_commit": current_commit[:8],
-                "new_commit": new_commit[:8],
-            }
-
-        except Exception as e:
-            logger.error(f"❌ Failed to update main branch for project {project_id}: {e}")
-            return {
-                "success": False,
-                "action": "error",
-                "message": f"Failed to update: {e}",
                 "commits_pulled": 0,
                 "error": str(e),
             }
@@ -358,7 +240,7 @@ class SessionManager:
 
     def _create_session_branch(self, session_repo: git.Repo, session_id: str) -> str:
         """Create and checkout the session-specific branch, returns branch name."""
-        session_branch_name = f"kosuke/chat-{session_id}"
+        session_branch_name = f"{settings.session_branch_prefix}{session_id}"
         logger.info(f"Creating session branch: {session_branch_name}")
         try:
             session_repo.create_head(session_branch_name)
@@ -546,7 +428,9 @@ class SessionManager:
             logger.error(f"Error validating session directory: {e}")
             return False
 
-    async def pull_session_branch(self, project_id: int, session_id: str, force: bool = False) -> dict:
+    async def pull_session_branch(
+        self, project_id: int, session_id: str, force: bool = False, github_service=None
+    ) -> dict:
         """
         Pull latest changes for a session branch from its remote branch.
 
@@ -576,9 +460,12 @@ class SessionManager:
 
             logger.info(f"Pulling session branch {session_branch_name} for project {project_id}")
 
-            # Fetch latest changes from remote
+            # Fetch latest changes from remote (use authenticated fetch if provided)
             logger.info(f"Fetching latest changes for session {session_id}")
-            repo.remotes.origin.fetch()
+            if github_service is not None and getattr(github_service, "github_token", ""):
+                github_service.fetch_with_auth(repo)
+            else:
+                repo.remotes.origin.fetch()
 
             # Check if remote branch exists
             remote_branch = f"origin/{session_branch_name}"
@@ -641,5 +528,5 @@ class SessionManager:
                 "message": f"Failed to pull session branch: {e}",
                 "commits_pulled": 0,
                 "error": str(e),
-                "branch_name": f"kosuke/chat-{session_id}",
+                "branch_name": f"{settings.session_branch_prefix}{session_id}",
             }

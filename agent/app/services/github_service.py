@@ -1,4 +1,3 @@
-import asyncio
 import logging
 import shutil
 from datetime import datetime
@@ -9,7 +8,6 @@ import git
 import requests
 from github import Github
 
-from app.models.github import CloneRepoRequest
 from app.models.github import CreateRepoRequest
 from app.models.github import GitHubCommit
 from app.models.github import GitHubRepo
@@ -21,38 +19,39 @@ logger = logging.getLogger(__name__)
 
 
 class GitHubService:
-    def __init__(self, github_token: str, local_only: bool = False):
+    def __init__(self, github_token: str):
         self.github_token = github_token
-        self.local_only = local_only
         self.session_manager = SessionManager()
 
-        if not local_only:
-            self.github = Github(github_token)
-            self.user = self.github.get_user()
-        else:
-            self.github = None
-            self.user = None
+        self.github = Github(github_token) if github_token else None
+        self.user = self.github.get_user() if self.github else None
 
-    def get_current_commit_sha(self, session_path: str | Path) -> str | None:
-        """Return current commit SHA for the given working directory."""
-        try:
-            repo = git.Repo(session_path)
-            return repo.head.commit.hexsha
-        except Exception as e:
-            logger.error(f"Error getting current commit SHA for {session_path}: {e}")
-            return None
+    def fetch_with_auth(self, repo: git.Repo, remote_name: str = "origin") -> None:
+        """Perform an authenticated fetch on the given repository remote and restore the URL.
 
-    async def pull_branch(self, project_id: int, session_id: str, force: bool = False) -> dict:
-        """Pull latest changes for main or session branch using SessionManager.
-
-        This operation uses local git and does not require GitHub API access.
+        This injects the token into the remote URL temporarily to support private repositories.
         """
         try:
-            if session_id == "main":
-                return await self.session_manager.pull_main_branch(project_id, force=force)
-            return await self.session_manager.pull_session_branch(project_id, session_id, force=force)
+            remote = repo.remote(name=remote_name)
+            original_url = remote.url
+            # Build authenticated URL similar to push
+            if original_url.startswith("https://github.com/"):
+                authenticated_url = original_url.replace(
+                    "https://github.com/", f"https://oauth2:{self.github_token}@github.com/"
+                )
+            elif original_url.startswith("git@github.com:"):
+                repo_path = original_url.replace("git@github.com:", "").replace(".git", "")
+                authenticated_url = f"https://oauth2:{self.github_token}@github.com/{repo_path}.git"
+            else:
+                authenticated_url = original_url
+                logger.warning(f"Unexpected remote URL format during fetch: {original_url}")
+
+            # Temporarily set, fetch, then restore
+            remote.set_url(authenticated_url)
+            remote.fetch()
+            remote.set_url(original_url)
         except Exception as e:
-            logger.error(f"Error pulling branch for project {project_id} session {session_id}: {e}")
+            logger.error(f"Error during authenticated fetch: {e}")
             raise
 
     def _make_authenticated_url(self, repo_url: str) -> str:
@@ -316,41 +315,6 @@ class GitHubService:
             logger.error(f"Error importing repository: {e}")
             raise Exception(f"Failed to import repository: {e!s}") from e
 
-    async def clone_repository(self, request: CloneRepoRequest) -> str:
-        """Clone a GitHub repository to local project directory"""
-        try:
-            project_path = Path(settings.projects_dir) / str(request.project_id)
-
-            # Remove existing project directory if it exists
-            if project_path.exists():
-                shutil.rmtree(project_path)
-
-            logger.info("Sleeping for 15 seconds to ensure github repo has been created")
-            await asyncio.sleep(15)
-
-            # Clone repository using authenticated URL to support private repos
-            sanitized_for_log = self._make_sanitized_https_url(request.repo_url)
-            auth_url = self._make_authenticated_url(request.repo_url)
-            logger.info(f"Cloning repository {sanitized_for_log} to project {request.project_id} at {project_path}")
-            repo = git.Repo.clone_from(auth_url, project_path)
-            # After clone, sanitize remote URL to remove token
-            try:
-                origin = repo.remote(name="origin")
-                origin.set_url(self._make_sanitized_https_url(request.repo_url))
-            except Exception as sanitize_error:
-                logger.debug(f"Failed to sanitize remote URL after clone: {sanitize_error}")
-            logger.info("Clone completed")
-
-            logger.info(f"Successfully cloned repository to project {request.project_id}")
-            return str(project_path)
-        except Exception as e:
-            logger.error(f"Error cloning repository: {e}")
-            raise Exception(f"Failed to clone repository: {e!s}") from e
-
-    # Deprecated: start_sync_session removed
-
-    # Deprecated: track_file_change removed
-
     async def commit_session_changes(
         self, session_path: str, session_id: str, commit_message: str | None = None
     ) -> GitHubCommit | None:
@@ -359,7 +323,7 @@ class GitHubService:
         try:
             # Use the provided session path instead of the main project path
             repo = git.Repo(session_path)
-            branch_name = f"kosuke/chat-{session_id}"
+            branch_name = f"{settings.session_branch_prefix}{session_id}"
 
             # Detect all changes BEFORE switching branches
             changed_files = self._detect_all_changes(repo)
@@ -386,10 +350,6 @@ class GitHubService:
         except Exception as e:
             logger.error(f"Error committing changes for session {session_id}: {e}")
             raise Exception(f"Failed to commit changes: {e!s}") from e
-
-    def _get_project_path(self, project_id: int) -> Path:
-        """Get the project directory path"""
-        return Path(settings.projects_dir) / str(project_id)
 
     def _manage_chat_branch(self, repo: git.Repo, branch_name: str) -> None:
         """Create or switch to chat session branch"""
@@ -473,13 +433,6 @@ class GitHubService:
             logger.error(f"Error adding files to index: {e}")
             raise
 
-    def _add_changed_files(self, repo: git.Repo, project_path: Path, files_changed: list[str]) -> None:
-        """Add all changed files to the git index (legacy method)"""
-        for file_path in files_changed:
-            full_path = project_path / file_path
-            if full_path.exists():
-                repo.index.add([file_path])
-
     def _generate_commit_message(self, commit_message: str | None, files_changed: list[str], session_id: str) -> str:
         """Generate meaningful commit message for versioning"""
         if commit_message:
@@ -488,9 +441,9 @@ class GitHubService:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         if len(files_changed) <= 3:
             file_summary = ", ".join(files_changed)
-            message = f"kosuke/chat-{timestamp}: Modified {file_summary}"
+            message = f"{settings.session_branch_prefix}{timestamp}: Modified {file_summary}"
         else:
-            message = f"kosuke/chat-{timestamp}: Modified {len(files_changed)} files"
+            message = f"{settings.session_branch_prefix}{timestamp}: Modified {len(files_changed)} files"
 
         # Add session ID for traceability
         return f"{message} (chat: {session_id[:8]})"
@@ -541,12 +494,6 @@ class GitHubService:
             logger.error(f"Error pushing to remote: {e}")
             raise
 
-    def _update_session_completion(self, session: dict, commit: git.Commit, branch_name: str) -> None:
-        """Update session with completion details"""
-        session["status"] = "completed"
-        session["commit_sha"] = commit.hexsha
-        session["branch_name"] = branch_name
-
     def _create_github_commit_response(
         self, commit: git.Commit, repo: git.Repo, files_changed: list[str], session_path: str
     ) -> GitHubCommit:
@@ -561,37 +508,6 @@ class GitHubService:
             files_changed=len(files_changed),
             timestamp=datetime.fromtimestamp(commit.committed_date),
         )
-
-    def end_sync_session(self, session_id: str) -> dict:
-        """Deprecated: no-op; kept for backward compatibility."""
-        if session_id in self.sync_sessions:
-            del self.sync_sessions[session_id]
-        return {"session_id": session_id, "status": "unknown"}
-
-    async def get_repository_info(self, repo_url: str) -> GitHubRepo:
-        """Get information about a GitHub repository"""
-        try:
-            # Extract owner and repo name from URL
-            if repo_url.endswith(".git"):
-                repo_url = repo_url[:-4]
-
-            parts = repo_url.replace("https://github.com/", "").split("/")
-            if len(parts) != 2:
-                raise Exception("Invalid GitHub repository URL")
-
-            owner, name = parts
-            repo = self.github.get_repo(f"{owner}/{name}")
-
-            return GitHubRepo(
-                name=repo.name,
-                owner=repo.owner.login,
-                url=repo.clone_url,
-                private=repo.private,
-                description=repo.description,
-            )
-        except Exception as e:
-            logger.error(f"Error getting repository info: {e}")
-            raise Exception(f"Failed to get repository info: {e!s}") from e
 
     def checkout_commit(self, session_path: Path, commit_sha: str) -> bool:
         """
@@ -657,36 +573,3 @@ class GitHubService:
         except Exception as e:
             logger.error(f"❌ Error creating backup commit: {e}")
             return None
-
-    # Duplicate legacy helper removed; use the method defined near the class top
-
-    def get_user_repositories(self, page: int = 1, per_page: int = 30) -> list[GitHubRepo]:
-        """Get user's GitHub repositories"""
-        try:
-            repos = self.user.get_repos(type="all", sort="updated", direction="desc")
-
-            # Paginate results
-            start = (page - 1) * per_page
-            end = start + per_page
-
-            repo_list = []
-            for i, repo in enumerate(repos):
-                if i < start:
-                    continue
-                if i >= end:
-                    break
-
-                repo_list.append(
-                    GitHubRepo(
-                        name=repo.name,
-                        owner=repo.owner.login,
-                        url=repo.clone_url,
-                        private=repo.private,
-                        description=repo.description,
-                    )
-                )
-
-            return repo_list
-        except Exception as e:
-            logger.error(f"Error getting user repositories: {e}")
-            raise Exception(f"Failed to get repositories: {e!s}") from e

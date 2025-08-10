@@ -3,6 +3,7 @@ from typing import Annotated
 
 from fastapi import APIRouter
 from fastapi import Depends
+from fastapi import Header
 from fastapi import HTTPException
 
 from app.models.preview import PreviewStatus
@@ -110,16 +111,29 @@ async def stop_all_previews(docker_service: Annotated[DockerService, Depends(get
 
 @router.post("/preview/pull")
 async def pull_project(
-    request: PullRequest, docker_service: Annotated[DockerService, Depends(get_docker_service)]
+    request: PullRequest,
+    docker_service: Annotated[DockerService, Depends(get_docker_service)],
+    github_token: str | None = Header(default=None, alias="X-GitHub-Token"),
 ) -> PullResponse:
     """Pull latest changes for a project or session"""
     try:
         # Use "main" as default session_id for main branch pulls
         session_id = request.session_id or "main"
 
-        # Prefer GitHubService for branch pulling (initialized via provider)
-        github_service = get_github_service("", local_only=True)
-        git_status = await github_service.pull_branch(request.project_id, session_id, force=request.force)
+        # Perform pull via SessionManager logic, using GitHubService for authenticated fetch if needed
+        github_service = get_github_service(github_token or "")
+        # Use SessionManager directly to orchestrate pull
+        from app.services.session_manager import SessionManager
+
+        session_manager = SessionManager()
+        if session_id == "main":
+            git_status = await session_manager.pull_main_branch(
+                request.project_id, force=request.force, github_service=github_service
+            )
+        else:
+            git_status = await session_manager.pull_session_branch(
+                request.project_id, session_id, force=request.force, github_service=github_service
+            )
 
         # Check if we need to restart the container to apply changes
         container_restarted = False

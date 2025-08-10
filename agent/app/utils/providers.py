@@ -37,8 +37,8 @@ def get_database_service(project_id: int, session_id: str | None = None) -> Data
     return DatabaseService(project_id=project_id, session_id=session_id)
 
 
-def get_github_service(github_token: str, *, local_only: bool = False) -> GitHubService:
-    return GitHubService(github_token=github_token, local_only=local_only)
+def get_github_service(github_token: str) -> GitHubService:
+    return GitHubService(github_token=github_token)
 
 
 def get_claude_code_service(project_id: int, *, working_directory: str | None = None) -> ClaudeCodeService:

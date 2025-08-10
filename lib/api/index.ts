@@ -1,6 +1,6 @@
 // API Handler Classes
-export { ApiResponseHandler } from './responses';
 export { ApiErrorHandler } from './errors';
+export { ApiResponseHandler } from './responses';
 
 // Environment Variables
 export { getProjectEnvironmentVariables } from './environment';
@@ -11,4 +11,11 @@ export interface AsyncOperationOptions {
   errorMessage?: string;
   onSuccess?: () => void;
   onError?: (error: Error) => void;
+}
+
+// Generic API response envelope used by Next API routes
+export interface ApiResponse<T> {
+  data: T;
+  success?: boolean;
+  error?: string;
 }
