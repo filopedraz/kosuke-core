@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useDatabaseSchema } from '@/hooks/use-database-schema';
 import { useTableData } from '@/hooks/use-table-data';
@@ -11,7 +12,6 @@ import type { TableBrowserProps } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { ChevronLeft, ChevronRight, Database, Table as TableIcon } from 'lucide-react';
 import { useState } from 'react';
-import { TableBrowserSkeleton } from './skeletons/table-browser-skeleton';
 
 export function TableBrowser({ projectId, sessionId }: TableBrowserProps) {
   const [selectedTable, setSelectedTable] = useState<string | null>(null);
@@ -220,6 +220,63 @@ export function TableBrowser({ projectId, sessionId }: TableBrowserProps) {
           </Card>
         )}
       </div>
+    </div>
+  );
+}
+
+export function TableBrowserSkeleton() {
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            <Skeleton className="h-5 w-32" />
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Skeleton className="h-10 w-full" />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>
+              <Skeleton className="h-5 w-24" />
+            </CardTitle>
+            <Skeleton className="h-5 w-20" />
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="rounded-md border">
+            <div className="border-b bg-muted/50 p-4">
+              <div className="flex gap-4">
+                {Array.from({ length: 5 }).map((_, index) => (
+                  <Skeleton key={index} className="h-4 w-20" />
+                ))}
+              </div>
+            </div>
+
+            {Array.from({ length: 8 }).map((_, rowIndex) => (
+              <div key={rowIndex} className="border-b p-4">
+                <div className="flex gap-4">
+                  {Array.from({ length: 5 }).map((_, colIndex) => (
+                    <Skeleton key={colIndex} className="h-4 w-20" />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex items-center justify-between mt-4">
+            <Skeleton className="h-4 w-32" />
+            <div className="flex gap-2">
+              <Skeleton className="h-8 w-20" />
+              <Skeleton className="h-8 w-20" />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
