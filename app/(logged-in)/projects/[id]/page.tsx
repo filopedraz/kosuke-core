@@ -6,7 +6,6 @@ import { use, useEffect, useRef, useState } from 'react';
 import Navbar from '@/components/ui/navbar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useChatSessions } from '@/hooks/use-chat-sessions';
-import { usePreviewStatus, useStartPreview } from '@/hooks/use-preview-status';
 import { useCreatePullRequest } from '@/hooks/use-project-settings';
 import { useProjectUIState } from '@/hooks/use-project-ui-state';
 import { useProject } from '@/hooks/use-projects';
@@ -197,46 +196,8 @@ export default function ProjectPage({ params }: ProjectPageProps) {
   // Preview should use session only when in chat interface view, not in sidebar list view
   const previewSessionId = showSidebar ? null : sessionId;
 
-  // Preview management hooks (scoped to the effective preview session)
-  const { data: previewStatus, isLoading: isPreviewLoading } = usePreviewStatus(
-    projectId,
-    previewSessionId ?? '',
-    false,
-    Boolean(previewSessionId)
-  );
-  const { mutateAsync: startPreviewMutate } = useStartPreview(
-    projectId,
-    previewSessionId ?? ''
-  );
-
   // Reference to the ChatInterface component to maintain its state
   const chatInterfaceRef = useRef<HTMLDivElement>(null);
-  // Track if we've already attempted to start preview for this project/session pair
-  const previewStartAttempted = useRef<Set<string>>(new Set());
-
-  // Automatically start preview if not running (only once per project)
-  useEffect(() => {
-    if (previewSessionId && !isPreviewLoading && previewStatus && !previewStatus.url) {
-      const key = `${projectId}:${previewSessionId}`;
-      if (!previewStartAttempted.current.has(key)) {
-        previewStartAttempted.current.add(key);
-        console.log(
-          `[ProjectPage] No preview URL found, starting preview for project ${projectId} session ${previewSessionId}`
-        );
-        startPreviewMutate().catch((error: unknown) => {
-          console.error(
-            `[ProjectPage] Error starting preview for project ${projectId} session ${previewSessionId}:`,
-            error
-          );
-        });
-      }
-    } else if (previewStatus?.url) {
-      console.log(
-        `[ProjectPage] Preview already running for project ${projectId} session ${previewSessionId}:`,
-        previewStatus.url
-      );
-    }
-  }, [projectId, previewSessionId, previewStatus, isPreviewLoading, startPreviewMutate]);
 
   // Loading state
   if (isProjectLoading || !user) {

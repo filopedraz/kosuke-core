@@ -123,23 +123,43 @@ export function usePreviewPanel({
         });
 
         if (!response.ok) {
-          const data = await response.json();
+          // Attempt to start the preview once on initial failure to avoid double GETs elsewhere
+          if (response.status === 404 || response.status === 409 || response.status === 400) {
+            try {
+              console.log('[Preview Panel] Preview not ready, attempting to start...');
+              await startPreview();
+              // small delay before refetching status
+              await new Promise(r => setTimeout(r, 1000));
+              const retry = await fetch(url, { method: 'GET' });
+              if (!retry.ok) {
+                const data = await retry.json().catch(() => ({}));
+                throw new Error(data.error || `Failed to fetch preview: ${retry.statusText}`);
+              }
+              const retryData = await retry.json();
+              if (retryData.previewUrl || retryData.url) {
+                const readyUrl = retryData.previewUrl || retryData.url;
+                setPreviewUrl(readyUrl);
+                pollServerUntilReady(readyUrl);
+                return;
+              }
+              throw new Error('No preview URL returned after start');
+            } catch (startErr) {
+              console.error('[Preview Panel] Failed to auto-start preview:', startErr);
+            }
+          }
+
+          const data = await response.json().catch(() => ({}));
           throw new Error(data.error || `Failed to fetch preview: ${response.statusText}`);
         }
 
         const data = await response.json();
         console.log(`[Preview Panel] Preview status response:`, data);
 
-        // git status is no longer included here; handled by pull endpoint only
-
         if (data.previewUrl || data.url) {
-          // Use the direct preview URL (handle both previewUrl and url for compatibility)
-          const url = data.previewUrl || data.url;
-          console.log('[Preview Panel] Setting preview URL:', url);
-          setPreviewUrl(url);
-
-          // Start polling for health check
-          pollServerUntilReady(url);
+          const readyUrl = data.previewUrl || data.url;
+          console.log('[Preview Panel] Setting preview URL:', readyUrl);
+          setPreviewUrl(readyUrl);
+          pollServerUntilReady(readyUrl);
         } else {
           throw new Error('No preview URL returned');
         }
