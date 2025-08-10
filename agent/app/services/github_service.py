@@ -590,25 +590,10 @@ class GitHubService:
         )
 
     def end_sync_session(self, session_id: str) -> dict:
-        """End a sync session and return summary"""
-        if session_id not in self.sync_sessions:
-            raise Exception(f"Sync session {session_id} not found")
-
-        session = self.sync_sessions[session_id]
-        session["end_time"] = datetime.now()
-
-        summary = {
-            "session_id": session_id,
-            "project_id": session["project_id"],
-            "files_changed": len(session["files_changed"]),
-            "duration": (session["end_time"] - session["start_time"]).total_seconds(),
-            "status": session["status"],
-        }
-
-        # Clean up session
-        del self.sync_sessions[session_id]
-
-        return summary
+        """Deprecated: no-op; kept for backward compatibility."""
+        if session_id in self.sync_sessions:
+            del self.sync_sessions[session_id]
+        return {"session_id": session_id, "status": "unknown"}
 
     async def get_repository_info(self, repo_url: str) -> GitHubRepo:
         """Get information about a GitHub repository"""
@@ -700,23 +685,7 @@ class GitHubService:
             logger.error(f"❌ Error creating backup commit: {e}")
             return None
 
-    def get_current_commit_sha(self, session_path: Path) -> str | None:
-        """
-        Get current commit SHA in session directory
-
-        Args:
-            session_path: Path to session directory
-
-        Returns:
-            str | None: Current commit SHA or None if error
-        """
-        try:
-            repo = git.Repo(session_path)
-            return repo.head.commit.hexsha
-
-        except Exception as e:
-            logger.error(f"❌ Error getting current commit: {e}")
-            return None
+    # Duplicate legacy helper removed; use the method defined near the class top
 
     def get_user_repositories(self, page: int = 1, per_page: int = 30) -> list[GitHubRepo]:
         """Get user's GitHub repositories"""

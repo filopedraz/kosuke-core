@@ -3,7 +3,6 @@ Webhook service for sending data to Next.js endpoints
 """
 import asyncio
 import logging
-from datetime import datetime
 from typing import Any
 
 import aiohttp
@@ -95,19 +94,6 @@ class WebhookService:
                 "assistantMessageId": assistant_message_id,
                 "commitSha": commit_sha,
             },
-        }
-
-        return await self._send_webhook_with_retry(endpoint, data)
-
-    async def send_commit(self, project_id: int, commit_sha: str, commit_message: str, files_changed: int) -> bool:
-        """Send commit information to Next.js via webhook"""
-        endpoint = f"/api/projects/{project_id}/webhook/commit"
-
-        data = {
-            "commit_sha": commit_sha,
-            "commit_message": commit_message,
-            "files_changed": files_changed,
-            "timestamp": datetime.now().isoformat(),
         }
 
         return await self._send_webhook_with_retry(endpoint, data)

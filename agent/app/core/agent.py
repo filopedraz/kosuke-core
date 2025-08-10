@@ -10,7 +10,6 @@ from app.services.github_service import GitHubService
 from app.services.session_manager import SessionManager
 from app.services.webhook_service import WebhookService
 from app.utils.observability import observe_agentic_workflow
-from app.utils.providers import get_github_service
 
 logger = logging.getLogger(__name__)
 
@@ -211,15 +210,21 @@ class Agent:
                 break
 
     async def _finalize_processing(self, text_state: dict):
-        """Finalize processing and send webhooks"""
+        """Finalize processing: commit changes, then send assistant message webhook once."""
         if text_state["active"]:
             self._save_text_content(text_state)
 
-        # Commit happens in finalize_github_session; don't send commit SHA here
-        await self._send_assistant_message_webhook(text_state["all_blocks"], success=True)
+        commit_sha: str | None = None
+        # Finalize GitHub session first to capture commit info
+        if self.github_service and self.session_id:
+            try:
+                commit_sha, _ = await self.finalize_github_session()
+            except Exception:
+                # Error already logged inside finalize method
+                commit_sha = None
 
-        # Finalize GitHub session if enabled
-        await self.finalize_github_session()
+        # Send a single assistant message webhook with optional commitSha
+        await self._send_assistant_message_webhook(text_state["all_blocks"], success=True, commit_sha=commit_sha)
 
     async def _handle_error(self, error: Exception, text_state: dict):
         """Handle errors during processing"""
@@ -231,43 +236,30 @@ class Agent:
         await self._send_assistant_message_webhook(text_state["all_blocks"], success=False)
 
         # If we have GitHub integration and session fails, mark session as failed
-        if self.github_service and self.session_id:
-            try:
-                session_summary = self.github_service.end_sync_session(self.session_id)
-                session_summary["status"] = "failed"
-                print(f"🔗 GitHub session marked as failed: {session_summary}")
-            except Exception as github_error:
-                print(f"⚠️ Warning: Error ending GitHub session: {github_error}")
+        if self.github_service and self.session_id and self.session_id in self.github_service.sync_sessions:
+            del self.github_service.sync_sessions[self.session_id]
 
-    async def finalize_github_session(self, commit_message: str | None = None):
-        """Finalize the GitHub session and commit changes if enabled"""
-        if self.github_service and self.session_id:
-            try:
-                # Commit session changes with session-specific working directory
-                commit = await self.github_service.commit_session_changes(
-                    session_path=self.working_directory, session_id=self.session_id, commit_message=commit_message
-                )
-
-                # Send webhook about commit
-                if commit and self.webhook_service:
-                    async with self.webhook_service as webhook:
-                        await webhook.send_commit(self.project_id, commit.sha, commit.message, commit.files_changed)
-
-                # End session and get summary
-                session_summary = self.github_service.end_sync_session(self.session_id)
-
-                print(f"✅ GitHub session completed: {session_summary}")
-
-            except Exception as e:
-                print(f"❌ Error finalizing GitHub session: {e}")
+    async def finalize_github_session(self, commit_message: str | None = None) -> tuple[str | None, dict | None]:
+        """Finalize the GitHub session, commit changes, and return (commit_sha, session_summary)."""
+        if not (self.github_service and self.session_id):
+            return None, None
+        try:
+            commit = await self.github_service.commit_session_changes(
+                session_path=self.working_directory, session_id=self.session_id, commit_message=commit_message
+            )
+            # cleanup in-memory session tracking if exists
+            if self.session_id in self.github_service.sync_sessions:
+                del self.github_service.sync_sessions[self.session_id]
+            return (commit.sha if commit else None), None
+        except Exception as e:
+            print(f"❌ Error finalizing GitHub session: {e}")
+            return None, None
 
     async def _send_assistant_message_webhook(
         self, assistant_blocks: list, success: bool = True, commit_sha: str | None = None
     ):
-        """Send complete assistant message with all blocks to Next.js"""
+        """Send assistant message with all blocks to Next.js (single webhook call)."""
         try:
-            duration = time.time() - self.start_time
-
             # Get token usage from claude-code service
             token_usage = self.claude_code_service.get_token_usage()
 
@@ -286,35 +278,6 @@ class Agent:
             logger.info(
                 f"✅ Sent assistant message webhook: {len(assistant_blocks)} blocks, "
                 f"{token_usage['total_tokens']} tokens, commit_sha: {commit_sha}"
-            )
-
-            # Send completion webhook with GitHub info
-            github_commit = None
-            session_summary = None
-
-            if self.github_service and self.session_id and self.session_id in self.github_service.sync_sessions:
-                session = self.github_service.sync_sessions[self.session_id]
-                session_summary = {
-                    "session_id": self.session_id,
-                    "project_id": session["project_id"],
-                    "files_changed": len(session["files_changed"]),
-                    "status": session["status"],
-                }
-
-            async with self.webhook_service as webhook:
-                await webhook.send_completion(
-                    project_id=self.project_id,
-                    success=success,
-                    total_actions=self.total_actions,
-                    total_tokens=token_usage["total_tokens"],
-                    duration=duration,
-                    github_commit=github_commit.dict() if github_commit else None,
-                    session_summary=session_summary,
-                )
-
-            logger.info(
-                f"✅ Sent completion webhook: {self.total_actions} actions, {duration:.2f}s, "
-                f"{token_usage['total_tokens']} tokens"
             )
         except Exception as e:
             logger.error(f"❌ Failed to send webhooks: {e}")
