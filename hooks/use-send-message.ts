@@ -25,6 +25,7 @@ const sendMessage = async (
   options?: MessageOptions,
   contentBlockCallback?: (contentBlocks: ContentBlock[]) => void,
   setAssistantIdCallback?: (id: number) => void,
+  onStreamEnd?: () => void,
   abortController?: AbortController,
   sessionId?: string | null
 ): Promise<{
@@ -144,6 +145,7 @@ const sendMessage = async (
               // Handle [DONE] marker
               if (rawData === '[DONE]') {
                 isStreamActive = false;
+                if (onStreamEnd) onStreamEnd();
                 break;
               }
 
@@ -349,15 +351,18 @@ const sendMessage = async (
               } else if (data.type === 'message_complete') {
                 // Handle message completion
                 isStreamActive = false;
+                if (onStreamEnd) onStreamEnd();
                 break;
               } else if (data.type === 'error') {
                 // Handle errors
                 console.error('Streaming error');
                 isStreamActive = false;
+                if (onStreamEnd) onStreamEnd();
                 throw new Error('Streaming error');
               } else if (data.type === 'completed') {
                 // Legacy completion handling
                 isStreamActive = false;
+                if (onStreamEnd) onStreamEnd();
                 break;
               }
             } catch (outerError) {
@@ -474,6 +479,13 @@ export function useSendMessage(
         args.options,
         contentBlockCallback,
         setAssistantIdCallback,
+        // onStreamEnd: flip streaming to false immediately on stream completion
+        () => {
+          setStreamingState(prev => ({
+            ...prev,
+            isStreaming: false,
+          }));
+        },
         abortController,
         sessionId
       );
@@ -507,10 +519,13 @@ export function useSendMessage(
           contextTokens: 0,
         };
 
-        queryClient.setQueryData(['chat-session-messages', projectId, sessionId], (old: any) => ({
-          ...old,
-          messages: [...(old?.messages || []), userMessage],
-        }));
+        queryClient.setQueryData(
+          ['chat-session-messages', projectId, sessionId],
+          (old: { messages?: ApiChatMessage[] } | undefined) => ({
+            ...(old || {}),
+            messages: [...((old?.messages as ApiChatMessage[] | undefined) || []), userMessage],
+          })
+        );
       }
 
       return { previousMessages };
