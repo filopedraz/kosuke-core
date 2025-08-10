@@ -4,8 +4,6 @@ import { useUser } from '@clerk/nextjs';
 import { ArrowRight, FolderPlus, Github, Loader2, Settings } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
-import { RepositoryPreview } from '@/components/github/repository-preview';
-import { RepositorySelector } from '@/components/github/repository-selector';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -18,6 +16,8 @@ import { useProjectCreation } from '@/hooks/use-project-creation';
 import type { GitHubRepository, ProjectGitHubSettings } from '@/lib/types/github';
 import type { CreateProjectData } from '@/lib/types/project';
 import { isValidRepoName, toDashCase } from '@/lib/utils/string-helpers';
+import { RepositoryPreview } from './repository-preview';
+import { RepositorySelector } from './repository-selector';
 
 interface ProjectCreationModalProps {
   open: boolean;
@@ -130,16 +130,16 @@ export default function ProjectCreationModal({
   const handleKeyDown = (e: React.KeyboardEvent) => {
     // Only trigger on Enter key
     if (e.key !== 'Enter') return;
-    
+
     // Don't trigger if focus is on textarea (description field)
     if (e.target instanceof HTMLTextAreaElement) return;
-    
+
     // Don't trigger if form cannot be submitted
     if (!canSubmit() || isCreating) return;
-    
+
     // Prevent default form submission behavior
     e.preventDefault();
-    
+
     // Trigger project creation
     handleCreateProject();
   };

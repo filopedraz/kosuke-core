@@ -39,9 +39,6 @@ export default function ChatInterface({
     imageUrl?: string;
   } | null>(null);
 
-  // State for immediate loading feedback
-
-  // Custom hooks for business logic - all session-based now
   // Always call hooks at the top level, even if sessionId is not available yet
   const sendMessageMutation = useSendMessage(projectId, activeChatSessionId, sessionId || '');
   const messagesQuery = useChatSessionMessages(projectId, sessionId || '');
@@ -100,8 +97,6 @@ export default function ChatInterface({
       handleMutationError(sendError);
     }
   }, [sendError, handleMutationError]);
-
-  // Removed isGenerating handling – streaming state drives UI
 
   // Scroll to bottom when messages change or streaming updates
   useEffect(() => {

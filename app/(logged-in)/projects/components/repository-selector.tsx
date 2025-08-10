@@ -5,12 +5,12 @@ import { useEffect, useRef, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
+    Command,
+    CommandEmpty,
+    CommandGroup,
+    CommandInput,
+    CommandItem,
+    CommandList,
 } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -40,7 +40,7 @@ export function RepositorySelector({
     if (triggerRef.current) {
       setTriggerWidth(triggerRef.current.offsetWidth);
     }
-  }, [open]); // Update width when popover opens
+  }, [open]);
 
   if (isLoading) {
     return <RepositorySelectorSkeleton />;
@@ -113,3 +113,5 @@ function RepositorySelectorSkeleton() {
     </div>
   );
 }
+
+
