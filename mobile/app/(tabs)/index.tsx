@@ -7,17 +7,18 @@ import { useTheme } from '@/contexts/ThemeContext';
 export default function HomeScreen() {
   console.log('🏠 HomeScreen rendering...');
 
-  try {
-    const { colors, mode, isDark } = useTheme();
-    console.log('🏠 HomeScreen theme data:', { mode, isDark, colorsExist: !!colors });
+  // Always call hooks at the top level
+  const { colors, mode, isDark } = useTheme();
+  console.log('🏠 HomeScreen theme data:', { mode, isDark, colorsExist: !!colors });
 
+  try {
     return (
       <View style={{ flex: 1, backgroundColor: colors.background }}>
         {/* Header */}
         <View
           style={{
             backgroundColor: colors.primary,
-            paddingTop: 60,
+            paddingTop: 20, // Layout handles safe area, so we just need normal padding
             paddingBottom: 24,
             paddingHorizontal: 20,
           }}

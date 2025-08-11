@@ -9,6 +9,7 @@ import { StatusBar } from 'expo-status-bar';
 import React from 'react';
 import { Text, View } from 'react-native';
 import 'react-native-reanimated';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { ThemeProvider as KosukeThemeProvider, useTheme } from '@/contexts/ThemeContext';
@@ -107,26 +108,21 @@ function AppContent() {
 
 export default function RootLayout() {
   console.log('🚀 RootLayout starting...');
-
-  // Load fonts but don't block the app if they fail
-  const [loaded] = useFonts({
+  useFonts({
     SpaceMono: '../assets/fonts/SpaceMono-Regular.ttf',
   });
 
-  console.log('📝 Fonts loaded:', loaded);
-
   const publishableKey = Constants.expoConfig?.extra?.CLERK_PUBLISHABLE_KEY as string | undefined;
-  console.log('🔑 Clerk publishable key exists:', !!publishableKey);
-
-  console.log('🎯 About to render providers...');
 
   return (
-    <ErrorBoundary>
-      <KosukeThemeProvider>
-        <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
-          <AppContent />
-        </ClerkProvider>
-      </KosukeThemeProvider>
-    </ErrorBoundary>
+    <SafeAreaProvider>
+      <ErrorBoundary>
+        <KosukeThemeProvider>
+          <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
+            <AppContent />
+          </ClerkProvider>
+        </KosukeThemeProvider>
+      </ErrorBoundary>
+    </SafeAreaProvider>
   );
 }

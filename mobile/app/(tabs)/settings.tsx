@@ -1,9 +1,3 @@
-/**
- * KOSUKE MOBILE - SETTINGS PAGE
- *
- * Settings page with theme toggle and other app preferences.
- */
-
 import { useAuth, useUser } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
@@ -70,7 +64,9 @@ export default function SettingsScreen() {
   return (
     <ScrollView
       style={{ backgroundColor: colors.background }}
-      contentContainerStyle={{ padding: 16 }}
+      contentContainerStyle={{
+        padding: 16,
+      }}
     >
       {/* Header */}
       <View style={{ marginBottom: 32 }}>
