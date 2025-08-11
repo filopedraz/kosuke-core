@@ -11,6 +11,8 @@ import {
   View,
 } from 'react-native';
 
+import { useTheme } from '@/hooks/useTheme';
+
 
 
 
@@ -101,6 +103,8 @@ function MessageBubble({ message }: { message: typeof mockMessages[0] }) {
 export default function SessionDetailScreen() {
   const router = useRouter();
   const { sessionId } = useLocalSearchParams<{ id: string; sessionId: string }>();
+  const { getColors } = useTheme();
+  const colors = getColors();
 
   const session = sessionId ? mockSessions[sessionId] : null;
 
@@ -119,7 +123,7 @@ export default function SessionDetailScreen() {
       {/* Header */}
       <View className="flex-row items-center px-5 py-4 border-b border-border">
         <TouchableOpacity onPress={() => router.back()} className="mr-4">
-          <Ionicons name="arrow-back" size={24} color="hsl(var(--foreground))" />
+          <Ionicons name="arrow-back" size={24} color={colors.foreground} />
         </TouchableOpacity>
 
         <View className="flex-1 items-center">

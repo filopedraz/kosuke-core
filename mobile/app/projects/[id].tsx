@@ -11,6 +11,8 @@ import {
   View,
 } from 'react-native';
 
+import { useTheme } from '@/hooks/useTheme';
+
 
 
 
@@ -102,6 +104,8 @@ function ChatSessionCard({ session }: { session: typeof mockChatSessions[0] }) {
 export default function ProjectDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { getColors } = useTheme();
+  const colors = getColors();
 
   const project = id ? mockProjects[id] : null;
 
@@ -120,7 +124,7 @@ export default function ProjectDetailScreen() {
       {/* Header */}
       <View className="flex-row items-center px-5 py-4 border-b border-border">
         <TouchableOpacity onPress={() => router.back()} className="mr-4">
-          <Ionicons name="arrow-back" size={24} color="hsl(var(--foreground))" />
+          <Ionicons name="arrow-back" size={24} color={colors.foreground} />
         </TouchableOpacity>
 
         <View className="flex-1 items-center">

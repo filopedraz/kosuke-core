@@ -63,17 +63,16 @@ export function useTheme() {
 
   // Get theme-aware colors for components
   const getColors = () => {
-    const currentTheme = themes[isDark ? 'dark' : 'light'];
     return {
-      foreground: `hsl(${currentTheme['--foreground']})`,
-      mutedForeground: `hsl(${currentTheme['--muted-foreground']})`,
-      secondaryForeground: `hsl(${currentTheme['--secondary-foreground']})`,
-      destructiveForeground: `hsl(${currentTheme['--destructive-foreground']})`,
-      primaryForeground: `hsl(${currentTheme['--primary-foreground']})`,
-      primary: `hsl(${currentTheme['--primary']})`,
-      background: `hsl(${currentTheme['--background']})`,
-      card: `hsl(${currentTheme['--card']})`,
-      border: `hsl(${currentTheme['--border']})`,
+      foreground: isDark ? '#fafafa' : '#0a0a0a', // Direct hex values
+      mutedForeground: isDark ? '#a3a3a3' : '#737373',
+      secondaryForeground: isDark ? '#fafafa' : '#171717',
+      destructiveForeground: isDark ? '#fafafa' : '#fafafa',
+      primaryForeground: isDark ? '#171717' : '#fafafa',
+      primary: isDark ? '#fafafa' : '#171717',
+      background: isDark ? '#0a0a0a' : '#ffffff',
+      card: isDark ? '#0a0a0a' : '#ffffff',
+      border: isDark ? '#262626' : '#e5e5e5',
     };
   };
 
