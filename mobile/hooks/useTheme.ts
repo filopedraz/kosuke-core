@@ -28,6 +28,7 @@ const themes = {
     '--border': '0 0% 89.8%',
     '--input': '0 0% 89.8%',
     '--ring': '0 0% 3.9%',
+    '--radius': '0.65rem',
   }),
   dark: vars({
     '--background': '0 0% 3.9%',
@@ -49,6 +50,7 @@ const themes = {
     '--border': '0 0% 14.9%',
     '--input': '0 0% 14.9%',
     '--ring': '0 0% 83.1%',
+    '--radius': '0.65rem',
   }),
 };
 
