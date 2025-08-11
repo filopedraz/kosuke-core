@@ -4,14 +4,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { Link, useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
 import {
-    FlatList,
-    SafeAreaView,
-    Text,
-    TouchableOpacity,
-    View,
+  FlatList,
+  SafeAreaView,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
-import { useTheme } from '@/contexts/ThemeContext';
+
+
 
 // Mock chat sessions data for UI development
 const mockChatSessions = [
@@ -77,52 +78,18 @@ function formatTimeAgo(date: Date): string {
 }
 
 function ChatSessionCard({ session }: { session: typeof mockChatSessions[0] }) {
-  const { colors } = useTheme();
-
   return (
     <Link href={`/projects/${useLocalSearchParams().id}/sessions/${session.id}`} asChild>
-      <TouchableOpacity
-        style={{
-          backgroundColor: colors.card,
-          borderRadius: 12,
-          padding: 16,
-          marginBottom: 12,
-          borderWidth: 1,
-          borderColor: colors.border,
-        }}
-      >
+      <TouchableOpacity className="bg-card rounded-xl p-4 mb-3 border border-border">
         <View>
-          <Text
-            style={{
-              fontSize: 16,
-              fontWeight: '600',
-              color: colors['card-foreground'],
-              marginBottom: 8,
-            }}
-          >
+          <Text className="text-base font-semibold text-card-foreground mb-2">
             {session.title}
           </Text>
-          <View
-            style={{
-              flexDirection: 'row',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-            }}
-          >
-            <Text
-              style={{
-                fontSize: 14,
-                color: colors['muted-foreground'],
-              }}
-            >
+          <View className="flex-row justify-between items-center">
+            <Text className="text-sm text-muted-foreground">
               {session.messageCount} messages
             </Text>
-            <Text
-              style={{
-                fontSize: 12,
-                color: colors['muted-foreground'],
-              }}
-            >
+            <Text className="text-xs text-muted-foreground">
               {formatTimeAgo(session.updatedAt)}
             </Text>
           </View>
@@ -133,7 +100,6 @@ function ChatSessionCard({ session }: { session: typeof mockChatSessions[0] }) {
 }
 
 export default function ProjectDetailScreen() {
-  const { colors } = useTheme();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
 
@@ -141,39 +107,25 @@ export default function ProjectDetailScreen() {
 
   if (!project) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <Text style={{ color: colors.foreground }}>Project not found</Text>
+      <SafeAreaView className="flex-1 bg-background">
+        <View className="flex-1 justify-center items-center">
+          <Text className="text-foreground">Project not found</Text>
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+    <SafeAreaView className="flex-1 bg-background">
       {/* Header */}
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          paddingHorizontal: 20,
-          paddingVertical: 16,
-          borderBottomWidth: 1,
-          borderBottomColor: colors.border,
-        }}
-      >
-        <TouchableOpacity onPress={() => router.back()} style={{ marginRight: 16 }}>
-          <Ionicons name="arrow-back" size={24} color={colors.foreground} />
+      <View className="flex-row items-center px-5 py-4 border-b border-border">
+        <TouchableOpacity onPress={() => router.back()} className="mr-4">
+          <Ionicons name="arrow-back" size={24} color="hsl(var(--foreground))" />
         </TouchableOpacity>
 
-        <View style={{ flex: 1, alignItems: 'center' }}>
+        <View className="flex-1 items-center">
           <Text
-            style={{
-              fontSize: 18,
-              fontWeight: '600',
-              color: colors.foreground,
-              textAlign: 'center',
-            }}
+            className="text-lg font-semibold text-foreground text-center"
             numberOfLines={1}
           >
             {project.name}
@@ -181,28 +133,16 @@ export default function ProjectDetailScreen() {
         </View>
 
         {/* Placeholder for potential action button */}
-        <View style={{ width: 24 }} />
+        <View className="w-6" />
       </View>
 
       {/* Chat Sessions List */}
-      <View style={{ flex: 1 }}>
-        <View style={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 12 }}>
-          <Text
-            style={{
-              fontSize: 24,
-              fontWeight: 'bold',
-              color: colors.foreground,
-              marginBottom: 8,
-            }}
-          >
+      <View className="flex-1">
+        <View className="px-5 pt-5 pb-3">
+          <Text className="text-2xl font-bold text-foreground mb-2">
             Chat Sessions
           </Text>
-          <Text
-            style={{
-              fontSize: 16,
-              color: colors['muted-foreground'],
-            }}
-          >
+          <Text className="text-base text-muted-foreground">
             {mockChatSessions.length} sessions
           </Text>
         </View>

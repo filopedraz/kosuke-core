@@ -64,47 +64,15 @@ function formatTimeAgo(date: Date): string {
 }
 
 function ProjectCard({ project }: { project: (typeof mockProjects)[0] }) {
-  const { colors } = useTheme();
-
   return (
     <Link href={`/projects/${project.id}`} asChild>
-      <TouchableOpacity
-        style={{
-          backgroundColor: colors.card,
-          borderRadius: 12,
-          padding: 16,
-          marginBottom: 12,
-          borderWidth: 1,
-          borderColor: colors.border,
-        }}
-      >
+      <TouchableOpacity className="bg-card rounded-xl p-4 mb-3 border border-border">
         <View>
-          <Text
-            style={{
-              fontSize: 18,
-              fontWeight: '600',
-              color: colors['card-foreground'],
-              marginBottom: 8,
-            }}
-          >
-            {project.name}
-          </Text>
-          <Text
-            style={{
-              fontSize: 14,
-              color: colors['muted-foreground'],
-              lineHeight: 20,
-              marginBottom: 8,
-            }}
-          >
+          <Text className="text-lg font-semibold text-card-foreground mb-2">{project.name}</Text>
+          <Text className="text-sm text-muted-foreground leading-5 mb-2">
             {project.description}
           </Text>
-          <Text
-            style={{
-              fontSize: 12,
-              color: colors['muted-foreground'],
-            }}
-          >
+          <Text className="text-xs text-muted-foreground">
             Updated {formatTimeAgo(project.updatedAt)}
           </Text>
         </View>
@@ -114,7 +82,7 @@ function ProjectCard({ project }: { project: (typeof mockProjects)[0] }) {
 }
 
 function UserModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
-  const { colors, mode, setThemeMode, isDark } = useTheme();
+  const { mode, setThemeMode, isDark } = useTheme();
   const { user, isLoaded } = useUser();
   const { signOut } = useAuth();
 
@@ -141,90 +109,29 @@ function UserModal({ visible, onClose }: { visible: boolean; onClose: () => void
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+      <SafeAreaView className="flex-1 bg-background">
         {/* Header */}
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            paddingHorizontal: 20,
-            paddingVertical: 16,
-            borderBottomWidth: 1,
-            borderBottomColor: colors.border,
-          }}
-        >
-          <Text
-            style={{
-              fontSize: 20,
-              fontWeight: '600',
-              color: colors.foreground,
-            }}
-          >
-            Settings
-          </Text>
+        <View className="flex-row items-center justify-between px-5 py-4 border-b border-border">
+          <Text className="text-xl font-semibold text-foreground">Settings</Text>
           <TouchableOpacity onPress={onClose}>
-            <Ionicons name="close" size={24} color={colors.foreground} />
+            <Ionicons name="close" size={24} color="hsl(var(--foreground))" />
           </TouchableOpacity>
         </View>
 
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20 }}>
+        <ScrollView className="flex-1" contentContainerStyle={{ padding: 20 }}>
           {/* User Profile Section */}
-          <View
-            style={{
-              backgroundColor: colors.card,
-              borderRadius: 12,
-              padding: 16,
-              marginBottom: 24,
-              borderWidth: 1,
-              borderColor: colors.border,
-            }}
-          >
-            <Text
-              style={{
-                fontSize: 18,
-                fontWeight: '600',
-                color: colors['card-foreground'],
-                marginBottom: 16,
-              }}
-            >
-              Profile
-            </Text>
+          <View className="bg-card rounded-xl p-4 mb-6 border border-border">
+            <Text className="text-lg font-semibold text-card-foreground mb-4">Profile</Text>
 
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+            <View className="flex-row items-center mb-4">
               {user.imageUrl ? (
                 <Image
                   source={{ uri: user.imageUrl }}
-                  style={{
-                    width: 60,
-                    height: 60,
-                    borderRadius: 30,
-                    marginRight: 16,
-                    borderWidth: 1,
-                    borderColor: colors.border,
-                  }}
+                  className="w-15 h-15 rounded-full mr-4 border border-border"
                 />
               ) : (
-                <View
-                  style={{
-                    width: 60,
-                    height: 60,
-                    borderRadius: 30,
-                    backgroundColor: colors.primary,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    marginRight: 16,
-                    borderWidth: 1,
-                    borderColor: colors.border,
-                  }}
-                >
-                  <Text
-                    style={{
-                      fontSize: 24,
-                      fontWeight: 'bold',
-                      color: colors['primary-foreground'],
-                    }}
-                  >
+                <View className="w-15 h-15 rounded-full bg-primary items-center justify-center mr-4 border border-border">
+                  <Text className="text-2xl font-bold text-primary-foreground">
                     {user.firstName?.[0] ||
                       user.emailAddresses[0]?.emailAddress[0]?.toUpperCase() ||
                       'U'}
@@ -232,25 +139,13 @@ function UserModal({ visible, onClose }: { visible: boolean; onClose: () => void
                 </View>
               )}
 
-              <View style={{ flex: 1 }}>
-                <Text
-                  style={{
-                    fontSize: 18,
-                    fontWeight: '600',
-                    color: colors['card-foreground'],
-                    marginBottom: 4,
-                  }}
-                >
+              <View className="flex-1">
+                <Text className="text-lg font-semibold text-card-foreground mb-1">
                   {user.fullName ||
                     `${user.firstName || ''} ${user.lastName || ''}`.trim() ||
                     'User'}
                 </Text>
-                <Text
-                  style={{
-                    fontSize: 14,
-                    color: colors['muted-foreground'],
-                  }}
-                >
+                <Text className="text-sm text-muted-foreground">
                   {user.primaryEmailAddress?.emailAddress || 'No email'}
                 </Text>
               </View>
@@ -258,70 +153,28 @@ function UserModal({ visible, onClose }: { visible: boolean; onClose: () => void
           </View>
 
           {/* Appearance Section */}
-          <View
-            style={{
-              backgroundColor: colors.card,
-              borderRadius: 12,
-              padding: 16,
-              marginBottom: 24,
-              borderWidth: 1,
-              borderColor: colors.border,
-            }}
-          >
-            <Text
-              style={{
-                fontSize: 18,
-                fontWeight: '600',
-                color: colors['card-foreground'],
-                marginBottom: 16,
-              }}
-            >
-              Appearance
-            </Text>
+          <View className="bg-card rounded-xl p-4 mb-6 border border-border">
+            <Text className="text-lg font-semibold text-card-foreground mb-4">Appearance</Text>
 
             <TouchableOpacity
               onPress={handleThemeChange}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                paddingVertical: 12,
-                paddingHorizontal: 16,
-                backgroundColor: colors.secondary,
-                borderRadius: 8,
-                borderWidth: 1,
-                borderColor: colors.border,
-              }}
+              className="flex-row items-center justify-between py-3 px-4 bg-secondary rounded-lg border border-border"
             >
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <View className="flex-row items-center">
                 <Ionicons
                   name={isDark ? 'moon' : 'sunny'}
                   size={20}
-                  color={colors['secondary-foreground']}
+                  color="hsl(var(--secondary-foreground))"
                   style={{ marginRight: 12 }}
                 />
                 <View>
-                  <Text
-                    style={{
-                      fontSize: 16,
-                      fontWeight: '500',
-                      color: colors['secondary-foreground'],
-                    }}
-                  >
-                    Theme
-                  </Text>
-                  <Text
-                    style={{
-                      fontSize: 14,
-                      color: colors['muted-foreground'],
-                      marginTop: 2,
-                    }}
-                  >
+                  <Text className="text-base font-medium text-secondary-foreground">Theme</Text>
+                  <Text className="text-sm text-muted-foreground mt-0.5">
                     {getThemeDisplayText()}
                   </Text>
                 </View>
               </View>
-              <Ionicons name="chevron-forward" size={16} color={colors['muted-foreground']} />
+              <Ionicons name="chevron-forward" size={16} color="hsl(var(--muted-foreground))" />
             </TouchableOpacity>
           </View>
 
@@ -331,33 +184,15 @@ function UserModal({ visible, onClose }: { visible: boolean; onClose: () => void
               onClose();
               signOut();
             }}
-            style={{
-              backgroundColor: colors.destructive,
-              borderRadius: 12,
-              padding: 16,
-              marginTop: 24,
-              borderWidth: 1,
-              borderColor: colors.border,
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
+            className="bg-destructive rounded-xl p-4 mt-6 border border-border flex-row items-center justify-center"
           >
             <Ionicons
               name="log-out-outline"
               size={20}
-              color={colors['destructive-foreground']}
+              color="hsl(var(--destructive-foreground))"
               style={{ marginRight: 8 }}
             />
-            <Text
-              style={{
-                fontSize: 16,
-                fontWeight: '600',
-                color: colors['destructive-foreground'],
-              }}
-            >
-              Sign Out
-            </Text>
+            <Text className="text-base font-semibold text-destructive-foreground">Sign Out</Text>
           </TouchableOpacity>
         </ScrollView>
       </SafeAreaView>
@@ -366,7 +201,6 @@ function UserModal({ visible, onClose }: { visible: boolean; onClose: () => void
 }
 
 export default function HomeScreen() {
-  const { colors } = useTheme();
   const { isLoaded, isSignedIn, user } = useUser();
   const [searchText, setSearchText] = useState('');
   const [userModalVisible, setUserModalVisible] = useState(false);
@@ -388,41 +222,16 @@ export default function HomeScreen() {
   );
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+    <SafeAreaView className="flex-1 bg-background">
       {/* Header with Search and Avatar */}
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          paddingHorizontal: 20,
-          paddingVertical: 16,
-          gap: 12,
-        }}
-      >
+      <View className="flex-row items-center px-5 py-4 gap-3">
         {/* Search Bar */}
-        <View
-          style={{
-            flex: 1,
-            flexDirection: 'row',
-            alignItems: 'center',
-            backgroundColor: colors.muted,
-            borderRadius: 12,
-            paddingHorizontal: 16,
-            paddingVertical: 12,
-            borderWidth: 1,
-            borderColor: colors.border,
-          }}
-        >
-          <Ionicons name="search" size={20} color={colors['muted-foreground']} />
+        <View className="flex-1 flex-row items-center bg-muted rounded-xl px-4 py-3 border border-border">
+          <Ionicons name="search" size={20} color="hsl(var(--muted-foreground))" />
           <TextInput
-            style={{
-              flex: 1,
-              marginLeft: 8,
-              fontSize: 16,
-              color: colors.foreground,
-            }}
+            className="flex-1 ml-2 text-base text-foreground"
             placeholder="Search projects..."
-            placeholderTextColor={colors['muted-foreground']}
+            placeholderTextColor="hsl(var(--muted-foreground))"
             value={searchText}
             onChangeText={setSearchText}
           />
@@ -433,34 +242,11 @@ export default function HomeScreen() {
           {user?.imageUrl ? (
             <Image
               source={{ uri: user.imageUrl }}
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 20,
-                borderWidth: 1,
-                borderColor: colors.border,
-              }}
+              className="w-10 h-10 rounded-full border border-border"
             />
           ) : (
-            <View
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 20,
-                backgroundColor: colors.primary,
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderWidth: 1,
-                borderColor: colors.border,
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 16,
-                  fontWeight: 'bold',
-                  color: colors['primary-foreground'],
-                }}
-              >
+            <View className="w-10 h-10 rounded-full bg-primary items-center justify-center border border-border">
+              <Text className="text-base font-bold text-primary-foreground">
                 {user?.firstName?.[0] ||
                   user?.emailAddresses[0]?.emailAddress[0]?.toUpperCase() ||
                   'U'}

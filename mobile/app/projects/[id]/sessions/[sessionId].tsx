@@ -4,14 +4,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
 import {
-    FlatList,
-    SafeAreaView,
-    Text,
-    TouchableOpacity,
-    View,
+  FlatList,
+  SafeAreaView,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
-import { useTheme } from '@/contexts/ThemeContext';
+
+
 
 // Mock messages data
 const mockMessages = [
@@ -65,46 +66,30 @@ function formatTime(date: Date): string {
 }
 
 function MessageBubble({ message }: { message: typeof mockMessages[0] }) {
-  const { colors } = useTheme();
   const isUser = message.role === 'user';
 
   return (
     <View
-      style={{
-        flexDirection: 'row',
-        justifyContent: isUser ? 'flex-end' : 'flex-start',
-        marginBottom: 16,
-        paddingHorizontal: 16,
-      }}
+      className={`flex-row ${isUser ? 'justify-end' : 'justify-start'} mb-4 px-4`}
     >
       <View
-        style={{
-          maxWidth: '80%',
-          backgroundColor: isUser ? colors.primary : colors.card,
-          borderRadius: 16,
-          borderBottomRightRadius: isUser ? 4 : 16,
-          borderBottomLeftRadius: isUser ? 16 : 4,
-          padding: 12,
-          borderWidth: 1,
-          borderColor: colors.border,
-        }}
+        className={`max-w-[80%] rounded-2xl p-3 border border-border ${
+          isUser
+            ? 'bg-primary rounded-br-sm'
+            : 'bg-card rounded-bl-sm'
+        }`}
       >
         <Text
-          style={{
-            fontSize: 16,
-            color: isUser ? colors['primary-foreground'] : colors['card-foreground'],
-            lineHeight: 22,
-          }}
+          className={`text-base leading-6 ${
+            isUser ? 'text-primary-foreground' : 'text-card-foreground'
+          }`}
         >
           {message.content}
         </Text>
         <Text
-          style={{
-            fontSize: 12,
-            color: isUser ? colors['primary-foreground'] : colors['muted-foreground'],
-            marginTop: 4,
-            opacity: 0.7,
-          }}
+          className={`text-xs mt-1 opacity-70 ${
+            isUser ? 'text-primary-foreground' : 'text-muted-foreground'
+          }`}
         >
           {formatTime(message.createdAt)}
         </Text>
@@ -114,7 +99,6 @@ function MessageBubble({ message }: { message: typeof mockMessages[0] }) {
 }
 
 export default function SessionDetailScreen() {
-  const { colors } = useTheme();
   const router = useRouter();
   const { sessionId } = useLocalSearchParams<{ id: string; sessionId: string }>();
 
@@ -122,39 +106,25 @@ export default function SessionDetailScreen() {
 
   if (!session) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <Text style={{ color: colors.foreground }}>Session not found</Text>
+      <SafeAreaView className="flex-1 bg-background">
+        <View className="flex-1 justify-center items-center">
+          <Text className="text-foreground">Session not found</Text>
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+    <SafeAreaView className="flex-1 bg-background">
       {/* Header */}
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          paddingHorizontal: 20,
-          paddingVertical: 16,
-          borderBottomWidth: 1,
-          borderBottomColor: colors.border,
-        }}
-      >
-        <TouchableOpacity onPress={() => router.back()} style={{ marginRight: 16 }}>
-          <Ionicons name="arrow-back" size={24} color={colors.foreground} />
+      <View className="flex-row items-center px-5 py-4 border-b border-border">
+        <TouchableOpacity onPress={() => router.back()} className="mr-4">
+          <Ionicons name="arrow-back" size={24} color="hsl(var(--foreground))" />
         </TouchableOpacity>
 
-        <View style={{ flex: 1, alignItems: 'center' }}>
+        <View className="flex-1 items-center">
           <Text
-            style={{
-              fontSize: 18,
-              fontWeight: '600',
-              color: colors.foreground,
-              textAlign: 'center',
-            }}
+            className="text-lg font-semibold text-foreground text-center"
             numberOfLines={1}
           >
             {session.title}
@@ -162,7 +132,7 @@ export default function SessionDetailScreen() {
         </View>
 
         {/* Placeholder for potential action button */}
-        <View style={{ width: 24 }} />
+        <View className="w-6" />
       </View>
 
       {/* Messages List */}
@@ -178,21 +148,8 @@ export default function SessionDetailScreen() {
       />
 
       {/* Note: This is read-only as specified in the requirements */}
-      <View
-        style={{
-          padding: 16,
-          backgroundColor: colors.muted,
-          borderTopWidth: 1,
-          borderTopColor: colors.border,
-        }}
-      >
-        <Text
-          style={{
-            textAlign: 'center',
-            color: colors['muted-foreground'],
-            fontSize: 14,
-          }}
-        >
+      <View className="p-4 bg-muted border-t border-border">
+        <Text className="text-center text-muted-foreground text-sm">
           This is a read-only view of the chat session
         </Text>
       </View>

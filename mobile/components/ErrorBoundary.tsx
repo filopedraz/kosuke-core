@@ -28,22 +28,14 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
   render() {
     if (this.state.hasError) {
       return (
-        <View
-          style={{
-            flex: 1,
-            justifyContent: 'center',
-            alignItems: 'center',
-            backgroundColor: '#ff4444',
-            padding: 20,
-          }}
-        >
-          <Text style={{ color: '#ffffff', fontSize: 18, marginBottom: 10 }}>
+        <View className="flex-1 justify-center items-center bg-destructive p-5">
+          <Text className="text-destructive-foreground text-lg mb-2.5 font-semibold">
             Something went wrong!
           </Text>
-          <Text style={{ color: '#ffffff', fontSize: 14, textAlign: 'center' }}>
+          <Text className="text-destructive-foreground text-sm text-center">
             {this.state.error?.message || 'Unknown error'}
           </Text>
-          <Text style={{ color: '#ffffff', fontSize: 12, marginTop: 20, textAlign: 'center' }}>
+          <Text className="text-destructive-foreground text-xs mt-5 text-center opacity-80">
             Check the console for more details
           </Text>
         </View>

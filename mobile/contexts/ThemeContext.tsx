@@ -1,14 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { colorScheme, useColorScheme } from 'nativewind';
 import React, { ReactNode, createContext, useContext, useEffect, useState } from 'react';
-import { useColorScheme as useSystemColorScheme } from 'react-native';
-
-import { ThemeColors, darkTheme, lightTheme } from '@/constants/theme';
 
 type ThemeMode = 'light' | 'dark' | 'system';
 
 interface ThemeContextType {
-  // Current theme colors
-  colors: ThemeColors;
   // Current theme mode setting
   mode: ThemeMode;
   // Actual resolved theme (light/dark)
@@ -30,65 +26,67 @@ interface ThemeProviderProps {
 export function ThemeProvider({ children }: ThemeProviderProps) {
   console.log('🎯 ThemeProvider initializing...');
 
-  const systemColorScheme = useSystemColorScheme();
+  const { colorScheme: currentColorScheme } = useColorScheme();
   const [mode, setMode] = useState<ThemeMode>('system');
-  const [isLoading, setIsLoading] = useState(false); // Start with false for now
+  const [isLoading, setIsLoading] = useState(true);
 
-  console.log('📱 System color scheme:', systemColorScheme);
+  console.log('📱 NativeWind color scheme:', currentColorScheme);
 
-  // Resolve the actual theme based on mode and system preference
-  const resolveTheme = (themeMode: ThemeMode): boolean => {
-    if (themeMode === 'system') {
-      return systemColorScheme === 'dark';
-    }
-    return themeMode === 'dark';
-  };
+  // Determine if dark mode should be active
+  const isDark = currentColorScheme === 'dark';
 
-  const isDark = resolveTheme(mode);
-  const colors = isDark ? darkTheme : lightTheme;
-
-  console.log('🎨 Resolved theme:', { mode, isDark, isLoading });
+  console.log('🎨 Resolved theme:', { mode, currentColorScheme, isDark, isLoading });
 
   // Load stored theme preference on app start
   useEffect(() => {
     const loadStoredTheme = async () => {
       try {
+        console.log('📚 Loading saved theme mode...');
         const storedMode = await AsyncStorage.getItem(THEME_STORAGE_KEY);
         if (storedMode && ['light', 'dark', 'system'].includes(storedMode)) {
+          console.log('✅ Found saved theme mode:', storedMode);
           setMode(storedMode as ThemeMode);
+
+          // Apply the saved theme mode to NativeWind
+          if (storedMode !== 'system') {
+            colorScheme.set(storedMode as 'light' | 'dark');
+          }
+        } else {
+          console.log('🔧 No saved theme, using system default');
         }
       } catch (error) {
-        console.warn('Failed to load theme preference:', error);
+        console.warn('❌ Failed to load theme preference:', error);
         // Fall back to system theme if storage fails
       } finally {
         setIsLoading(false);
+        console.log('✅ Theme loading complete');
       }
     };
 
-    // Add a timeout to prevent indefinite loading
-    const timeout = setTimeout(() => {
-      setIsLoading(false);
-    }, 1000);
-
-    loadStoredTheme().finally(() => {
-      clearTimeout(timeout);
-    });
-
-    return () => clearTimeout(timeout);
+    loadStoredTheme();
   }, []);
 
   // Update theme mode and persist to storage
   const setThemeMode = async (newMode: ThemeMode) => {
+    console.log('🎨 Setting theme mode to:', newMode);
     try {
       setMode(newMode);
       await AsyncStorage.setItem(THEME_STORAGE_KEY, newMode);
+
+      // Update NativeWind's color scheme
+      if (newMode === 'system') {
+        colorScheme.set('system');
+      } else {
+        colorScheme.set(newMode);
+      }
+
+      console.log('✅ Theme mode saved successfully');
     } catch (error) {
-      console.warn('Failed to save theme preference:', error);
+      console.warn('❌ Failed to save theme preference:', error);
     }
   };
 
   const contextValue: ThemeContextType = {
-    colors,
     mode,
     isDark,
     setThemeMode,
@@ -108,26 +106,4 @@ export function useTheme() {
     throw new Error('useTheme must be used within a ThemeProvider');
   }
   return context;
-}
-
-/**
- * Hook to get a specific color from the current theme
- */
-export function useThemeColor(colorName: keyof ThemeColors) {
-  const { colors } = useTheme();
-  return colors[colorName];
-}
-
-/**
- * Hook to get multiple colors at once
- */
-export function useThemeColors<T extends keyof ThemeColors>(colorNames: T[]): Pick<ThemeColors, T> {
-  const { colors } = useTheme();
-  const result = {} as Pick<ThemeColors, T>;
-
-  colorNames.forEach(colorName => {
-    result[colorName] = colors[colorName];
-  });
-
-  return result;
 }

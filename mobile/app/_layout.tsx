@@ -40,8 +40,8 @@ function AppContent() {
   console.log('🎨 AppContent rendering...');
 
   // Always call hooks at the top level
-  const { isDark, isLoading, colors } = useTheme();
-  console.log('🎭 Theme data:', { isDark, isLoading, colorsExist: !!colors });
+  const { isDark, isLoading } = useTheme();
+  console.log('🎭 Theme data:', { isDark, isLoading });
 
   // Hide splash screen when theme is loaded
   useEffect(() => {
@@ -55,31 +55,24 @@ function AppContent() {
   if (isLoading) {
     console.log('⏳ Theme is loading, showing loading screen');
     return (
-      <View
-        style={{
-          flex: 1,
-          justifyContent: 'center',
-          alignItems: 'center',
-          backgroundColor: '#ffffff',
-        }}
-      >
-        <Text style={{ fontSize: 16, color: '#000000' }}>Loading theme...</Text>
+      <View className="flex-1 justify-center items-center bg-background">
+        <Text className="text-base text-foreground">Loading theme...</Text>
       </View>
     );
   }
 
   console.log('🧭 About to render navigation...');
 
-  // Create custom navigation theme based on our colors
+  // Create custom navigation theme with CSS variables
   const navigationTheme: Theme = {
     dark: isDark,
     colors: {
-      primary: colors.primary,
-      background: colors.background,
-      card: colors.card,
-      text: colors.foreground,
-      border: colors.border,
-      notification: colors.destructive,
+      primary: 'hsl(var(--primary))',
+      background: 'hsl(var(--background))',
+      card: 'hsl(var(--card))',
+      text: 'hsl(var(--foreground))',
+      border: 'hsl(var(--border))',
+      notification: 'hsl(var(--destructive))',
     },
     fonts: {
       regular: {

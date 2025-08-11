@@ -4,9 +4,10 @@ import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 
-import { useTheme } from '@/contexts/ThemeContext';
+// @ts-expect-error - Image asset import
+import appIcon from '@/assets/images/icon.png';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -14,7 +15,6 @@ export default function SignInScreen() {
   const router = useRouter();
   const { startOAuthFlow } = useOAuth({ strategy: 'oauth_github' });
   const [isLoading, setIsLoading] = useState(false);
-  const { colors } = useTheme();
 
   const onSignIn = useCallback(async () => {
     try {
@@ -33,133 +33,50 @@ export default function SignInScreen() {
   }, [router, startOAuthFlow]);
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View className="flex-1 items-center justify-between px-8 pt-20 pb-15 bg-background">
       {/* Logo Section */}
-      <View style={styles.logoSection}>
+      <View className="items-center flex-1 justify-center">
         <Image
-          source={require('@/assets/images/icon.png')}
-          style={[styles.logo, { backgroundColor: colors.card }]}
+          source={appIcon}
+          className="w-30 h-30 rounded-3xl mb-8 bg-card shadow-lg"
           contentFit="cover"
+          alt="Kosuke app logo"
         />
 
-        <Text style={[styles.welcomeText, { color: colors.foreground }]}>Welcome to</Text>
-        <Text style={[styles.appName, { color: colors.foreground }]}>Kosuke</Text>
+        <Text className="text-lg font-normal mb-2 opacity-80 text-foreground">Welcome to</Text>
+        <Text className="text-3xl font-bold tracking-tight text-foreground">Kosuke</Text>
       </View>
 
       {/* Button Section */}
-      <View style={styles.buttonSection}>
+      <View className="w-full items-center">
         <Pressable
           onPress={onSignIn}
           disabled={isLoading}
-          style={[
-            styles.button,
-            {
-              backgroundColor: colors.primary,
-              opacity: isLoading ? 0.8 : 1,
-            },
-          ]}
+          className={`h-14 px-6 rounded-xl items-center justify-center w-full max-w-80 mb-4 bg-primary shadow-sm ${
+            isLoading ? 'opacity-80' : ''
+          }`}
         >
           {isLoading ? (
-            <ActivityIndicator color={colors['primary-foreground']} />
+            <ActivityIndicator size="small" color="hsl(var(--primary-foreground))" />
           ) : (
-            <View style={styles.buttonContent}>
+            <View className="flex-row items-center">
               <Ionicons
                 name="logo-github"
                 size={20}
-                color={colors['primary-foreground']}
-                style={styles.githubIcon}
+                color="hsl(var(--primary-foreground))"
+                style={{ marginRight: 12 }}
               />
-              <Text style={[styles.buttonText, { color: colors['primary-foreground'] }]}>
+              <Text className="text-base font-semibold text-primary-foreground">
                 Continue with GitHub
               </Text>
             </View>
           )}
         </Pressable>
 
-        <Text style={[styles.helpText, { color: colors['muted-foreground'] }]}>
+        <Text className="text-sm text-center leading-5 max-w-70 text-muted-foreground">
           Sign in or sign up with your GitHub account
         </Text>
       </View>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 32,
-    paddingTop: 80,
-    paddingBottom: 60,
-  },
-  logoSection: {
-    alignItems: 'center',
-    flex: 1,
-    justifyContent: 'center',
-  },
-  logo: {
-    width: 120,
-    height: 120,
-    borderRadius: 24,
-    marginBottom: 32,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  welcomeText: {
-    fontSize: 18,
-    fontWeight: '400',
-    marginBottom: 8,
-    opacity: 0.8,
-  },
-  appName: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    letterSpacing: -0.5,
-  },
-  buttonSection: {
-    width: '100%',
-    alignItems: 'center',
-  },
-  button: {
-    height: 56,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '100%',
-    maxWidth: 320,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  buttonContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  githubIcon: {
-    marginRight: 12,
-  },
-  buttonText: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  helpText: {
-    fontSize: 14,
-    textAlign: 'center',
-    lineHeight: 20,
-    maxWidth: 280,
-  },
-});
