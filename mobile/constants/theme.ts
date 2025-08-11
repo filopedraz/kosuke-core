@@ -48,106 +48,106 @@ export interface ThemeColors {
   'sidebar-ring': string;
 }
 
-// LIGHT THEME - Converted from web OKLCH values to HSL
+// LIGHT THEME - Correct HSL values matching web
 export const lightTheme: ThemeColors = {
-  // Core Colors (oklch(1 0 0) -> white, oklch(0.145 0 0) -> near black)
+  // Core Colors
   background: 'hsl(0, 0%, 100%)',
-  foreground: 'hsl(0, 0%, 15%)',
+  foreground: 'hsl(0, 0%, 3.9%)',
 
   // Surface Colors
   card: 'hsl(0, 0%, 100%)',
-  'card-foreground': 'hsl(0, 0%, 15%)',
+  'card-foreground': 'hsl(0, 0%, 3.9%)',
   popover: 'hsl(0, 0%, 100%)',
-  'popover-foreground': 'hsl(0, 0%, 15%)',
+  'popover-foreground': 'hsl(0, 0%, 3.9%)',
 
   // Brand Colors
-  primary: 'hsl(0, 0%, 20%)',
+  primary: 'hsl(0, 0%, 9%)',
   'primary-foreground': 'hsl(0, 0%, 98%)',
-  secondary: 'hsl(0, 0%, 97%)',
-  'secondary-foreground': 'hsl(0, 0%, 20%)',
+  secondary: 'hsl(0, 0%, 96.1%)',
+  'secondary-foreground': 'hsl(0, 0%, 9%)',
 
   // Neutral Colors
-  muted: 'hsl(0, 0%, 97%)',
-  'muted-foreground': 'hsl(0, 0%, 56%)',
-  accent: 'hsl(0, 0%, 97%)',
-  'accent-foreground': 'hsl(0, 0%, 20%)',
+  muted: 'hsl(0, 0%, 96.1%)',
+  'muted-foreground': 'hsl(0, 0%, 45.1%)',
+  accent: 'hsl(0, 0%, 96.1%)',
+  'accent-foreground': 'hsl(0, 0%, 9%)',
 
-  // State Colors (oklch(0.577 0.245 27.325) -> red-ish)
-  destructive: 'hsl(0, 72%, 51%)',
+  // State Colors
+  destructive: 'hsl(0, 84.2%, 60.2%)',
   'destructive-foreground': 'hsl(0, 0%, 98%)',
 
   // Interactive Elements
-  border: 'hsl(0, 0%, 92%)',
-  input: 'hsl(0, 0%, 92%)',
-  ring: 'hsl(0, 0%, 71%)',
+  border: 'hsl(0, 0%, 89.8%)',
+  input: 'hsl(0, 0%, 89.8%)',
+  ring: 'hsl(0, 0%, 3.9%)',
 
-  // Data Visualization (converted from OKLCH)
-  'chart-1': 'hsl(25, 95%, 53%)',
-  'chart-2': 'hsl(185, 84%, 60%)',
-  'chart-3': 'hsl(225, 70%, 40%)',
-  'chart-4': 'hsl(85, 85%, 83%)',
-  'chart-5': 'hsl(70, 90%, 77%)',
+  // Data Visualization
+  'chart-1': 'hsl(12, 76%, 61%)',
+  'chart-2': 'hsl(173, 58%, 39%)',
+  'chart-3': 'hsl(197, 37%, 24%)',
+  'chart-4': 'hsl(43, 74%, 66%)',
+  'chart-5': 'hsl(27, 87%, 67%)',
 
   // Sidebar Component
   sidebar: 'hsl(0, 0%, 98%)',
-  'sidebar-foreground': 'hsl(0, 0%, 15%)',
-  'sidebar-primary': 'hsl(0, 0%, 20%)',
+  'sidebar-foreground': 'hsl(0, 0%, 3.9%)',
+  'sidebar-primary': 'hsl(0, 0%, 9%)',
   'sidebar-primary-foreground': 'hsl(0, 0%, 98%)',
-  'sidebar-accent': 'hsl(0, 0%, 97%)',
-  'sidebar-accent-foreground': 'hsl(0, 0%, 20%)',
-  'sidebar-border': 'hsl(0, 0%, 92%)',
-  'sidebar-ring': 'hsl(0, 0%, 71%)',
+  'sidebar-accent': 'hsl(0, 0%, 96.1%)',
+  'sidebar-accent-foreground': 'hsl(0, 0%, 9%)',
+  'sidebar-border': 'hsl(0, 0%, 89.8%)',
+  'sidebar-ring': 'hsl(0, 0%, 3.9%)',
 };
 
-// DARK THEME - Converted from web OKLCH values to HSL
+// DARK THEME - Correct HSL values matching web
 export const darkTheme: ThemeColors = {
   // Core Colors
-  background: 'hsl(0, 0%, 15%)',
+  background: 'hsl(0, 0%, 3.9%)',
   foreground: 'hsl(0, 0%, 98%)',
 
   // Surface Colors
-  card: 'hsl(0, 0%, 20%)',
+  card: 'hsl(0, 0%, 3.9%)',
   'card-foreground': 'hsl(0, 0%, 98%)',
-  popover: 'hsl(0, 0%, 20%)',
+  popover: 'hsl(0, 0%, 3.9%)',
   'popover-foreground': 'hsl(0, 0%, 98%)',
 
   // Brand Colors
-  primary: 'hsl(0, 0%, 92%)',
-  'primary-foreground': 'hsl(0, 0%, 20%)',
-  secondary: 'hsl(0, 0%, 27%)',
+  primary: 'hsl(0, 0%, 98%)',
+  'primary-foreground': 'hsl(0, 0%, 9%)',
+  secondary: 'hsl(0, 0%, 14.9%)',
   'secondary-foreground': 'hsl(0, 0%, 98%)',
 
   // Neutral Colors
-  muted: 'hsl(0, 0%, 27%)',
-  'muted-foreground': 'hsl(0, 0%, 71%)',
-  accent: 'hsl(0, 0%, 27%)',
+  muted: 'hsl(0, 0%, 14.9%)',
+  'muted-foreground': 'hsl(0, 0%, 63.9%)',
+  accent: 'hsl(0, 0%, 14.9%)',
   'accent-foreground': 'hsl(0, 0%, 98%)',
 
   // State Colors
-  destructive: 'hsl(0, 68%, 70%)',
+  destructive: 'hsl(0, 62.8%, 30.6%)',
   'destructive-foreground': 'hsl(0, 0%, 98%)',
 
   // Interactive Elements
-  border: 'hsl(0, 0%, 100%, 0.1)',
-  input: 'hsl(0, 0%, 100%, 0.15)',
-  ring: 'hsl(0, 0%, 56%)',
+  border: 'hsl(0, 0%, 14.9%)',
+  input: 'hsl(0, 0%, 14.9%)',
+  ring: 'hsl(0, 0%, 83.1%)',
 
-  // Data Visualization (dark theme variants)
-  'chart-1': 'hsl(265, 89%, 49%)',
-  'chart-2': 'hsl(162, 73%, 70%)',
-  'chart-3': 'hsl(70, 90%, 77%)',
-  'chart-4': 'hsl(304, 78%, 63%)',
-  'chart-5': 'hsl(16, 88%, 65%)',
+  // Data Visualization
+  'chart-1': 'hsl(220, 70%, 50%)',
+  'chart-2': 'hsl(160, 60%, 45%)',
+  'chart-3': 'hsl(30, 80%, 55%)',
+  'chart-4': 'hsl(280, 65%, 60%)',
+  'chart-5': 'hsl(340, 75%, 55%)',
 
   // Sidebar Component
-  sidebar: 'hsl(0, 0%, 20%)',
+  sidebar: 'hsl(0, 0%, 3.9%)',
   'sidebar-foreground': 'hsl(0, 0%, 98%)',
-  'sidebar-primary': 'hsl(265, 89%, 49%)',
+  'sidebar-primary': 'hsl(220, 70%, 50%)',
   'sidebar-primary-foreground': 'hsl(0, 0%, 98%)',
-  'sidebar-accent': 'hsl(0, 0%, 27%)',
+  'sidebar-accent': 'hsl(0, 0%, 14.9%)',
   'sidebar-accent-foreground': 'hsl(0, 0%, 98%)',
-  'sidebar-border': 'hsl(0, 0%, 100%, 0.1)',
-  'sidebar-ring': 'hsl(0, 0%, 56%)',
+  'sidebar-border': 'hsl(0, 0%, 14.9%)',
+  'sidebar-ring': 'hsl(0, 0%, 83.1%)',
 };
 
 // Border radius system (matching web)
