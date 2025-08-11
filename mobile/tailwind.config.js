@@ -1,9 +1,10 @@
-/** @type {import('tailwindcss').Config} */
+const { Config } = require('tailwindcss');
+
+/** @type {Config} */
 module.exports = {
-  // NOTE: Update this to include the paths to all of your component files.
   content: ['./app/**/*.{js,jsx,ts,tsx}', './components/**/*.{js,jsx,ts,tsx}'],
-  presets: [require('nativewind/preset')],
   darkMode: 'class',
+  presets: [require('nativewind/preset')],
   theme: {
     extend: {
       colors: {
@@ -40,13 +41,6 @@ module.exports = {
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',
-        chart: {
-          1: 'hsl(var(--chart-1))',
-          2: 'hsl(var(--chart-2))',
-          3: 'hsl(var(--chart-3))',
-          4: 'hsl(var(--chart-4))',
-          5: 'hsl(var(--chart-5))',
-        },
       },
       borderRadius: {
         lg: 'var(--radius)',
@@ -54,7 +48,6 @@ module.exports = {
         sm: 'calc(var(--radius) - 4px)',
       },
       fontFamily: {
-        // Map to system fonts that match web Geist fonts
         sans: ['System', 'ui-sans-serif', 'sans-serif'],
         mono: ['SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'monospace'],
       },
