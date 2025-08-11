@@ -82,9 +82,10 @@ function ProjectCard({ project }: { project: (typeof mockProjects)[0] }) {
 }
 
 function UserModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
-  const { isDark, getThemeDisplayText, cycleTheme } = useTheme();
+  const { isDark, getThemeDisplayText, cycleTheme, getColors } = useTheme();
   const { user, isLoaded } = useUser();
   const { signOut } = useAuth();
+  const colors = getColors();
 
   if (!isLoaded || !user) return null;
 
@@ -95,7 +96,7 @@ function UserModal({ visible, onClose }: { visible: boolean; onClose: () => void
         <View className="flex-row items-center justify-between px-5 py-4 border-b border-border">
           <Text className="text-xl font-semibold text-foreground">Settings</Text>
           <TouchableOpacity onPress={onClose}>
-            <Ionicons name="close" size={24} color="hsl(var(--foreground))" />
+            <Ionicons name="close" size={24} color={colors.foreground} />
           </TouchableOpacity>
         </View>
 
@@ -109,6 +110,7 @@ function UserModal({ visible, onClose }: { visible: boolean; onClose: () => void
                 <Image
                   source={{ uri: user.imageUrl }}
                   className="w-15 h-15 rounded-full mr-4 border border-border"
+                  alt="User profile picture"
                 />
               ) : (
                 <View className="w-15 h-15 rounded-full bg-primary items-center justify-center mr-4 border border-border">
@@ -145,7 +147,7 @@ function UserModal({ visible, onClose }: { visible: boolean; onClose: () => void
                 <Ionicons
                   name={isDark ? 'moon' : 'sunny'}
                   size={20}
-                  color="hsl(var(--secondary-foreground))"
+                  color={colors.secondaryForeground}
                   style={{ marginRight: 12 }}
                 />
                 <View>
@@ -155,7 +157,7 @@ function UserModal({ visible, onClose }: { visible: boolean; onClose: () => void
                   </Text>
                 </View>
               </View>
-              <Ionicons name="chevron-forward" size={16} color="hsl(var(--muted-foreground))" />
+              <Ionicons name="chevron-forward" size={16} color={colors.mutedForeground} />
             </TouchableOpacity>
           </View>
 
@@ -170,7 +172,7 @@ function UserModal({ visible, onClose }: { visible: boolean; onClose: () => void
             <Ionicons
               name="log-out-outline"
               size={20}
-              color="hsl(var(--destructive-foreground))"
+              color={colors.destructiveForeground}
               style={{ marginRight: 8 }}
             />
             <Text className="text-base font-semibold text-destructive-foreground">Sign Out</Text>
@@ -183,9 +185,10 @@ function UserModal({ visible, onClose }: { visible: boolean; onClose: () => void
 
 export default function HomeScreen() {
   const { isLoaded, isSignedIn, user } = useUser();
-  const { isDark } = useTheme();
+  const { getColors } = useTheme();
   const [searchText, setSearchText] = useState('');
   const [userModalVisible, setUserModalVisible] = useState(false);
+  const colors = getColors();
 
   // Don't render anything while authentication is loading
   if (!isLoaded) {
@@ -209,11 +212,11 @@ export default function HomeScreen() {
       <View className="flex-row items-center px-5 py-4 gap-3">
         {/* Search Bar */}
         <View className="flex-1 flex-row items-center bg-muted rounded-xl px-4 py-3 border border-border">
-          <Ionicons name="search" size={20} color="hsl(var(--muted-foreground))" />
+          <Ionicons name="search" size={20} color={colors.mutedForeground} />
           <TextInput
             className="flex-1 ml-2 text-base text-foreground"
             placeholder="Search projects..."
-            placeholderTextColor="hsl(var(--muted-foreground))"
+            placeholderTextColor={colors.mutedForeground}
             value={searchText}
             onChangeText={setSearchText}
           />
@@ -225,6 +228,7 @@ export default function HomeScreen() {
             <Image
               source={{ uri: user.imageUrl }}
               className="w-10 h-10 rounded-full border border-border"
+              alt="User avatar"
             />
           ) : (
             <View className="w-10 h-10 rounded-full bg-primary items-center justify-center border border-border">

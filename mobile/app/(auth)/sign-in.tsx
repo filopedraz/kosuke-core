@@ -1,13 +1,14 @@
 import { useOAuth } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
-import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, Text, View } from 'react-native';
 
-// @ts-expect-error - Image asset import
-import appIcon from '@/assets/images/icon.png';
+import { useTheme } from '@/hooks/useTheme';
+
+// @ts-expect-error - PNG import
+import iconImage from '../../assets/images/icon.png';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -15,6 +16,8 @@ export default function SignInScreen() {
   const router = useRouter();
   const { startOAuthFlow } = useOAuth({ strategy: 'oauth_github' });
   const [isLoading, setIsLoading] = useState(false);
+  const { getColors } = useTheme();
+  const colors = getColors();
 
   const onSignIn = useCallback(async () => {
     try {
@@ -33,13 +36,18 @@ export default function SignInScreen() {
   }, [router, startOAuthFlow]);
 
   return (
-    <View className="flex-1 items-center justify-between px-8 pt-20 pb-15 bg-background">
+    <View className="flex-1 items-center px-8 pt-20 pb-10 bg-background">
       {/* Logo Section */}
       <View className="items-center flex-1 justify-center">
         <Image
-          source={appIcon}
-          className="w-30 h-30 rounded-3xl mb-8 bg-card shadow-lg"
-          contentFit="cover"
+          source={iconImage}
+          style={{
+            width: 120,
+            height: 120,
+            borderRadius: 24,
+            marginBottom: 32,
+          }}
+          resizeMode="cover"
           alt="Kosuke app logo"
         />
 
@@ -47,8 +55,8 @@ export default function SignInScreen() {
         <Text className="text-3xl font-bold tracking-tight text-foreground">Kosuke</Text>
       </View>
 
-      {/* Button Section */}
-      <View className="w-full items-center">
+      {/* Button Section - moved higher */}
+      <View className="w-full items-center mb-20">
         <Pressable
           onPress={onSignIn}
           disabled={isLoading}
@@ -57,15 +65,10 @@ export default function SignInScreen() {
           }`}
         >
           {isLoading ? (
-            <ActivityIndicator size="small" color="hsl(var(--primary-foreground))" />
+            <ActivityIndicator size="small" color={colors.primaryForeground} />
           ) : (
             <View className="flex-row items-center">
-              <Ionicons
-                name="logo-github"
-                size={20}
-                color="hsl(var(--primary-foreground))"
-                style={{ marginRight: 12 }}
-              />
+              <Ionicons name="logo-github" size={20} color="#ffffff" style={{ marginRight: 12 }} />
               <Text className="text-base font-semibold text-primary-foreground">
                 Continue with GitHub
               </Text>

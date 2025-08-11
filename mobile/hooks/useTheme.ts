@@ -61,6 +61,22 @@ export function useTheme() {
 
   const isDark = currentColorScheme === 'dark';
 
+  // Get theme-aware colors for components
+  const getColors = () => {
+    const currentTheme = themes[isDark ? 'dark' : 'light'];
+    return {
+      foreground: `hsl(${currentTheme['--foreground']})`,
+      mutedForeground: `hsl(${currentTheme['--muted-foreground']})`,
+      secondaryForeground: `hsl(${currentTheme['--secondary-foreground']})`,
+      destructiveForeground: `hsl(${currentTheme['--destructive-foreground']})`,
+      primaryForeground: `hsl(${currentTheme['--primary-foreground']})`,
+      primary: `hsl(${currentTheme['--primary']})`,
+      background: `hsl(${currentTheme['--background']})`,
+      card: `hsl(${currentTheme['--card']})`,
+      border: `hsl(${currentTheme['--border']})`,
+    };
+  };
+
   // Load stored theme preference on app start
   useEffect(() => {
     const loadStoredTheme = async () => {
@@ -122,5 +138,6 @@ export function useTheme() {
     getThemeDisplayText,
     cycleTheme,
     themeVars: themes[isDark ? 'dark' : 'light'],
+    getColors,
   };
 }
