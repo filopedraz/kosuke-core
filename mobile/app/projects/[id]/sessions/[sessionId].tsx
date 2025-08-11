@@ -13,9 +13,6 @@ import {
 
 import { useTheme } from '@/hooks/useTheme';
 
-
-
-
 // Mock messages data
 const mockMessages = [
   {
