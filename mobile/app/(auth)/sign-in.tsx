@@ -39,17 +39,35 @@ export default function SignInScreen() {
     <View className="flex-1 items-center px-8 pt-20 pb-10 bg-background">
       {/* Logo Section */}
       <View className="items-center flex-1 justify-center">
-        <Image
-          source={iconImage}
+        <View
           style={{
             width: 120,
             height: 120,
             borderRadius: 24,
             marginBottom: 32,
+            // iOS shadows
+            shadowColor: '#ffffff',
+            shadowOffset: {
+              width: 0,
+              height: 2,
+            },
+            shadowOpacity: 0.1,
+            shadowRadius: 2,
+            // Android shadow
+            elevation: 8,
           }}
-          resizeMode="cover"
-          alt="Kosuke app logo"
-        />
+        >
+          <Image
+            source={iconImage}
+            style={{
+              width: 120,
+              height: 120,
+              borderRadius: 24,
+            }}
+            resizeMode="cover"
+            alt="Kosuke app logo"
+          />
+        </View>
 
         <Text className="text-lg font-normal mb-2 opacity-80 text-foreground">Welcome to</Text>
         <Text className="text-3xl font-bold tracking-tight text-foreground">Kosuke</Text>
@@ -68,7 +86,12 @@ export default function SignInScreen() {
             <ActivityIndicator size="small" color={colors.primaryForeground} />
           ) : (
             <View className="flex-row items-center">
-              <Ionicons name="logo-github" size={20} color="#ffffff" style={{ marginRight: 12 }} />
+              <Ionicons
+                name="logo-github"
+                size={20}
+                color={colors.primaryForeground}
+                style={{ marginRight: 12 }}
+              />
               <Text className="text-base font-semibold text-primary-foreground">
                 Continue with GitHub
               </Text>
