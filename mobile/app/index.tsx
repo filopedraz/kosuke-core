@@ -16,7 +16,7 @@ import {
   View,
 } from 'react-native';
 
-import { useTheme } from '@/contexts/ThemeContext';
+import { useTheme } from '@/hooks/useTheme';
 
 // Mock project data for UI development
 const mockProjects = [
@@ -82,28 +82,9 @@ function ProjectCard({ project }: { project: (typeof mockProjects)[0] }) {
 }
 
 function UserModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
-  const { mode, setThemeMode, isDark } = useTheme();
+  const { isDark, getThemeDisplayText, cycleTheme } = useTheme();
   const { user, isLoaded } = useUser();
   const { signOut } = useAuth();
-
-  const getThemeDisplayText = () => {
-    switch (mode) {
-      case 'light':
-        return 'Light';
-      case 'dark':
-        return 'Dark';
-      case 'system':
-        return `System (${isDark ? 'Dark' : 'Light'})`;
-      default:
-        return 'System';
-    }
-  };
-
-  const handleThemeChange = () => {
-    // Simple cycling: system -> light -> dark -> system
-    const nextMode = mode === 'system' ? 'light' : mode === 'light' ? 'dark' : 'system';
-    setThemeMode(nextMode);
-  };
 
   if (!isLoaded || !user) return null;
 
@@ -157,7 +138,7 @@ function UserModal({ visible, onClose }: { visible: boolean; onClose: () => void
             <Text className="text-lg font-semibold text-card-foreground mb-4">Appearance</Text>
 
             <TouchableOpacity
-              onPress={handleThemeChange}
+              onPress={cycleTheme}
               className="flex-row items-center justify-between py-3 px-4 bg-secondary rounded-lg border border-border"
             >
               <View className="flex-row items-center">
@@ -202,6 +183,7 @@ function UserModal({ visible, onClose }: { visible: boolean; onClose: () => void
 
 export default function HomeScreen() {
   const { isLoaded, isSignedIn, user } = useUser();
+  const { isDark } = useTheme();
   const [searchText, setSearchText] = useState('');
   const [userModalVisible, setUserModalVisible] = useState(false);
 
