@@ -1,21 +1,37 @@
 /**
- * Learn more about light and dark modes:
- * https://docs.expo.dev/guides/color-schemes/
+ * KOSUKE MOBILE - THEME COLOR HOOK
+ *
+ * Updated to use semantic design tokens from ThemeContext.
+ * Maintains backward compatibility for existing components.
  */
 
-import { Colors } from '@/constants/Colors';
-import { useColorScheme } from '@/hooks/useColorScheme';
+import { ThemeColors } from '@/constants/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 
-export function useThemeColor(
+/**
+ * Hook to get a semantic color from the current theme
+ * @param colorName - Semantic token name (e.g., 'primary', 'background', 'muted-foreground')
+ */
+export function useThemeColor(colorName: keyof ThemeColors): string {
+  const { colors } = useTheme();
+  return colors[colorName];
+}
+
+/**
+ * Legacy hook for backward compatibility with old color system
+ * @deprecated Use useTheme() or useThemeColor() with semantic tokens instead
+ */
+export function useLegacyThemeColor(
   props: { light?: string; dark?: string },
-  colorName: keyof typeof Colors.light & keyof typeof Colors.dark
+  fallbackColor: string = '#000000'
 ) {
-  const theme = useColorScheme() ?? 'light';
+  const { isDark } = useTheme();
+  const theme = isDark ? 'dark' : 'light';
   const colorFromProps = props[theme];
 
   if (colorFromProps) {
     return colorFromProps;
   } else {
-    return Colors[theme][colorName];
+    return fallbackColor;
   }
 }
