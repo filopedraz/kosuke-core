@@ -14,7 +14,6 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { ThemeProvider as KosukeThemeProvider, useTheme } from '@/contexts/ThemeContext';
 
-// Import global CSS for NativeWind - TEMPORARILY DISABLED
 import '../global.css';
 
 // Prevent the splash screen from auto-hiding

@@ -1,11 +1,3 @@
-/**
- * KOSUKE MOBILE - SEMANTIC DESIGN TOKENS
- *
- * This file mirrors the web app's design system using semantic tokens.
- * Colors are converted from OKLCH to HSL for React Native compatibility.
- * All tokens match the web app's globals.css exactly.
- */
-
 export interface ThemeColors {
   // Core Colors
   background: string;
