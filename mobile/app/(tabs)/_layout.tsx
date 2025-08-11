@@ -1,6 +1,7 @@
 import { useUser } from '@clerk/clerk-expo';
 import { Redirect, Tabs } from 'expo-router';
-import React from 'react';
+import * as SplashScreen from 'expo-splash-screen';
+import React, { useEffect } from 'react';
 import { Platform } from 'react-native';
 
 import { HapticTab } from '@/components/HapticTab';
@@ -12,7 +13,21 @@ export default function TabLayout() {
   const { colors } = useTheme();
   const { isLoaded, isSignedIn } = useUser();
 
-  if (isLoaded && !isSignedIn) {
+  // Keep splash screen visible until authentication is resolved
+  useEffect(() => {
+    if (isLoaded) {
+      // Hide splash screen once Clerk has finished loading
+      SplashScreen.hideAsync();
+    }
+  }, [isLoaded]);
+
+  // Don't render anything while authentication is loading (splash screen shows)
+  if (!isLoaded) {
+    return null;
+  }
+
+  // Redirect to sign-in if not authenticated
+  if (!isSignedIn) {
     return <Redirect href="/(auth)/sign-in" />;
   }
 

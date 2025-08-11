@@ -4,6 +4,7 @@ import Constants from 'expo-constants';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
+import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import React from 'react';
 import { Text, View } from 'react-native';
@@ -14,6 +15,9 @@ import { ThemeProvider as KosukeThemeProvider, useTheme } from '@/contexts/Theme
 
 // Import global CSS for NativeWind - TEMPORARILY DISABLED
 import '../global.css';
+
+// Prevent the splash screen from auto-hiding
+SplashScreen.preventAutoHideAsync();
 
 const tokenCache = {
   getToken: async (key: string) => {
