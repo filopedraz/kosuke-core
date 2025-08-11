@@ -1,5 +1,5 @@
 import { ClerkProvider } from '@clerk/clerk-expo';
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { Theme, ThemeProvider } from '@react-navigation/native';
 import Constants from 'expo-constants';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
@@ -39,53 +39,70 @@ const tokenCache = {
 function AppContent() {
   console.log('🎨 AppContent rendering...');
 
-  try {
-    const { isDark, isLoading, colors } = useTheme();
-    console.log('🎭 Theme data:', { isDark, isLoading, colorsExist: !!colors });
+  // Always call hooks at the top level
+  const { isDark, isLoading, colors } = useTheme();
+  console.log('🎭 Theme data:', { isDark, isLoading, colorsExist: !!colors });
 
-    // Show loading screen while theme is being loaded
-    if (isLoading) {
-      console.log('⏳ Theme is loading, showing loading screen');
-      return (
-        <View
-          style={{
-            flex: 1,
-            justifyContent: 'center',
-            alignItems: 'center',
-            backgroundColor: '#ffffff',
-          }}
-        >
-          <Text style={{ fontSize: 16, color: '#000000' }}>Loading theme...</Text>
-        </View>
-      );
-    }
-
-    console.log('🧭 About to render navigation...');
-    return (
-      <ThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
-        <Stack>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-          <Stack.Screen name="+not-found" />
-        </Stack>
-        <StatusBar style={isDark ? 'light' : 'dark'} />
-      </ThemeProvider>
-    );
-  } catch (error) {
-    console.error('💥 Error in AppContent:', error);
+  // Show loading screen while theme is being loaded
+  if (isLoading) {
+    console.log('⏳ Theme is loading, showing loading screen');
     return (
       <View
         style={{
           flex: 1,
           justifyContent: 'center',
           alignItems: 'center',
-          backgroundColor: '#ff0000',
+          backgroundColor: '#ffffff',
         }}
       >
-        <Text style={{ color: '#ffffff', fontSize: 18 }}>Error: {String(error)}</Text>
+        <Text style={{ fontSize: 16, color: '#000000' }}>Loading theme...</Text>
       </View>
     );
   }
+
+  console.log('🧭 About to render navigation...');
+
+  // Create custom navigation theme based on our colors
+  const navigationTheme: Theme = {
+    dark: isDark,
+    colors: {
+      primary: colors.primary,
+      background: colors.background,
+      card: colors.card,
+      text: colors.foreground,
+      border: colors.border,
+      notification: colors.destructive,
+    },
+    fonts: {
+      regular: {
+        fontFamily: 'System',
+        fontWeight: '400',
+      },
+      medium: {
+        fontFamily: 'System',
+        fontWeight: '500',
+      },
+      bold: {
+        fontFamily: 'System',
+        fontWeight: '700',
+      },
+      heavy: {
+        fontFamily: 'System',
+        fontWeight: '900',
+      },
+    },
+  };
+
+  return (
+    <ThemeProvider value={navigationTheme}>
+      <Stack>
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+        <Stack.Screen name="+not-found" />
+      </Stack>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
+    </ThemeProvider>
+  );
 }
 
 export default function RootLayout() {
@@ -97,12 +114,6 @@ export default function RootLayout() {
   });
 
   console.log('📝 Fonts loaded:', loaded);
-
-  // DON'T block the app for fonts - proceed anyway
-  // if (!loaded) {
-  //   console.log('⏳ Fonts not loaded yet, returning null');
-  //   return null;
-  // }
 
   const publishableKey = Constants.expoConfig?.extra?.CLERK_PUBLISHABLE_KEY as string | undefined;
   console.log('🔑 Clerk publishable key exists:', !!publishableKey);

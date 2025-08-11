@@ -1,10 +1,3 @@
-/**
- * KOSUKE MOBILE - THEME CONTEXT
- *
- * Provides theme context for the entire app with light/dark mode switching.
- * Uses AsyncStorage to persist user's theme preference.
- */
-
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { ReactNode, createContext, useContext, useEffect, useState } from 'react';
 import { useColorScheme as useSystemColorScheme } from 'react-native';

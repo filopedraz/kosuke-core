@@ -10,7 +10,7 @@ import TabBarBackground from '@/components/ui/TabBarBackground';
 import { useTheme } from '@/contexts/ThemeContext';
 
 export default function TabLayout() {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const { isLoaded, isSignedIn } = useUser();
 
   // Keep splash screen visible until authentication is resolved
@@ -33,6 +33,7 @@ export default function TabLayout() {
 
   return (
     <Tabs
+      key={`theme-${isDark ? 'dark' : 'light'}`} // Force re-render on theme change
       screenOptions={{
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors['muted-foreground'],
@@ -43,8 +44,13 @@ export default function TabLayout() {
           ios: {
             // Use a transparent background on iOS to show the blur effect
             position: 'absolute',
+            backgroundColor: 'transparent',
           },
-          default: {},
+          default: {
+            backgroundColor: colors.card,
+            borderTopColor: colors.border,
+            borderTopWidth: 1,
+          },
         }),
       }}
     >
