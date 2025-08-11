@@ -6,7 +6,7 @@ import { Stack } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Text, View } from 'react-native';
 import 'react-native-reanimated';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -42,6 +42,14 @@ function AppContent() {
   // Always call hooks at the top level
   const { isDark, isLoading, colors } = useTheme();
   console.log('🎭 Theme data:', { isDark, isLoading, colorsExist: !!colors });
+
+  // Hide splash screen when theme is loaded
+  useEffect(() => {
+    if (!isLoading) {
+      console.log('🚀 Theme loaded, hiding splash screen');
+      SplashScreen.hideAsync();
+    }
+  }, [isLoading]);
 
   // Show loading screen while theme is being loaded
   if (isLoading) {
@@ -96,7 +104,9 @@ function AppContent() {
   return (
     <ThemeProvider value={navigationTheme}>
       <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="index" options={{ headerShown: false }} />
+        <Stack.Screen name="projects/[id]" options={{ headerShown: false }} />
+        <Stack.Screen name="projects/[id]/sessions/[sessionId]" options={{ headerShown: false }} />
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
         <Stack.Screen name="+not-found" />
       </Stack>

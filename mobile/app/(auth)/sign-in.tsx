@@ -14,7 +14,7 @@ export default function SignInScreen() {
   const router = useRouter();
   const { startOAuthFlow } = useOAuth({ strategy: 'oauth_github' });
   const [isLoading, setIsLoading] = useState(false);
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
 
   const onSignIn = useCallback(async () => {
     try {
@@ -22,7 +22,7 @@ export default function SignInScreen() {
       const { createdSessionId, setActive } = await startOAuthFlow({});
       if (createdSessionId && setActive) {
         await setActive({ session: createdSessionId });
-        router.replace('/(tabs)');
+        router.replace('/');
       }
     } catch (err) {
       // TODO: add nicer error toast in a later ticket
