@@ -23,6 +23,12 @@
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "ascAppId": "6749827990",
+        "appleId": "filippo.pedrazzini@joandko.io",
+        "appleTeamId": "8QDLUD82FG"
+      }
+    }
   }
 }
