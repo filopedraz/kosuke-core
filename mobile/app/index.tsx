@@ -52,10 +52,56 @@ function formatTimeAgo(date: Date): string {
   return `${diffInWeeks}w ago`;
 }
 
+function getDateGroup(date: Date): string {
+  const now = new Date();
+  const diffInDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+
+  if (diffInDays === 0) {
+    return 'Today';
+  } else if (diffInDays === 1) {
+    return 'Yesterday';
+  } else if (diffInDays < 7) {
+    return `${diffInDays} days ago`;
+  } else if (diffInDays < 14) {
+    return '1 week ago';
+  } else if (diffInDays < 30) {
+    const weeks = Math.floor(diffInDays / 7);
+    return `${weeks} weeks ago`;
+  } else {
+    const months = Math.floor(diffInDays / 30);
+    return `${months} month${months === 1 ? '' : 's'} ago`;
+  }
+}
+
+function groupProjectsByDate(projects: typeof mockProjects) {
+  const groups: { [key: string]: typeof mockProjects } = {};
+
+  projects.forEach(project => {
+    const group = getDateGroup(project.updatedAt);
+    if (!groups[group]) {
+      groups[group] = [];
+    }
+    groups[group].push(project);
+  });
+
+  return Object.entries(groups).map(([date, items]) => ({
+    date,
+    data: items,
+  }));
+}
+
+function DateSeparator({ date }: { date: string }) {
+  return (
+    <View className="px-5 py-3">
+      <Text className="text-sm font-medium text-muted-foreground">{date}</Text>
+    </View>
+  );
+}
+
 function ProjectCard({ project }: { project: (typeof mockProjects)[0] }) {
   return (
     <Link href={`/projects/${project.id}`} asChild>
-      <TouchableOpacity className="bg-card rounded-xl p-4 mb-3 border border-border">
+      <TouchableOpacity className="bg-card rounded-xl p-4 mx-5 mb-3 border border-border">
         <View>
           <Text className="text-lg font-semibold text-card-foreground mb-2">{project.name}</Text>
           <Text className="text-sm text-muted-foreground leading-5 mb-2">
@@ -90,6 +136,24 @@ export default function HomeScreen() {
       project.description.toLowerCase().includes(searchText.toLowerCase())
   );
 
+  type FlatDataItem = (typeof mockProjects)[0] | { type: 'separator'; date: string; id: string };
+
+  const groupedProjects = groupProjectsByDate(filteredProjects);
+
+  const renderItem = ({ item }: { item: FlatDataItem }) => {
+    if ('type' in item && item.type === 'separator') {
+      return <DateSeparator date={item.date} />;
+    }
+    return <ProjectCard project={item as (typeof mockProjects)[0]} />;
+  };
+
+  // Create flat data with separators
+  const flatData: FlatDataItem[] = groupedProjects.reduce((acc: FlatDataItem[], group) => {
+    acc.push({ type: 'separator', date: group.date, id: `separator-${group.date}` });
+    acc.push(...group.data);
+    return acc;
+  }, []);
+
   return (
     <SafeAreaView className="flex-1 bg-background">
       <HomeHeader
@@ -98,13 +162,11 @@ export default function HomeScreen() {
         searchPlaceholder="Search Projects"
       />
 
-      {/* Projects List */}
       <FlatList
-        data={filteredProjects}
+        data={flatData}
         keyExtractor={item => item.id}
-        renderItem={({ item }) => <ProjectCard project={item} />}
+        renderItem={renderItem}
         contentContainerStyle={{
-          paddingHorizontal: 20,
           paddingBottom: 20,
         }}
         showsVerticalScrollIndicator={false}

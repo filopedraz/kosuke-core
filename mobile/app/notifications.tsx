@@ -33,6 +33,22 @@ const mockNotifications = [
     read: false,
     type: 'system',
   },
+  {
+    id: '4',
+    title: 'Project Created',
+    message: 'Weather App project has been successfully created.',
+    timestamp: new Date('2024-01-12T09:15:00'),
+    read: true,
+    type: 'project',
+  },
+  {
+    id: '5',
+    title: 'Welcome',
+    message: 'Welcome to Kosuke! Get started by creating your first project.',
+    timestamp: new Date('2024-01-10T08:00:00'),
+    read: true,
+    type: 'system',
+  },
 ];
 
 function formatTimeAgo(date: Date): string {
@@ -56,7 +72,53 @@ function formatTimeAgo(date: Date): string {
   return `${diffInWeeks}w ago`;
 }
 
-function getNotificationIcon(type: string) {
+function getDateGroup(date: Date): string {
+  const now = new Date();
+  const diffInDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+
+  if (diffInDays === 0) {
+    return 'Today';
+  } else if (diffInDays === 1) {
+    return 'Yesterday';
+  } else if (diffInDays < 7) {
+    return `${diffInDays} days ago`;
+  } else if (diffInDays < 14) {
+    return '1 week ago';
+  } else if (diffInDays < 30) {
+    const weeks = Math.floor(diffInDays / 7);
+    return `${weeks} weeks ago`;
+  } else {
+    const months = Math.floor(diffInDays / 30);
+    return `${months} month${months === 1 ? '' : 's'} ago`;
+  }
+}
+
+function groupNotificationsByDate(notifications: typeof mockNotifications) {
+  const groups: { [key: string]: typeof mockNotifications } = {};
+
+  notifications.forEach(notification => {
+    const group = getDateGroup(notification.timestamp);
+    if (!groups[group]) {
+      groups[group] = [];
+    }
+    groups[group].push(notification);
+  });
+
+  return Object.entries(groups).map(([date, items]) => ({
+    date,
+    data: items,
+  }));
+}
+
+function DateSeparator({ date }: { date: string }) {
+  return (
+    <View className="px-5 py-3">
+      <Text className="text-sm font-medium text-muted-foreground">{date}</Text>
+    </View>
+  );
+}
+
+function getNotificationIcon(type: string): keyof typeof Ionicons.glyphMap {
   switch (type) {
     case 'project':
       return 'folder-outline';
@@ -75,7 +137,7 @@ function NotificationCard({ notification }: { notification: (typeof mockNotifica
 
   return (
     <View
-      className={`bg-card rounded-xl p-4 mb-3 border border-border ${
+      className={`bg-card rounded-xl p-4 mx-5 mb-3 border border-border ${
         !notification.read ? 'border-primary/20' : ''
       }`}
     >
@@ -84,7 +146,7 @@ function NotificationCard({ notification }: { notification: (typeof mockNotifica
           className={`p-2 rounded-full mr-3 ${!notification.read ? 'bg-primary/10' : 'bg-muted'}`}
         >
           <Ionicons
-            name={getNotificationIcon(notification.type) as any}
+            name={getNotificationIcon(notification.type)}
             size={16}
             color={!notification.read ? colors.primary : colors.mutedForeground}
           />
@@ -112,31 +174,37 @@ function NotificationCard({ notification }: { notification: (typeof mockNotifica
   );
 }
 
+type FlatDataItem = (typeof mockNotifications)[0] | { type: 'separator'; date: string; id: string };
+
 export default function NotificationsScreen() {
-  const unreadCount = mockNotifications.filter(n => !n.read).length;
+  const groupedNotifications = groupNotificationsByDate(mockNotifications);
+
+  const renderItem = ({ item }: { item: FlatDataItem }) => {
+    if ('type' in item && item.type === 'separator') {
+      return (
+        <DateSeparator date={(item as { type: 'separator'; date: string; id: string }).date} />
+      );
+    }
+    return <NotificationCard notification={item as (typeof mockNotifications)[0]} />;
+  };
+
+  // Create flat data with separators
+  const flatData: FlatDataItem[] = groupedNotifications.reduce((acc: FlatDataItem[], group) => {
+    acc.push({ type: 'separator', date: group.date, id: `separator-${group.date}` });
+    acc.push(...group.data);
+    return acc;
+  }, []);
 
   return (
     <SafeAreaView className="flex-1 bg-background">
       <NavigationHeader title="Notifications" />
 
       <View className="flex-1">
-        {/* Header Info */}
-        <View className="px-5 pt-5 pb-3">
-          <Text className="text-2xl font-bold text-foreground mb-2">Notifications</Text>
-          <Text className="text-base text-muted-foreground">
-            {unreadCount > 0
-              ? `${unreadCount} unread notification${unreadCount === 1 ? '' : 's'}`
-              : 'All caught up!'}
-          </Text>
-        </View>
-
-        {/* Notifications List */}
         <FlatList
-          data={mockNotifications}
+          data={flatData}
           keyExtractor={item => item.id}
-          renderItem={({ item }) => <NotificationCard notification={item} />}
+          renderItem={renderItem}
           contentContainerStyle={{
-            paddingHorizontal: 20,
             paddingBottom: 20,
           }}
           showsVerticalScrollIndicator={false}
