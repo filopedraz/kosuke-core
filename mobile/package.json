@@ -8,8 +8,10 @@
     "android": "expo run:android",
     "ios:go": "expo start --ios",
     "ios:build": "expo run:ios",
+    "clean:cache": "rm -rf .expo && rm -rf ios/ && xcrun simctl shutdown all && xcrun simctl erase all",
     "web": "expo start --web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "ios": "expo run:ios"
   },
   "dependencies": {
     "@clerk/clerk-expo": "^2.14.14",
