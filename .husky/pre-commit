@@ -4,22 +4,22 @@ python_files=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(py)
 # Run Python checks if there are Python files in agent/
 if [ -n "$python_files" ]; then
   echo "🐍 Running Python code quality checks for agent/..."
-  
+
   # Check if we're in a Python virtual environment for agent
   if [ -f "./venv/bin/activate" ]; then
     source ./venv/bin/activate
     cd agent
-  
+
     echo "  → Running ruff linting..."
     ruff check . --fix
     if [ $? -ne 0 ]; then
       echo "❌ Python linting failed. Please fix the errors before committing."
       exit 1
     fi
-    
+
     echo "  → Running ruff formatting..."
     ruff format .
-        
+
     cd ..
     deactivate
     echo "✅ Python checks passed!"
@@ -32,38 +32,65 @@ fi
 
 # Check if we have TypeScript/JavaScript files in the commit
 js_files=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(js|jsx|ts|tsx)$' || true)
+mobile_files=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^mobile/.*\.(js|jsx|ts|tsx)$' || true)
 
-# Run Node.js checks if there are JS/TS files
+# Run Node.js checks if there are JS/TS files (excluding mobile)
 if [ -n "$js_files" ]; then
-  echo "🌐 Running Next.js code quality checks..."
-  
-  # Run tests and store the exit code
-  echo "🧪 Running tests..."
-  npm test
-  if [ $? -ne 0 ]; then
-    echo "❌ Tests failed. Please fix the failing tests before committing."
-    exit 1
-  fi
+  non_mobile_files=$(echo "$js_files" | grep -v '^mobile/' || true)
 
-  # Run linting and store the exit code
-  echo "🔍 Running linting..."
+  if [ -n "$non_mobile_files" ]; then
+    echo "🌐 Running Next.js code quality checks..."
+
+    # Run tests and store the exit code
+    echo "🧪 Running tests..."
+    npm test
+    if [ $? -ne 0 ]; then
+      echo "❌ Tests failed. Please fix the failing tests before committing."
+      exit 1
+    fi
+
+    # Run linting and store the exit code
+    echo "🔍 Running linting..."
+    npm run lint
+    if [ $? -ne 0 ]; then
+      echo "❌ Linting failed. Please fix the errors before committing."
+      exit 1
+    fi
+
+    # Run formatting
+    echo "💅 Running formatting..."
+    npm run format
+
+    # Check if any files were modified by formatting
+    if [ -n "$(git diff)" ]; then
+      echo "❌ Formatting changed some files. Please stage the changes and try committing again."
+      exit 1
+    fi
+
+    echo "✅ Next.js checks passed!"
+  fi
+fi
+
+# Run mobile app checks if there are mobile files
+if [ -n "$mobile_files" ]; then
+  echo "📱 Running mobile app code quality checks..."
+
+  # Change to mobile directory
+  cd mobile
+
+  # Run linting for mobile app
+  echo "🔍 Running mobile linting..."
   npm run lint
   if [ $? -ne 0 ]; then
-    echo "❌ Linting failed. Please fix the errors before committing."
+    echo "❌ Mobile linting failed. Please fix the errors before committing."
+    cd ..
     exit 1
   fi
 
-  # Run formatting
-  echo "💅 Running formatting..."
-  npm run format
-  
-  # Check if any files were modified by formatting
-  if [ -n "$(git diff)" ]; then
-    echo "❌ Formatting changed some files. Please stage the changes and try committing again."
-    exit 1
-  fi
-  
-  echo "✅ Next.js checks passed!"
+  # Return to root directory
+  cd ..
+
+  echo "✅ Mobile app checks passed!"
 fi
 
 echo "✅ All pre-commit checks passed!"

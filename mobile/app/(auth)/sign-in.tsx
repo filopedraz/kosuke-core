@@ -5,7 +5,7 @@ import * as WebBrowser from 'expo-web-browser';
 import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, Text, View } from 'react-native';
 
-import { useTheme } from '@/hooks/useTheme';
+import { useTheme } from '@/hooks/use-theme';
 
 // @ts-expect-error - PNG import
 import iconImage from '../../assets/images/icon.png';

@@ -5,31 +5,12 @@ import { useQuery } from '@tanstack/react-query';
 import Constants from 'expo-constants';
 import { useMemo } from 'react';
 import { Alert } from 'react-native';
-
-interface ChatSession {
-  id: number;
-  projectId: number;
-  userId: string;
-  sessionId: string;
-  title: string;
-  description?: string;
-  status: string;
-  messageCount: number;
-  isDefault: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-  lastActivityAt: Date;
-}
-
-interface GroupedSessions {
-  date: string;
-  data: ChatSession[];
-}
-
-interface UseChatSessionsOptions {
-  projectId: number;
-  enabled?: boolean;
-}
+import type {
+  ChatSession,
+  FlatChatSessionData,
+  GroupedChatSessions,
+  UseChatSessionsOptions,
+} from '../types';
 
 function getDateGroup(date: Date): string {
   const now = new Date();
@@ -52,7 +33,7 @@ function getDateGroup(date: Date): string {
   }
 }
 
-function groupSessionsByDate(sessions: ChatSession[]): GroupedSessions[] {
+function groupSessionsByDate(sessions: ChatSession[]): GroupedChatSessions[] {
   const groups: { [key: string]: ChatSession[] } = {};
 
   sessions.forEach(session => {
@@ -149,12 +130,14 @@ export function useChatSessions({ projectId, enabled = true }: UseChatSessionsOp
     const groupedSessions = groupSessionsByDate(query.data);
 
     // Create flat data with separators for FlatList
-    type FlatDataItem = ChatSession | { type: 'separator'; date: string; id: string };
-    const flatData: FlatDataItem[] = groupedSessions.reduce((acc: FlatDataItem[], group) => {
-      acc.push({ type: 'separator', date: group.date, id: `separator-${group.date}` });
-      acc.push(...group.data);
-      return acc;
-    }, []);
+    const flatData: FlatChatSessionData[] = groupedSessions.reduce(
+      (acc: FlatChatSessionData[], group) => {
+        acc.push({ type: 'separator', date: group.date, id: `separator-${group.date}` });
+        acc.push(...group.data);
+        return acc;
+      },
+      []
+    );
 
     return { groupedSessions, flatData };
   }, [query.data]);

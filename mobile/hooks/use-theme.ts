@@ -1,8 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colorScheme, useColorScheme, vars } from 'nativewind';
 import { useEffect, useState } from 'react';
-
-type ThemeMode = 'light' | 'dark' | 'system';
+import type { ThemeColors, ThemeMode } from '../types';
 
 const THEME_STORAGE_KEY = '@kosuke_theme_mode';
 
@@ -62,7 +61,7 @@ export function useTheme() {
   const isDark = currentColorScheme === 'dark';
 
   // Get theme-aware colors for components
-  const getColors = () => {
+  const getColors = (): ThemeColors => {
     return {
       foreground: isDark ? '#fafafa' : '#0a0a0a', // Direct hex values
       mutedForeground: isDark ? '#a1a1a1' : '#737373',

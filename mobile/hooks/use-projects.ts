@@ -5,29 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import Constants from 'expo-constants';
 import { useMemo } from 'react';
 import { Alert } from 'react-native';
-
-interface Project {
-  id: number;
-  name: string;
-  description: string;
-  createdAt: Date;
-  updatedAt: Date;
-  createdBy: string;
-  githubUrl?: string;
-  repositoryName?: string;
-  isPrivate: boolean;
-  status: string;
-}
-
-interface GroupedProjects {
-  date: string;
-  data: Project[];
-}
-
-interface UseProjectsOptions {
-  searchText?: string;
-  enabled?: boolean;
-}
+import type { FlatProjectData, GroupedProjects, Project, UseProjectsOptions } from '../types';
 
 function getDateGroup(date: Date): string {
   const now = new Date();
@@ -137,8 +115,7 @@ export function useProjects({ searchText = '', enabled = true }: UseProjectsOpti
     const groupedProjects = groupProjectsByDate(filteredProjects);
 
     // Create flat data with separators for FlatList
-    type FlatDataItem = Project | { type: 'separator'; date: string; id: string };
-    const flatData: FlatDataItem[] = groupedProjects.reduce((acc: FlatDataItem[], group) => {
+    const flatData: FlatProjectData[] = groupedProjects.reduce((acc: FlatProjectData[], group) => {
       acc.push({ type: 'separator', date: group.date, id: `separator-${group.date}` });
       acc.push(...group.data);
       return acc;

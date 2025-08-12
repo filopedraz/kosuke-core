@@ -8,7 +8,7 @@ import React from 'react';
 import { Image, SafeAreaView, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 
 import { NavigationHeader } from '@/components/NavigationHeader';
-import { useTheme } from '@/hooks/useTheme';
+import { useTheme } from '@/hooks/use-theme';
 
 export default function SettingsScreen() {
   const router = useRouter();

@@ -6,7 +6,7 @@ import React from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 
 import { Skeleton } from '@/components/ui/Skeleton';
-import { useTheme } from '@/hooks/useTheme';
+import { useTheme } from '@/hooks/use-theme';
 
 interface NavigationHeaderProps {
   title: string;
