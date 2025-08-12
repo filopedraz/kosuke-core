@@ -14,6 +14,7 @@
     "@clerk/clerk-expo": "^2.14.14",
     "@expo/vector-icons": "^14.1.0",
     "@react-native-async-storage/async-storage": "2.1.2",
+    "@react-native-menu/menu": "^1.2.4",
     "@react-navigation/bottom-tabs": "^7.3.10",
     "@react-navigation/elements": "^2.3.8",
     "@react-navigation/native": "^7.1.6",
@@ -45,8 +46,7 @@
     "react-native-svg": "15.11.2",
     "react-native-web": "~0.20.0",
     "react-native-webview": "13.13.5",
-    "sentry-expo": "~7.0.0",
-    "@expo/ui": "~0.1.1-alpha.10"
+    "sentry-expo": "~7.0.0"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

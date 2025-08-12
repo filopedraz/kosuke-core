@@ -1,8 +1,8 @@
 'use client';
 
 import { useAuth, useUser } from '@clerk/clerk-expo';
-import { ContextMenu } from '@expo/ui/swift-ui';
 import { Ionicons } from '@expo/vector-icons';
+import { MenuView } from '@react-native-menu/menu';
 import { useRouter } from 'expo-router';
 import React from 'react';
 import { Image, SafeAreaView, ScrollView, Text, TouchableOpacity, View } from 'react-native';
@@ -68,38 +68,47 @@ export default function SettingsScreen() {
         <View className="bg-card rounded-xl p-6 mb-4 border border-border">
           <Text className="text-lg font-semibold text-card-foreground mb-6">Appearance</Text>
 
-          <ContextMenu>
-            <ContextMenu.Items>
-              <TouchableOpacity onPress={() => setThemeMode('light')} className="py-2 px-4">
-                <Text className="text-base text-card-foreground">Light</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => setThemeMode('dark')} className="py-2 px-4">
-                <Text className="text-base text-card-foreground">Dark</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => setThemeMode('system')} className="py-2 px-4">
-                <Text className="text-base text-card-foreground">System</Text>
-              </TouchableOpacity>
-            </ContextMenu.Items>
-            <ContextMenu.Trigger>
-              <TouchableOpacity
-                className="flex-row items-center justify-between py-4 px-0"
-                activeOpacity={0.7}
-              >
-                <View className="flex-row items-center">
-                  <View className="w-10 h-10 rounded-full bg-primary/10 items-center justify-center mr-4">
-                    <Ionicons name={isDark ? 'moon' : 'sunny'} size={20} color={colors.primary} />
-                  </View>
-                  <Text className="text-base font-semibold text-card-foreground">Theme</Text>
+          <MenuView
+            title="Theme"
+            actions={[
+              {
+                id: 'light',
+                title: 'Light',
+                image: 'sun.max',
+              },
+              {
+                id: 'dark',
+                title: 'Dark',
+                image: 'moon',
+              },
+              {
+                id: 'system',
+                title: 'System',
+                image: 'gear',
+              },
+            ]}
+            onPressAction={({ nativeEvent }) => {
+              setThemeMode(nativeEvent.event as 'light' | 'dark' | 'system');
+            }}
+          >
+            <TouchableOpacity
+              className="flex-row items-center justify-between py-4 px-0"
+              activeOpacity={0.7}
+            >
+              <View className="flex-row items-center">
+                <View className="w-10 h-10 rounded-full bg-primary/10 items-center justify-center mr-4">
+                  <Ionicons name={isDark ? 'moon' : 'sunny'} size={20} color={colors.primary} />
                 </View>
-                <View className="flex-row items-center">
-                  <Text className="text-base text-muted-foreground mr-2">
-                    {getThemeDisplayText()}
-                  </Text>
-                  <Ionicons name="chevron-forward" size={18} color={colors.mutedForeground} />
-                </View>
-              </TouchableOpacity>
-            </ContextMenu.Trigger>
-          </ContextMenu>
+                <Text className="text-base font-semibold text-card-foreground">Theme</Text>
+              </View>
+              <View className="flex-row items-center">
+                <Text className="text-base text-muted-foreground mr-2">
+                  {getThemeDisplayText()}
+                </Text>
+                <Ionicons name="chevron-forward" size={18} color={colors.mutedForeground} />
+              </View>
+            </TouchableOpacity>
+          </MenuView>
         </View>
 
         {/* Sign Out Button */}
