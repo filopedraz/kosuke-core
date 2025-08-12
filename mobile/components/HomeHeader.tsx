@@ -42,6 +42,7 @@ export function HomeHeader({
           style={{ fontSize: 16, lineHeight: 20 }}
           placeholder={searchPlaceholder}
           placeholderTextColor={colors.mutedForeground}
+          selectionColor={colors.primary}
           value={searchText}
           onChangeText={onSearchChange}
         />
