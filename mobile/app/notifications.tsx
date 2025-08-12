@@ -5,7 +5,7 @@ import React from 'react';
 import { FlatList, SafeAreaView, Text, View } from 'react-native';
 
 import { NavigationHeader } from '@/components/NavigationHeader';
-import { useTheme } from '@/hooks/useTheme';
+import { NotificationCard } from '@/components/NotificationCard';
 
 // Mock notifications data for UI development
 const mockNotifications = [
@@ -51,27 +51,6 @@ const mockNotifications = [
   },
 ];
 
-function formatTimeAgo(date: Date): string {
-  const now = new Date();
-  const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
-
-  if (diffInHours < 1) {
-    return 'Just now';
-  }
-
-  if (diffInHours < 24) {
-    return `${diffInHours}h ago`;
-  }
-
-  const diffInDays = Math.floor(diffInHours / 24);
-  if (diffInDays < 7) {
-    return `${diffInDays}d ago`;
-  }
-
-  const diffInWeeks = Math.floor(diffInDays / 7);
-  return `${diffInWeeks}w ago`;
-}
-
 function getDateGroup(date: Date): string {
   const now = new Date();
   const diffInDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
@@ -114,62 +93,6 @@ function DateSeparator({ date }: { date: string }) {
   return (
     <View className="px-5 py-3">
       <Text className="text-sm font-medium text-muted-foreground">{date}</Text>
-    </View>
-  );
-}
-
-function getNotificationIcon(type: string): keyof typeof Ionicons.glyphMap {
-  switch (type) {
-    case 'project':
-      return 'folder-outline';
-    case 'chat':
-      return 'chatbubble-outline';
-    case 'system':
-      return 'settings-outline';
-    default:
-      return 'notifications-outline';
-  }
-}
-
-function NotificationCard({ notification }: { notification: (typeof mockNotifications)[0] }) {
-  const { getColors } = useTheme();
-  const colors = getColors();
-
-  return (
-    <View
-      className={`bg-card rounded-xl p-4 mx-5 mb-3 border border-border ${
-        !notification.read ? 'border-primary/20' : ''
-      }`}
-    >
-      <View className="flex-row items-start">
-        <View
-          className={`p-2 rounded-full mr-3 ${!notification.read ? 'bg-primary/10' : 'bg-muted'}`}
-        >
-          <Ionicons
-            name={getNotificationIcon(notification.type)}
-            size={16}
-            color={!notification.read ? colors.primary : colors.mutedForeground}
-          />
-        </View>
-
-        <View className="flex-1">
-          <Text
-            className={`font-semibold mb-1 ${
-              !notification.read ? 'text-card-foreground' : 'text-muted-foreground'
-            }`}
-          >
-            {notification.title}
-          </Text>
-          <Text className="text-sm text-muted-foreground leading-5 mb-2">
-            {notification.message}
-          </Text>
-          <Text className="text-xs text-muted-foreground">
-            {formatTimeAgo(notification.timestamp)}
-          </Text>
-        </View>
-
-        {!notification.read && <View className="w-2 h-2 bg-primary rounded-full mt-1" />}
-      </View>
     </View>
   );
 }

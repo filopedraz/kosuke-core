@@ -6,10 +6,10 @@ import {
   FlatList,
   SafeAreaView,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
 
+import { ChatSessionCard } from '@/components/ChatSessionCard';
 import { NavigationHeader } from '@/components/NavigationHeader';
 
 
@@ -55,27 +55,6 @@ const mockProjects: { [key: string]: { name: string; description: string } } = {
   '4': { name: 'Weather App', description: 'Beautiful weather forecasting application' },
 };
 
-function formatTimeAgo(date: Date): string {
-  const now = new Date();
-  const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
-
-  if (diffInHours < 1) {
-    return 'Just now';
-  }
-
-  if (diffInHours < 24) {
-    return `${diffInHours}h ago`;
-  }
-
-  const diffInDays = Math.floor(diffInHours / 24);
-  if (diffInDays < 7) {
-    return `${diffInDays}d ago`;
-  }
-
-  const diffInWeeks = Math.floor(diffInDays / 7);
-  return `${diffInWeeks}w ago`;
-}
-
 function getDateGroup(date: Date): string {
   const now = new Date();
   const diffInDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
@@ -119,26 +98,6 @@ function DateSeparator({ date }: { date: string }) {
     <View className="px-5 py-3">
       <Text className="text-sm font-medium text-muted-foreground">{date}</Text>
     </View>
-  );
-}
-
-function ChatSessionCard({ session }: { session: typeof mockChatSessions[0] }) {
-  return (
-    <TouchableOpacity className="bg-card rounded-xl p-4 mx-5 mb-3 border border-border">
-      <View>
-        <Text className="text-base font-semibold text-card-foreground mb-2">
-          {session.title}
-        </Text>
-        <View className="flex-row justify-between items-center">
-          <Text className="text-sm text-muted-foreground">
-            {session.messageCount} messages
-          </Text>
-          <Text className="text-xs text-muted-foreground">
-            {formatTimeAgo(session.updatedAt)}
-          </Text>
-        </View>
-      </View>
-    </TouchableOpacity>
   );
 }
 

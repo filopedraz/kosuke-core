@@ -1,11 +1,12 @@
 'use client';
 
 import { useUser } from '@clerk/clerk-expo';
-import { Link, Redirect } from 'expo-router';
+import { Redirect } from 'expo-router';
 import React, { useState } from 'react';
-import { FlatList, SafeAreaView, Text, TouchableOpacity, View } from 'react-native';
+import { FlatList, SafeAreaView, Text, View } from 'react-native';
 
 import { HomeHeader } from '@/components/HomeHeader';
+import { ProjectCard } from '@/components/ProjectCard';
 
 // Mock project data for UI development
 const mockProjects = [
@@ -34,23 +35,6 @@ const mockProjects = [
     updatedAt: new Date('2024-01-08'),
   },
 ];
-
-function formatTimeAgo(date: Date): string {
-  const now = new Date();
-  const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
-
-  if (diffInHours < 24) {
-    return `${diffInHours}h ago`;
-  }
-
-  const diffInDays = Math.floor(diffInHours / 24);
-  if (diffInDays < 7) {
-    return `${diffInDays}d ago`;
-  }
-
-  const diffInWeeks = Math.floor(diffInDays / 7);
-  return `${diffInWeeks}w ago`;
-}
 
 function getDateGroup(date: Date): string {
   const now = new Date();
@@ -95,24 +79,6 @@ function DateSeparator({ date }: { date: string }) {
     <View className="px-5 py-3">
       <Text className="text-sm font-medium text-muted-foreground">{date}</Text>
     </View>
-  );
-}
-
-function ProjectCard({ project }: { project: (typeof mockProjects)[0] }) {
-  return (
-    <Link href={`/projects/${project.id}`} asChild>
-      <TouchableOpacity className="bg-card rounded-xl p-4 mx-5 mb-3 border border-border">
-        <View>
-          <Text className="text-lg font-semibold text-card-foreground mb-2">{project.name}</Text>
-          <Text className="text-sm text-muted-foreground leading-5 mb-2">
-            {project.description}
-          </Text>
-          <Text className="text-xs text-muted-foreground">
-            Updated {formatTimeAgo(project.updatedAt)}
-          </Text>
-        </View>
-      </TouchableOpacity>
-    </Link>
   );
 }
 
