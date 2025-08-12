@@ -25,21 +25,17 @@ async def generate_color_palette(
     """
     Generate a color palette for a project using AI analysis
 
-    This endpoint analyzes the project content, existing colors, and user keywords
+    This endpoint analyzes the project content and user keywords
     to generate a cohesive, accessible color palette for both light and dark modes.
     """
     try:
         logger.info(f"🎨 Color palette generation request for project {project_id}")
         logger.info(f"📋 Keywords: '{request.keywords}'")
-        logger.info(f"🎯 Apply immediately: {request.apply_immediately}")
-        logger.info(f"📊 Existing colors: {len(request.existing_colors)}")
 
         # Generate color palette using the service
         result = await color_palette_service.generate_color_palette(
             project_id=project_id,
             keywords=request.keywords,
-            existing_colors=request.existing_colors,
-            apply_immediately=request.apply_immediately,
         )
 
         logger.info(f"✅ Color palette generation {'successful' if result.success else 'failed'}")

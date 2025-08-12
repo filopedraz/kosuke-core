@@ -30,19 +30,11 @@ class ColorPaletteRequest(BaseModel):
     """Request model for color palette generation"""
 
     keywords: str = Field(default="", description="Keywords to influence color palette generation")
-    existing_colors: list[ColorVariable] = Field(
-        default_factory=list, description="Current color variables in the project"
-    )
-    apply_immediately: bool = Field(default=False, description="Whether to apply colors immediately to globals.css")
 
     class Config:
         schema_extra: ClassVar = {
             "example": {
                 "keywords": "modern healthcare professional",
-                "existing_colors": [
-                    {"name": "--primary", "light_value": "210 100% 50%", "dark_value": "210 100% 60%", "scope": "root"}
-                ],
-                "apply_immediately": True,
             }
         }
 
@@ -53,14 +45,13 @@ class ColorPaletteResponse(BaseModel):
     success: bool = Field(..., description="Whether the operation was successful")
     message: str = Field(default="", description="Human-readable message about the operation")
     colors: list[ColorVariable] = Field(default_factory=list, description="Generated color variables")
-    applied: bool = Field(default=False, description="Whether colors were applied to CSS file")
     project_content: str = Field(default="", description="Summary of analyzed project content")
 
     class Config:
         schema_extra: ClassVar = {
             "example": {
                 "success": True,
-                "message": "Successfully generated and applied color palette",
+                "message": "Successfully generated color palette",
                 "colors": [
                     {
                         "name": "--primary",
@@ -70,7 +61,6 @@ class ColorPaletteResponse(BaseModel):
                         "description": "Primary brand color",
                     }
                 ],
-                "applied": True,
                 "project_content": "React application with modern healthcare theme",
             }
         }

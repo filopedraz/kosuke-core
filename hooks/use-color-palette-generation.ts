@@ -49,7 +49,15 @@ export function useApplyColorPalette(projectId: number) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (colors: Array<{ name: string; value: string; description?: string }>) => {
+    mutationFn: async (
+      colors: Array<{
+        name: string;
+        value: string;
+        lightValue?: string;
+        darkValue?: string;
+        description?: string;
+      }>
+    ) => {
       const response = await fetch(
         `/api/projects/${projectId}/branding/generate-palette?apply=true`,
         {

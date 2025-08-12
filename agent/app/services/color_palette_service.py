@@ -24,15 +24,32 @@ Generate the palette to be consistent with, inspired by, and reflective of
 those keywords (tone, mood, industry, style), while still adhering to the
 accessibility and structural requirements below.
 
-CRITICAL INSTRUCTIONS:
+### CRITICAL INSTRUCTIONS:
 1. Return ALL existing color variables with their exact names — do not miss any.
 2. IGNORE ALL EXISTING COLOR VALUES — only keep variable names and generate entirely new values.
 3. Ensure proper contrast ratios for accessibility (WCAG AA compliance).
 4. Create a balanced palette with primary, secondary, accent, and semantic colors.
 5. Maintain semantic meaning (e.g., destructive should be red-based).
 6. Output MUST be a valid JSON array of color objects, and nothing else.
-7. Use OKLCH values as a plain string 'L C H' (no oklch()). Typical chroma range up to 0.4.
-8. Include both light_value and dark_value when appropriate; scope is usually 'root'.
+
+### OKLCH FORMAT REQUIREMENTS (CRITICAL):
+7. Use OKLCH values as EXACTLY 3 space-separated numbers: 'L C H'
+8. L (Lightness): 0.0 to 1.0 (e.g., '0.5')
+9. C (Chroma): 0.0 to 0.4 (e.g., '0.2')
+10. H (Hue): 0.0 to 360.0 (e.g., '200')
+11. Example valid format: "0.5 0.2 200" (NOT "0.5 0.2 200 / 50%" or "oklch(0.5 0.2 200)")
+12. NO alpha values, NO percentage signs, NO extra syntax
+13. Include both light_value and dark_value when appropriate; scope is usually 'root'.
+
+### INVALID EXAMPLES TO AVOID:
+- "1 0 0 / 15%" ❌
+- "oklch(0.5 0.2 200)" ❌
+- "0.5, 0.2, 200" ❌
+
+### VALID EXAMPLES:
+- "0.5 0.2 200" ✅
+- "0.8 0.1 120" ✅
+- "0.2 0.05 240" ✅
 """
 
 
@@ -48,8 +65,6 @@ class ColorPaletteService:
         self,
         project_id: int,
         keywords: str = "",
-        existing_colors: list[ColorVariable] | None = None,
-        apply_immediately: bool = False,
     ) -> ColorPaletteResponse:
         """
         Generate a color palette for a project using Claude
@@ -57,39 +72,38 @@ class ColorPaletteService:
         try:
             logger.info(f"🎨 Generating color palette for project {project_id}")
 
-            # Extract existing colors if not provided
-            if existing_colors is None:
-                existing_colors = await self._extract_existing_colors(project_id)
+            # Always extract existing colors to provide format context to the model
+            existing_colors = await self._extract_existing_colors(project_id)
 
             logger.info(f"📊 Found {len(existing_colors)} existing colors")
 
             # Generate colors using Claude
             generated_colors = await self._generate_colors_with_claude(project_id, keywords, existing_colors)
 
-            # Validate all generated color values strictly before returning
-            for color in generated_colors:
-                self._validate_oklch(color.light_value, color.name, scope="light")
-                if color.dark_value:
-                    self._validate_oklch(color.dark_value, color.name, scope="dark")
+            print(generated_colors)
 
-            # Apply colors if requested
-            applied = False
-            if apply_immediately:
-                apply_result = await self.apply_color_palette(project_id, generated_colors)
-                applied = apply_result.success
+            # Validate all generated color values strictly before returning
+            logger.info(f"🔍 Validating {len(generated_colors)} generated colors...")
+            for color in generated_colors:
+                try:
+                    self._validate_oklch(color.light_value, color.name, scope="light")
+                    if color.dark_value:
+                        self._validate_oklch(color.dark_value, color.name, scope="dark")
+                except ValueError as e:
+                    logger.error(f"❌ Validation failed for {color.name}: {e}")
+                    raise
 
             return ColorPaletteResponse(
                 success=True,
                 message=f"Successfully generated {len(generated_colors)} colors",
                 colors=generated_colors,
-                applied=applied,
                 project_content="",
             )
 
         except Exception as error:
             logger.error(f"❌ Error generating color palette: {error}")
             return ColorPaletteResponse(
-                success=False, message=f"Failed to generate color palette: {error!s}", colors=[], applied=False
+                success=False, message=f"Failed to generate color palette: {error!s}", colors=[]
             )
 
     async def apply_color_palette(self, project_id: int, colors: list[ColorVariable]) -> ApplyPaletteResponse:
@@ -264,6 +278,8 @@ class ColorPaletteService:
             + "\n\nExisting color variables (names only, include ALL in output):\n"
             + json.dumps(existing_colors_json, indent=2)
             + f"\n\nProject ID: {project_id}"
+            + "\n\nRemember: Each color MUST have light_value and dark_value as exactly 3 space-separated numbers "
+            + "like '0.5 0.2 200'"
         )
 
         # Per spec, the user prompt should include only the optional keywords
@@ -325,20 +341,49 @@ class ColorPaletteService:
         """Validate OKLCH value string 'L C H'; raise ValueError on invalid."""
         if not value or not isinstance(value, str):
             raise ValueError(f"Invalid {scope} OKLCH for {var_name}: missing value")
-        # Expect three floats separated by spaces
-        parts = value.strip().split()
+
+        cleaned_value = value.strip()
+        self._check_invalid_patterns(cleaned_value, var_name, scope)
+        lightness, chroma, hue = self._parse_oklch_components(cleaned_value, var_name, scope)
+        self._validate_oklch_ranges(lightness, chroma, hue, var_name, scope)
+
+    def _check_invalid_patterns(self, value: str, var_name: str, scope: str) -> None:
+        """Check for common invalid OKLCH patterns."""
+        if "/" in value:
+            raise ValueError(
+                f"Invalid {scope} OKLCH for {var_name}: contains alpha syntax '/' - use only 'L C H' format"
+            )
+        if "oklch(" in value.lower():
+            raise ValueError(
+                f"Invalid {scope} OKLCH for {var_name}: contains oklch() wrapper - use only 'L C H' values"
+            )
+        if "," in value:
+            raise ValueError(f"Invalid {scope} OKLCH for {var_name}: contains commas - use spaces to separate L C H")
+        if "%" in value:
+            raise ValueError(f"Invalid {scope} OKLCH for {var_name}: contains percentage - use decimal values only")
+
+    def _parse_oklch_components(self, value: str, var_name: str, scope: str) -> tuple[float, float, float]:
+        """Parse OKLCH components from cleaned value string."""
+        parts = value.split()
         if len(parts) != 3:
-            raise ValueError(f"Invalid {scope} OKLCH for {var_name}: expected 'L C H' (3 parts)")
+            raise ValueError(
+                f"Invalid {scope} OKLCH for {var_name}: expected exactly 3 space-separated numbers 'L C H', "
+                f"got {len(parts)} parts: '{value}'"
+            )
+
         try:
-            lightness, chroma, hue = float(parts[0]), float(parts[1]), float(parts[2])
+            return float(parts[0]), float(parts[1]), float(parts[2])
         except Exception as exc:
-            raise ValueError(f"Invalid {scope} OKLCH for {var_name}: non-numeric components") from exc
+            raise ValueError(f"Invalid {scope} OKLCH for {var_name}: non-numeric components in '{value}'") from exc
+
+    def _validate_oklch_ranges(self, lightness: float, chroma: float, hue: float, var_name: str, scope: str) -> None:
+        """Validate OKLCH component ranges."""
         if not (0.0 <= lightness <= 1.0):
-            raise ValueError(f"Invalid {scope} OKLCH for {var_name}: L out of range [0,1]")
+            raise ValueError(f"Invalid {scope} OKLCH for {var_name}: L={lightness} out of range [0.0, 1.0]")
         if not (0.0 <= chroma <= 0.5):
-            raise ValueError(f"Invalid {scope} OKLCH for {var_name}: C out of range [0,0.5]")
+            raise ValueError(f"Invalid {scope} OKLCH for {var_name}: C={chroma} out of range [0.0, 0.5]")
         if not (0.0 <= hue <= 360.0):
-            raise ValueError(f"Invalid {scope} OKLCH for {var_name}: H out of range [0,360]")
+            raise ValueError(f"Invalid {scope} OKLCH for {var_name}: H={hue} out of range [0.0, 360.0]")
 
     async def _find_globals_css(self, project_id: int) -> Path | None:
         """

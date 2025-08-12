@@ -42,9 +42,10 @@ export interface ColorPaletteResult {
   colors?: Array<{
     name: string;
     value: string;
+    lightValue?: string;
+    darkValue?: string;
     description?: string;
   }>;
-  applied?: boolean;
   projectContent?: string;
 }
 
