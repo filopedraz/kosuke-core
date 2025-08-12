@@ -53,3 +53,6 @@ next-env.d.ts
 public/uploads/*
 !public/uploads/.gitkeep
 
+mobile/ios/
+mobile/android/
+mobile/.expo/

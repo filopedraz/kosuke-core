@@ -90,6 +90,7 @@ export default function SettingsScreen() {
             onPressAction={({ nativeEvent }) => {
               setThemeMode(nativeEvent.event as 'light' | 'dark' | 'system');
             }}
+            shouldOpenOnLongPress={false}
           >
             <TouchableOpacity
               className="flex-row items-center justify-between py-4 px-0"
@@ -105,7 +106,7 @@ export default function SettingsScreen() {
                 <Text className="text-base text-muted-foreground mr-2">
                   {getThemeDisplayText()}
                 </Text>
-                <Ionicons name="chevron-forward" size={18} color={colors.mutedForeground} />
+                <Ionicons name="chevron-expand-sharp" size={18} color={colors.mutedForeground} />
               </View>
             </TouchableOpacity>
           </MenuView>
