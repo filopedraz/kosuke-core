@@ -262,10 +262,7 @@ class GitHubService:
         errors_list = error_data.get("errors", [])
         for item in errors_list:
             # Support both dict and string shapes
-            if isinstance(item, dict):
-                msg = str(item.get("message", "")).lower()
-            else:
-                msg = str(item).lower()
+            msg = str(item.get("message", "")).lower() if isinstance(item, dict) else str(item).lower()
 
             if "already exists" in msg or "name already exists" in msg:
                 raise Exception("Repository name is already taken") from None

@@ -15,13 +15,16 @@ from app.utils.providers import get_color_palette_service
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+# Module-level dependency to avoid B008 linting error
+ColorPaletteServiceDep = Depends(get_color_palette_service)
+
 
 @router.post("/projects/{project_id}/sessions/{session_id}/branding/generate-palette")
 async def generate_session_color_palette(
+    request: ColorPaletteRequest,
     project_id: int = Path(..., description="Project ID", ge=1),
     session_id: str = Path(..., description="Session ID"),
-    request: ColorPaletteRequest = ...,
-    color_palette_service: ColorPaletteService = Depends(get_color_palette_service),
+    color_palette_service: ColorPaletteService = ColorPaletteServiceDep,
 ) -> ColorPaletteResponse:
     """
     Generate a color palette for a session-specific project using AI analysis
@@ -50,10 +53,10 @@ async def generate_session_color_palette(
 
 @router.post("/projects/{project_id}/sessions/{session_id}/branding/apply-palette")
 async def apply_session_color_palette(
+    request: ApplyPaletteRequest,
     project_id: int = Path(..., description="Project ID", ge=1),
     session_id: str = Path(..., description="Session ID"),
-    request: ApplyPaletteRequest = ...,
-    color_palette_service: ColorPaletteService = Depends(get_color_palette_service),
+    color_palette_service: ColorPaletteService = ColorPaletteServiceDep,
 ) -> ApplyPaletteResponse:
     """
     Apply a color palette to the session's globals.css file
@@ -82,7 +85,7 @@ async def apply_session_color_palette(
 async def get_session_existing_colors(
     project_id: int = Path(..., description="Project ID", ge=1),
     session_id: str = Path(..., description="Session ID"),
-    color_palette_service: ColorPaletteService = Depends(get_color_palette_service),
+    color_palette_service: ColorPaletteService = ColorPaletteServiceDep,
 ) -> dict:
     """
     Get existing color variables from the session's CSS files
@@ -141,10 +144,10 @@ async def get_session_existing_colors(
 
 @router.post("/projects/{project_id}/sessions/{session_id}/branding/colors")
 async def update_session_color(
+    request: dict,
     project_id: int = Path(..., description="Project ID", ge=1),
     session_id: str = Path(..., description="Session ID"),
-    request: dict = ...,
-    color_palette_service: ColorPaletteService = Depends(get_color_palette_service),
+    color_palette_service: ColorPaletteService = ColorPaletteServiceDep,
 ) -> dict:
     """
     Update a single color variable in the session's CSS files
@@ -179,7 +182,7 @@ async def update_session_color(
 async def get_session_fonts(
     project_id: int = Path(..., description="Project ID", ge=1),
     session_id: str = Path(..., description="Session ID"),
-    color_palette_service: ColorPaletteService = Depends(get_color_palette_service),
+    color_palette_service: ColorPaletteService = ColorPaletteServiceDep,
 ) -> dict:
     """
     Get font information from the session's layout files

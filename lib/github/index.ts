@@ -1,4 +1,5 @@
 import type { GitHubRepository } from '@/lib/types/github';
+import type { RestEndpointMethodTypes } from '@octokit/rest';
 import { createOctokit } from './client';
 
 export async function listUserRepositories(userId: string): Promise<GitHubRepository[]> {
@@ -8,19 +9,23 @@ export async function listUserRepositories(userId: string): Promise<GitHubReposi
     sort: 'updated',
   });
   // Octokit returns slightly different shapes; normalize to our type
-  return repos.map((repo: any) => ({
-    id: repo.id,
-    name: repo.name,
-    full_name: repo.full_name,
-    description: repo.description,
-    private: repo.private ?? false,
-    html_url: repo.html_url,
-    clone_url: repo.clone_url,
-    default_branch: repo.default_branch ?? 'main',
-    language: repo.language as string | null,
-    created_at: repo.created_at as unknown as string,
-    updated_at: repo.updated_at as unknown as string,
-  }));
+  return repos.map(
+    (
+      repo: RestEndpointMethodTypes['repos']['listForAuthenticatedUser']['response']['data'][0]
+    ) => ({
+      id: repo.id,
+      name: repo.name,
+      full_name: repo.full_name,
+      description: repo.description,
+      private: repo.private ?? false,
+      html_url: repo.html_url,
+      clone_url: repo.clone_url,
+      default_branch: repo.default_branch ?? 'main',
+      language: repo.language as string | null,
+      created_at: repo.created_at as unknown as string,
+      updated_at: repo.updated_at as unknown as string,
+    })
+  );
 }
 
 export async function listBranches(userId: string, owner: string, repo: string) {

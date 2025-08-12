@@ -60,10 +60,10 @@ class FileSystemService:
             file_path.parent.mkdir(parents=True, exist_ok=True)
 
             # Atomic write: write to temp then rename
-            tmp_path = str(file_path) + ".tmp"
+            tmp_path = file_path.with_suffix(file_path.suffix + ".tmp")
             async with aiofiles.open(tmp_path, "w", encoding="utf-8") as f:
                 await f.write(content)
-            os.replace(tmp_path, file_path)
+            tmp_path.replace(file_path)
         except Exception as error:
             logger.error(f"Failed to create file {file_path}: {error}")
             raise error
@@ -76,10 +76,11 @@ class FileSystemService:
         """
         try:
             # Atomic write: write to temp then rename
-            tmp_path = file_path + ".tmp"
+            file_path_obj = Path(file_path)
+            tmp_path = file_path_obj.with_suffix(file_path_obj.suffix + ".tmp")
             async with aiofiles.open(tmp_path, "w", encoding="utf-8") as f:
                 await f.write(content)
-            os.replace(tmp_path, file_path)
+            tmp_path.replace(file_path_obj)
         except Exception as error:
             logger.error(f"Failed to update file {file_path}: {error}")
             raise error

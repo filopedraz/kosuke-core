@@ -1,4 +1,4 @@
-import random
+import secrets
 from typing import Protocol
 
 from app.services.domain_service import DomainService
@@ -21,7 +21,7 @@ class PortRouterAdapter:
         self.port_range_end = port_range_end
 
     def _pick_random_port(self) -> int:
-        return random.randint(self.port_range_start, self.port_range_end)
+        return secrets.randbelow(self.port_range_end - self.port_range_start + 1) + self.port_range_start
 
     def prepare_run(self, project_id: int, session_id: str, container_name: str) -> tuple[dict, dict, str, int]:
         host_port = self._pick_random_port()
