@@ -193,7 +193,7 @@ export default function ProjectPage({ params }: ProjectPageProps) {
   const currentBranch = currentSession?.sessionId;
   const sessionId = currentSession?.sessionId;
 
-  // Preview should use session only when in chat interface view, not in sidebar list view
+    // Preview should use session only when in chat interface view, not in sidebar list view
   const previewSessionId = showSidebar ? null : sessionId;
 
   // Reference to the ChatInterface component to maintain its state
@@ -323,22 +323,18 @@ export default function ProjectPage({ params }: ProjectPageProps) {
           ) : currentView === 'branding' ? (
             <BrandGuidelines
               projectId={projectId}
+              sessionId={previewSessionId ?? ''}
             />
           ) : currentView === 'settings' ? (
             <SettingsTab
               projectId={projectId}
             />
           ) : currentView === 'database' ? (
-            sessionId ? (
-              <DatabaseTab projectId={projectId} sessionId={sessionId} />
-            ) : (
-              <div className="flex h-full items-center justify-center p-6 text-muted-foreground">
-                Select a chat session to view its database.
-              </div>
-            )
+            <DatabaseTab projectId={projectId} sessionId={previewSessionId ?? ''} />
           ) : (
             <BrandGuidelines
               projectId={projectId}
+              sessionId={previewSessionId ?? ''}
             />
           )}
         </div>

@@ -2,9 +2,6 @@
 export { ApiErrorHandler } from './errors';
 export { ApiResponseHandler } from './responses';
 
-// Environment Variables
-export { getProjectEnvironmentVariables } from './environment';
-
 // Common interfaces for async operations
 export interface AsyncOperationOptions {
   successMessage?: string;

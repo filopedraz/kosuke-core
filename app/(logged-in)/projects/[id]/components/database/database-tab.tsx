@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useDatabaseInfo } from '@/hooks/use-database-info';
+import { useDefaultBranchSettings } from '@/hooks/use-project-settings';
 import type { DatabaseTabProps } from '@/lib/types';
 import { Database, Play, Search, Table } from 'lucide-react';
 import { ConnectionStatus } from './connection-status';
@@ -13,7 +14,11 @@ import { SchemaViewer } from './schema-viewer';
 import { TableBrowser } from './table-browser';
 
 export function DatabaseTab({ projectId, sessionId }: DatabaseTabProps) {
-  const { data: dbInfo, isLoading } = useDatabaseInfo(projectId, sessionId);
+  // Resolve effective session to use: provided session if available, else default branch
+  const { data: defaultBranchSettings } = useDefaultBranchSettings(projectId);
+  const effectiveSessionId = sessionId || defaultBranchSettings?.default_branch || '';
+  const { data: dbInfo, isLoading } = useDatabaseInfo(projectId, effectiveSessionId);
+  const isDatabaseEnabled = Boolean(effectiveSessionId);
 
   if (isLoading) {
     return <DatabaseTabSkeleton />;
@@ -41,13 +46,17 @@ export function DatabaseTab({ projectId, sessionId }: DatabaseTabProps) {
                 </CardTitle>
                 <CardDescription className="pt-2">
                   Manage your project&apos;s PostgreSQL database
-                  {sessionId ? ` (Session: ${sessionId})` : ' (Main Branch)'}
+                  {effectiveSessionId ? ` (Session: ${effectiveSessionId})` : ' (Waiting for default branch settings...)'}
                 </CardDescription>
               </div>
             </div>
           </CardHeader>
           <CardContent>
-            {dbInfo && (
+            {!isDatabaseEnabled ? (
+              <div className="flex h-32 items-center justify-center text-muted-foreground">
+                Waiting for default branch settings...
+              </div>
+            ) : dbInfo ? (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="flex items-center gap-2">
                   <Table className="w-4 h-4 text-muted-foreground" />
@@ -65,44 +74,54 @@ export function DatabaseTab({ projectId, sessionId }: DatabaseTabProps) {
                   </Badge>
                 </div>
               </div>
+            ) : (
+              <div className="flex h-32 items-center justify-center text-muted-foreground">
+                Error loading database information
+              </div>
             )}
           </CardContent>
         </Card>
       </div>
 
       <div className="flex-1 overflow-hidden px-6">
-        <Tabs defaultValue="schema" className="w-full h-full flex flex-col">
-          <TabsList className="flex-shrink-0">
-            <TabsTrigger value="schema" className="flex items-center gap-2">
-              <Table className="w-4 h-4" />
-              Schema
-            </TabsTrigger>
-            <TabsTrigger value="browse" className="flex items-center gap-2">
-              <Search className="w-4 h-4" />
-              Browse Data
-            </TabsTrigger>
-            <TabsTrigger value="query" className="flex items-center gap-2">
-              <Play className="w-4 h-4" />
-              Query
-            </TabsTrigger>
-          </TabsList>
+        {!isDatabaseEnabled ? (
+          <div className="flex h-full items-center justify-center p-6 text-muted-foreground">
+            Waiting for default branch settings...
+          </div>
+        ) : (
+          <Tabs defaultValue="schema" className="w-full h-full flex flex-col">
+            <TabsList className="flex-shrink-0">
+              <TabsTrigger value="schema" className="flex items-center gap-2">
+                <Table className="w-4 h-4" />
+                Schema
+              </TabsTrigger>
+              <TabsTrigger value="browse" className="flex items-center gap-2">
+                <Search className="w-4 h-4" />
+                Browse Data
+              </TabsTrigger>
+              <TabsTrigger value="query" className="flex items-center gap-2">
+                <Play className="w-4 h-4" />
+                Query
+              </TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="schema" className="flex-1 overflow-y-auto pt-6 pb-12">
-            <div className="space-y-6">
-              <SchemaViewer projectId={projectId} sessionId={sessionId} />
-            </div>
-          </TabsContent>
+            <TabsContent value="schema" className="flex-1 overflow-y-auto pt-6 pb-12">
+              <div className="space-y-6">
+                <SchemaViewer projectId={projectId} sessionId={effectiveSessionId} />
+              </div>
+            </TabsContent>
 
-          <TabsContent value="browse" className="flex-1 overflow-hidden pt-6 pb-6">
-            <TableBrowser projectId={projectId} sessionId={sessionId} />
-          </TabsContent>
+            <TabsContent value="browse" className="flex-1 overflow-hidden pt-6 pb-6">
+              <TableBrowser projectId={projectId} sessionId={effectiveSessionId} />
+            </TabsContent>
 
-          <TabsContent value="query" className="flex-1 overflow-y-auto pt-6 pb-12">
-            <div className="space-y-6">
-              <QueryRunner projectId={projectId} sessionId={sessionId} />
-            </div>
-          </TabsContent>
-        </Tabs>
+            <TabsContent value="query" className="flex-1 overflow-y-auto pt-6 pb-12">
+              <div className="space-y-6">
+                <QueryRunner projectId={projectId} sessionId={effectiveSessionId} />
+              </div>
+            </TabsContent>
+          </Tabs>
+        )}
       </div>
     </div>
   );

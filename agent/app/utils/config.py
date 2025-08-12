@@ -105,7 +105,7 @@ class Settings:
         self.postgres_port: int = int(os.getenv("POSTGRES_PORT", "5432"))
         self.postgres_db: str = os.getenv("POSTGRES_DB", "postgres")
         self.postgres_user: str = os.getenv("POSTGRES_USER", "postgres")
-        self.postgres_password: str = os.getenv("POSTGRES_PASSWORD", "password")
+        self.postgres_password: str = os.getenv("POSTGRES_PASSWORD", "postgres")
 
         # Langfuse Observability (Optional)
         self.langfuse_public_key: str = os.getenv("LANGFUSE_PUBLIC_KEY", "")

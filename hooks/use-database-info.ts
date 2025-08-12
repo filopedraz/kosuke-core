@@ -16,5 +16,6 @@ export function useDatabaseInfo(projectId: number, sessionId: string) {
     },
     staleTime: 1000 * 60 * 2, // 2 minutes
     retry: 1,
+    enabled: Boolean(sessionId), // Only fetch when sessionId is provided
   });
 }

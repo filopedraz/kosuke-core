@@ -4,8 +4,8 @@ import { useBrandColors } from './use-brand-colors';
 import { useBrandFonts } from './use-brand-fonts';
 import { useApplyColorPalette, useGenerateColorPalette } from './use-color-palette-generation';
 
-// Hook that combines all brand guidelines functionality
-export function useBrandGuidelines(projectId: number) {
+// Hook that combines all brand guidelines functionality (session-specific)
+export function useBrandGuidelines(projectId: number, sessionId: string) {
   // UI State
   const [previewMode, setPreviewMode] = useState<ThemeMode>('light');
   const [activeTab, setActiveTab] = useState<'colors' | 'fonts'>('colors');
@@ -14,10 +14,10 @@ export function useBrandGuidelines(projectId: number) {
   const [generatedPalette, setGeneratedPalette] = useState<CssVariable[]>([]);
 
   // Data hooks
-  const colorsQuery = useBrandColors(projectId);
-  const fontsQuery = useBrandFonts(projectId);
-  const generatePaletteMutation = useGenerateColorPalette(projectId);
-  const applyPaletteMutation = useApplyColorPalette(projectId);
+  const colorsQuery = useBrandColors(projectId, sessionId);
+  const fontsQuery = useBrandFonts(projectId, sessionId);
+  const generatePaletteMutation = useGenerateColorPalette(projectId, sessionId);
+  const applyPaletteMutation = useApplyColorPalette(projectId, sessionId);
 
   // Actions
   const togglePreviewMode = useCallback(() => {

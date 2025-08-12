@@ -23,6 +23,10 @@ class FileSystemService:
         """Get the absolute path to a project directory"""
         return self.projects_dir / str(project_id)
 
+    def get_session_path(self, project_id: int, session_id: str) -> Path:
+        """Get the absolute path to a session directory"""
+        return self.projects_dir / str(project_id) / "sessions" / session_id
+
     async def ensure_projects_dir(self) -> None:
         """Ensure the projects directory exists"""
         self.projects_dir.mkdir(parents=True, exist_ok=True)

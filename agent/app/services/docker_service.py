@@ -130,6 +130,27 @@ class DockerService:
             logger.info(f"Creating session environment for {session_id}")
             self.session_manager.create_session_environment(project_id, session_id)
 
+    async def _ensure_database_exists(self, project_id: int, session_id: str) -> None:
+        """Ensure the database exists for the given project and session"""
+        try:
+            from app.services.database_service import DatabaseService
+
+            # Create DatabaseService instance to trigger database creation
+            db_service = DatabaseService(project_id, session_id)
+
+            # Try to get database info - this will create the database if it doesn't exist
+            logger.info(f"Ensuring database exists for project {project_id} session {session_id}")
+            await db_service.get_database_info()
+            logger.info(f"Database verified/created for project {project_id} session {session_id}")
+
+        except Exception as e:
+            logger.error(f"Failed to ensure database exists for project {project_id} session {session_id}: {e}")
+            # Don't fail the preview startup if database creation fails
+            # The container can still start and the app can handle DB errors gracefully
+            logger.warning(
+                f"Preview will start without database guarantee for project {project_id} session {session_id}"
+            )
+
     async def _get_existing_container_url_or_remove(self, container_name: str) -> str | None:
         container = await self._get_container_by_name(container_name)
         if not container:
@@ -248,6 +269,9 @@ class DockerService:
 
         # Ensure session environment exists
         await self._ensure_session_environment(project_id, session_id)
+
+        # Ensure database exists for this session
+        await self._ensure_database_exists(project_id, session_id)
 
         # Reuse existing running container if possible; otherwise ensure it's removed
         url = await self._get_existing_container_url_or_remove(container_name)

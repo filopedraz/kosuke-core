@@ -31,7 +31,7 @@ export function useTableData(
       const data = await response.json();
       return data;
     },
-    enabled: !!tableName,
+    enabled: Boolean(tableName && sessionId), // Only fetch when both tableName and sessionId are provided
     staleTime: 1000 * 60 * 2, // 2 minutes
     retry: 1,
   });

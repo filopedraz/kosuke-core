@@ -2,23 +2,27 @@ import { useToast } from '@/hooks/use-toast';
 import type { PaletteGenerationRequest, PaletteGenerationResponse } from '@/lib/types';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
-// Hook for generating color palettes
-export function useGenerateColorPalette(projectId: number) {
+// Hook for generating color palettes (session-specific)
+export function useGenerateColorPalette(projectId: number, sessionId: string) {
   const { toast } = useToast();
+  const effectiveSessionId = sessionId || 'main';
 
   return useMutation({
     mutationFn: async ({
       keywords,
     }: PaletteGenerationRequest): Promise<PaletteGenerationResponse> => {
-      const response = await fetch(`/api/projects/${projectId}/branding/generate-palette`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          keywords: keywords.trim(),
-        }),
-      });
+      const response = await fetch(
+        `/api/projects/${projectId}/chat-sessions/${effectiveSessionId}/branding/generate-palette`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            keywords: keywords.trim(),
+          }),
+        }
+      );
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -43,10 +47,11 @@ export function useGenerateColorPalette(projectId: number) {
   });
 }
 
-// Hook for applying generated color palette
-export function useApplyColorPalette(projectId: number) {
+// Hook for applying generated color palette (session-specific)
+export function useApplyColorPalette(projectId: number, sessionId: string) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const effectiveSessionId = sessionId || 'main';
 
   return useMutation({
     mutationFn: async (
@@ -59,7 +64,7 @@ export function useApplyColorPalette(projectId: number) {
       }>
     ) => {
       const response = await fetch(
-        `/api/projects/${projectId}/branding/generate-palette?apply=true`,
+        `/api/projects/${projectId}/chat-sessions/${effectiveSessionId}/branding/generate-palette?apply=true`,
         {
           method: 'POST',
           headers: {
@@ -82,11 +87,11 @@ export function useApplyColorPalette(projectId: number) {
       // Show success message
       toast({
         title: 'Palette applied',
-        description: 'New color palette has been applied to your project.',
+        description: 'New color palette has been applied to your session.',
       });
 
       // Refresh the colors
-      queryClient.invalidateQueries({ queryKey: ['brand-colors', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['brand-colors', projectId, effectiveSessionId] });
     },
     onError: error => {
       toast({

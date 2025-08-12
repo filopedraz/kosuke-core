@@ -17,6 +17,20 @@ def _validate_table_name(table_name: str) -> str:
     return table_name
 
 
+def _validate_database_name(db_name: str) -> str:
+    """Validate database name for PostgreSQL compatibility"""
+    # PostgreSQL allows letters, digits, underscores, and hyphens
+    # Database names must start with a letter or underscore
+    if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_-]*$", db_name):
+        raise ValueError(f"Invalid database name: {db_name}")
+
+    # PostgreSQL has a limit of 63 characters for database names
+    if len(db_name) > 63:
+        raise ValueError(f"Database name too long (max 63 chars): {db_name}")
+
+    return db_name
+
+
 class DatabaseService:
     def __init__(self, project_id: int, session_id: str | None = None):
         self.project_id = project_id
@@ -25,7 +39,14 @@ class DatabaseService:
         # Always use session-specific database pattern; require explicit session_id
         if not session_id:
             raise ValueError("session_id is required for DatabaseService")
+
+        # Generate and validate database name
         self.db_name = f"kosuke_project_{project_id}_session_{session_id}"
+        try:
+            _validate_database_name(self.db_name)
+        except ValueError as e:
+            logger.error(f"Invalid database name generated: {self.db_name}")
+            raise ValueError(f"Cannot create database service: {e}") from e
 
     async def _get_connection(self) -> asyncpg.Connection:
         """Get database connection; creates the database if it does not exist."""
@@ -39,6 +60,7 @@ class DatabaseService:
             )
         except asyncpg.InvalidCatalogNameError:
             # Create the preferred database when it does not exist
+            logger.info(f"Database {self.db_name} does not exist, creating it...")
             await self._create_database()
             # Try connecting again to the preferred DB
             return await asyncpg.connect(
@@ -48,25 +70,47 @@ class DatabaseService:
                 password=settings.postgres_password,
                 database=self.db_name,
             )
+        except asyncpg.exceptions.InvalidAuthorizationSpecificationError as e:
+            logger.error(f"PostgreSQL authentication failed for database {self.db_name}: {e}")
+            logger.error(
+                f"Check credentials - user: {settings.postgres_user}, "
+                f"host: {settings.postgres_host}:{settings.postgres_port}"
+            )
+            raise Exception(f"Database authentication failed: {e}") from e
+        except Exception as e:
+            logger.error(f"Failed to connect to database {self.db_name}: {e}")
+            raise Exception(f"Database connection failed: {e}") from e
 
     async def _create_database(self):
         """Create the database if it doesn't exist"""
-        # Connect to postgres database to create the new one
-        conn = await asyncpg.connect(
-            host=settings.postgres_host,
-            port=settings.postgres_port,
-            user=settings.postgres_user,
-            password=settings.postgres_password,
-            database="postgres",
-        )
-
         try:
-            await conn.execute(f'CREATE DATABASE "{self.db_name}"')
-            logger.info(f"Created database: {self.db_name}")
-        except asyncpg.exceptions.DuplicateDatabaseError:
-            logger.debug(f"Database {self.db_name} already exists")
-        finally:
-            await conn.close()
+            # Connect to postgres database to create the new one
+            conn = await asyncpg.connect(
+                host=settings.postgres_host,
+                port=settings.postgres_port,
+                user=settings.postgres_user,
+                password=settings.postgres_password,
+                database="postgres",
+            )
+
+            try:
+                await conn.execute(f'CREATE DATABASE "{self.db_name}"')
+                logger.info(f"Created database: {self.db_name}")
+            except asyncpg.exceptions.DuplicateDatabaseError:
+                logger.debug(f"Database {self.db_name} already exists")
+            finally:
+                await conn.close()
+
+        except asyncpg.exceptions.InvalidAuthorizationSpecificationError as e:
+            logger.error(f"PostgreSQL authentication failed: {e}")
+            logger.error(
+                f"Check credentials - user: {settings.postgres_user}, "
+                f"host: {settings.postgres_host}:{settings.postgres_port}"
+            )
+            raise Exception(f"Database authentication failed: {e}") from e
+        except Exception as e:
+            logger.error(f"Failed to create database {self.db_name}: {e}")
+            raise Exception(f"Database creation failed: {e}") from e
 
     async def _get_database_size(self) -> str:
         """Get database size"""

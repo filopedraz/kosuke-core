@@ -64,16 +64,17 @@ class ColorPaletteService:
     async def generate_color_palette(
         self,
         project_id: int,
+        session_id: str,
         keywords: str = "",
     ) -> ColorPaletteResponse:
         """
-        Generate a color palette for a project using Claude
+        Generate a color palette for a session using Claude
         """
         try:
-            logger.info(f"🎨 Generating color palette for project {project_id}")
+            logger.info(f"🎨 Generating color palette for project {project_id}, session {session_id}")
 
             # Always extract existing colors to provide format context to the model
-            existing_colors = await self._extract_existing_colors(project_id)
+            existing_colors = await self._extract_existing_colors(project_id, session_id=session_id)
 
             logger.info(f"📊 Found {len(existing_colors)} existing colors")
 
@@ -106,15 +107,17 @@ class ColorPaletteService:
                 success=False, message=f"Failed to generate color palette: {error!s}", colors=[]
             )
 
-    async def apply_color_palette(self, project_id: int, colors: list[ColorVariable]) -> ApplyPaletteResponse:
+    async def apply_color_palette(
+        self, project_id: int, session_id: str, colors: list[ColorVariable]
+    ) -> ApplyPaletteResponse:
         """
-        Apply a color palette to the project's globals.css file
+        Apply a color palette to the session's globals.css file
         """
         try:
-            logger.info(f"🎨 Applying {len(colors)} colors to project {project_id}")
+            logger.info(f"🎨 Applying {len(colors)} colors to project {project_id}, session {session_id}")
 
             # Find and update globals.css
-            globals_path = await self._find_globals_css(project_id)
+            globals_path = await self._find_globals_css(project_id, session_id=session_id)
             if not globals_path:
                 return ApplyPaletteResponse(
                     success=False, message="Could not find globals.css file in project", applied_colors=0
@@ -149,12 +152,12 @@ class ColorPaletteService:
                 success=False, message=f"Failed to apply color palette: {error!s}", applied_colors=0
             )
 
-    async def _extract_existing_colors(self, project_id: int) -> list[ColorVariable]:
+    async def _extract_existing_colors(self, project_id: int, session_id: str) -> list[ColorVariable]:
         """
-        Extract existing CSS color variables from globals.css
+        Extract existing CSS color variables from session's globals.css
         """
         try:
-            globals_path = await self._find_globals_css(project_id)
+            globals_path = await self._find_globals_css(project_id, session_id=session_id)
             if not globals_path:
                 return []
 
@@ -385,11 +388,12 @@ class ColorPaletteService:
         if not (0.0 <= hue <= 360.0):
             raise ValueError(f"Invalid {scope} OKLCH for {var_name}: H={hue} out of range [0.0, 360.0]")
 
-    async def _find_globals_css(self, project_id: int) -> Path | None:
+    async def _find_globals_css(self, project_id: int, session_id: str) -> Path | None:
         """
-        Find the globals.css file in the project
+        Find the globals.css file in the session
         """
-        project_path = FileSystemService().get_project_path(project_id)
+        # Always use session-specific path (including main as a session)
+        project_path = FileSystemService().get_session_path(project_id, session_id)
 
         # Common locations for globals.css
         possible_paths = [
@@ -449,3 +453,194 @@ class ColorPaletteService:
             return css_content[:import_end] + f"\n\n{new_block}\n" + css_content[import_end:]
         # Insert at beginning
         return f"{new_block}\n\n{css_content}"
+
+    async def update_single_color(
+        self, project_id: int, session_id: str, name: str, value: str, mode: str = "light"
+    ) -> dict:
+        """
+        Update a single color variable in the session's CSS files
+        """
+        try:
+            session_text = f", session {session_id}" if session_id else ""
+            logger.info(f"🎨 Updating single color {name} for project {project_id}{session_text}")
+
+            # Find and read globals.css
+            globals_path = await self._find_globals_css(project_id, session_id=session_id)
+            if not globals_path:
+                return {"success": False, "message": "Could not find globals.css file in session"}
+
+            css_content = await FileSystemService().read_file(str(globals_path))
+
+            # Create a color variable object
+            color_var = ColorVariable(
+                name=name,
+                light_value=value if mode == "light" else "",
+                dark_value=value if mode == "dark" else "",
+                scope=mode,
+            )
+
+            # Validate the color value
+            self._validate_oklch(value, name, scope=mode)
+
+            # Apply the single color update
+            updated_css = await self._apply_single_color_to_css(css_content, color_var, mode)
+
+            # Write updated CSS back to file
+            await FileSystemService().update_file(str(globals_path), updated_css)
+
+            logger.info(f"✅ Successfully updated color {name} in session {session_id}")
+
+            return {
+                "success": True,
+                "message": f"Successfully updated color {name} with value {value} in {mode} mode",
+                "mode": mode,
+            }
+
+        except Exception as error:
+            logger.error(f"❌ Error updating single color: {error}")
+            return {"success": False, "message": f"Failed to update color: {error!s}"}
+
+    async def _apply_single_color_to_css(self, css_content: str, color: ColorVariable, mode: str) -> str:
+        """
+        Apply a single color variable update to CSS content
+        """
+        # Determine which block to update
+        if mode == "light":
+            # Update :root block
+            pattern = r"(:root\s*{[^}]*)"
+            replacement = self._update_color_in_block("\\1", color.name, f"oklch({color.light_value})")
+        else:
+            # Update .dark block
+            pattern = r"(\.dark\s*{[^}]*)"
+            replacement = self._update_color_in_block("\\1", color.name, f"oklch({color.dark_value})")
+
+        # Apply the update
+        updated_css = re.sub(pattern, replacement, css_content, flags=re.DOTALL)
+
+        # If no match found, the variable doesn't exist in that block
+        if updated_css == css_content:
+            logger.warning(f"⚠️ Color variable {color.name} not found in {mode} block")
+
+        return updated_css
+
+    def _update_color_in_block(self, block_pattern: str, var_name: str, new_value: str):
+        """
+        Update a specific variable within a CSS block
+        """
+
+        def replace_var(match):
+            block_content = match.group(1)
+            var_pattern = rf"(\s*{re.escape(var_name)}\s*:\s*)([^;]+)(;)"
+
+            def replace_value(var_match):
+                return f"{var_match.group(1)}{new_value}{var_match.group(3)}"
+
+            return re.sub(var_pattern, replace_value, block_content)
+
+        return replace_var
+
+    async def get_session_fonts(self, project_id: int, session_id: str) -> list[dict]:
+        """
+        Get font information from the session's layout files
+        """
+        try:
+            # Get session path
+            session_path = FileSystemService().get_session_path(project_id, session_id)
+
+            # Look for layout.tsx file
+            layout_path = session_path / "app" / "layout.tsx"
+
+            if not layout_path.exists():
+                # Try alternative paths
+                alt_paths = [
+                    session_path / "src" / "app" / "layout.tsx",
+                    session_path / "pages" / "_app.tsx",
+                    session_path / "app" / "layout.jsx",
+                ]
+
+                for alt_path in alt_paths:
+                    if alt_path.exists():
+                        layout_path = alt_path
+                        break
+                else:
+                    return []
+
+            # Read and parse layout file for font information
+            layout_content = await FileSystemService().read_file(str(layout_path))
+            return self._parse_fonts_from_layout(layout_content)
+
+        except Exception as error:
+            logger.error(f"❌ Error getting session fonts: {error}")
+            return []
+
+    def _parse_fonts_from_layout(self, layout_content: str) -> list[dict]:
+        """
+        Parse font information from layout file content
+        """
+        fonts = []
+
+        # Look for Google Fonts imports with better filtering
+        font_imports = re.findall(
+            r'from\s+["\']next/font/google["\'].*?import\s+\{([^}]+)\}', layout_content, re.DOTALL
+        )
+
+        # Common font names to help filter out non-fonts
+        known_font_patterns = [
+            "geist",
+            "inter",
+            "roboto",
+            "open_sans",
+            "lato",
+            "montserrat",
+            "source_sans",
+            "poppins",
+            "nunito",
+            "raleway",
+            "ubuntu",
+        ]
+
+        for import_match in font_imports:
+            font_names = [name.strip() for name in import_match.split(",")]
+            for font_name in font_names:
+                # Filter out obvious non-fonts (components, providers, etc.)
+                if any(exclude in font_name.lower() for exclude in ["provider", "component", "theme", "clerk"]):
+                    continue
+
+                # Check if it looks like a font
+                if any(pattern in font_name.lower() for pattern in known_font_patterns) or font_name.endswith("_Font"):
+                    fonts.append(
+                        {
+                            "name": font_name,
+                            "provider": "google",
+                            "variable": font_name,
+                            "config": {
+                                "subsets": ["latin"],
+                                "weights": [400, 500, 600, 700],
+                                "display": "swap",
+                            },
+                            "usage": "body",
+                        }
+                    )
+
+        # Look for font variable declarations (e.g., const geistSans = Geist(...))
+        font_vars = re.findall(r"const\s+(\w+)\s*=\s*(\w+)\(", layout_content)
+        for var_name, font_constructor in font_vars:
+            # Only include if it looks like a font variable
+            if any(term in var_name.lower() for term in ["font", "sans", "serif", "mono", "geist"]):
+                provider = "google" if font_constructor not in ["system", "local"] else "local"
+                fonts.append(
+                    {
+                        "name": var_name,
+                        "provider": provider,
+                        "variable": var_name,
+                        "config": {
+                            "subsets": ["latin"],
+                            "weights": [400, 500, 600, 700],
+                            "display": "swap",
+                            "constructor": font_constructor,
+                        },
+                        "usage": "heading" if "heading" in var_name.lower() else "body",
+                    }
+                )
+
+        return fonts

@@ -16,9 +16,10 @@ import { getCategoryTitle, groupColorsByCategory } from './utils/color-utils';
 
 interface BrandGuidelinesProps {
   projectId: number;
+  sessionId: string;
 }
 
-export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
+export default function BrandGuidelines({ projectId, sessionId }: BrandGuidelinesProps) {
   // Use the comprehensive brand guidelines hook
   const {
     // State
@@ -48,10 +49,10 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
     generateColorPaletteWithKeywords,
     applyGeneratedPalette,
     getCurrentColorValue,
-  } = useBrandGuidelines(projectId);
+  } = useBrandGuidelines(projectId, sessionId);
 
   // Color update mutation
-  const updateColorMutation = useUpdateBrandColor(projectId);
+  const updateColorMutation = useUpdateBrandColor(projectId, sessionId);
 
   // Handle color change from ColorCard
   const handleColorChange = (name: string, newValue: string) => {
