@@ -48,6 +48,7 @@ function AppContent() {
       <Stack>
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="settings" options={{ headerShown: false }} />
+        <Stack.Screen name="notifications" options={{ headerShown: false }} />
         <Stack.Screen name="projects/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="projects/[id]/sessions/[sessionId]" options={{ headerShown: false }} />
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />

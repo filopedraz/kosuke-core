@@ -1,20 +1,11 @@
 'use client';
 
 import { useUser } from '@clerk/clerk-expo';
-import { Ionicons } from '@expo/vector-icons';
-import { Link, Redirect, useRouter } from 'expo-router';
+import { Link, Redirect } from 'expo-router';
 import React, { useState } from 'react';
-import {
-  FlatList,
-  Image,
-  SafeAreaView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { FlatList, SafeAreaView, Text, TouchableOpacity, View } from 'react-native';
 
-import { useTheme } from '@/hooks/useTheme';
+import { HomeHeader } from '@/components/HomeHeader';
 
 // Mock project data for UI development
 const mockProjects = [
@@ -80,11 +71,8 @@ function ProjectCard({ project }: { project: (typeof mockProjects)[0] }) {
 }
 
 export default function HomeScreen() {
-  const router = useRouter();
-  const { isLoaded, isSignedIn, user } = useUser();
-  const { getColors } = useTheme();
+  const { isLoaded, isSignedIn } = useUser();
   const [searchText, setSearchText] = useState('');
-  const colors = getColors();
 
   // Don't render anything while authentication is loading
   if (!isLoaded) {
@@ -104,39 +92,11 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-background">
-      {/* Header with Search and Avatar */}
-      <View className="flex-row items-center px-5 py-4 gap-3">
-        {/* Search Bar */}
-        <View className="flex-1 flex-row items-center bg-muted rounded-xl px-4 py-3 border border-border">
-          <Ionicons name="search" size={20} color={colors.mutedForeground} />
-          <TextInput
-            className="flex-1 ml-2 text-base text-foreground"
-            placeholder="Search projects..."
-            placeholderTextColor={colors.mutedForeground}
-            value={searchText}
-            onChangeText={setSearchText}
-          />
-        </View>
-
-        {/* User Avatar */}
-        <TouchableOpacity onPress={() => router.push('/settings')}>
-          {user?.imageUrl ? (
-            <Image
-              source={{ uri: user.imageUrl }}
-              className="w-10 h-10 rounded-full border border-border"
-              alt="User avatar"
-            />
-          ) : (
-            <View className="w-10 h-10 rounded-full bg-primary items-center justify-center border border-border">
-              <Text className="text-base font-bold text-primary-foreground">
-                {user?.firstName?.[0] ||
-                  user?.emailAddresses[0]?.emailAddress[0]?.toUpperCase() ||
-                  'U'}
-              </Text>
-            </View>
-          )}
-        </TouchableOpacity>
-      </View>
+      <HomeHeader
+        searchText={searchText}
+        onSearchChange={setSearchText}
+        searchPlaceholder="Search Projects"
+      />
 
       {/* Projects List */}
       <FlatList

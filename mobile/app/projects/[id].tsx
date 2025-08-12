@@ -1,7 +1,6 @@
 'use client';
 
-import { Ionicons } from '@expo/vector-icons';
-import { Link, useLocalSearchParams, useRouter } from 'expo-router';
+import { Link, useLocalSearchParams } from 'expo-router';
 import React from 'react';
 import {
   FlatList,
@@ -11,7 +10,7 @@ import {
   View,
 } from 'react-native';
 
-import { useTheme } from '@/hooks/useTheme';
+import { NavigationHeader } from '@/components/NavigationHeader';
 
 
 
@@ -102,10 +101,7 @@ function ChatSessionCard({ session }: { session: typeof mockChatSessions[0] }) {
 }
 
 export default function ProjectDetailScreen() {
-  const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { getColors } = useTheme();
-  const colors = getColors();
 
   const project = id ? mockProjects[id] : null;
 
@@ -121,24 +117,7 @@ export default function ProjectDetailScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-background">
-      {/* Header */}
-      <View className="flex-row items-center px-5 py-4 border-b border-border">
-        <TouchableOpacity onPress={() => router.back()} className="mr-4">
-          <Ionicons name="arrow-back" size={24} color={colors.foreground} />
-        </TouchableOpacity>
-
-        <View className="flex-1 items-center">
-          <Text
-            className="text-lg font-semibold text-foreground text-center"
-            numberOfLines={1}
-          >
-            {project.name}
-          </Text>
-        </View>
-
-        {/* Placeholder for potential action button */}
-        <View className="w-6" />
-      </View>
+      <NavigationHeader title={project.name} />
 
       {/* Chat Sessions List */}
       <View className="flex-1">

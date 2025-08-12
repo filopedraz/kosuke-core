@@ -6,6 +6,7 @@ import { useRouter } from 'expo-router';
 import React from 'react';
 import { Image, SafeAreaView, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 
+import { NavigationHeader } from '@/components/NavigationHeader';
 import { useTheme } from '@/hooks/useTheme';
 
 export default function SettingsScreen() {
@@ -27,19 +28,7 @@ export default function SettingsScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-background">
-      {/* Header */}
-      <View className="flex-row items-center px-5 py-4 border-b border-border">
-        <TouchableOpacity onPress={() => router.back()} className="mr-4">
-          <Ionicons name="arrow-back" size={24} color={colors.foreground} />
-        </TouchableOpacity>
-
-        <View className="flex-1 items-center">
-          <Text className="text-lg font-semibold text-foreground">Settings</Text>
-        </View>
-
-        {/* Placeholder for potential action button */}
-        <View className="w-6" />
-      </View>
+      <NavigationHeader title="Settings" />
 
       <ScrollView className="flex-1" contentContainerStyle={{ padding: 20 }}>
         {/* User Profile Section */}
