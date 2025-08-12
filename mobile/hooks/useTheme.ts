@@ -117,16 +117,10 @@ export function useTheme() {
       case 'dark':
         return 'Dark';
       case 'system':
-        return `System (${isDark ? 'Dark' : 'Light'})`;
+        return 'System';
       default:
         return 'System';
     }
-  };
-
-  const cycleTheme = () => {
-    // Simple cycling: system -> light -> dark -> system
-    const nextMode = mode === 'system' ? 'light' : mode === 'light' ? 'dark' : 'system';
-    setThemeMode(nextMode);
   };
 
   return {
@@ -135,7 +129,6 @@ export function useTheme() {
     isLoading,
     setThemeMode,
     getThemeDisplayText,
-    cycleTheme,
     themeVars: themes[isDark ? 'dark' : 'light'],
     getColors,
   };

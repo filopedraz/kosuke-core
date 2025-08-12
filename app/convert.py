@@ -106,7 +106,7 @@ def srgb_to_hsl(r: float, g: float, b: float) -> Tuple[float, float, float]:
     return H % 360.0, S, L
 
 
-def hsl_string(h: float, s: float, l: float, alpha: Optional[float] = None) -> str:
+def hsl_string(h: float, s: float, l: float, alpha: Optional[float] = None) -> str:  # noqa: E741
     s_pct = round(s * 100, 1)
     l_pct = round(l * 100, 1)
     h_deg = round(h, 1)
