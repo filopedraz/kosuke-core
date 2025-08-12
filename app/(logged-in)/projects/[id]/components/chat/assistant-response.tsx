@@ -52,8 +52,6 @@ export default function AssistantResponse({
           ? userChoices.get(block.id)!
           : (block.isCollapsed ?? false);
 
-
-
         return (
           <ContentBlock
             key={block.id}

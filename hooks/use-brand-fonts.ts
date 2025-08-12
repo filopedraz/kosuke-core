@@ -5,12 +5,16 @@ interface FontsResponse {
   fonts: FontInfo[];
 }
 
-// Hook for fetching brand fonts
-export function useBrandFonts(projectId: number) {
+// Hook for fetching brand fonts (session-specific)
+export function useBrandFonts(projectId: number, sessionId: string) {
+  const effectiveSessionId = sessionId || 'main';
+
   return useQuery({
-    queryKey: ['brand-fonts', projectId],
+    queryKey: ['brand-fonts', projectId, effectiveSessionId],
     queryFn: async (): Promise<FontsResponse> => {
-      const response = await fetch(`/api/projects/${projectId}/branding/fonts`);
+      const response = await fetch(
+        `/api/projects/${projectId}/chat-sessions/${effectiveSessionId}/branding/fonts`
+      );
 
       if (!response.ok) {
         throw new Error(`Failed to fetch fonts: ${response.statusText}`);

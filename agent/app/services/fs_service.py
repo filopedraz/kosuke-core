@@ -23,6 +23,10 @@ class FileSystemService:
         """Get the absolute path to a project directory"""
         return self.projects_dir / str(project_id)
 
+    def get_session_path(self, project_id: int, session_id: str) -> Path:
+        """Get the absolute path to a session directory"""
+        return self.projects_dir / str(project_id) / "sessions" / session_id
+
     async def ensure_projects_dir(self) -> None:
         """Ensure the projects directory exists"""
         self.projects_dir.mkdir(parents=True, exist_ok=True)
@@ -55,8 +59,11 @@ class FileSystemService:
             # Ensure the directory exists
             file_path.parent.mkdir(parents=True, exist_ok=True)
 
-            async with aiofiles.open(file_path, "w", encoding="utf-8") as f:
+            # Atomic write: write to temp then rename
+            tmp_path = file_path.with_suffix(file_path.suffix + ".tmp")
+            async with aiofiles.open(tmp_path, "w", encoding="utf-8") as f:
                 await f.write(content)
+            tmp_path.replace(file_path)
         except Exception as error:
             logger.error(f"Failed to create file {file_path}: {error}")
             raise error
@@ -68,8 +75,12 @@ class FileSystemService:
         Mirrors the TypeScript updateFile function from lib/fs/operations.ts
         """
         try:
-            async with aiofiles.open(file_path, "w", encoding="utf-8") as f:
+            # Atomic write: write to temp then rename
+            file_path_obj = Path(file_path)
+            tmp_path = file_path_obj.with_suffix(file_path_obj.suffix + ".tmp")
+            async with aiofiles.open(tmp_path, "w", encoding="utf-8") as f:
                 await f.write(content)
+            tmp_path.replace(file_path_obj)
         except Exception as error:
             logger.error(f"Failed to update file {file_path}: {error}")
             raise error
@@ -283,7 +294,3 @@ class FileSystemService:
         nodes.sort(key=lambda x: (x["type"] == "file", x["name"].lower()))
 
         return nodes
-
-
-# Global instance
-fs_service = FileSystemService()

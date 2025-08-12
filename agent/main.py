@@ -624,13 +624,9 @@ class KosukeCLI:
                     self.console.print(
                         f"🌐 [bold green]Preview:[/bold green] [link]{url}[/link] [green]✓ Ready[/green]"
                     )
-                elif preview_status.get("compilation_complete"):
-                    self.console.print(
-                        f"🌐 [bold yellow]Preview:[/bold yellow] [link]{url}[/link] [yellow]⏳ Starting...[/yellow]"
-                    )
                 else:
                     self.console.print(
-                        f"🌐 [bold yellow]Preview:[/bold yellow] [link]{url}[/link] [yellow]⚙️ Building...[/yellow]"
+                        f"🌐 [bold yellow]Preview:[/bold yellow] [link]{url}[/link] [yellow]⏳ Starting...[/yellow]"
                     )
             else:
                 self.console.print("🌐 [dim]Preview: Not running (chat with agent to start)[/dim]")

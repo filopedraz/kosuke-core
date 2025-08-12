@@ -1,22 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useToast } from '@/hooks/use-toast';
-import type {
-  GitUpdateStatus,
-  PreviewStatus,
-  UsePreviewPanelOptions,
-  UsePreviewPanelReturn,
-} from '@/lib/types';
+import type { PreviewStatus, UsePreviewPanelOptions, UsePreviewPanelReturn } from '@/lib/types';
 import { useStartPreview } from './use-preview-status';
 
 export function usePreviewPanel({
   projectId,
   sessionId,
   projectName,
+  enabled = true,
 }: UsePreviewPanelOptions): UsePreviewPanelReturn {
   const { toast } = useToast();
 
-  // Initialize hooks - use null when no session is selected to fallback to main branch
+  // Initialize hooks - sessionId is required
   const { mutateAsync: startPreview, isPending: isStarting } = useStartPreview(
     projectId,
     sessionId
@@ -30,7 +26,7 @@ export function usePreviewPanel({
   const [iframeKey, setIframeKey] = useState(0);
   const [isDownloading, setIsDownloading] = useState(false);
   const requestInFlightRef = useRef(false);
-  const [gitStatus, setGitStatus] = useState<GitUpdateStatus | null>(null);
+  // Removed gitStatus from status flow; pull flow handles its own toasts
 
   // Check if the preview server is ready by requiring a 200 from server-side probe
   const checkServerHealth = useCallback(async (url: string): Promise<boolean> => {
@@ -97,6 +93,10 @@ export function usePreviewPanel({
   // Fetch the preview URL
   const fetchPreviewUrl = useCallback(
     async (forceStart: boolean = false) => {
+      // Guard: require enabled and non-empty sessionId
+      if (!enabled || !sessionId) {
+        return;
+      }
       // Prevent duplicate requests using a ref-based lock
       if (requestInFlightRef.current) {
         console.log(
@@ -108,54 +108,63 @@ export function usePreviewPanel({
       setStatus('loading');
       setProgress(0);
       setError(null);
-      setGitStatus(null); // Reset git status on new fetch
+      // No git status in status/start flows
 
       try {
-        // Use main branch API when no session is selected
-        const sessionText = sessionId ? `session ${sessionId}` : 'main branch';
+        const sessionText = `session ${sessionId}`;
         console.log(
           `[Preview Panel] Fetching preview URL for project ${projectId} ${sessionText}${forceStart ? ' (forcing refresh)' : ''}`
         );
 
-        // Use session-specific or main branch API
-        const url = sessionId
-          ? `/api/projects/${projectId}/chat-sessions/${sessionId}/preview`
-          : `/api/projects/${projectId}/preview`;
+        const url = `/api/projects/${projectId}/chat-sessions/${sessionId}/preview`;
 
         const response = await fetch(url, {
           method: 'GET',
         });
 
         if (!response.ok) {
-          const data = await response.json();
+          // Attempt to start the preview once on initial failure to avoid double GETs elsewhere
+          if (response.status === 404 || response.status === 409 || response.status === 400) {
+            try {
+              console.log('[Preview Panel] Preview not ready, attempting to start...');
+              await startPreview();
+              // small delay before refetching status
+              await new Promise(r => setTimeout(r, 1000));
+              const retry = await fetch(url, { method: 'GET' });
+              if (!retry.ok) {
+                const data = await retry.json().catch(() => ({}));
+                throw new Error(data.error || `Failed to fetch preview: ${retry.statusText}`);
+              }
+              const retryData = await retry.json();
+              if (retryData.previewUrl || retryData.url) {
+                const readyUrl = retryData.previewUrl || retryData.url;
+                setPreviewUrl(readyUrl);
+                pollServerUntilReady(readyUrl);
+                return;
+              }
+              throw new Error('No preview URL returned after start');
+            } catch (startErr) {
+              console.error('[Preview Panel] Failed to auto-start preview:', startErr);
+            }
+          }
+
+          const data = await response.json().catch(() => ({}));
           throw new Error(data.error || `Failed to fetch preview: ${response.statusText}`);
         }
 
         const data = await response.json();
         console.log(`[Preview Panel] Preview status response:`, data);
 
-        // Handle git status information (for manual pulls only now)
-        if (data.git_status && (!sessionId || sessionId === 'main')) {
-          setGitStatus(data.git_status);
-          console.log('[Preview Panel] Git status:', data.git_status);
-
-          // Note: Toast notifications for git updates are now handled by the pull hook
-          // since we removed automatic pulling
-        }
-
         if (data.previewUrl || data.url) {
-          // Use the direct preview URL (handle both previewUrl and url for compatibility)
-          const url = data.previewUrl || data.url;
-          console.log('[Preview Panel] Setting preview URL:', url);
-          setPreviewUrl(url);
-
-          // Start polling for health check
-          pollServerUntilReady(url);
+          const readyUrl = data.previewUrl || data.url;
+          console.log('[Preview Panel] Setting preview URL:', readyUrl);
+          setPreviewUrl(readyUrl);
+          pollServerUntilReady(readyUrl);
         } else {
           throw new Error('No preview URL returned');
         }
       } catch (error) {
-        const sessionText = sessionId ? `session ${sessionId}` : 'main branch';
+        const sessionText = `session ${sessionId}`;
         console.error(
           `[Preview Panel] Error fetching preview for project ${projectId} ${sessionText}:`,
           error
@@ -166,7 +175,7 @@ export function usePreviewPanel({
         requestInFlightRef.current = false;
       }
     },
-    [projectId, sessionId, pollServerUntilReady]
+    [projectId, sessionId, pollServerUntilReady, enabled]
   );
 
   // Update ref when fetchPreviewUrl changes
@@ -176,10 +185,11 @@ export function usePreviewPanel({
 
   // Fetch the preview URL on component mount and when session changes
   useEffect(() => {
-    const sessionText = sessionId ? `session ${sessionId}` : 'main branch';
+    if (!enabled || !sessionId) return;
+    const sessionText = `session ${sessionId}`;
     console.log(`[Preview Panel] Initializing preview for project ${projectId} ${sessionText}`);
     fetchPreviewUrlRef.current?.();
-  }, [projectId, sessionId]); // Depend on both projectId and sessionId
+  }, [projectId, sessionId, enabled]); // Depend on both projectId and sessionId
 
   // Function to refresh the preview
   const handleRefresh = useCallback(
@@ -198,21 +208,13 @@ export function usePreviewPanel({
     console.log('[Preview Panel] Setting up refresh event listener for real-time updates');
 
     const handleRefreshPreview = (event: CustomEvent) => {
-      // Handle both session-specific and main branch refresh events
       const eventSessionId = event.detail.sessionId;
-      const isMainBranchEvent = !eventSessionId || eventSessionId === 'main';
       const isCurrentSession = eventSessionId === sessionId;
-      const isMainBranchActive = !sessionId;
-
-      if (
-        event.detail.projectId === projectId &&
-        (isCurrentSession || (isMainBranchEvent && isMainBranchActive))
-      ) {
-        const sessionText = sessionId ? `session ${sessionId}` : 'main branch';
+      if (event.detail.projectId === projectId && isCurrentSession) {
+        const sessionText = `session ${sessionId}`;
         console.log(
           `[Preview Panel] Received refresh event from chat streaming for ${sessionText}`
         );
-        // Use ref to avoid circular dependencies
         fetchPreviewUrlRef.current?.();
       }
     };
@@ -321,7 +323,7 @@ export function usePreviewPanel({
     iframeKey,
     isDownloading,
     isStarting,
-    gitStatus,
+    // gitStatus removed
 
     // Actions
     handleRefresh,

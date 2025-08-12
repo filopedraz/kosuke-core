@@ -81,22 +81,35 @@ export function convertToHsl(color: string): string {
 }
 
 /**
- * Convert a raw HSL value (e.g. "0 0% 100%") to a CSS color
+ * Convert a raw HSL or OKLCH value to a CSS color
  */
-export function convertHslToCssColor(hslValue: string): string {
+export function convertHslToCssColor(colorValue: string): string {
+  if (!colorValue) {
+    return 'transparent';
+  }
+
   // If it's already a full CSS color, return it
-  if (hslValue.startsWith('hsl') || hslValue.startsWith('rgb') || hslValue.startsWith('#')) {
-    return hslValue;
+  if (colorValue.startsWith('hsl') || colorValue.startsWith('rgb') || colorValue.startsWith('#') || colorValue.startsWith('oklch')) {
+    return colorValue;
   }
 
   // Try to match an HSL pattern (three values: hue saturation lightness)
-  const hslParts = hslValue.trim().split(/\s+/);
+  const hslParts = colorValue.trim().split(/\s+/);
   if (hslParts.length === 3 && hslParts[1].endsWith('%') && hslParts[2].endsWith('%')) {
     return `hsl(${hslParts[0]}, ${hslParts[1]}, ${hslParts[2]})`;
   }
 
+  // Try to match OKLCH pattern (three number values: lightness chroma hue)
+  if (hslParts.length === 3 && !hslParts[1].endsWith('%') && !hslParts[2].endsWith('%')) {
+    // Check if values look like OKLCH (numeric values)
+    const [l, c, h] = hslParts;
+    if (!isNaN(Number(l)) && !isNaN(Number(c)) && !isNaN(Number(h))) {
+      return `oklch(${l} ${c} ${h})`;
+    }
+  }
+
   // Return the original if we can't convert it
-  return hslValue;
+  return colorValue;
 }
 
 /**
@@ -173,6 +186,18 @@ export function colorToHex(color: string): string {
     // If already hex, just return it
     if (color.startsWith('#')) {
       return color.toUpperCase();
+    }
+
+    // If it's CSS OKLCH format: oklch(l c h) or oklch(l c h / alpha)
+    if (color.startsWith('oklch(')) {
+      const values = color.slice(6, -1); // Remove "oklch(" and ")"
+      const parts = values.split(' / ')[0]; // Remove alpha if present
+      const [l, c, h] = parts.split(/\s+/).map(parseFloat);
+      const { r, g, b } = oklchToRgb(l, c, h);
+      const rHex = r.toString(16).padStart(2, '0');
+      const gHex = g.toString(16).padStart(2, '0');
+      const bHex = b.toString(16).padStart(2, '0');
+      return `#${rHex}${gHex}${bHex}`.toUpperCase();
     }
 
     // If it's an OKLCH color in the format "l c h" (e.g., "0.65 0.15 180")

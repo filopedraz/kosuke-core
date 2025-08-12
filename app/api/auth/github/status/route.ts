@@ -1,3 +1,4 @@
+import type { ApiResponse } from '@/lib/api';
 import {
   getUserGitHubInfo,
   hasRequiredGitHubScopes,
@@ -48,13 +49,23 @@ export async function GET(_: NextRequest) {
       apiConnected: apiTest.success,
     });
 
-    return NextResponse.json({
+    return NextResponse.json<
+      ApiResponse<{
+        connected: boolean;
+        hasValidScopes: boolean;
+        apiConnected: boolean;
+        githubUsername?: string;
+        githubId?: string;
+        connectedAt?: Date;
+      }>
+    >({
       data: {
         connected: isConnected,
         hasValidScopes,
         apiConnected: apiTest.success,
         ...githubInfo,
       },
+      success: true,
     });
   } catch (error) {
     console.error('Error checking GitHub status:', error);

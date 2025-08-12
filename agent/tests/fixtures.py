@@ -234,6 +234,5 @@ def mock_webhook_service():
     """Mock webhook service"""
     mock_service = MagicMock()
     mock_service.send_action_update = AsyncMock()
-    mock_service.send_completion = AsyncMock()
     mock_service.send_error = AsyncMock()
     return mock_service

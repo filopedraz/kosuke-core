@@ -155,7 +155,7 @@ export async function GET(
 
           // Check merge status for sessions that have branches but no merge info yet
           const sessionsToUpdate = sessions.filter(session =>
-            session.githubBranchName &&
+            !!session.sessionId &&
             !session.branchMergedAt // Only check if not already marked as merged
           );
 
@@ -166,7 +166,7 @@ export async function GET(
                 github,
                 project.githubOwner!,
                 project.githubRepoName!,
-                session.githubBranchName!
+                session.sessionId
               );
 
               if (mergeStatus.isMerged) {
@@ -279,9 +279,10 @@ export async function POST(
 
     const { title, description } = parseResult.data;
 
-    // Generate unique session ID (max 6 characters)
-    const sessionId = Math.random().toString(36).substr(2, 6);
-    const githubBranchName = `kosuke/chat-${sessionId}`;
+    // Generate canonical sessionId (prefixed) for branch parity
+    const randomPart = Math.random().toString(36).slice(2, 8);
+    // Use URL-safe session id (no slashes). Git branch will map this to 'kosuke/chat-*'.
+    const sessionId = `kosuke-chat-${randomPart}`;
 
     // Create chat session
     const [newSession] = await db
@@ -292,7 +293,6 @@ export async function POST(
         title,
         description,
         sessionId,
-        githubBranchName,
         status: 'active',
         messageCount: 0,
         isDefault: false,

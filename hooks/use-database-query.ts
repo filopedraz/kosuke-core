@@ -1,16 +1,13 @@
-import { useMutation } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import type { QueryResult } from '@/lib/types';
+import { useMutation } from '@tanstack/react-query';
 
-export function useDatabaseQuery(projectId: number, sessionId?: string | null) {
+export function useDatabaseQuery(projectId: number, sessionId: string) {
   const { toast } = useToast();
 
   return useMutation({
     mutationFn: async (query: string): Promise<QueryResult> => {
-      // Use session-specific API when sessionId is provided, otherwise use main database
-      const url = sessionId
-        ? `/api/projects/${projectId}/chat-sessions/${sessionId}/database/query`
-        : `/api/projects/${projectId}/database/query`;
+      const url = `/api/projects/${projectId}/chat-sessions/${sessionId}/database/query`;
 
       const response = await fetch(url, {
         method: 'POST',

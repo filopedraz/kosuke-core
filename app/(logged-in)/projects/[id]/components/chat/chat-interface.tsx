@@ -39,10 +39,6 @@ export default function ChatInterface({
     imageUrl?: string;
   } | null>(null);
 
-  // State for immediate loading feedback
-  const [isGenerating, setIsGenerating] = useState(false);
-
-  // Custom hooks for business logic - all session-based now
   // Always call hooks at the top level, even if sessionId is not available yet
   const sendMessageMutation = useSendMessage(projectId, activeChatSessionId, sessionId || '');
   const messagesQuery = useChatSessionMessages(projectId, sessionId || '');
@@ -64,6 +60,7 @@ export default function ChatInterface({
     isLoading: isSending,
     error: sendError,
     isStreaming,
+    expectingWebhookUpdate,
     streamingContentBlocks,
     streamingAssistantMessageId,
     cancelStream,
@@ -101,13 +98,6 @@ export default function ChatInterface({
     }
   }, [sendError, handleMutationError]);
 
-  // Clear generating state when streaming starts
-  useEffect(() => {
-    if (isStreaming || streamingContentBlocks.length > 0 || streamingAssistantMessageId) {
-      setIsGenerating(false);
-    }
-  }, [isStreaming, streamingContentBlocks, streamingAssistantMessageId]);
-
   // Scroll to bottom when messages change or streaming updates
   useEffect(() => {
     const scrollTimeout = setTimeout(() => {
@@ -122,14 +112,20 @@ export default function ChatInterface({
     return () => clearTimeout(scrollTimeout);
   }, [messages, isLoadingMessages, streamingContentBlocks]);
 
-  // Ensure we have a sessionId - this is now required
-  if (!sessionId) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <p className="text-muted-foreground">No session selected</p>
-      </div>
-    );
-  }
+  // Derive a flag instead of early return to keep hook order stable
+  const hasSession = Boolean(sessionId);
+
+  // Avoid duplicate assistant responses: hide streaming block once saved message arrives
+  const hasSavedStreamedMessage = useMemo(() => {
+    return streamingAssistantMessageId
+      ? messages.some(m => m.id === streamingAssistantMessageId)
+      : false;
+  }, [messages, streamingAssistantMessageId]);
+
+  // Keep streaming UI visible while waiting for webhook-saved message
+  const showStreamingAssistant = Boolean(
+    (isStreaming || expectingWebhookUpdate) && (!streamingAssistantMessageId || !hasSavedStreamedMessage)
+  );
 
   // Handle sending messages
   const handleSendMessage = async (
@@ -137,11 +133,6 @@ export default function ChatInterface({
     options?: { includeContext?: boolean; contextFiles?: string[]; imageFile?: File }
   ) => {
     if (!content.trim() && !options?.imageFile) return;
-
-
-
-    // Show immediate loading state
-    setIsGenerating(true);
 
     // Clear error state
     clearError();
@@ -199,7 +190,11 @@ export default function ChatInterface({
 
       <ScrollArea className="flex-1 overflow-y-auto">
         <div className="flex flex-col">
-          {messages.length === 0 && isLoadingMessages ? (
+          {!hasSession ? (
+            <div className="flex items-center justify-center h-32">
+              <p className="text-muted-foreground">No session selected</p>
+            </div>
+          ) : messages.length === 0 && isLoadingMessages ? (
             <div className="flex items-center justify-center h-32">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
@@ -231,40 +226,10 @@ export default function ChatInterface({
                 />
               ))}
 
-              {/* Immediate loading state - shows before streaming starts */}
-              {isGenerating && !isStreaming && streamingContentBlocks.length === 0 && (
-                <div className="flex w-full max-w-[95%] mx-auto gap-3 p-4 animate-in fade-in-0 duration-200" role="listitem">
-                  {/* Avatar - same as other messages */}
-                  <div className="relative flex items-center justify-center h-8 w-8">
-                    <div className="bg-muted border-primary rounded-md flex items-center justify-center h-full w-full">
-                      <div className="h-6 w-6 text-primary">
-                        <svg viewBox="0 0 24 24" fill="currentColor" className="animate-spin">
-                          <circle cx="12" cy="12" r="3" />
-                        </svg>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Loading content - same flex-1 structure */}
-                  <div className="flex-1 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <h4>AI Assistant</h4>
-                      <time className="text-xs text-muted-foreground">now</time>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <div className="flex space-x-1">
-                        <div className="w-2 h-2 bg-primary rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-                        <div className="w-2 h-2 bg-primary rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-                        <div className="w-2 h-2 bg-primary rounded-full animate-bounce"></div>
-                      </div>
-                      <span className="animate-pulse">Generating response...</span>
-                    </div>
-                  </div>
-                </div>
-              )}
+              {/* Removed pre-stream immediate loading state */}
 
                             {/* Real-time streaming assistant response - use same layout as stored messages */}
-              {isStreaming && streamingAssistantMessageId && (
+              {showStreamingAssistant && (
                 <div className="animate-in fade-in-0 duration-300">
                   <div className="flex w-full max-w-[95%] mx-auto gap-3 p-4" role="listitem">
                     {/* Avatar column - same as ChatMessage */}

@@ -1,0 +1,1 @@
+ALTER TABLE "chat_sessions" DROP COLUMN "github_branch_name";

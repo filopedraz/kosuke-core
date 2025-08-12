@@ -86,16 +86,26 @@ class Settings:
         )
         self.preview_port_range_start: int = int(os.getenv("PREVIEW_PORT_RANGE_START", "3001"))
         self.preview_port_range_end: int = int(os.getenv("PREVIEW_PORT_RANGE_END", "3100"))
+        # Router mode: 'port' for local host port mapping, 'traefik' for Traefik-based routing
+        traefik_enabled = os.getenv("TRAEFIK_ENABLED", "false").lower() == "true"
+        default_router_mode = "traefik" if traefik_enabled else "port"
+        self.router_mode: str = os.getenv("ROUTER_MODE", default_router_mode).lower()
+        # Health path probed to determine readiness
+        self.preview_health_path: str = os.getenv("PREVIEW_HEALTH_PATH", "/")
+        # Docker network name used to attach preview containers
+        self.preview_network: str = os.getenv("PREVIEW_NETWORK", "kosuke_network")
+        # Container name prefix for preview containers
+        self.preview_container_name_prefix: str = os.getenv("PREVIEW_CONTAINER_NAME_PREFIX", "kosuke-preview-")
 
         # Template repository settings
         self.template_repository: str = os.getenv("TEMPLATE_REPOSITORY", "filopedraz/kosuke-template")
 
         # Database settings
-        self.postgres_host: str = os.getenv("POSTGRES_HOST", "localhost")
+        self.postgres_host: str = os.getenv("POSTGRES_HOST", "postgres")
         self.postgres_port: int = int(os.getenv("POSTGRES_PORT", "5432"))
-        self.postgres_db: str = os.getenv("POSTGRES_DB", "kosuke")
+        self.postgres_db: str = os.getenv("POSTGRES_DB", "postgres")
         self.postgres_user: str = os.getenv("POSTGRES_USER", "postgres")
-        self.postgres_password: str = os.getenv("POSTGRES_PASSWORD", "password")
+        self.postgres_password: str = os.getenv("POSTGRES_PASSWORD", "postgres")
 
         # Langfuse Observability (Optional)
         self.langfuse_public_key: str = os.getenv("LANGFUSE_PUBLIC_KEY", "")
@@ -109,13 +119,19 @@ class Settings:
         self.nextjs_url: str = os.getenv("NEXTJS_URL", "http://localhost:3000")
         self.webhook_secret: str = os.getenv("WEBHOOK_SECRET", "dev-secret-change-in-production")
 
-        # Domain settings
-        self.MAIN_DOMAIN: str = os.getenv("MAIN_DOMAIN", "kosuke.ai")
-        self.PREVIEW_BASE_DOMAIN: str = os.getenv("PREVIEW_BASE_DOMAIN", "kosuke.app")
-        self.TRAEFIK_ENABLED: bool = os.getenv("TRAEFIK_ENABLED", "false").lower() == "true"
+        # Domain settings (lower_snake_case for consistency)
+        self.main_domain: str = os.getenv("MAIN_DOMAIN", "kosuke.ai")
+        self.preview_base_domain: str = os.getenv("PREVIEW_BASE_DOMAIN", "kosuke.app")
+        self.traefik_enabled: bool = os.getenv("TRAEFIK_ENABLED", "false").lower() == "true"
 
         # Docker-in-Docker settings
-        self.HOST_WORKSPACE_DIR: str = os.getenv("HOST_WORKSPACE_DIR", "")
+        self.host_workspace_dir: str = os.getenv("HOST_WORKSPACE_DIR", "")
+
+        # Git settings
+        self.git_pull_cache_minutes: int = int(os.getenv("GIT_PULL_CACHE_MINUTES", "60"))
+        # Branch naming for chat sessions (used by GitHubService)
+        # Example default: kosuke/chat-<sessionId>
+        self.session_branch_prefix: str = os.getenv("SESSION_BRANCH_PREFIX", "kosuke/chat-")
 
     def validate_settings(self) -> bool:
         """Validate required settings"""
@@ -141,6 +157,10 @@ class Settings:
             "template_repository": self.template_repository,
             "preview_port_range_start": self.preview_port_range_start,
             "preview_port_range_end": self.preview_port_range_end,
+            "router_mode": self.router_mode,
+            "preview_health_path": self.preview_health_path,
+            "preview_network": self.preview_network,
+            "preview_container_name_prefix": self.preview_container_name_prefix,
             "postgres_host": self.postgres_host,
             "postgres_port": self.postgres_port,
             "postgres_db": self.postgres_db,
@@ -152,10 +172,11 @@ class Settings:
             "processing_timeout": self.processing_timeout,
             "nextjs_url": self.nextjs_url,
             "webhook_secret": "***" if self.webhook_secret else "",
-            "main_domain": self.MAIN_DOMAIN,
-            "preview_base_domain": self.PREVIEW_BASE_DOMAIN,
-            "traefik_enabled": self.TRAEFIK_ENABLED,
-            "host_workspace_dir": self.HOST_WORKSPACE_DIR,
+            "main_domain": self.main_domain,
+            "preview_base_domain": self.preview_base_domain,
+            "traefik_enabled": self.traefik_enabled,
+            "host_workspace_dir": self.host_workspace_dir,
+            "git_pull_cache_minutes": self.git_pull_cache_minutes,
         }
 
 

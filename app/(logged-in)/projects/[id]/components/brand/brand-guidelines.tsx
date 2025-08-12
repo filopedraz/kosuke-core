@@ -7,20 +7,19 @@ import { useUpdateBrandColor } from '@/hooks/use-brand-colors';
 import { useBrandGuidelines } from '@/hooks/use-brand-guidelines';
 import type { FontInfo } from '@/lib/types/branding';
 import { Moon, Palette, Sun, TextQuote, Wand2 } from 'lucide-react';
-import ColorCard from './color-card';
-import ColorCardSkeleton from './color-card-skeleton';
+import ColorCard, { ColorCardSkeleton } from './color-card';
 import ColorPaletteModal from './color-palette-modal';
-import FontCard from './font-card';
-import FontCardSkeleton from './font-card-skeleton';
+import FontCard, { FontCardSkeleton } from './font-card';
 import KeywordsModal from './keywords-modal';
 import { ThemePreviewProvider } from './theme-context';
 import { getCategoryTitle, groupColorsByCategory } from './utils/color-utils';
 
 interface BrandGuidelinesProps {
   projectId: number;
+  sessionId: string;
 }
 
-export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
+export default function BrandGuidelines({ projectId, sessionId }: BrandGuidelinesProps) {
   // Use the comprehensive brand guidelines hook
   const {
     // State
@@ -50,10 +49,10 @@ export default function BrandGuidelines({ projectId }: BrandGuidelinesProps) {
     generateColorPaletteWithKeywords,
     applyGeneratedPalette,
     getCurrentColorValue,
-  } = useBrandGuidelines(projectId);
+  } = useBrandGuidelines(projectId, sessionId);
 
   // Color update mutation
-  const updateColorMutation = useUpdateBrandColor(projectId);
+  const updateColorMutation = useUpdateBrandColor(projectId, sessionId);
 
   // Handle color change from ColorCard
   const handleColorChange = (name: string, newValue: string) => {

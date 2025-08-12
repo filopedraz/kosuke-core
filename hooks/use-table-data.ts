@@ -1,15 +1,15 @@
-import { useQuery } from '@tanstack/react-query';
 import type { TableData } from '@/lib/types';
+import { useQuery } from '@tanstack/react-query';
 
 export function useTableData(
   projectId: number,
   tableName: string | null,
-  sessionId?: string | null,
+  sessionId: string,
   limit: number = 100,
   offset: number = 0
 ) {
   return useQuery({
-    queryKey: ['table-data', projectId, sessionId || 'main', tableName, limit, offset],
+    queryKey: ['table-data', projectId, sessionId, tableName, limit, offset],
     queryFn: async (): Promise<TableData> => {
       if (!tableName) {
         throw new Error('Table name is required');
@@ -20,10 +20,7 @@ export function useTableData(
         offset: offset.toString(),
       });
 
-      // Use session-specific API when sessionId is provided, otherwise use main database
-      const url = sessionId
-        ? `/api/projects/${projectId}/chat-sessions/${sessionId}/database/tables/${tableName}?${params}`
-        : `/api/projects/${projectId}/database/tables/${tableName}?${params}`;
+      const url = `/api/projects/${projectId}/chat-sessions/${sessionId}/database/tables/${tableName}?${params}`;
 
       const response = await fetch(url);
 
@@ -34,7 +31,7 @@ export function useTableData(
       const data = await response.json();
       return data;
     },
-    enabled: !!tableName,
+    enabled: Boolean(tableName && sessionId), // Only fetch when both tableName and sessionId are provided
     staleTime: 1000 * 60 * 2, // 2 minutes
     retry: 1,
   });

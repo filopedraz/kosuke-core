@@ -6,7 +6,6 @@ import { use, useEffect, useRef, useState } from 'react';
 import Navbar from '@/components/ui/navbar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useChatSessions } from '@/hooks/use-chat-sessions';
-import { usePreviewStatus, useStartPreview } from '@/hooks/use-preview-status';
 import { useCreatePullRequest } from '@/hooks/use-project-settings';
 import { useProjectUIState } from '@/hooks/use-project-ui-state';
 import { useProject } from '@/hooks/use-projects';
@@ -190,39 +189,15 @@ export default function ProjectPage({ params }: ProjectPageProps) {
 
   // Get current session information
   const currentSession = sessions.find(session => session.id === activeChatSessionId);
-  const currentBranch = currentSession?.githubBranchName;
+  // Branch label is just the sessionId now
+  const currentBranch = currentSession?.sessionId;
   const sessionId = currentSession?.sessionId;
 
-  // Preview should use session only when in chat interface view, not in sidebar list view
-  const previewSessionId = showSidebar ? null : (sessionId || null);
-
-  // Preview management hooks - use null when in sidebar view (main branch)
-  const { data: previewStatus, isLoading: isPreviewLoading } = usePreviewStatus(
-    projectId,
-    previewSessionId,
-    false // Disable polling initially
-  );
-  const { mutateAsync: startPreview } = useStartPreview(projectId, previewSessionId);
+    // Preview should use session only when in chat interface view, not in sidebar list view
+  const previewSessionId = showSidebar ? null : sessionId;
 
   // Reference to the ChatInterface component to maintain its state
   const chatInterfaceRef = useRef<HTMLDivElement>(null);
-  // Track if we've already attempted to start preview for this project
-  const previewStartAttempted = useRef<Set<number>>(new Set());
-
-  // Automatically start preview if not running (only once per project)
-  useEffect(() => {
-    if (!isPreviewLoading && previewStatus && !previewStatus.url) {
-      if (!previewStartAttempted.current.has(projectId)) {
-        previewStartAttempted.current.add(projectId);
-        console.log(`[ProjectPage] No preview URL found, starting preview for project ${projectId}`);
-        startPreview().catch((error) => {
-          console.error(`[ProjectPage] Error starting preview for project ${projectId}:`, error);
-        });
-      }
-    } else if (previewStatus?.url) {
-      console.log(`[ProjectPage] Preview already running for project ${projectId}:`, previewStatus.url);
-    }
-  }, [projectId, previewStatus, isPreviewLoading, startPreview]);
 
   // Loading state
   if (isProjectLoading || !user) {
@@ -338,7 +313,7 @@ export default function ProjectPage({ params }: ProjectPageProps) {
             <PreviewPanel
               projectId={projectId}
               projectName={project.name}
-              sessionId={previewSessionId}
+              sessionId={previewSessionId ?? ''}
               branch={showSidebar ? undefined : currentBranch}
             />
           ) : currentView === 'code' ? (
@@ -348,19 +323,18 @@ export default function ProjectPage({ params }: ProjectPageProps) {
           ) : currentView === 'branding' ? (
             <BrandGuidelines
               projectId={projectId}
+              sessionId={previewSessionId ?? ''}
             />
           ) : currentView === 'settings' ? (
             <SettingsTab
               projectId={projectId}
             />
           ) : currentView === 'database' ? (
-            <DatabaseTab
-              projectId={projectId}
-              sessionId={previewSessionId}
-            />
+            <DatabaseTab projectId={projectId} sessionId={previewSessionId ?? ''} />
           ) : (
             <BrandGuidelines
               projectId={projectId}
+              sessionId={previewSessionId ?? ''}
             />
           )}
         </div>

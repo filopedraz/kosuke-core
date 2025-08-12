@@ -1,27 +1,28 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { Copy, Check, Edit2 } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { 
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
+  DialogDescription,
   DialogFooter,
-  DialogDescription
+  DialogHeader,
+  DialogTitle
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { 
-  convertHslToCssColor, 
-  hslToHex, 
-  colorToHex, 
-  hexToHSL, 
-  formatColorName 
+import { Skeleton } from '@/components/ui/skeleton';
+import { Check, Copy, Edit2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import type { ThemeMode } from './theme-context';
+import {
+  colorToHex,
+  convertHslToCssColor,
+  formatColorName,
+  hexToHSL,
+  hslToHex
 } from './utils/color-utils';
-import { ThemeMode } from './types';
 
 interface CssVariable {
   name: string;
@@ -44,34 +45,34 @@ export default function ColorCard({ colorVar, previewMode, onColorChange }: Colo
   const [hue, setHue] = useState(0);
   const [saturation, setSaturation] = useState(100);
   const [lightness, setLightness] = useState(50);
-  
+
   const colorPickerRef = useRef<HTMLDivElement>(null);
   const hueSelectorRef = useRef<HTMLDivElement>(null);
-  
+
   // Resolve and convert the color value based on preview mode
   useEffect(() => {
     let resolvedColor = 'transparent';
-    
+
     try {
       // First, try to convert the raw value directly (for HSL values)
       const directConvertedColor = convertHslToCssColor(colorVar.value);
-      
+
       // Create a temporary element to test the color
       const tempEl = document.createElement('div');
       document.body.appendChild(tempEl);
-      
+
       // Add preview mode class if needed
       if (previewMode === 'dark') {
         tempEl.classList.add('dark');
       }
-      
+
       // Try to apply the color
       tempEl.style.color = directConvertedColor;
-      
+
       // Get the computed color
       const computedColor = getComputedStyle(tempEl).color;
       document.body.removeChild(tempEl);
-      
+
       // Check if we got a valid computed color
       if (computedColor && computedColor !== 'rgb(0, 0, 0)' && computedColor !== 'rgba(0, 0, 0, 0)') {
         resolvedColor = computedColor;
@@ -79,12 +80,12 @@ export default function ColorCard({ colorVar, previewMode, onColorChange }: Colo
         // Fallback to our direct converted value
         resolvedColor = directConvertedColor;
       }
-      
+
       // Convert to HEX for display
       const convertedHex = colorToHex(colorVar.value);
       setHexValue(convertedHex);
       setEditableHexValue(convertedHex);
-      
+
       // Update HSL values for color picker
       if (convertedHex.startsWith('#')) {
         const hsl = hexToHSL(convertedHex);
@@ -92,12 +93,12 @@ export default function ColorCard({ colorVar, previewMode, onColorChange }: Colo
         setSaturation(hsl.s);
         setLightness(hsl.l);
       }
-      
+
     } catch (error) {
       console.error('Error resolving color:', colorVar.value, error);
       resolvedColor = '#ff6b6b'; // Error indicator color
     }
-    
+
     setColorPreview(resolvedColor);
   }, [colorVar.value, previewMode]);
 
@@ -106,12 +107,12 @@ export default function ColorCard({ colorVar, previewMode, onColorChange }: Colo
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
-  
+
   const openEditDialog = () => {
     setEditableHexValue(hexValue);
     setIsEditDialogOpen(true);
   };
-  
+
   const handleSaveColor = () => {
     if (onColorChange && editableHexValue) {
       // We're already converting to HSL in the parent component's handleColorChange
@@ -119,30 +120,30 @@ export default function ColorCard({ colorVar, previewMode, onColorChange }: Colo
     }
     setIsEditDialogOpen(false);
   };
-  
+
   const handlePickerClick = (e: React.MouseEvent) => {
     if (!colorPickerRef.current) return;
-    
+
     const rect = colorPickerRef.current.getBoundingClientRect();
     const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
     const y = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
-    
+
     setSaturation(x * 100);
     setLightness(100 - y * 100);
-    
+
     const newColor = `#${hslToHex(hue, x * 100, 100 - y * 100).replace('#', '')}`;
     setEditableHexValue(newColor);
   };
-  
+
   const handleHueChange = (e: React.MouseEvent) => {
     if (!hueSelectorRef.current) return;
-    
+
     const rect = hueSelectorRef.current.getBoundingClientRect();
     const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-    
+
     const newHue = x * 360;
     setHue(newHue);
-    
+
     const newColor = `#${hslToHex(newHue, saturation, lightness).replace('#', '')}`;
     setEditableHexValue(newColor);
   };
@@ -150,7 +151,7 @@ export default function ColorCard({ colorVar, previewMode, onColorChange }: Colo
   const handleHexInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setEditableHexValue(value);
-    
+
     // If it's a valid hex color, update the color picker
     if (/^#[0-9A-Fa-f]{6}$/.test(value)) {
       const hsl = hexToHSL(value);
@@ -169,7 +170,7 @@ export default function ColorCard({ colorVar, previewMode, onColorChange }: Colo
             className="absolute inset-0"
             style={{ backgroundColor: colorPreview }}
           />
-          
+
           {/* Button container - only visible on hover */}
           <div className="absolute top-2 right-2 left-2 flex justify-between opacity-0 group-hover:opacity-100 transition-opacity">
             {/* Copy button on the left */}
@@ -186,7 +187,7 @@ export default function ColorCard({ colorVar, previewMode, onColorChange }: Colo
                 <Copy className="h-3.5 w-3.5" />
               )}
             </Button>
-            
+
             {/* Edit button on the right */}
             <Button
               variant="secondary"
@@ -199,7 +200,7 @@ export default function ColorCard({ colorVar, previewMode, onColorChange }: Colo
             </Button>
           </div>
         </div>
-        
+
         <CardContent className="py-3 px-3">
           <div className="flex items-center justify-between">
             <h3 className="font-medium text-sm" title={formatColorName(colorVar.name)}>
@@ -213,7 +214,7 @@ export default function ColorCard({ colorVar, previewMode, onColorChange }: Colo
           </div>
         </CardContent>
       </Card>
-      
+
       {/* Edit Color Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="sm:max-w-md">
@@ -223,14 +224,14 @@ export default function ColorCard({ colorVar, previewMode, onColorChange }: Colo
               Update this color using the color picker or by entering a hex value directly.
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="flex flex-col gap-6 py-4">
             {/* Color picker area */}
             <div className="grid gap-4">
               {/* Main color picker */}
-              <div 
+              <div
                 ref={colorPickerRef}
-                className="relative h-48 w-full rounded-md cursor-crosshair" 
+                className="relative h-48 w-full rounded-md cursor-crosshair"
                 style={{
                   background: `linear-gradient(to right, #fff, hsl(${hue}, 100%, 50%))`,
                   backgroundImage: `
@@ -243,8 +244,8 @@ export default function ColorCard({ colorVar, previewMode, onColorChange }: Colo
                 onMouseMove={(e) => e.buttons === 1 && handlePickerClick(e)}
               >
                 {/* Current selected position */}
-                <div 
-                  className="absolute h-4 w-4 rounded-full border-2 border-white transform -translate-x-1/2 -translate-y-1/2" 
+                <div
+                  className="absolute h-4 w-4 rounded-full border-2 border-white transform -translate-x-1/2 -translate-y-1/2"
                   style={{
                     left: `${saturation}%`,
                     top: `${100 - lightness}%`,
@@ -253,9 +254,9 @@ export default function ColorCard({ colorVar, previewMode, onColorChange }: Colo
                   }}
                 />
               </div>
-              
+
               {/* Hue selector */}
-              <div 
+              <div
                 ref={hueSelectorRef}
                 className="relative h-8 w-full rounded-md cursor-pointer"
                 style={{
@@ -265,17 +266,17 @@ export default function ColorCard({ colorVar, previewMode, onColorChange }: Colo
                 onMouseMove={(e) => e.buttons === 1 && handleHueChange(e)}
               >
                 {/* Current hue position */}
-                <div 
+                <div
                   className="absolute top-0 h-full w-1 bg-white border border-gray-300 transform -translate-x-1/2"
                   style={{ left: `${(hue / 360) * 100}%` }}
                 />
               </div>
             </div>
-            
+
             {/* HEX input */}
             <div className="flex items-center gap-2">
               <div className="flex-shrink-0">
-                <div 
+                <div
                   className="h-10 w-10 rounded-md border border-border"
                   style={{ backgroundColor: editableHexValue }}
                 />
@@ -291,7 +292,7 @@ export default function ColorCard({ colorVar, previewMode, onColorChange }: Colo
               </div>
             </div>
           </div>
-          
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
               Cancel
@@ -304,4 +305,18 @@ export default function ColorCard({ colorVar, previewMode, onColorChange }: Colo
       </Dialog>
     </>
   );
-} 
+}
+
+export function ColorCardSkeleton() {
+  return (
+    <Card className="overflow-hidden group pt-0 pb-3">
+      <Skeleton className="h-32 w-full rounded-none" />
+      <CardContent className="py-3 px-3">
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-4 w-1/2" />
+          <Skeleton className="h-5 w-16 rounded-full" />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}

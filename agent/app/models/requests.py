@@ -20,8 +20,8 @@ class ChatRequest(BaseModel):
     chat_history: list[ChatMessage] | None = []
     assistant_message_id: int | None = Field(None, description="Assistant message ID for webhook updates")
 
-    # GitHub integration fields (optional)
-    github_token: str | None = Field(None, description="GitHub token for auto-commit functionality")
+    # GitHub integration (mandatory)
+    github_token: str = Field(..., min_length=1, description="GitHub token for auto-commit functionality")
     session_id: str | None = Field(None, description="Session ID for GitHub tracking")
 
     @validator("prompt")
@@ -54,8 +54,8 @@ class ChatSessionRequest(BaseModel):
     prompt: str = Field(..., min_length=1, description="Prompt cannot be empty")
     assistant_message_id: int | None = Field(None, description="Assistant message ID for webhook updates")
 
-    # GitHub integration fields (optional)
-    github_token: str | None = Field(None, description="GitHub token for auto-commit functionality")
+    # GitHub integration (mandatory)
+    github_token: str = Field(..., min_length=1, description="GitHub token for auto-commit functionality")
 
     @validator("prompt")
     def validate_prompt(cls, v):  # noqa: N805

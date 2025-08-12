@@ -1,13 +1,7 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useToast } from '@/hooks/use-toast';
-import type {
-  CssVariable,
-  ColorUpdateRequest,
-  ColorStats,
-  ThemeMode,
-  ApiSuccess,
-} from '@/lib/types';
 import { convertToHsl } from '@/app/(logged-in)/projects/[id]/components/brand/utils/color-utils';
+import { useToast } from '@/hooks/use-toast';
+import type { ColorUpdateRequest, CssVariable } from '@/lib/types';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 interface ColorsResponse {
   colors: CssVariable[];
@@ -16,12 +10,16 @@ interface ColorsResponse {
   foundLocation: string;
 }
 
-// Hook for fetching brand colors
-export function useBrandColors(projectId: number) {
+// Hook for fetching brand colors (session-specific)
+export function useBrandColors(projectId: number, sessionId: string) {
+  const effectiveSessionId = sessionId || 'main';
+
   return useQuery({
-    queryKey: ['brand-colors', projectId],
+    queryKey: ['brand-colors', projectId, effectiveSessionId],
     queryFn: async (): Promise<ColorsResponse> => {
-      const response = await fetch(`/api/projects/${projectId}/branding/colors`);
+      const response = await fetch(
+        `/api/projects/${projectId}/chat-sessions/${effectiveSessionId}/branding/colors`
+      );
 
       if (!response.ok) {
         throw new Error(`Failed to fetch colors: ${response.statusText}`);
@@ -34,27 +32,31 @@ export function useBrandColors(projectId: number) {
   });
 }
 
-// Hook for updating brand colors
-export function useUpdateBrandColor(projectId: number) {
+// Hook for updating brand colors (session-specific)
+export function useUpdateBrandColor(projectId: number, sessionId: string) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const effectiveSessionId = sessionId || 'main';
 
   return useMutation({
     mutationFn: async ({ name, value, mode }: ColorUpdateRequest) => {
       // Convert the color to HSL format before sending to API
       const hslValue = convertToHsl(value);
 
-      const response = await fetch(`/api/projects/${projectId}/branding/colors`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name,
-          value: hslValue,
-          mode,
-        }),
-      });
+      const response = await fetch(
+        `/api/projects/${projectId}/chat-sessions/${effectiveSessionId}/branding/colors`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name,
+            value: hslValue,
+            mode,
+          }),
+        }
+      );
 
       if (!response.ok) {
         throw new Error('Failed to update color');
@@ -64,10 +66,16 @@ export function useUpdateBrandColor(projectId: number) {
     },
     onMutate: async ({ name, value, mode }) => {
       // Cancel outgoing refetches
-      await queryClient.cancelQueries({ queryKey: ['brand-colors', projectId] });
+      await queryClient.cancelQueries({
+        queryKey: ['brand-colors', projectId, effectiveSessionId],
+      });
 
       // Snapshot the previous value
-      const previousColors = queryClient.getQueryData<ColorsResponse>(['brand-colors', projectId]);
+      const previousColors = queryClient.getQueryData<ColorsResponse>([
+        'brand-colors',
+        projectId,
+        effectiveSessionId,
+      ]);
 
       // Optimistically update the cache
       if (previousColors) {
@@ -84,7 +92,7 @@ export function useUpdateBrandColor(projectId: number) {
           }),
         };
 
-        queryClient.setQueryData(['brand-colors', projectId], updatedColors);
+        queryClient.setQueryData(['brand-colors', projectId, effectiveSessionId], updatedColors);
       }
 
       return { previousColors };
@@ -98,7 +106,10 @@ export function useUpdateBrandColor(projectId: number) {
     onError: (error, __, context) => {
       // Revert optimistic update on error
       if (context?.previousColors) {
-        queryClient.setQueryData(['brand-colors', projectId], context.previousColors);
+        queryClient.setQueryData(
+          ['brand-colors', projectId, effectiveSessionId],
+          context.previousColors
+        );
       }
 
       toast({
@@ -109,7 +120,7 @@ export function useUpdateBrandColor(projectId: number) {
     },
     onSettled: () => {
       // Always refetch after error or success
-      queryClient.invalidateQueries({ queryKey: ['brand-colors', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['brand-colors', projectId, effectiveSessionId] });
     },
   });
 }

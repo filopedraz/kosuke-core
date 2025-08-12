@@ -5,7 +5,7 @@ import type { PullRequest, PullResponse } from '@/lib/types';
 
 interface UsePullBranchOptions {
   projectId: number;
-  sessionId?: string;
+  sessionId: string;
   onSuccess?: (data: PullResponse) => void;
   onError?: (error: Error) => void;
 }
@@ -15,10 +15,8 @@ export function usePullBranch({ projectId, sessionId, onSuccess, onError }: UseP
 
   return useMutation({
     mutationFn: async (pullRequest: PullRequest = {}): Promise<PullResponse> => {
-      // Determine the correct endpoint based on whether we have a session
-      const url = sessionId
-        ? `/api/projects/${projectId}/chat-sessions/${sessionId}/pull`
-        : `/api/projects/${projectId}/pull`;
+      // Always use session-scoped endpoint
+      const url = `/api/projects/${projectId}/chat-sessions/${sessionId}/pull`;
 
       const response = await fetch(url, {
         method: 'POST',
@@ -38,18 +36,18 @@ export function usePullBranch({ projectId, sessionId, onSuccess, onError }: UseP
       return response.json();
     },
     onSuccess: data => {
-      const branchText = sessionId ? `session ${sessionId}` : 'main branch';
+      const branchText = `session ${sessionId}`;
 
       if (data.success) {
-        const commitCount = data.git_status.commits_pulled;
-        const action = data.git_status.action;
+        const commitCount = data.pullResult.commitsPulled;
+        const changed = data.pullResult.changed;
 
-        if (action === 'pulled' && commitCount > 0) {
+        if (changed && commitCount > 0) {
           toast({
             title: 'Successfully pulled changes',
             description: `Updated ${branchText} with ${commitCount} new commit${commitCount === 1 ? '' : 's'}`,
           });
-        } else if (action === 'no_remote') {
+        } else if (data.pullResult.message?.toLowerCase().includes('no remote')) {
           toast({
             title: 'Branch up to date',
             description: `No remote branch found for ${branchText}`,
@@ -68,13 +66,13 @@ export function usePullBranch({ projectId, sessionId, onSuccess, onError }: UseP
           });
         }
       } else {
-        throw new Error(data.git_status.message || 'Pull operation failed');
+        throw new Error(data.pullResult?.message || 'Pull operation failed');
       }
 
       onSuccess?.(data);
     },
     onError: error => {
-      const branchText = sessionId ? `session ${sessionId}` : 'main branch';
+      const branchText = `session ${sessionId}`;
 
       console.error(`Error pulling ${branchText}:`, error);
       toast({

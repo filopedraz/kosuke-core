@@ -19,37 +19,41 @@ class ContainerInfo(BaseModel):
     container_name: str
     port: int
     url: str
-    compilation_complete: bool = False
-    is_responding: bool = False
-    git_status: GitUpdateStatus | None = None
 
 
 class PreviewStatus(BaseModel):
     running: bool
     url: str | None = None
-    compilation_complete: bool
     is_responding: bool
-    git_status: GitUpdateStatus | None = None
 
 
 class StartPreviewRequest(BaseModel):
     project_id: int
-    session_id: str | None = None  # Optional for main branch
+    session_id: str
     env_vars: dict[str, str] = {}
 
 
 class StopPreviewRequest(BaseModel):
     project_id: int
-    session_id: str | None = None  # Optional for main branch
+    session_id: str
+
+
+class PullResult(BaseModel):
+    changed: bool
+    commits_pulled: int
+    message: str
+    previous_commit: str | None = None
+    new_commit: str | None = None
+    branch_name: str | None = None
 
 
 class PullRequest(BaseModel):
     project_id: int
-    session_id: str | None = None  # Optional for main branch
+    session_id: str
     force: bool = False  # Force pull (ignore cache)
 
 
 class PullResponse(BaseModel):
     success: bool
-    git_status: GitUpdateStatus
+    pull_request: PullResult
     container_restarted: bool = False

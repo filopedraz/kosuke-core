@@ -14,13 +14,13 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useDeleteEnvironmentVariable } from '@/hooks/use-environment-mutations';
 import { useEnvironmentVariables } from '@/hooks/use-environment-variables';
 import type { EnvironmentVariable } from '@/lib/types/environment';
 import { Edit, Eye, EyeOff, InfoIcon, Plus, Shield, Trash2 } from 'lucide-react';
 import { useCallback, useState } from 'react';
-import { EnvironmentVariablesSkeleton } from './skeletons/environment-variables-skeleton';
 import { VariableForm } from './variable-form';
 
 interface EnvironmentVariablesProps {
@@ -217,5 +217,46 @@ export function EnvironmentVariables({ projectId }: EnvironmentVariablesProps) {
         editingVariable={editingVariable}
       />
     </>
+  );
+}
+
+export function EnvironmentVariablesSkeleton() {
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <div className="space-y-2">
+          <Skeleton className="h-6 w-48" />
+          <Skeleton className="h-4 w-96" />
+        </div>
+        <Skeleton className="h-10 w-32" />
+      </div>
+
+      <div className="space-y-3">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <Card key={i}>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Skeleton className="h-4 w-4" />
+                  <Skeleton className="h-5 w-32" />
+                  <Skeleton className="h-5 w-16" />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Skeleton className="h-8 w-8" />
+                  <Skeleton className="h-8 w-8" />
+                  <Skeleton className="h-8 w-8" />
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-3/4" />
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
   );
 }

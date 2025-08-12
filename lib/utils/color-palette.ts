@@ -3,7 +3,25 @@
  */
 
 import { AGENT_SERVICE_URL } from '@/lib/constants';
-import type { ColorPaletteResult, ColorVariable } from '@/lib/types/branding';
+import type { ColorPaletteResult } from '@/lib/types/branding';
+
+// Backend response format (snake_case)
+interface BackendColorVariable {
+  name: string;
+  light_value: string;
+  dark_value?: string;
+  scope: 'root' | 'dark' | 'light' | 'unknown';
+  description?: string;
+}
+
+// Extended color format for apply function
+interface ExtendedColor {
+  name: string;
+  value: string;
+  lightValue?: string;
+  darkValue?: string;
+  description?: string;
+}
 
 /**
  * Generate a color palette for a project using the agent microservice
@@ -19,18 +37,7 @@ export async function generateColorPalette(
     console.log(`Keywords: ${keywords}`);
     console.log(`Existing colors: ${existingColors.length}`);
 
-    // Convert existing colors to the agent's expected format
-    const formattedExistingColors: ColorVariable[] = existingColors.map(color => ({
-      name: color.name,
-      lightValue:
-        typeof color.value === 'string'
-          ? color.value.replace(/oklch\(([^)]+)\)|hsl\(([^)]+)\)/, '$1$2')
-          : '',
-      scope: 'root' as const,
-      description: color.description as string | undefined,
-    }));
-
-    // Call agent microservice
+    // Call agent microservice (no need to send existing colors, backend extracts them)
     const response = await fetch(
       `${AGENT_SERVICE_URL}/api/projects/${projectId}/branding/generate-palette`,
       {
@@ -40,8 +47,6 @@ export async function generateColorPalette(
         },
         body: JSON.stringify({
           keywords,
-          existingColors: formattedExistingColors,
-          applyImmediately: false,
         }),
       }
     );
@@ -55,11 +60,15 @@ export async function generateColorPalette(
 
     console.log(`✅ Successfully generated ${result.colors?.length || 0} colors`);
 
-    // Convert back to the expected format for compatibility
+    // Convert backend response to frontend format
+    // Each backend color has both light_value and dark_value
+    // We need to return them in a format the frontend can use
     const compatibleColors =
-      result.colors?.map((color: ColorVariable) => ({
+      result.colors?.map((color: BackendColorVariable) => ({
         name: color.name,
-        value: `oklch(${color.lightValue})`,
+        lightValue: color.light_value, // Keep raw value for light mode
+        darkValue: color.dark_value, // Keep raw value for dark mode
+        value: `oklch(${color.light_value})`, // Default value for compatibility
         description: color.description,
       })) || [];
 
@@ -67,7 +76,6 @@ export async function generateColorPalette(
       success: result.success,
       message: result.message,
       colors: compatibleColors,
-      applied: result.applied,
     };
   } catch (error) {
     console.error('❌ Error generating color palette:', error);
@@ -84,16 +92,19 @@ export async function generateColorPalette(
  */
 export async function applyColorPalette(
   projectId: number,
-  colors: Array<{ name: string; value: string; description?: string }>
+  colors: ExtendedColor[]
 ): Promise<ColorPaletteResult> {
   try {
     console.log(`🎨 Applying color palette to project ${projectId} via agent microservice`);
     console.log(`Applying ${colors.length} colors`);
 
-    // Convert colors to the agent's expected format
-    const formattedColors: ColorVariable[] = colors.map(color => ({
+    // Convert colors to the agent's expected format (snake_case)
+    const formattedColors = colors.map(color => ({
       name: color.name,
-      lightValue: color.value.replace(/oklch\(([^)]+)\)|hsl\(([^)]+)\)/, '$1$2'),
+      light_value:
+        (color as ExtendedColor).lightValue ||
+        color.value.replace(/oklch\(([^)]+)\)|hsl\(([^)]+)\)/, '$1$2'),
+      dark_value: (color as ExtendedColor).darkValue,
       scope: 'root' as const,
       description: color.description,
     }));
@@ -124,7 +135,6 @@ export async function applyColorPalette(
     return {
       success: result.success,
       message: result.message,
-      applied: result.success,
     };
   } catch (error) {
     console.error('❌ Error applying color palette:', error);

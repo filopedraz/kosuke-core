@@ -67,7 +67,6 @@ export const chatSessions = pgTable('chat_sessions', {
   title: varchar('title', { length: 100 }).notNull(),
   description: text('description'),
   sessionId: varchar('session_id', { length: 50 }).unique().notNull(),
-  githubBranchName: varchar('github_branch_name', { length: 100 }),
   status: varchar('status', { length: 20 }).default('active'), // active, archived, completed
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),

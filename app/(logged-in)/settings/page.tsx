@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function SettingsPage() {
   const {
@@ -21,6 +22,13 @@ export default function SettingsPage() {
     updateProfile,
     updateProfileImage,
   } = useUser();
+
+  const clerk = (clerkUser || null) as {
+    firstName?: string;
+    lastName?: string;
+    imageUrl?: string;
+    emailAddresses?: Array<{ emailAddress: string }>;
+  } | null;
 
   // Form state
   const [previewImage, setPreviewImage] = useState<string | null>(null);
@@ -83,49 +91,47 @@ export default function SettingsPage() {
       <div className="max-w-2xl">
         <div className="space-y-6">
           <div>
-            <h1 className="text-2xl font-semibold">Profile Settings</h1>
-            <p className="text-muted-foreground">
-              Manage your account settings and set email preferences.
-            </p>
+            <Skeleton className="h-8 w-64 mb-2" />
+            <Skeleton className="h-4 w-96" />
           </div>
 
           <Card>
             <CardHeader>
-              <div className="h-6 bg-muted rounded w-48 animate-pulse" />
-              <div className="h-4 bg-muted rounded w-80 animate-pulse" />
+              <Skeleton className="h-6 w-48" />
+              <Skeleton className="h-4 w-80" />
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Profile Picture Section */}
               <div className="flex items-center gap-4">
-                <div className="h-20 w-20 bg-muted rounded-full animate-pulse" />
+                <Skeleton className="h-20 w-20 rounded-full" />
                 <div className="flex-1 space-y-2">
-                  <div className="h-10 bg-muted rounded w-32 animate-pulse" />
-                  <div className="h-3 bg-muted rounded w-48 animate-pulse" />
+                  <Skeleton className="h-10 w-32" />
+                  <Skeleton className="h-3 w-48" />
                 </div>
               </div>
 
               {/* Name Fields */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <div className="h-4 bg-muted rounded w-20 animate-pulse" />
-                  <div className="h-10 bg-muted rounded w-full animate-pulse" />
+                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="h-10 w-full" />
                 </div>
                 <div className="space-y-2">
-                  <div className="h-4 bg-muted rounded w-20 animate-pulse" />
-                  <div className="h-10 bg-muted rounded w-full animate-pulse" />
+                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="h-10 w-full" />
                 </div>
               </div>
 
               {/* Email Field */}
               <div className="space-y-2">
-                <div className="h-4 bg-muted rounded w-24 animate-pulse" />
-                <div className="h-10 bg-muted rounded w-full animate-pulse" />
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-10 w-full" />
               </div>
             </CardContent>
           </Card>
 
           <div className="flex justify-end">
-            <div className="h-10 bg-muted rounded w-32 animate-pulse" />
+            <Skeleton className="h-10 w-32" />
           </div>
         </div>
       </div>
@@ -178,7 +184,7 @@ export default function SettingsPage() {
               <div className="flex items-center gap-4">
                 <Avatar className="h-20 w-20">
                   <AvatarImage
-                    src={previewImage || imageUrl || clerkUser.imageUrl}
+                    src={previewImage || imageUrl || clerk?.imageUrl || undefined}
                     alt={displayName || 'Profile picture'}
                   />
                   <AvatarFallback className="text-lg">{initials}</AvatarFallback>
@@ -224,7 +230,7 @@ export default function SettingsPage() {
                   <Input
                     id="firstName"
                     name="firstName"
-                    defaultValue={clerkUser.firstName || ''}
+                    defaultValue={clerk?.firstName || ''}
                     placeholder="Enter your first name"
                   />
                 </div>
@@ -233,7 +239,7 @@ export default function SettingsPage() {
                   <Input
                     id="lastName"
                     name="lastName"
-                    defaultValue={clerkUser.lastName || ''}
+                    defaultValue={clerk?.lastName || ''}
                     placeholder="Enter your last name"
                   />
                 </div>
@@ -245,7 +251,7 @@ export default function SettingsPage() {
                   id="email"
                   name="email"
                   type="email"
-                  defaultValue={clerkUser.emailAddresses[0]?.emailAddress || ''}
+                  defaultValue={clerk?.emailAddresses?.[0]?.emailAddress || ''}
                   placeholder="Enter your email address"
                 />
               </div>

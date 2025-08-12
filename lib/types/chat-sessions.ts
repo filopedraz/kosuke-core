@@ -8,7 +8,6 @@ export interface ChatSession {
   title: string;
   description?: string;
   sessionId: string; // Used for GitHub branch naming
-  githubBranchName?: string;
   status: 'active' | 'archived' | 'completed';
   createdAt: string;
   updatedAt: string;

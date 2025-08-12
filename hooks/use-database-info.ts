@@ -1,14 +1,11 @@
-import { useQuery } from '@tanstack/react-query';
 import type { DatabaseInfo } from '@/lib/types';
+import { useQuery } from '@tanstack/react-query';
 
-export function useDatabaseInfo(projectId: number, sessionId?: string | null) {
+export function useDatabaseInfo(projectId: number, sessionId: string) {
   return useQuery({
-    queryKey: ['database-info', projectId, sessionId || 'main'],
+    queryKey: ['database-info', projectId, sessionId],
     queryFn: async (): Promise<DatabaseInfo> => {
-      // Use session-specific API when sessionId is provided, otherwise use main database
-      const url = sessionId
-        ? `/api/projects/${projectId}/chat-sessions/${sessionId}/database/info`
-        : `/api/projects/${projectId}/database/info`;
+      const url = `/api/projects/${projectId}/chat-sessions/${sessionId}/database/info`;
 
       const response = await fetch(url);
       if (!response.ok) {
@@ -19,5 +16,6 @@ export function useDatabaseInfo(projectId: number, sessionId?: string | null) {
     },
     staleTime: 1000 * 60 * 2, // 2 minutes
     retry: 1,
+    enabled: Boolean(sessionId), // Only fetch when sessionId is provided
   });
 }

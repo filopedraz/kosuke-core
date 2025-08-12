@@ -3,34 +3,21 @@ from datetime import datetime
 from pathlib import Path
 
 from fastapi import APIRouter
+from fastapi import Header
 from fastapi import HTTPException
-from pydantic import BaseModel
 
-from app.services.github_service import GitHubService
-from app.services.session_manager import SessionManager
-from app.services.webhook_service import webhook_service
+from app.models.revert import RevertRequest
+from app.models.revert import RevertResponse
+from app.utils.providers import get_github_service
+from app.utils.providers import get_session_manager
+from app.utils.providers import get_webhook_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-class RevertRequest(BaseModel):
-    project_id: int
-    session_id: str
-    commit_sha: str
-    message_id: int
-    create_backup: bool = False
-
-
-class RevertResponse(BaseModel):
-    success: bool
-    reverted_to_commit: str
-    backup_commit: str | None = None
-    message: str
-
-
 @router.post("/revert", response_model=RevertResponse)
-async def revert_to_commit(request: RevertRequest):
+async def revert_to_commit(request: RevertRequest, github_token: str = Header(..., alias="X-GitHub-Token")):
     """
     Revert session to specific commit SHA
     """
@@ -39,9 +26,9 @@ async def revert_to_commit(request: RevertRequest):
             f"Reverting project {request.project_id} session {request.session_id} to commit {request.commit_sha}"
         )
 
-        session_manager = SessionManager()
-        # For local Git operations, we use local-only mode
-        git_service = GitHubService("", local_only=True)
+        session_manager = get_session_manager()
+        # For local Git operations, token is still required to ensure consistent auth context
+        git_service = get_github_service(github_token)
 
         # Get session path
         session_path_str = session_manager.get_session_path(request.project_id, request.session_id)
@@ -66,8 +53,8 @@ async def revert_to_commit(request: RevertRequest):
 
         # Send system message to chat about the revert
         try:
-            # Use webhook service properly with async context manager
-            async with webhook_service as webhook:
+            # Use webhook service via provider with async context manager
+            async with get_webhook_service() as webhook:
                 await webhook.send_system_message(
                     project_id=request.project_id,
                     chat_session_id=request.session_id,  # Pass the string session ID

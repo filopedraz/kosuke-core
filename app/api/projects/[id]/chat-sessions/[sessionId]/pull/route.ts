@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth/server';
 import { AGENT_SERVICE_URL } from '@/lib/constants';
 import { db } from '@/lib/db/drizzle';
 import { chatSessions, projects } from '@/lib/db/schema';
+import { getGitHubToken } from '@/lib/github/auth';
 import { and, eq } from 'drizzle-orm';
 
 /**
@@ -72,11 +73,21 @@ export async function POST(
     const body = await request.json().catch(() => ({}));
     const force = body.force || false;
 
+    // Get user's GitHub token (mandatory)
+    const githubToken = await getGitHubToken(userId);
+    if (!githubToken) {
+      return NextResponse.json(
+        { error: 'GitHub not connected' },
+        { status: 400 }
+      );
+    }
+
     // Proxy request to Python agent
     const response = await fetch(`${AGENT_SERVICE_URL}/api/preview/pull`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'X-GitHub-Token': githubToken,
       },
       body: JSON.stringify({
         project_id: projectId,
@@ -94,7 +105,21 @@ export async function POST(
     }
 
     const result = await response.json();
-    return NextResponse.json(result);
+    // Map backend snake_case to frontend camelCase for compatibility
+    const pr = result.pull_request || result.pullResult;
+    const mapped = {
+      success: !!result.success,
+      container_restarted: !!result.container_restarted,
+      pullResult: {
+        changed: !!pr?.changed,
+        commitsPulled: Number(pr?.commits_pulled || 0),
+        message: pr?.message || '',
+        previousCommit: pr?.previous_commit || null,
+        newCommit: pr?.new_commit || null,
+        branchName: pr?.branch_name || null,
+      },
+    } as const;
+    return NextResponse.json(mapped);
 
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';

@@ -83,13 +83,8 @@ export async function GET(
       }
     }
 
-    // If no branches from GitHub, provide common defaults
-    if (availableBranches.length === 0) {
-      availableBranches = ['main', 'master', 'develop'];
-    }
-
     return NextResponse.json({
-      default_branch: project.defaultBranch || 'main',
+      default_branch: project.defaultBranch,
       available_branches: availableBranches,
     });
   } catch (error) {

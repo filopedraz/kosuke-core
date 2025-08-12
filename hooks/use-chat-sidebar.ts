@@ -70,11 +70,16 @@ export function useChatSidebar({
       // Reset form and close modal
       setNewChatTitle('');
       setIsNewChatModalOpen(false);
+
+      // Redirect/select the newly created session in parent (updates URL ?session=...)
+      if (onChatSessionChange) {
+        onChatSessionChange(newSession.session.id);
+      }
     } catch (error) {
       console.error('[Chat Sidebar] Failed to create chat session:', error);
       // Error is already handled by the mutation hook
     }
-  }, [newChatTitle, createChatSession, projectId]);
+  }, [newChatTitle, createChatSession, projectId, onChatSessionChange]);
 
   // Handle session update
   const handleUpdateSession = useCallback(
@@ -117,11 +122,9 @@ export function useChatSidebar({
 
   // Handle view GitHub branch
   const handleViewGitHubBranch = useCallback((session: ChatSession) => {
-    if (session.githubBranchName) {
-      // This would need to be implemented with actual GitHub URL
-      const githubUrl = `https://github.com/owner/repo/tree/${session.githubBranchName}`;
-      window.open(githubUrl, '_blank');
-    }
+    // Placeholder implementation using sessionId as branch name
+    const githubUrl = `https://github.com/owner/repo/tree/${session.sessionId}`;
+    window.open(githubUrl, '_blank');
   }, []);
 
   return {

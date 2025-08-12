@@ -1,9 +1,10 @@
 import logging
-import os
 import re
 from typing import Any
 
 import asyncpg
+
+from app.utils.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -16,87 +17,110 @@ def _validate_table_name(table_name: str) -> str:
     return table_name
 
 
+def _validate_database_name(db_name: str) -> str:
+    """Validate database name for PostgreSQL compatibility"""
+    # PostgreSQL allows letters, digits, underscores, and hyphens
+    # Database names must start with a letter or underscore
+    if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_-]*$", db_name):
+        raise ValueError(f"Invalid database name: {db_name}")
+
+    # PostgreSQL has a limit of 63 characters for database names
+    if len(db_name) > 63:
+        raise ValueError(f"Database name too long (max 63 chars): {db_name}")
+
+    return db_name
+
+
 class DatabaseService:
     def __init__(self, project_id: int, session_id: str | None = None):
         self.project_id = project_id
         self.session_id = session_id
 
-        # Prefer session-specific database for any session, and for main branch prefer the
-        # 'session_main' database (where migrations/tables live). Fall back to legacy 'main'.
-        if session_id and session_id != "main":
-            self.db_name = f"kosuke_project_{project_id}_session_{session_id}"
-            self.fallback_db_name: str | None = None
-        else:
-            # No session provided or explicit 'main' → prefer session_main
-            self.db_name = f"kosuke_project_{project_id}_session_main"
-            self.fallback_db_name = f"kosuke_project_{project_id}_main"
+        # Always use session-specific database pattern; require explicit session_id
+        if not session_id:
+            raise ValueError("session_id is required for DatabaseService")
 
-        # PostgreSQL connection parameters
-        self.db_host = "postgres"
-        self.db_port = 5432
-        self.db_user = "postgres"
-        self.db_password = os.getenv("POSTGRES_PASSWORD", "postgres")
+        # Generate and validate database name
+        self.db_name = f"kosuke_project_{project_id}_session_{session_id}"
+        try:
+            _validate_database_name(self.db_name)
+        except ValueError as e:
+            logger.error(f"Invalid database name generated: {self.db_name}")
+            raise ValueError(f"Cannot create database service: {e}") from e
 
     async def _get_connection(self) -> asyncpg.Connection:
-        """Get database connection, preferring session_main for main branch with fallback to main"""
+        """Get database connection; creates the database if it does not exist."""
         try:
             return await asyncpg.connect(
-                host=self.db_host,
-                port=self.db_port,
-                user=self.db_user,
-                password=self.db_password,
+                host=settings.postgres_host,
+                port=settings.postgres_port,
+                user=settings.postgres_user,
+                password=settings.postgres_password,
                 database=self.db_name,
             )
         except asyncpg.InvalidCatalogNameError:
-            # If preferred DB does not exist, try fallback (legacy 'main') before creating anything
-            if getattr(self, "fallback_db_name", None):
-                try:
-                    conn = await asyncpg.connect(
-                        host=self.db_host,
-                        port=self.db_port,
-                        user=self.db_user,
-                        password=self.db_password,
-                        database=self.fallback_db_name,
-                    )
-                    # Switch to fallback for future operations
-                    self.db_name = self.fallback_db_name  # type: ignore[assignment]
-                    self.fallback_db_name = None
-                    return conn
-                except asyncpg.InvalidCatalogNameError:
-                    # Fallback also missing; proceed to create the preferred DB
-                    pass
-
-            # Create the preferred database when neither exists
+            # Create the preferred database when it does not exist
+            logger.info(f"Database {self.db_name} does not exist, creating it...")
             await self._create_database()
             # Try connecting again to the preferred DB
             return await asyncpg.connect(
-                host=self.db_host,
-                port=self.db_port,
-                user=self.db_user,
-                password=self.db_password,
+                host=settings.postgres_host,
+                port=settings.postgres_port,
+                user=settings.postgres_user,
+                password=settings.postgres_password,
                 database=self.db_name,
             )
+        except asyncpg.exceptions.InvalidAuthorizationSpecificationError as e:
+            logger.error(f"PostgreSQL authentication failed for database {self.db_name}: {e}")
+            logger.error(
+                f"Check credentials - user: {settings.postgres_user}, "
+                f"host: {settings.postgres_host}:{settings.postgres_port}"
+            )
+            raise Exception(f"Database authentication failed: {e}") from e
+        except Exception as e:
+            logger.error(f"Failed to connect to database {self.db_name}: {e}")
+            raise Exception(f"Database connection failed: {e}") from e
 
     async def _create_database(self):
         """Create the database if it doesn't exist"""
-        # Connect to postgres database to create the new one
-        conn = await asyncpg.connect(
-            host=self.db_host, port=self.db_port, user=self.db_user, password=self.db_password, database="postgres"
-        )
-
         try:
-            await conn.execute(f'CREATE DATABASE "{self.db_name}"')
-            logger.info(f"Created database: {self.db_name}")
-        except asyncpg.exceptions.DuplicateDatabaseError:
-            logger.debug(f"Database {self.db_name} already exists")
-        finally:
-            await conn.close()
+            # Connect to postgres database to create the new one
+            conn = await asyncpg.connect(
+                host=settings.postgres_host,
+                port=settings.postgres_port,
+                user=settings.postgres_user,
+                password=settings.postgres_password,
+                database="postgres",
+            )
+
+            try:
+                await conn.execute(f'CREATE DATABASE "{self.db_name}"')
+                logger.info(f"Created database: {self.db_name}")
+            except asyncpg.exceptions.DuplicateDatabaseError:
+                logger.debug(f"Database {self.db_name} already exists")
+            finally:
+                await conn.close()
+
+        except asyncpg.exceptions.InvalidAuthorizationSpecificationError as e:
+            logger.error(f"PostgreSQL authentication failed: {e}")
+            logger.error(
+                f"Check credentials - user: {settings.postgres_user}, "
+                f"host: {settings.postgres_host}:{settings.postgres_port}"
+            )
+            raise Exception(f"Database authentication failed: {e}") from e
+        except Exception as e:
+            logger.error(f"Failed to create database {self.db_name}: {e}")
+            raise Exception(f"Database creation failed: {e}") from e
 
     async def _get_database_size(self) -> str:
         """Get database size"""
         try:
             conn = await asyncpg.connect(
-                host=self.db_host, port=self.db_port, user=self.db_user, password=self.db_password, database="postgres"
+                host=settings.postgres_host,
+                port=settings.postgres_port,
+                user=settings.postgres_user,
+                password=settings.postgres_password,
+                database="postgres",
             )
 
             # Query database size
@@ -129,7 +153,7 @@ class DatabaseService:
 
             return {
                 "connected": True,
-                "database_path": f"postgres://{self.db_host}:{self.db_port}/{self.db_name}",
+                "database_path": f"postgres://{settings.postgres_host}:{settings.postgres_port}/{self.db_name}",
                 "tables_count": tables_count,
                 "database_size": db_size,
             }
@@ -137,7 +161,7 @@ class DatabaseService:
             logger.error(f"Error getting database info: {e}")
             return {
                 "connected": False,
-                "database_path": f"postgres://{self.db_host}:{self.db_port}/{self.db_name}",
+                "database_path": f"postgres://{settings.postgres_host}:{settings.postgres_port}/{self.db_name}",
                 "tables_count": 0,
                 "database_size": "0 KB",
             }

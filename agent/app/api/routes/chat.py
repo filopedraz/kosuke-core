@@ -32,36 +32,32 @@ async def chat_stream(request: ChatSessionRequest) -> StreamingResponse:
         # Initialize session manager
         session_manager = SessionManager()
 
-        # Ensure session environment exists or create it
-        project_path = None
         try:
-            # Check if session environment already exists
             if not session_manager.validate_session_directory(request.project_id, request.session_id):
-                logger.info(f"📁 Creating session environment for {request.session_id}")
-                project_path = session_manager.create_session_environment(
-                    project_id=request.project_id,
-                    session_id=request.session_id,
-                    base_branch="main",  # TODO: Get from project settings
+                raise HTTPException(
+                    status_code=404,
+                    detail=(
+                        "Session environment not found. Start a preview for this session first "
+                        "to initialize the environment."
+                    ),
                 )
-            else:
-                project_path = session_manager.get_session_path(request.project_id, request.session_id)
-                logger.info(f"📁 Using existing session environment: {project_path}")
+            project_path = session_manager.get_session_path(request.project_id, request.session_id)
+            logger.info(f"📁 Using existing session environment: {project_path}")
+        except HTTPException:
+            raise
         except Exception as session_error:
-            logger.error(f"❌ Failed to setup session environment: {session_error}")
-            detail_msg = f"Failed to setup session environment: {session_error}"
-            raise HTTPException(status_code=500, detail=detail_msg) from session_error
+            logger.error(f"❌ Failed to validate session environment: {session_error}")
+            raise HTTPException(
+                status_code=500, detail=f"Failed to validate session environment: {session_error}"
+            ) from session_error
 
-        # Initialize Agent with session-specific parameters
         try:
             agent = Agent(
                 project_id=request.project_id,
                 session_id=request.session_id,
+                github_token=request.github_token,
                 assistant_message_id=request.assistant_message_id,
             )
-
-            # Set GitHub integration if token provided
-            if request.github_token:
-                agent.set_github_integration(request.github_token)
 
         except Exception as agent_error:
             logger.error(f"❌ Failed to initialize Agent: {agent_error}")
