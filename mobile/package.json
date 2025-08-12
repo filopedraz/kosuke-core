@@ -5,9 +5,10 @@
   "scripts": {
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
-    "android": "expo run:android",
-    "ios:go": "expo start --ios",
-    "ios:build": "expo run:ios",
+    "ios:dev": "APP_VARIANT=development expo start --ios",
+    "ios:build": "APP_VARIANT=development expo run:ios",
+    "ios:build:dev": "eas build --profile development --platform ios",
+    "ios:build:prod": "eas build --profile production --platform ios",
     "clean:cache": "rm -rf .expo && rm -rf ios/ && xcrun simctl shutdown all && xcrun simctl erase all",
     "web": "expo start --web",
     "lint": "expo lint",
