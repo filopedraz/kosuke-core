@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 
 import { ChatSessionCard, ChatSessionCardSkeleton } from '@/components/ChatSessionCard';
-import { NavigationHeader } from '@/components/NavigationHeader';
+import { NavigationHeader, NavigationHeaderSkeleton } from '@/components/NavigationHeader';
 import { useChatSessions } from '@/hooks/use-chat-sessions';
 import { useProject } from '@/hooks/use-projects';
 
@@ -62,7 +62,7 @@ export default function ProjectDetailScreen() {
   if (isProjectLoading) {
     return (
       <SafeAreaView className="flex-1 bg-background">
-        <NavigationHeader title="Loading..." />
+        <NavigationHeaderSkeleton />
         <SessionListSkeleton />
       </SafeAreaView>
     );
@@ -72,7 +72,7 @@ export default function ProjectDetailScreen() {
   if (projectError || !project) {
     return (
       <SafeAreaView className="flex-1 bg-background">
-        <NavigationHeader title="Error" />
+        <NavigationHeader title={`Project ${projectId}`} />
         <View className="flex-1 justify-center items-center px-5">
           <Text className="text-destructive text-center">
             {projectError?.message || 'Project not found'}
