@@ -4,94 +4,19 @@ import { useLocalSearchParams } from 'expo-router';
 import React from 'react';
 import {
   FlatList,
+  RefreshControl,
   SafeAreaView,
   Text,
   View,
 } from 'react-native';
 
-import { ChatSessionCard } from '@/components/ChatSessionCard';
+import { ChatSessionCard, ChatSessionCardSkeleton } from '@/components/ChatSessionCard';
 import { NavigationHeader } from '@/components/NavigationHeader';
+import { useChatSessions } from '@/hooks/use-chat-sessions';
+import { useProject } from '@/hooks/use-projects';
 
 
-// Mock chat sessions data for UI development
-const mockChatSessions = [
-  {
-    id: 'session-1',
-    title: 'Initial project setup',
-    updatedAt: new Date('2024-01-15T10:30:00'),
-    messageCount: 12,
-  },
-  {
-    id: 'session-2',
-    title: 'Database schema design',
-    updatedAt: new Date('2024-01-14T16:45:00'),
-    messageCount: 8,
-  },
-  {
-    id: 'session-3',
-    title: 'API endpoint implementation',
-    updatedAt: new Date('2024-01-13T14:20:00'),
-    messageCount: 15,
-  },
-  {
-    id: 'session-4',
-    title: 'Frontend component structure',
-    updatedAt: new Date('2024-01-12T09:15:00'),
-    messageCount: 6,
-  },
-  {
-    id: 'session-5',
-    title: 'Authentication flow',
-    updatedAt: new Date('2024-01-11T11:30:00'),
-    messageCount: 10,
-  },
-];
 
-// Mock project data
-const mockProjects: { [key: string]: { name: string; description: string } } = {
-  '1': { name: 'E-commerce Platform', description: 'A modern e-commerce platform built with React and Node.js' },
-  '2': { name: 'Task Management App', description: 'Collaborative task management tool for teams' },
-  '3': { name: 'Social Media Dashboard', description: 'Analytics dashboard for social media management' },
-  '4': { name: 'Weather App', description: 'Beautiful weather forecasting application' },
-};
-
-function getDateGroup(date: Date): string {
-  const now = new Date();
-  const diffInDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
-
-  if (diffInDays === 0) {
-    return 'Today';
-  } else if (diffInDays === 1) {
-    return 'Yesterday';
-  } else if (diffInDays < 7) {
-    return `${diffInDays} days ago`;
-  } else if (diffInDays < 14) {
-    return '1 week ago';
-  } else if (diffInDays < 30) {
-    const weeks = Math.floor(diffInDays / 7);
-    return `${weeks} weeks ago`;
-  } else {
-    const months = Math.floor(diffInDays / 30);
-    return `${months} month${months === 1 ? '' : 's'} ago`;
-  }
-}
-
-function groupSessionsByDate(sessions: typeof mockChatSessions) {
-  const groups: { [key: string]: typeof mockChatSessions } = {};
-
-  sessions.forEach(session => {
-    const group = getDateGroup(session.updatedAt);
-    if (!groups[group]) {
-      groups[group] = [];
-    }
-    groups[group].push(session);
-  });
-
-  return Object.entries(groups).map(([date, items]) => ({
-    date,
-    data: items,
-  }));
-}
 
 function DateSeparator({ date }: { date: string }) {
   return (
@@ -101,55 +26,115 @@ function DateSeparator({ date }: { date: string }) {
   );
 }
 
+function SessionListSkeleton() {
+  return (
+    <>
+      <View className="px-5 py-3">
+        <View className="w-16 h-4 bg-muted rounded" />
+      </View>
+      {Array.from({ length: 4 }).map((_, index) => (
+        <ChatSessionCardSkeleton key={`skeleton-${index}`} />
+      ))}
+    </>
+  );
+}
+
 export default function ProjectDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const projectId = id ? parseInt(id) : 0;
 
-  const project = id ? mockProjects[id] : null;
+  // Always call hooks before any conditional returns
+  const {
+    data: project,
+    isLoading: isProjectLoading,
+    error: projectError,
+  } = useProject(projectId);
 
-  if (!project) {
+  const {
+    flatData,
+    isLoading: isSessionsLoading,
+    error: sessionsError,
+    refetch,
+    isFetching,
+  } = useChatSessions({ projectId, enabled: !!projectId });
+
+  // Show loading state while project is loading
+  if (isProjectLoading) {
     return (
       <SafeAreaView className="flex-1 bg-background">
-        <View className="flex-1 justify-center items-center">
-          <Text className="text-foreground">Project not found</Text>
+        <NavigationHeader title="Loading..." />
+        <SessionListSkeleton />
+      </SafeAreaView>
+    );
+  }
+
+  // Show error state if project failed to load
+  if (projectError || !project) {
+    return (
+      <SafeAreaView className="flex-1 bg-background">
+        <NavigationHeader title="Error" />
+        <View className="flex-1 justify-center items-center px-5">
+          <Text className="text-destructive text-center">
+            {projectError?.message || 'Project not found'}
+          </Text>
         </View>
       </SafeAreaView>
     );
   }
 
   type FlatDataItem =
-    | (typeof mockChatSessions[0])
+    | { id: string | number; title: string; messageCount: number; lastActivityAt: Date }
     | { type: 'separator'; date: string; id: string };
-
-  const groupedSessions = groupSessionsByDate(mockChatSessions);
 
   const renderItem = ({ item }: { item: FlatDataItem }) => {
     if ('type' in item && item.type === 'separator') {
       return <DateSeparator date={item.date} />;
     }
-    return <ChatSessionCard session={item as typeof mockChatSessions[0]} />;
+    return <ChatSessionCard session={item as unknown as { id: string | number; title: string; messageCount: number; updatedAt: Date }} />;
   };
-
-  // Create flat data with separators
-  const flatData: FlatDataItem[] = groupedSessions.reduce((acc: FlatDataItem[], group) => {
-    acc.push({ type: 'separator', date: group.date, id: `separator-${group.date}` });
-    acc.push(...group.data);
-    return acc;
-  }, []);
 
   return (
     <SafeAreaView className="flex-1 bg-background">
       <NavigationHeader title={project.name} />
 
       <View className="flex-1">
-        <FlatList
-          data={flatData}
-          keyExtractor={item => item.id}
-          renderItem={renderItem}
-          contentContainerStyle={{
-            paddingBottom: 20,
-          }}
-          showsVerticalScrollIndicator={false}
-        />
+        {sessionsError && !isSessionsLoading && (
+          <View className="px-5 py-4">
+            <Text className="text-destructive text-center">
+              {sessionsError.message || 'Failed to load chat sessions'}
+            </Text>
+          </View>
+        )}
+
+        {isSessionsLoading ? (
+          <SessionListSkeleton />
+        ) : (
+          <FlatList
+            data={flatData}
+            keyExtractor={item => String(item.id)}
+            renderItem={renderItem}
+            contentContainerStyle={{
+              paddingBottom: 20,
+            }}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={isFetching && !isSessionsLoading}
+                onRefresh={refetch}
+                tintColor="#666"
+              />
+            }
+            ListEmptyComponent={
+              !isSessionsLoading && !sessionsError ? (
+                <View className="flex-1 justify-center items-center py-20">
+                  <Text className="text-muted-foreground text-center">
+                    No chat sessions yet
+                  </Text>
+                </View>
+              ) : null
+            }
+          />
+        )}
       </View>
     </SafeAreaView>
   );

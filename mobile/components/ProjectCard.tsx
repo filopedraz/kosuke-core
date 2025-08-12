@@ -2,8 +2,10 @@ import { Link } from 'expo-router';
 import React from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 
+import { Skeleton } from '@/components/ui/Skeleton';
+
 type Project = {
-  id: string;
+  id: string | number;
   name: string;
   description: string;
   updatedAt: Date;
@@ -29,5 +31,17 @@ export function ProjectCard({ project }: ProjectCardProps) {
         </View>
       </TouchableOpacity>
     </Link>
+  );
+}
+
+export function ProjectCardSkeleton() {
+  return (
+    <View className="bg-card rounded-xl p-4 mx-5 mb-3 border border-border min-h-[100px]">
+      <View>
+        <Skeleton width="70%" height={22} className="mb-2" />
+        <Skeleton width="100%" height={16} className="mb-1" />
+        <Skeleton width="85%" height={16} />
+      </View>
+    </View>
   );
 }

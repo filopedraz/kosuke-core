@@ -74,9 +74,13 @@ jobs:
         working-directory: mobile
         run: npm ci
 
-      - name: Build and publish iOS app to TestFlight (EAS)
+      - name: Build and publish mobile apps (EAS)
         working-directory: mobile
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
+          # Build iOS app for TestFlight
           eas build --platform ios --profile production --non-interactive --auto-submit
+
+          # Build Android app for Google Play (if you want to include Android)
+          # eas build --platform android --profile production --non-interactive --auto-submit

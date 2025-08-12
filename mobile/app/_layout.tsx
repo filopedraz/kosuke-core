@@ -1,4 +1,5 @@
 import { ClerkProvider } from '@clerk/clerk-expo';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Constants from 'expo-constants';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
@@ -17,6 +18,16 @@ import '../global.css';
 
 // Prevent the splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
+
+// Create a client instance
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 2, // 2 minutes
+      retry: 1,
+    },
+  },
+});
 
 const tokenCache = {
   getToken: async (key: string) => {
@@ -69,9 +80,11 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <ErrorBoundary>
-        <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
-          <AppContent />
-        </ClerkProvider>
+        <QueryClientProvider client={queryClient}>
+          <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
+            <AppContent />
+          </ClerkProvider>
+        </QueryClientProvider>
       </ErrorBoundary>
     </SafeAreaProvider>
   );
