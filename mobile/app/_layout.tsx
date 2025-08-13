@@ -6,7 +6,7 @@ import { Stack } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 import 'react-native-reanimated';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -15,6 +15,15 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { useTheme } from '@/hooks/use-theme';
 
 import '../global.css';
+import * as Sentry from 'sentry-expo';
+
+Sentry.init({
+  dsn: Constants.expoConfig?.extra?.SENTRY_DSN as string | undefined,
+  enableInExpoDevelopment: true,
+  debug: __DEV__,
+  tracesSampleRate: 1.0,
+  attachStacktrace: true,
+});
 
 // Prevent the splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
@@ -49,13 +58,13 @@ const tokenCache = {
 function AppContent() {
   const { isDark, themeVars } = useTheme();
 
-  // Hide splash screen when fonts are loaded
-  useEffect(() => {
-    SplashScreen.hideAsync();
+  const onLayoutRootView = useCallback(async () => {
+    // Hide splash after first layout to avoid a white flash
+    await SplashScreen.hideAsync();
   }, []);
 
   return (
-    <View style={themeVars} className="flex-1">
+    <View style={themeVars} className="flex-1" onLayout={onLayoutRootView}>
       <Stack>
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="settings" options={{ headerShown: false }} />
@@ -71,11 +80,34 @@ function AppContent() {
 }
 
 export default function RootLayout() {
-  useFonts({
-    SpaceMono: '../assets/fonts/SpaceMono-Regular.ttf',
+  const [fontsLoaded] = useFonts({
+    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
 
   const publishableKey = Constants.expoConfig?.extra?.CLERK_PUBLISHABLE_KEY as string | undefined;
+  const SPLASH_MIN_DURATION_MS = __DEV__ ? 1500 : 0; // local testing; set to 0 to disable
+
+  // Track when we started to show the splash to enforce a minimum duration
+  const splashStartRef = useRef<number>(Date.now());
+  const [minDelayDone, setMinDelayDone] = useState<number>(
+    Number(SPLASH_MIN_DURATION_MS) <= 0 ? 1 : 0
+  );
+
+  useEffect(() => {
+    const elapsed = Date.now() - splashStartRef.current;
+    const remaining = Math.max(0, Number(SPLASH_MIN_DURATION_MS) - elapsed);
+    if (remaining <= 0) {
+      setMinDelayDone(1);
+      return;
+    }
+    const id = setTimeout(() => setMinDelayDone(1), remaining);
+    return () => clearTimeout(id);
+  }, [SPLASH_MIN_DURATION_MS]);
+
+  // Until fonts are loaded and min duration has elapsed, keep returning null so the splash stays visible
+  if (!fontsLoaded || !minDelayDone) {
+    return null;
+  }
 
   return (
     <SafeAreaProvider>
