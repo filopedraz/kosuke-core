@@ -6,7 +6,7 @@ import { Stack } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect } from 'react';
+import React, { useCallback } from 'react';
 import { View } from 'react-native';
 import 'react-native-reanimated';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -49,13 +49,13 @@ const tokenCache = {
 function AppContent() {
   const { isDark, themeVars } = useTheme();
 
-  // Hide splash screen when fonts are loaded
-  useEffect(() => {
-    SplashScreen.hideAsync();
+  const onLayoutRootView = useCallback(async () => {
+    // Hide splash after first layout to avoid a white flash
+    await SplashScreen.hideAsync();
   }, []);
 
   return (
-    <View style={themeVars} className="flex-1">
+    <View style={themeVars} className="flex-1" onLayout={onLayoutRootView}>
       <Stack>
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="settings" options={{ headerShown: false }} />
@@ -71,11 +71,16 @@ function AppContent() {
 }
 
 export default function RootLayout() {
-  useFonts({
-    SpaceMono: '../assets/fonts/SpaceMono-Regular.ttf',
+  const [fontsLoaded] = useFonts({
+    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
 
   const publishableKey = Constants.expoConfig?.extra?.CLERK_PUBLISHABLE_KEY as string | undefined;
+
+  // Until fonts are loaded, keep returning null so the splash screen stays visible
+  if (!fontsLoaded) {
+    return null;
+  }
 
   return (
     <SafeAreaProvider>
