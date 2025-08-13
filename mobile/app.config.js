@@ -2,7 +2,7 @@ const isDevelopment = process.env.APP_VARIANT === 'development';
 
 const config = {
   expo: {
-    name: isDevelopment ? 'kosuke (Dev)' : 'kosuke',
+    name: isDevelopment ? 'Kosuke (Dev)' : 'Kosuke',
     slug: isDevelopment ? 'kosuke-dev' : 'kosuke',
     version: '1.0.0',
     orientation: 'portrait',

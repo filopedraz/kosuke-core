@@ -15,6 +15,7 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { useTheme } from '@/hooks/use-theme';
 
 import '../global.css';
+import '../sentry';
 
 // Prevent the splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
