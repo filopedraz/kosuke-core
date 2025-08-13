@@ -15,7 +15,15 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { useTheme } from '@/hooks/use-theme';
 
 import '../global.css';
-import '../sentry';
+import * as Sentry from 'sentry-expo';
+
+Sentry.init({
+  dsn: Constants.expoConfig?.extra?.SENTRY_DSN as string | undefined,
+  enableInExpoDevelopment: true,
+  debug: __DEV__,
+  tracesSampleRate: 1.0,
+  attachStacktrace: true,
+});
 
 // Prevent the splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
@@ -77,24 +85,24 @@ export default function RootLayout() {
   });
 
   const publishableKey = Constants.expoConfig?.extra?.CLERK_PUBLISHABLE_KEY as string | undefined;
-  const splashMinDurationMs = (Constants.expoConfig?.extra as any)?.SPLASH_MIN_DURATION_MS ?? 0;
+  const SPLASH_MIN_DURATION_MS = __DEV__ ? 1500 : 0; // local testing; set to 0 to disable
 
   // Track when we started to show the splash to enforce a minimum duration
   const splashStartRef = useRef<number>(Date.now());
   const [minDelayDone, setMinDelayDone] = useState<number>(
-    Number(splashMinDurationMs) <= 0 ? 1 : 0
+    Number(SPLASH_MIN_DURATION_MS) <= 0 ? 1 : 0
   );
 
   useEffect(() => {
     const elapsed = Date.now() - splashStartRef.current;
-    const remaining = Math.max(0, Number(splashMinDurationMs) - elapsed);
+    const remaining = Math.max(0, Number(SPLASH_MIN_DURATION_MS) - elapsed);
     if (remaining <= 0) {
       setMinDelayDone(1);
       return;
     }
     const id = setTimeout(() => setMinDelayDone(1), remaining);
     return () => clearTimeout(id);
-  }, [splashMinDurationMs]);
+  }, [SPLASH_MIN_DURATION_MS]);
 
   // Until fonts are loaded and min duration has elapsed, keep returning null so the splash stays visible
   if (!fontsLoaded || !minDelayDone) {
