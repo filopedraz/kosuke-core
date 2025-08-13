@@ -6,7 +6,7 @@ import { Stack } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 import 'react-native-reanimated';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -76,9 +76,27 @@ export default function RootLayout() {
   });
 
   const publishableKey = Constants.expoConfig?.extra?.CLERK_PUBLISHABLE_KEY as string | undefined;
+  const splashMinDurationMs = (Constants.expoConfig?.extra as any)?.SPLASH_MIN_DURATION_MS ?? 0;
 
-  // Until fonts are loaded, keep returning null so the splash screen stays visible
-  if (!fontsLoaded) {
+  // Track when we started to show the splash to enforce a minimum duration
+  const splashStartRef = useRef<number>(Date.now());
+  const [minDelayDone, setMinDelayDone] = useState<number>(
+    Number(splashMinDurationMs) <= 0 ? 1 : 0
+  );
+
+  useEffect(() => {
+    const elapsed = Date.now() - splashStartRef.current;
+    const remaining = Math.max(0, Number(splashMinDurationMs) - elapsed);
+    if (remaining <= 0) {
+      setMinDelayDone(1);
+      return;
+    }
+    const id = setTimeout(() => setMinDelayDone(1), remaining);
+    return () => clearTimeout(id);
+  }, [splashMinDurationMs]);
+
+  // Until fonts are loaded and min duration has elapsed, keep returning null so the splash stays visible
+  if (!fontsLoaded || !minDelayDone) {
     return null;
   }
 

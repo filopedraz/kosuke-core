@@ -56,6 +56,7 @@ const config = {
       eas: {
         projectId: 'c556b153-731f-4326-9bac-5ee2cf0150eb',
       },
+      SPLASH_MIN_DURATION_MS: isDevelopment ? 1500 : 0,
     },
     experiments: {
       typedRoutes: true,
