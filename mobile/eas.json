@@ -10,6 +10,7 @@
       "env": {
         "API_BASE_URL": "http://localhost:3000/api",
         "CLERK_PUBLISHABLE_KEY": "pk_test_cHJpbWFyeS1kb25rZXktNDkuY2xlcmsuYWNjb3VudHMuZGV2JA",
+        "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_test_cHJpbWFyeS1kb25rZXktNDkuY2xlcmsuYWNjb3VudHMuZGV2JA",
         "SENTRY_DSN": "https://9d63971f39fa9f4799e0a75224c46d05@o4508021471576064.ingest.de.sentry.io/4509820516761680"
       }
     },
@@ -18,6 +19,7 @@
       "env": {
         "API_BASE_URL": "https://kosuke.ai/api",
         "CLERK_PUBLISHABLE_KEY": "pk_live_Y2xlcmsua29zdWtlLmFpJA",
+        "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_live_Y2xlcmsua29zdWtlLmFpJA",
         "SENTRY_DSN": "https://9d63971f39fa9f4799e0a75224c46d05@o4508021471576064.ingest.de.sentry.io/4509820516761680"
       }
     }
