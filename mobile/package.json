@@ -12,7 +12,8 @@
     "clean:cache": "rm -rf .expo && rm -rf ios/ && xcrun simctl shutdown all && xcrun simctl erase all",
     "web": "expo start --web",
     "lint": "expo lint",
-    "ios": "expo run:ios"
+    "ios": "expo run:ios",
+    "ios:release:testflight": "APP_VARIANT=production npx eas build --platform ios --profile production --non-interactive --auto-submit"
   },
   "dependencies": {
     "@clerk/clerk-expo": "^2.14.14",
