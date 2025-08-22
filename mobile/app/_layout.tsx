@@ -6,7 +6,7 @@ import { Stack } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useEffect } from 'react';
 import { View } from 'react-native';
 import 'react-native-reanimated';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -57,13 +57,8 @@ const tokenCache = {
 function AppContent() {
   const { isDark, themeVars } = useTheme();
 
-  const onLayoutRootView = useCallback(async () => {
-    // Hide splash after first layout to avoid a white flash
-    await SplashScreen.hideAsync();
-  }, []);
-
   return (
-    <View style={themeVars} className="flex-1" onLayout={onLayoutRootView}>
+    <View style={themeVars} className="flex-1">
       <Stack>
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="settings" options={{ headerShown: false }} />
@@ -84,27 +79,31 @@ export default Sentry.wrap(function RootLayout() {
   });
 
   const publishableKey = Constants.expoConfig?.extra?.CLERK_PUBLISHABLE_KEY as string | undefined;
-  const SPLASH_MIN_DURATION_MS = __DEV__ ? 1500 : 0; // local testing; set to 0 to disable
 
-  // Track when we started to show the splash to enforce a minimum duration
-  const splashStartRef = useRef<number>(Date.now());
-  const [minDelayDone, setMinDelayDone] = useState<number>(
-    Number(SPLASH_MIN_DURATION_MS) <= 0 ? 1 : 0
-  );
-
+  // Simple Expo-recommended approach: hide splash when fonts are loaded
   useEffect(() => {
-    const elapsed = Date.now() - splashStartRef.current;
-    const remaining = Math.max(0, Number(SPLASH_MIN_DURATION_MS) - elapsed);
-    if (remaining <= 0) {
-      setMinDelayDone(1);
-      return;
-    }
-    const id = setTimeout(() => setMinDelayDone(1), remaining);
-    return () => clearTimeout(id);
-  }, [SPLASH_MIN_DURATION_MS]);
+    async function prepare() {
+      try {
+        // Keep splash visible while loading resources
+        await SplashScreen.preventAutoHideAsync();
 
-  // Until fonts are loaded and min duration has elapsed, keep returning null so the splash stays visible
-  if (!fontsLoaded || !minDelayDone) {
+        // Wait for fonts to load
+        if (fontsLoaded) {
+          // Add small delay for smooth transition
+          await new Promise(resolve => setTimeout(resolve, 500));
+          // Hide splash screen
+          await SplashScreen.hideAsync();
+        }
+      } catch (e) {
+        console.warn('Error with splash screen:', e);
+      }
+    }
+
+    prepare();
+  }, [fontsLoaded]);
+
+  // Show nothing until fonts are loaded
+  if (!fontsLoaded) {
     return null;
   }
 

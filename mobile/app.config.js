@@ -47,8 +47,12 @@ const config = {
           image: './assets/images/splash-icon-simple.png',
           imageWidth: 100,
           resizeMode: 'contain',
-          backgroundColor: '#0a0a0a',
+          backgroundColor: '#ffffff', // Light theme background
           hideNameInSplashScreen: true,
+          dark: {
+            image: './assets/images/splash-icon-simple.png',
+            backgroundColor: '#0a0a0a', // Dark theme background
+          },
         },
       ],
     ],
