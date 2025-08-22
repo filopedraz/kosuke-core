@@ -78,7 +78,6 @@ jobs:
         working-directory: mobile
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-          SENTRY_DISABLE_AUTO_UPLOAD: true
         run: |
           # Build iOS app for TestFlight
           eas build --platform ios --profile production --non-interactive --auto-submit

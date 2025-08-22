@@ -18,7 +18,8 @@
       "env": {
         "API_BASE_URL": "https://kosuke.ai/api",
         "CLERK_PUBLISHABLE_KEY": "pk_live_Y2xlcmsua29zdWtlLmFpJA",
-        "SENTRY_DSN": "https://9d63971f39fa9f4799e0a75224c46d05@o4508021471576064.ingest.de.sentry.io/4509820516761680"
+        "SENTRY_DSN": "https://9d63971f39fa9f4799e0a75224c46d05@o4508021471576064.ingest.de.sentry.io/4509820516761680",
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
       }
     }
   },
