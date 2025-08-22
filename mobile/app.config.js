@@ -33,7 +33,14 @@ const config = {
     },
     plugins: [
       'expo-router',
-      'sentry-expo',
+      [
+        '@sentry/react-native/expo',
+        {
+          url: 'https://sentry.io/',
+          project: 'kosuke-mobile',
+          organization: 'jo-and-ko',
+        },
+      ],
       [
         'expo-splash-screen',
         {

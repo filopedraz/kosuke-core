@@ -14,12 +14,11 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { useTheme } from '@/hooks/use-theme';
 
+import * as Sentry from '@sentry/react-native';
 import '../global.css';
-import * as Sentry from 'sentry-expo';
 
 Sentry.init({
   dsn: Constants.expoConfig?.extra?.SENTRY_DSN as string | undefined,
-  enableInExpoDevelopment: true,
   debug: __DEV__,
   tracesSampleRate: 1.0,
   attachStacktrace: true,
@@ -79,7 +78,7 @@ function AppContent() {
   );
 }
 
-export default function RootLayout() {
+export default Sentry.wrap(function RootLayout() {
   const [fontsLoaded] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
@@ -120,4 +119,4 @@ export default function RootLayout() {
       </ErrorBoundary>
     </SafeAreaProvider>
   );
-}
+});
