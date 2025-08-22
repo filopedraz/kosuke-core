@@ -3,8 +3,8 @@
 import { useAuth, useUser } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
 import { MenuView } from '@react-native-menu/menu';
+import * as Sentry from '@sentry/react-native';
 import { useRouter } from 'expo-router';
-import * as Sentry from 'sentry-expo';
 import React from 'react';
 import { Image, SafeAreaView, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 
@@ -119,13 +119,20 @@ export default function SettingsScreen() {
             <Text className="text-lg font-semibold text-card-foreground mb-6">Developer</Text>
             <TouchableOpacity
               onPress={() => {
-                Sentry.Native.captureException(new Error('Sentry test error')); // should appear in Sentry
+                Sentry.captureException(new Error('Sentry test error')); // should appear in Sentry
               }}
               className="bg-primary rounded-xl p-4 border border-border flex-row items-center justify-center"
               activeOpacity={0.7}
             >
-              <Ionicons name="bug-outline" size={20} color={colors.primaryForeground} style={{ marginRight: 8 }} />
-              <Text className="text-base font-semibold text-primary-foreground">Trigger Sentry Test Error</Text>
+              <Ionicons
+                name="bug-outline"
+                size={20}
+                color={colors.primaryForeground}
+                style={{ marginRight: 8 }}
+              />
+              <Text className="text-base font-semibold text-primary-foreground">
+                Trigger Sentry Test Error
+              </Text>
             </TouchableOpacity>
           </View>
         )}
