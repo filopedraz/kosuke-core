@@ -38,7 +38,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
           <Script
             defer
             data-domain="kosuke.ai"
-            src="https://plausible.joandko.io/js/script.js"
+            src="https://plausible.io/js/script.js"
             strategy="beforeInteractive"
           />
           <Providers>
