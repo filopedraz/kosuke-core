@@ -5,8 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { motion } from 'framer-motion';
 import { ArrowRight, Code2, Database, Lock, Rocket, Sparkles, Star, Zap } from 'lucide-react';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { FeaturesBentoGrid } from './components/features-bento-grid';
+import { PrivateAlphaModal } from './components/private-alpha-modal';
 
 // Developer-centric collaboration features
 const coreFeatures = [
@@ -40,6 +41,8 @@ const coreFeatures = [
 ];
 
 export default function HomePage() {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
   useEffect(() => {
     // Scroll to top on mount
     window.scrollTo(0, 0);
@@ -128,10 +131,7 @@ export default function HomePage() {
               size="lg"
               variant="outline"
               className="w-full sm:w-auto px-6 sm:px-8 py-3 font-mono"
-              onClick={() => {
-                const ctaSection = document.getElementById('cta-section');
-                ctaSection?.scrollIntoView({ behavior: 'smooth' });
-              }}
+              onClick={() => setIsModalOpen(true)}
             >
               <Code2 className="mr-2 h-4 w-4" />
               Join the Private Alpha
@@ -217,21 +217,17 @@ export default function HomePage() {
             </h2>
 
             <p className="text-base sm:text-lg text-muted-foreground mb-8 sm:mb-12 font-sans px-2">
-              Be part of the early group shaping the future of developer-centric collaboration.{' '}
-              <br />
-              Connect with me directly to get access.
+              Be part of the early group shaping the future of developer-centric collaboration.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
               <Button
                 size="lg"
                 className="w-full sm:w-auto px-6 sm:px-8 py-3 bg-emerald-500 hover:bg-emerald-600 text-black font-mono font-semibold"
-                onClick={() =>
-                  window.open('https://www.linkedin.com/in/filippo-pedrazzini-a5083b242/', '_blank')
-                }
+                onClick={() => setIsModalOpen(true)}
               >
                 <Star className="mr-2 h-4 w-4" />
-                Contact on LinkedIn
+                Get Access
               </Button>
               <Button
                 size="lg"
@@ -246,6 +242,9 @@ export default function HomePage() {
           </motion.div>
         </div>
       </section>
+
+      {/* Private Alpha Modal */}
+      <PrivateAlphaModal open={isModalOpen} onOpenChange={setIsModalOpen} />
     </div>
   );
 }

@@ -15,18 +15,11 @@
         "groups": [
           {
             "group": "Getting started",
-            "pages": [
-              "index",
-              "quickstart",
-              "development"
-            ]
+            "pages": ["index", "quickstart", "development"]
           },
           {
             "group": "Customization",
-            "pages": [
-              "essentials/settings",
-              "essentials/navigation"
-            ]
+            "pages": ["essentials/settings", "essentials/navigation"]
           },
           {
             "group": "Writing content",
@@ -39,11 +32,7 @@
           },
           {
             "group": "AI tools",
-            "pages": [
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
-            ]
+            "pages": ["ai-tools/cursor", "ai-tools/claude-code", "ai-tools/windsurf"]
           }
         ]
       },
@@ -52,9 +41,7 @@
         "groups": [
           {
             "group": "API documentation",
-            "pages": [
-              "api-reference/introduction"
-            ]
+            "pages": ["api-reference/introduction"]
           },
           {
             "group": "Endpoint examples",
@@ -106,16 +93,7 @@
     }
   },
   "contextual": {
-    "options": [
-     "copy",
-     "view",
-     "chatgpt",
-     "claude",
-     "perplexity",
-     "mcp",
-     "cursor",
-     "vscode"
-   ]
+    "options": ["copy", "view", "chatgpt", "claude", "perplexity", "mcp", "cursor", "vscode"]
   },
   "footer": {
     "socials": {
