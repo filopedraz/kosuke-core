@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Github, Twitter } from 'lucide-react';
+import { Github, Linkedin, Twitter } from 'lucide-react';
 import Link from 'next/link';
 
 export default function Footer() {
@@ -32,6 +32,15 @@ export default function Footer() {
           className="group transition-all duration-300"
         >
           <Twitter className="h-5 w-5 text-muted-foreground group-hover:text-foreground group-hover:scale-110 transition-all" />
+        </Link>
+        <Link
+          href="https://www.linkedin.com/in/filippo-pedrazzini-a5083b242/"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="LinkedIn"
+          className="group transition-all duration-300"
+        >
+          <Linkedin className="h-5 w-5 text-muted-foreground group-hover:text-foreground group-hover:scale-110 transition-all" />
         </Link>
       </div>
     </motion.footer>
