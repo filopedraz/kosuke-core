@@ -65,7 +65,7 @@
     "@types/bcryptjs": "^3.0.0",
     "@types/dockerode": "^3.3.35",
     "@types/marked": "^5.0.2",
-    "@types/node": "^22.15.2",
+    "@types/node": "^24.3.0",
     "@types/react": "19.1.2",
     "@types/react-dom": "19.1.2",
     "@types/uuid": "^10.0.0",
