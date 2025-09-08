@@ -1,6 +1,7 @@
 'use client';
 
 import { CheckCircle, Download, ExternalLink, Github, GitPullRequest, Loader2, RefreshCw, XCircle } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -20,8 +21,11 @@ import {
 import { usePreviewPanel } from '@/hooks/use-preview-panel';
 import { useDefaultBranchSettings } from '@/hooks/use-project-settings';
 import { usePullBranch } from '@/hooks/use-pull-branch';
+import type { PreviewViewMode } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import DownloadingModal from './downloading-modal';
+import PreviewIframeContainer from './preview-iframe-container';
+import ViewModeToggle from './view-mode-toggle';
 
 interface PreviewPanelProps {
   projectId: number;
@@ -38,6 +42,23 @@ export default function PreviewPanel({
   branch,
   className,
 }: PreviewPanelProps) {
+  // View mode state with localStorage persistence
+  const [viewMode, setViewMode] = useState<PreviewViewMode>('desktop');
+
+  // Load view mode from localStorage on mount
+  useEffect(() => {
+    const savedViewMode = localStorage.getItem('preview-view-mode') as PreviewViewMode;
+    if (savedViewMode === 'mobile' || savedViewMode === 'desktop') {
+      setViewMode(savedViewMode);
+    }
+  }, []);
+
+  // Handle view mode change and persist to localStorage
+  const handleViewModeChange = (mode: PreviewViewMode) => {
+    setViewMode(mode);
+    localStorage.setItem('preview-view-mode', mode);
+  };
+
   // Resolve effective session to use for preview: chat session if provided, else default branch
   const { data: defaultBranchSettings } = useDefaultBranchSettings(projectId);
   const effectiveSessionId = sessionId || defaultBranchSettings?.default_branch || '';
@@ -134,6 +155,11 @@ export default function PreviewPanel({
                 <p>{getTooltipMessage()}</p>
               </TooltipContent>
             </Tooltip>
+            <ViewModeToggle
+              viewMode={viewMode}
+              onViewModeChange={handleViewModeChange}
+              disabled={!isPreviewEnabled || status !== 'ready'}
+            />
           </div>
         <div className="flex items-center space-x-1">
           <DropdownMenu>
@@ -212,12 +238,11 @@ export default function PreviewPanel({
               )}
             </div>
           ) : previewUrl ? (
-            <iframe
-              key={iframeKey}
+            <PreviewIframeContainer
               src={previewUrl}
-              className="h-full w-full border-0"
               title={`Preview of ${projectName}`}
-              sandbox="allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-popups-to-escape-sandbox allow-presentation allow-same-origin allow-scripts allow-downloads"
+              viewMode={viewMode}
+              iframeKey={iframeKey}
             />
           ) : (
             <div className="flex h-full flex-col items-center justify-center p-4">

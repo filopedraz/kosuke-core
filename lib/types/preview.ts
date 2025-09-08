@@ -35,6 +35,9 @@ export interface PullResponse {
 export type PreviewStatus = 'loading' | 'ready' | 'error';
 export type BuildStatus = 'building' | 'compiling' | 'ready' | 'error';
 
+// Preview View Mode Types
+export type PreviewViewMode = 'desktop' | 'mobile';
+
 // Preview Panel State
 export interface PreviewPanelState {
   status: PreviewStatus;
