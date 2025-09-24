@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { motion } from 'framer-motion';
-import { ArrowRight, Code2, Database, Lock, Rocket, Sparkles, Star, Zap } from 'lucide-react';
+import { ArrowRight, Code2, Database, Lock, Sparkles, Star, Zap } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { FeaturesBentoGrid } from './components/features-bento-grid';
 import { PrivateAlphaModal } from './components/private-alpha-modal';
@@ -102,13 +102,14 @@ export default function HomePage() {
             </motion.div>
 
             <h1 className="text-3xl sm:text-5xl lg:text-7xl font-bold mb-4 sm:mb-6 leading-tight tracking-tight px-2">
-              Enabling REAL Collaboration
+              Start with AI. <br />
+              Finish with Engineers.
+              <br />
             </h1>
 
             <p className="text-base sm:text-lg lg:text-xl text-muted-foreground mb-6 sm:mb-8 max-w-2xl mx-auto font-sans px-2">
-              No more bullshit vibe-coding platforms promising to go to the moon. Let&apos;s be
-              honest and real. We need developers who can build and ship end-to-end products. But
-              non-developers can still contribute in a big way.
+              Turn ideas into real functional products, using AI for speed and Developers for
+              quality. No more endless prompt fixing, buggy code or unfinished projects.
             </p>
           </motion.div>
 
@@ -121,20 +122,12 @@ export default function HomePage() {
           >
             <Button
               size="lg"
-              className="w-full sm:w-auto px-6 sm:px-8 py-3 bg-emerald-500 hover:bg-emerald-600 text-black font-mono font-semibold"
-              onClick={() => window.open('https://github.com/filopedraz/kosuke-core', '_blank')}
-            >
-              <Rocket className="mr-2 h-4 w-4" />
-              git clone kosuke
-            </Button>
-            <Button
-              size="lg"
               variant="outline"
               className="w-full sm:w-auto px-6 sm:px-8 py-3 font-mono"
               onClick={() => setIsModalOpen(true)}
             >
               <Code2 className="mr-2 h-4 w-4" />
-              Join the Private Alpha
+              Apply for Early Access
             </Button>
           </motion.div>
         </div>
@@ -151,7 +144,7 @@ export default function HomePage() {
             transition={{ duration: 0.6 }}
           >
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-3 sm:mb-4 font-mono">
-              # Core Principles
+              Start shipping today
             </h2>
             <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto font-sans px-2">
               Developer-centric collaboration for product builders with different skills

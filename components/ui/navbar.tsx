@@ -33,6 +33,7 @@ import { cn } from '@/lib/utils';
 
 type NavbarProps = {
   variant?: 'standard' | 'project';
+  hideSignIn?: boolean;
   projectProps?: {
     projectName: string;
     currentView: 'preview' | 'code' | 'branding' | 'settings' | 'database';
@@ -50,7 +51,12 @@ type NavbarProps = {
   className?: string;
 };
 
-export default function Navbar({ variant = 'standard', projectProps, className }: NavbarProps) {
+export default function Navbar({
+  variant = 'standard',
+  hideSignIn = false,
+  projectProps,
+  className,
+}: NavbarProps) {
   const { clerkUser, dbUser, isLoaded, isSignedIn, imageUrl, displayName, initials } = useUser();
   const { signOut } = useClerk();
   const router = useRouter();
@@ -109,6 +115,10 @@ export default function Navbar({ variant = 'standard', projectProps, className }
           </DropdownMenuContent>
         </DropdownMenu>
       );
+    }
+
+    if (hideSignIn) {
+      return null;
     }
 
     return (
