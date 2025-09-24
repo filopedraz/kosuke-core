@@ -8,6 +8,7 @@ import { ArrowRight, Code2, Database, Lock, Sparkles, Star, Zap } from 'lucide-r
 import { useEffect, useState } from 'react';
 import { FeaturesBentoGrid } from './components/features-bento-grid';
 import { PrivateAlphaModal } from './components/private-alpha-modal';
+import { ReviewsMarquee } from './components/reviews-marquee';
 
 // Developer-centric collaboration features
 const coreFeatures = [
@@ -188,6 +189,9 @@ export default function HomePage() {
 
       {/* Bento Grid Features */}
       <FeaturesBentoGrid />
+
+      {/* Reviews Section */}
+      <ReviewsMarquee />
 
       {/* Private Alpha CTA */}
       <section id="cta-section" className="py-16 sm:py-32 pb-24 sm:pb-48 px-4 sm:px-6">
