@@ -85,7 +85,6 @@ export function FeaturesBentoGrid() {
                     </h3>
                   </div>
                   <p className="text-sm text-muted-foreground font-sans">
-                    Tired of fixing prompt after prompt, only to see nothing working in the end?
                     With Kosuke, you work smart: fast iteration with AI, then a senior developer
                     reviews and finishes what matters.
                   </p>
@@ -109,8 +108,8 @@ export function FeaturesBentoGrid() {
                     </h3>
                   </div>
                   <p className="text-sm text-muted-foreground font-sans">
-                    You always know what’s running. No hidden compute quotas, no surprise “resource
-                    limit reached”. If an app isn’t stable, you hear it from us; not after a crash.
+                    You always know what’s running. No hidden compute quotas. If an app isn’t
+                    stable, you hear it from us; not after a crash.
                   </p>
                 </CardContent>
               </Card>
