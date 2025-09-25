@@ -73,7 +73,7 @@ export function CoreFeaturesSection() {
           </p>
         </motion.div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-8 md:mt-16 *:text-center">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8 md:mt-16 *:text-center">
           {workflowSteps.map((step, index) => (
             <motion.div
               key={step.step}
@@ -82,19 +82,21 @@ export function CoreFeaturesSection() {
               viewport={{ once: true }}
               transition={{ duration: 0.6, delay: index * 0.1 }}
             >
-              <Card className="w-full border-none p-0 shadow-none">
+              <Card className="w-full border-none p-0 shadow-none h-full">
                 <MagicCard
                   gradientColor={theme === 'dark' ? '#262626' : '#D9D9D955'}
-                  className="p-0"
+                  className="p-0 h-full"
                 >
-                  <CardHeader className="pb-3">
+                  <CardHeader className="pb-4">
                     <CardDecorator>
                       <step.icon className="size-6" aria-hidden />
                     </CardDecorator>
-                    <h3 className="mt-6 font-medium">{step.title}</h3>
+                    <h3 className="mt-6 text-lg font-semibold">{step.title}</h3>
                   </CardHeader>
-                  <CardContent>
-                    <p className="text-sm">{step.description}</p>
+                  <CardContent className="pb-6">
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      {step.description}
+                    </p>
                   </CardContent>
                 </MagicCard>
               </Card>
