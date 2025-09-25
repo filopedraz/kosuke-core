@@ -1,5 +1,6 @@
 'use client';
 
+import { AuroraText } from '@/components/ui/aurora-text';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
@@ -48,7 +49,9 @@ export function HeroSection({ onApplyClick }: HeroSectionProps) {
 
           <h1 className="text-3xl sm:text-5xl lg:text-7xl font-bold mb-4 sm:mb-6 leading-tight tracking-tight px-2">
             Start with AI. <br />
-            Finish with Engineers.
+            Finish with{' '}
+            <AuroraText colors={['#10B981', '#22c55e', '#34D399', '#059669']}>Engineers</AuroraText>
+            .
             <br />
           </h1>
 
