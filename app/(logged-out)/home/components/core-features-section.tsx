@@ -56,52 +56,54 @@ export function CoreFeaturesSection() {
 
   return (
     <section className="bg-zinc-50 py-16 md:py-32 dark:bg-transparent">
-      <div className="@container mx-auto max-w-5xl px-6">
-        <motion.div
-          className="text-center"
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
-        >
-          <h2 className="text-balance text-4xl font-semibold lg:text-5xl">
-            Let Kosuke handle the hard stuff
-          </h2>
-          <p className="mt-4">
-            Smart retries, isolation safeguards, prompt linting, human-in-the-loop intervention;
-            fully managed.
-          </p>
-        </motion.div>
+      <div className="container mx-auto px-4 sm:px-6">
+        <div className="max-w-6xl mx-auto">
+          <motion.div
+            className="text-center"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+          >
+            <h2 className="text-balance text-4xl font-semibold lg:text-5xl">
+              Let Kosuke handle the hard stuff
+            </h2>
+            <p className="mt-4">
+              Smart retries, isolation safeguards, prompt linting, human-in-the-loop intervention;
+              fully managed.
+            </p>
+          </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8 md:mt-16 *:text-center">
-          {workflowSteps.map((step, index) => (
-            <motion.div
-              key={step.step}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6, delay: index * 0.1 }}
-            >
-              <Card className="w-full border-none p-0 shadow-none h-full">
-                <MagicCard
-                  gradientColor={theme === 'dark' ? '#262626' : '#D9D9D955'}
-                  className="p-0 h-full"
-                >
-                  <CardHeader className="pb-4">
-                    <CardDecorator>
-                      <step.icon className="size-6" aria-hidden />
-                    </CardDecorator>
-                    <h3 className="mt-6 text-lg font-semibold">{step.title}</h3>
-                  </CardHeader>
-                  <CardContent className="pb-6">
-                    <p className="text-sm text-muted-foreground leading-relaxed">
-                      {step.description}
-                    </p>
-                  </CardContent>
-                </MagicCard>
-              </Card>
-            </motion.div>
-          ))}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8 md:mt-16 *:text-center">
+            {workflowSteps.map((step, index) => (
+              <motion.div
+                key={step.step}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, delay: index * 0.1 }}
+              >
+                <Card className="w-full border-none p-0 shadow-none h-full">
+                  <MagicCard
+                    gradientColor={theme === 'dark' ? '#262626' : '#D9D9D955'}
+                    className="p-0 h-full"
+                  >
+                    <CardHeader className="pb-4">
+                      <CardDecorator>
+                        <step.icon className="size-6" aria-hidden />
+                      </CardDecorator>
+                      <h3 className="mt-6 text-lg font-semibold">{step.title}</h3>
+                    </CardHeader>
+                    <CardContent className="pb-6">
+                      <p className="text-sm text-muted-foreground leading-relaxed">
+                        {step.description}
+                      </p>
+                    </CardContent>
+                  </MagicCard>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
         </div>
       </div>
     </section>
