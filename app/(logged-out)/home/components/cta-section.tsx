@@ -47,8 +47,8 @@ export function CTASection({ onApplyClick }: CTASectionProps) {
             </h2>
 
             <p className="text-base sm:text-lg text-muted-foreground mb-8 sm:mb-12 font-sans px-2">
-              Want to use a tool that fixes what others ignore? We read every reply. Real feedback
-              shapes what we build next.
+              Want to use a tool that fixes what others ignore? We read every reply. <br /> Real
+              feedback shapes what we build next.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
