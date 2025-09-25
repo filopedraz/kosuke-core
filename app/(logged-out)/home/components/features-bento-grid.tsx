@@ -6,7 +6,7 @@ import { Database, Lock, Rocket } from 'lucide-react';
 
 export function FeaturesBentoGrid() {
   return (
-    <section className="py-12 sm:py-20 bg-muted/10">
+    <section className="py-12 sm:py-20">
       <div className="container mx-auto px-4 sm:px-6">
         <motion.div
           className="text-center mb-12 sm:mb-16"

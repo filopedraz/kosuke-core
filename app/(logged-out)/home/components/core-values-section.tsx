@@ -2,70 +2,47 @@
 
 import { Card, CardContent } from '@/components/ui/card';
 import { motion } from 'framer-motion';
-import { CheckCircle, Eye, Rocket, Shield } from 'lucide-react';
+import { CheckCircle, Eye, Rocket, Shield, Zap } from 'lucide-react';
 
 const coreValues = [
   {
     icon: Rocket,
     title: "Ship, Don't Demo",
     description: 'We care about finished, working products—not "almost done" prototypes.',
-    color: 'emerald',
+    colSpan: 'col-span-full sm:col-span-3 lg:col-span-2',
   },
   {
     icon: CheckCircle,
     title: 'Human-in-the-Loop',
     description:
       'AI kicks off, but senior engineers always check, fix, and sign off. Quality = trust.',
-    color: 'blue',
+    colSpan: 'col-span-full sm:col-span-3 lg:col-span-2',
   },
   {
     icon: Eye,
     title: 'Open and Transparent',
     description: 'No hidden quotas, no vendor lock-in. All code is open—yours to use or move.',
-    color: 'purple',
+    colSpan: 'col-span-full sm:col-span-3 lg:col-span-2',
   },
   {
     icon: Shield,
     title: 'Security by Design',
     description: 'Security first approach in every aspect of development and deployment.',
-    color: 'orange',
+    colSpan: 'col-span-full lg:col-span-3',
+  },
+  {
+    icon: Zap,
+    title: 'Lightning Fast',
+    description:
+      'Optimized performance and rapid deployment cycles ensure your projects move at the speed of business.',
+    colSpan: 'col-span-full lg:col-span-3',
   },
 ];
 
-const getColorClasses = (color: string) => {
-  const colorMap = {
-    emerald: {
-      bg: 'bg-emerald-500/10',
-      text: 'text-emerald-500',
-      border: 'border-emerald-500/20',
-      hoverBorder: 'hover:border-emerald-500/30',
-    },
-    blue: {
-      bg: 'bg-blue-500/10',
-      text: 'text-blue-500',
-      border: 'border-blue-500/20',
-      hoverBorder: 'hover:border-blue-500/30',
-    },
-    purple: {
-      bg: 'bg-purple-500/10',
-      text: 'text-purple-500',
-      border: 'border-purple-500/20',
-      hoverBorder: 'hover:border-purple-500/30',
-    },
-    orange: {
-      bg: 'bg-orange-500/10',
-      text: 'text-orange-500',
-      border: 'border-orange-500/20',
-      hoverBorder: 'hover:border-orange-500/30',
-    },
-  };
-  return colorMap[color as keyof typeof colorMap] || colorMap.emerald;
-};
-
 export function CoreValuesSection() {
   return (
-    <section className="py-16 sm:py-32 bg-muted/5">
-      <div className="container mx-auto px-4 sm:px-6">
+    <section className="bg-gray-50 py-16 md:py-32 dark:bg-transparent">
+      <div className="mx-auto max-w-5xl px-6">
         <motion.div
           className="text-center mb-12 sm:mb-16"
           initial={{ opacity: 0, y: 20 }}
@@ -81,39 +58,33 @@ export function CoreValuesSection() {
           </p>
         </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 max-w-5xl mx-auto">
-          {coreValues.map((value, index) => {
-            const colors = getColorClasses(value.color);
-            return (
+        <div className="relative">
+          <div className="relative z-10 grid grid-cols-6 gap-3 max-w-5xl mx-auto">
+            {coreValues.map((value, index) => (
               <motion.div
                 key={value.title}
+                className={`relative ${value.colSpan} overflow-hidden`}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.6, delay: index * 0.1 }}
               >
-                <Card
-                  className={`h-full border ${colors.border} ${colors.hoverBorder} bg-card/50 hover:bg-card/80 transition-all duration-300 group`}
-                >
-                  <CardContent className="p-6 sm:p-8">
-                    <div className="flex items-start gap-4 mb-4 sm:mb-6">
-                      <div className={`p-2 rounded-lg ${colors.bg} ${colors.text} flex-shrink-0`}>
-                        <value.icon className="h-5 w-5 sm:h-6 sm:w-6" />
-                      </div>
-                      <div>
-                        <h3 className="text-lg sm:text-xl font-semibold mb-2 sm:mb-3 font-mono">
-                          {value.title}
-                        </h3>
-                        <p className="text-sm sm:text-base text-muted-foreground font-sans leading-relaxed">
-                          {value.description}
-                        </p>
-                      </div>
+                <Card className="relative h-full overflow-hidden">
+                  <CardContent className="relative z-10 pt-6">
+                    <div className="relative flex aspect-square size-12 rounded-full border before:absolute before:-inset-2 before:rounded-full before:border dark:border-white/10 dark:before:border-white/5">
+                      <value.icon className="m-auto size-5" strokeWidth={1} />
+                    </div>
+                    <div className="mt-6 space-y-2">
+                      <h2 className="text-lg font-medium transition font-mono">{value.title}</h2>
+                      <p className="text-foreground font-sans leading-relaxed">
+                        {value.description}
+                      </p>
                     </div>
                   </CardContent>
                 </Card>
               </motion.div>
-            );
-          })}
+            ))}
+          </div>
         </div>
       </div>
     </section>
