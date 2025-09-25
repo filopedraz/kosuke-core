@@ -7,38 +7,32 @@ const reviews = [
   {
     name: 'Jack',
     username: '@jack',
-    body: "I've never seen anything like this before. It's amazing. I love it.",
+    body: 'At first, it seemed easy… but correcting AI code wastes so much time.',
     img: 'https://avatar.vercel.sh/jack',
   },
   {
     name: 'Jill',
     username: '@jill',
-    body: "I don't know what to say. I'm speechless. This is amazing.",
+    body: "I'm unsure about product stability.",
     img: 'https://avatar.vercel.sh/jill',
   },
   {
     name: 'John',
     username: '@john',
-    body: "I'm at a loss for words. This is amazing. I love it.",
+    body: 'Not capable for large codebases.',
     img: 'https://avatar.vercel.sh/john',
   },
   {
     name: 'Jane',
     username: '@jane',
-    body: "I'm at a loss for words. This is amazing. I love it.",
+    body: "Honestly they're all the same. Can't build anything meaningful.",
     img: 'https://avatar.vercel.sh/jane',
   },
   {
     name: 'Jenny',
     username: '@jenny',
-    body: "I'm at a loss for words. This is amazing. I love it.",
+    body: 'I need something that builds apps without endless fixing.',
     img: 'https://avatar.vercel.sh/jenny',
-  },
-  {
-    name: 'James',
-    username: '@james',
-    body: "I'm at a loss for words. This is amazing. I love it.",
-    img: 'https://avatar.vercel.sh/james',
   },
 ];
 
@@ -84,10 +78,10 @@ export function ReviewsMarquee() {
       <div className="container mx-auto px-4 sm:px-6">
         <div className="text-center mb-12 sm:mb-16">
           <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-3 sm:mb-4 font-mono">
-            # What People Are Saying
+            What you Told Us
           </h2>
           <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto font-sans px-2">
-            Developers and product builders sharing their experience with Kosuke
+            Real Customer Voices
           </p>
         </div>
 
