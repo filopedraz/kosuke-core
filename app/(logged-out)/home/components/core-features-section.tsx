@@ -65,12 +65,12 @@ export function CoreFeaturesSection() {
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
           >
-            <h2 className="text-balance text-4xl font-semibold lg:text-5xl">
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-3 sm:mb-4 font-mono">
               Let Kosuke handle the hard stuff
             </h2>
-            <p className="mt-4">
-              Smart retries, isolation safeguards, prompt linting, human-in-the-loop intervention;
-              fully managed.
+            <p className="text-base sm:text-lg text-muted-foreground max-w-3xl mx-auto font-sans px-2">
+              Smart retries, isolation safeguards, prompt linting, human-in-the-loop intervention.
+              Fully managed.
             </p>
           </motion.div>
 
