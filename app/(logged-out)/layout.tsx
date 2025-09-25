@@ -8,7 +8,8 @@ import Navbar from '@/components/ui/navbar';
 
 export default function LoggedOutLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isHomePage = pathname === '/home';
+  const isHomePage =
+    pathname === '/home' || pathname === '/' || pathname === '/terms' || pathname === '/privacy';
 
   return (
     <div className="flex flex-col min-h-screen">
