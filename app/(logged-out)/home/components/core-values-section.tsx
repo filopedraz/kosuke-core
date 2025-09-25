@@ -41,7 +41,7 @@ const coreValues = [
 
 export function CoreValuesSection() {
   return (
-    <section className="bg-gray-50 py-16 md:py-32 dark:bg-transparent">
+    <section className="bg-muted/50 py-16 md:py-32 dark:bg-transparent">
       <div className="container mx-auto px-4 sm:px-6">
         <div className="max-w-6xl mx-auto">
           <motion.div

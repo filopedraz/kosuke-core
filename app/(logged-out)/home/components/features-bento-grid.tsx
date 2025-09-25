@@ -34,12 +34,12 @@ export function FeaturesBentoGrid() {
               viewport={{ once: true }}
               transition={{ duration: 0.6 }}
             >
-              <Card className="h-full p-6 sm:p-8 bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 border-emerald-500/20 hover:border-emerald-500/30 transition-all duration-300">
+              <Card className="h-full p-6 sm:p-8 bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20 hover:border-primary/30 transition-all duration-300">
                 <CardContent className="p-0 h-full flex flex-col justify-between">
                   <div>
                     <div className="flex items-center gap-3 mb-4 sm:mb-6">
-                      <div className="p-2 rounded-lg bg-emerald-500/20">
-                        <Rocket className="h-5 w-5 sm:h-6 sm:w-6 text-emerald-500" />
+                      <div className="p-2 rounded-lg bg-primary/20">
+                        <Rocket className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
                       </div>
                       <h3 className="text-lg sm:text-xl font-semibold font-mono">
                         No More AI Loop Fatigue
@@ -52,15 +52,15 @@ export function FeaturesBentoGrid() {
                     </p>
                   </div>
                   <div className="space-y-2 text-sm font-mono">
-                    <div className="flex justify-between text-emerald-500">
+                    <div className="flex justify-between text-primary">
                       <span>SDLC</span>
                       <span>Preserved</span>
                     </div>
-                    <div className="flex justify-between text-emerald-500">
+                    <div className="flex justify-between text-primary">
                       <span>PRs</span>
                       <span>Required</span>
                     </div>
-                    <div className="flex justify-between text-emerald-500">
+                    <div className="flex justify-between text-primary">
                       <span>Contributors</span>
                       <span>Developers + Builders</span>
                     </div>
@@ -79,7 +79,7 @@ export function FeaturesBentoGrid() {
               <Card className="h-full p-4 sm:p-6 bg-card/50 border-border/50 hover:bg-card/80 transition-all duration-300">
                 <CardContent className="p-0">
                   <div className="flex items-center gap-2 mb-3 sm:mb-4">
-                    <Lock className="h-4 w-4 sm:h-5 sm:w-5 text-blue-500" />
+                    <Lock className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                     <h3 className="text-base sm:text-lg font-semibold font-mono">
                       Get Unblocked, Fast
                     </h3>
@@ -102,14 +102,14 @@ export function FeaturesBentoGrid() {
               <Card className="h-full p-4 sm:p-6 bg-card/50 border-border/50 hover:bg-card/80 transition-all duration-300">
                 <CardContent className="p-0">
                   <div className="flex items-center gap-2 mb-3 sm:mb-4">
-                    <Database className="h-4 w-4 sm:h-5 sm:w-5 text-purple-500" />
+                    <Database className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                     <h3 className="text-base sm:text-lg font-semibold font-mono">
                       Clarity About Limits
                     </h3>
                   </div>
                   <p className="text-sm text-muted-foreground font-sans">
-                    You always know what’s running. No hidden compute quotas. If an app isn’t
-                    stable, you hear it from us; not after a crash.
+                    You always know what&apos;s running. No hidden compute quotas. If an app
+                    isn&apos;t stable, you hear it from us; not after a crash.
                   </p>
                 </CardContent>
               </Card>
@@ -123,13 +123,13 @@ export function FeaturesBentoGrid() {
               viewport={{ once: true }}
               transition={{ duration: 0.6, delay: 0.3 }}
             >
-              <Card className="h-full p-4 sm:p-6 bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border-yellow-500/20 hover:border-yellow-500/30 transition-all duration-300">
+              <Card className="h-full p-4 sm:p-6 bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20 hover:border-primary/30 transition-all duration-300">
                 <CardContent className="p-0">
                   <div className="flex items-center justify-between mb-3 sm:mb-4">
                     <div className="flex items-center gap-2">
-                      <Rocket className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-500" />
+                      <Rocket className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                       <h3 className="text-base sm:text-lg font-semibold font-mono">
-                        Keep What Works, Skip What Doesn’t
+                        Keep What Works, Skip What Doesn&apos;t
                       </h3>
                     </div>
                   </div>
