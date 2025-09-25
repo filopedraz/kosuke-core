@@ -1,6 +1,5 @@
 'use client';
 
-import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { motion } from 'framer-motion';
 import { Database, Lock, Rocket } from 'lucide-react';
@@ -17,12 +16,11 @@ export function FeaturesBentoGrid() {
           transition={{ duration: 0.6 }}
         >
           <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-3 sm:mb-4 font-mono">
-            # Bottom-Up Approach
+            Let Kosuke handle the hard stuff
           </h2>
           <p className="text-base sm:text-lg text-muted-foreground max-w-3xl mx-auto font-sans px-2">
-            We are not going to throw out software development best practices and lifecycle because
-            of AI. We won’t skip pull requests or commit straight to main. Keep a developer-first
-            experience while empowering non-developers to contribute as product builders.
+            Smart retries, isolation safeguards, prompt linting, human-in-the-loop intervention.{' '}
+            <br /> Fully managed.
           </p>
         </motion.div>
 
@@ -44,13 +42,13 @@ export function FeaturesBentoGrid() {
                         <Rocket className="h-5 w-5 sm:h-6 sm:w-6 text-emerald-500" />
                       </div>
                       <h3 className="text-lg sm:text-xl font-semibold font-mono">
-                        Bottom-Up Approach
+                        No More AI Loop Fatigue
                       </h3>
                     </div>
                     <p className="text-sm sm:text-base text-muted-foreground font-sans mb-4 sm:mb-6 leading-relaxed">
-                      Code remains the source of truth. Keep PRs, reviews, and a proper SDLC. The
-                      goal is to increase contributions across the same repository without
-                      sacrificing rigor.
+                      Tired of fixing prompt after prompt, only to see nothing working in the end?
+                      With Kosuke, you work smart: fast iteration with AI, then a senior developer
+                      reviews and finishes what matters.
                     </p>
                   </div>
                   <div className="space-y-2 text-sm font-mono">
@@ -83,12 +81,13 @@ export function FeaturesBentoGrid() {
                   <div className="flex items-center gap-2 mb-3 sm:mb-4">
                     <Lock className="h-4 w-4 sm:h-5 sm:w-5 text-blue-500" />
                     <h3 className="text-base sm:text-lg font-semibold font-mono">
-                      Keep Best Practices
+                      Get Unblocked, Fast
                     </h3>
                   </div>
                   <p className="text-sm text-muted-foreground font-sans">
-                    Don’t bypass reviews or quality gates. Maintain tests, CI, and a healthy
-                    branching strategy.
+                    Tired of fixing prompt after prompt, only to see nothing working in the end?
+                    With Kosuke, you work smart: fast iteration with AI, then a senior developer
+                    reviews and finishes what matters.
                   </p>
                 </CardContent>
               </Card>
@@ -106,12 +105,12 @@ export function FeaturesBentoGrid() {
                   <div className="flex items-center gap-2 mb-3 sm:mb-4">
                     <Database className="h-4 w-4 sm:h-5 sm:w-5 text-purple-500" />
                     <h3 className="text-base sm:text-lg font-semibold font-mono">
-                      Developer-First
+                      Clarity About Limits
                     </h3>
                   </div>
                   <p className="text-sm text-muted-foreground font-sans">
-                    Code is the single source of truth. AI augments workflows without replacing
-                    engineering ownership.
+                    You always know what’s running. No hidden compute quotas, no surprise “resource
+                    limit reached”. If an app isn’t stable, you hear it from us; not after a crash.
                   </p>
                 </CardContent>
               </Card>
@@ -131,16 +130,13 @@ export function FeaturesBentoGrid() {
                     <div className="flex items-center gap-2">
                       <Rocket className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-500" />
                       <h3 className="text-base sm:text-lg font-semibold font-mono">
-                        Empower Contributors
+                        Keep What Works, Skip What Doesn’t
                       </h3>
                     </div>
-                    <Badge variant="outline" className="font-mono text-xs">
-                      Git-native
-                    </Badge>
                   </div>
                   <p className="text-sm text-muted-foreground font-sans">
-                    Enable non-developers to contribute safely to the same repository, evolving into
-                    product builders with workflows that respect the repo.
+                    You want easy UI, local LLM compatibility, meaningful results—not hype. Kosuke
+                    is clean, supports your workflow, and keeps codebase bloat away.
                   </p>
                 </CardContent>
               </Card>

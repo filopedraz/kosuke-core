@@ -15,29 +15,28 @@ import { ReviewsMarquee } from './components/reviews-marquee';
 const coreFeatures = [
   {
     icon: Code2,
-    title: 'Developer First Experience',
-    description:
-      'Bottom-up, first principles approach. Code remains the source of truth with full developer control.',
+    title: 'Describe what you want to build',
+    description: 'Website, workflow, automation; be specific, we’ll translate to working steps.',
     metrics: 'Code-centric',
   },
   {
     icon: Lock,
-    title: 'Unlock Collaboration',
-    description:
-      'Enable non-devs to contribute to the same repo without replacing developers or designers.',
+    title: 'AI fast builds your draft',
+    description: 'Kosuke Templates help you prototype quickly.',
     metrics: 'Team-friendly',
   },
   {
     icon: Database,
-    title: 'Break Down Silos',
+    title: 'Get real help; only when/if you need it',
     description:
-      'Tools designed for product builders with different skills, not just one category or the other.',
+      'Stuck? Ask a developer. We’ll review, fix bugs, and ensure your project works; when you need it, just request support.',
     metrics: 'Cross-functional',
   },
   {
     icon: Zap,
-    title: 'Preserve Dev Workflow',
-    description: 'Keep pull requests, code reviews, and proper development lifecycle intact.',
+    title: 'Ship a working product you own',
+    description:
+      'When done, your project is fully exportable, open, and truly yours. No lock-in, no hidden traps.',
     metrics: 'Git-native',
   },
 ];
@@ -149,7 +148,7 @@ export default function HomePage() {
               Start shipping today
             </h2>
             <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto font-sans px-2">
-              Developer-centric collaboration for product builders with different skills
+              Prototype fast, get expert support, ship your product; no strings attached.
             </p>
           </motion.div>
 
