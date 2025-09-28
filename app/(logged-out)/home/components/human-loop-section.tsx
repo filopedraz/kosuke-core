@@ -1,12 +1,130 @@
 'use client';
 
 import { AuroraText } from '@/components/ui/aurora-text';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { motion } from 'framer-motion';
-import { ArrowUp, Paperclip, Sparkles } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { ArrowUp, Paperclip, Sparkles, User } from 'lucide-react';
+import { useEffect, useState } from 'react';
+
+type AnimationStep =
+  | 'idle'
+  | 'userTyping'
+  | 'userSending'
+  | 'aiResponse'
+  | 'userComplaintTyping'
+  | 'userComplaintSending'
+  | 'helpButtonActive'
+  | 'cursorHover'
+  | 'cursorClick'
+  | 'humanHelp';
+
+interface ChatMessage {
+  id: string;
+  role: 'user' | 'ai' | 'human';
+  content: string;
+  isTyping?: boolean;
+}
 
 export function HumanLoopSection() {
+  const [currentStep, setCurrentStep] = useState<AnimationStep>('idle');
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [textareaTypingText, setTextareaTypingText] = useState('');
+  const [isHelpButtonPulsing, setIsHelpButtonPulsing] = useState(false);
+  const [showCursor, setShowCursor] = useState(false);
+  const [cursorPosition, setCursorPosition] = useState({ x: 0, y: 0 });
+
+  const userMessage = 'I need to add authentication to my app.';
+  const aiMessage =
+    'Perfect! Your authentication is now working correctly. Everything should be functioning as expected.';
+  const userComplaintMessage = "No bro, doesn't fucking work!";
+
+  // Animation sequence
+  useEffect(() => {
+    const sequence = async () => {
+      // Reset
+      setMessages([]);
+      setTextareaTypingText('');
+      setCurrentStep('idle');
+      setIsHelpButtonPulsing(false);
+
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Step 1: User typing first message in textarea
+      setCurrentStep('userTyping');
+      for (let i = 0; i <= userMessage.length; i++) {
+        setTextareaTypingText(userMessage.slice(0, i));
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Step 2: Send first user message
+      setCurrentStep('userSending');
+      setMessages([{ id: '1', role: 'user', content: userMessage }]);
+      setTextareaTypingText('');
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Step 3: AI response
+      setCurrentStep('aiResponse');
+      setMessages(prev => [...prev, { id: '2', role: 'ai', content: aiMessage }]);
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // Step 4: User complaint typing in textarea
+      setCurrentStep('userComplaintTyping');
+      for (let i = 0; i <= userComplaintMessage.length; i++) {
+        setTextareaTypingText(userComplaintMessage.slice(0, i));
+        await new Promise(resolve => setTimeout(resolve, 80));
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Step 5: Send the complaint message
+      setCurrentStep('userComplaintSending');
+      setMessages(prev => [...prev, { id: '3', role: 'user', content: userComplaintMessage }]);
+      setTextareaTypingText('');
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // Step 6: Help button becomes active
+      setCurrentStep('helpButtonActive');
+      setIsHelpButtonPulsing(true);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Step 7: Show cursor and animate to Help Me button
+      setCurrentStep('cursorHover');
+      setShowCursor(true);
+      // Animate cursor to Help Me button position
+      setCursorPosition({ x: 300, y: -50 });
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Step 8: Cursor click animation
+      setCurrentStep('cursorClick');
+      setIsHelpButtonPulsing(false);
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Step 9: Show human help and hide cursor
+      setCurrentStep('humanHelp');
+      setShowCursor(false);
+      setMessages(prev => [
+        ...prev,
+        {
+          id: '4',
+          role: 'human',
+          content:
+            "Hi! I'm Sarah, a senior engineer. I can see the issue in your auth flow. Let me fix this for you right now.",
+        },
+      ]);
+
+      await new Promise(resolve => setTimeout(resolve, 3000));
+
+      // Loop back
+      sequence();
+    };
+
+    sequence();
+  }, []);
+
   return (
     <section className="py-16 sm:py-24 lg:py-32 relative overflow-hidden">
       <div className="container mx-auto px-4 sm:px-6">
@@ -81,7 +199,32 @@ export function HumanLoopSection() {
               <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 via-transparent to-blue-500/5 rounded-2xl blur-3xl" />
 
               {/* Chat Interface Container */}
-              <div className="relative bg-background/80 backdrop-blur-xl border border-border/50 rounded-2xl p-6 shadow-2xl">
+              <div className="relative bg-background/80 backdrop-blur-xl border border-border/50 rounded-2xl p-6 shadow-2xl h-96 flex flex-col">
+                {/* Animated Cursor */}
+                <AnimatePresence>
+                  {showCursor && (
+                    <motion.div
+                      className="absolute w-6 h-6 pointer-events-none z-50"
+                      initial={{ opacity: 0, x: 0, y: 0 }}
+                      animate={{
+                        opacity: 1,
+                        x: cursorPosition.x,
+                        y: cursorPosition.y,
+                        scale: currentStep === 'cursorClick' ? 0.8 : 1,
+                      }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.8, ease: 'easeInOut' }}
+                    >
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                        className="w-6 h-6 text-foreground drop-shadow-lg"
+                      >
+                        <path d="M3 3L10.07 19.97L12.58 12.58L19.97 10.07L3 3Z" />
+                      </svg>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
                 {/* Header with Help Me button */}
                 <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center gap-2">
@@ -93,7 +236,9 @@ export function HumanLoopSection() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="font-mono text-xs bg-emerald-500/10 border-emerald-500/20 text-emerald-600 hover:bg-emerald-500/20 hover:border-emerald-500/40 transition-all duration-300 cursor-default"
+                    className={`font-mono text-xs bg-emerald-500/10 border-emerald-500/20 text-emerald-600 hover:bg-emerald-500/20 hover:border-emerald-500/40 transition-all duration-300 cursor-default ${
+                      isHelpButtonPulsing ? 'animate-pulse ring-2 ring-emerald-500/50' : ''
+                    }`}
                     disabled
                   >
                     <Sparkles className="w-3 h-3 mr-1" />
@@ -101,51 +246,79 @@ export function HumanLoopSection() {
                   </Button>
                 </div>
 
-                {/* Mock Chat Messages */}
-                <div className="space-y-4 mb-6 max-h-48 overflow-hidden">
-                  {/* User Message */}
-                  <div className="flex justify-end">
-                    <div className="bg-primary text-primary-foreground px-4 py-2 rounded-2xl rounded-br-md max-w-xs font-sans text-sm">
-                      I need help building a task management app with React and Node.js
-                    </div>
-                  </div>
-
-                  {/* AI Response */}
-                  <div className="flex justify-start">
-                    <div className="bg-muted px-4 py-2 rounded-2xl rounded-bl-md max-w-xs font-sans text-sm">
-                      Perfect! I&rsquo;ll help you build that. Let me start with the React frontend
-                      and then connect you with one of our engineers for the backend integration.
-                    </div>
-                  </div>
-
-                  {/* Typing indicator */}
-                  <div className="flex justify-start">
-                    <div className="bg-muted px-4 py-3 rounded-2xl rounded-bl-md">
-                      <div className="flex space-x-1">
-                        <div className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-bounce" />
-                        <div
-                          className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-bounce"
-                          style={{ animationDelay: '0.1s' }}
-                        />
-                        <div
-                          className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-bounce"
-                          style={{ animationDelay: '0.2s' }}
-                        />
-                      </div>
-                    </div>
+                {/* Animated Chat Messages */}
+                <div className="space-y-4 mb-6 flex-1 overflow-hidden flex flex-col justify-end">
+                  <div className="space-y-4">
+                    <AnimatePresence mode="popLayout">
+                      {/* Render messages */}
+                      {messages.map(message => (
+                        <motion.div
+                          key={message.id}
+                          className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.2 }}
+                        >
+                          <div
+                            className={`px-4 py-2 rounded-2xl max-w-xs font-sans text-sm ${
+                              message.role === 'user'
+                                ? 'bg-primary text-primary-foreground rounded-br-md'
+                                : message.role === 'ai'
+                                  ? 'bg-muted rounded-bl-md'
+                                  : 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 rounded-bl-md relative'
+                            }`}
+                          >
+                            {message.role === 'human' && message.id === '4' && (
+                              <Badge className="absolute -top-2 -left-2 bg-emerald-500 text-white text-xs px-2 py-0.5">
+                                <User className="w-3 h-3 mr-1" />
+                                Human
+                              </Badge>
+                            )}
+                            {message.content}
+                          </div>
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
                   </div>
                 </div>
 
                 {/* Mock Chat Input */}
-                <div className="relative">
-                  <div className="relative flex flex-col rounded-lg border border-border/50 transition-colors shadow-lg bg-background/50 backdrop-blur-sm">
+                <div className="relative mt-auto">
+                  <div
+                    className={`relative flex flex-col rounded-lg border transition-all duration-300 shadow-lg bg-background/50 backdrop-blur-sm ${
+                      currentStep === 'userTyping' || currentStep === 'userComplaintTyping'
+                        ? 'border-primary/50 shadow-primary/20'
+                        : 'border-border/50'
+                    }`}
+                  >
                     <Textarea
-                      value=""
-                      placeholder="Describe your project idea..."
+                      value={
+                        currentStep === 'userTyping' || currentStep === 'userComplaintTyping'
+                          ? textareaTypingText
+                          : ''
+                      }
+                      placeholder={
+                        currentStep === 'userTyping' || currentStep === 'userComplaintTyping'
+                          ? ''
+                          : 'Describe your project idea...'
+                      }
                       disabled
-                      className="min-h-[100px] resize-none border-0 !bg-transparent px-3 py-3 shadow-none focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 text-sm cursor-not-allowed opacity-75"
+                      className={`min-h-[100px] resize-none border-0 !bg-transparent px-3 py-3 shadow-none focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 text-sm cursor-not-allowed ${
+                        currentStep === 'userTyping' || currentStep === 'userComplaintTyping'
+                          ? 'opacity-100 text-foreground'
+                          : 'opacity-75'
+                      }`}
                       rows={5}
                     />
+                    {/* Typing cursor for textarea */}
+                    {(currentStep === 'userTyping' || currentStep === 'userComplaintTyping') && (
+                      <span
+                        className="absolute top-3 animate-pulse text-foreground"
+                        style={{ left: `${3 + textareaTypingText.length * 7.2}px` }}
+                      >
+                        |
+                      </span>
+                    )}
 
                     <div className="flex items-center gap-2 px-3 absolute bottom-3 right-0">
                       <div className="flex gap-1">
