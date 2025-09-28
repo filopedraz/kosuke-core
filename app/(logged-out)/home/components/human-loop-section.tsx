@@ -199,7 +199,7 @@ export function HumanLoopSection() {
               <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 via-transparent to-blue-500/5 rounded-2xl blur-3xl" />
 
               {/* Chat Interface Container */}
-              <div className="relative bg-background/80 backdrop-blur-xl border border-border/50 rounded-2xl p-6 shadow-2xl h-96 flex flex-col">
+              <div className="relative bg-background/80 backdrop-blur-xl border border-border/50 rounded-2xl p-6 shadow-2xl h-[550px] flex flex-col">
                 {/* Animated Cursor */}
                 <AnimatePresence>
                   {showCursor && (
@@ -247,7 +247,7 @@ export function HumanLoopSection() {
                 </div>
 
                 {/* Animated Chat Messages */}
-                <div className="space-y-4 mb-6 flex-1 overflow-hidden flex flex-col justify-end">
+                <div className="space-y-4 mb-6 flex-1 overflow-hidden flex flex-col justify-start">
                   <div className="space-y-4">
                     <AnimatePresence mode="popLayout">
                       {/* Render messages */}
