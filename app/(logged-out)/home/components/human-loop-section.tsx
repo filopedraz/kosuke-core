@@ -1,7 +1,6 @@
 'use client';
 
 import { AuroraText } from '@/components/ui/aurora-text';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -264,10 +263,12 @@ export function HumanLoopSection() {
                             }`}
                           >
                             {message.role === 'human' && message.id === '4' && (
-                              <Badge className="absolute -top-2 -left-2 bg-emerald-500 text-white text-xs px-2 py-0.5">
-                                <User className="w-3 h-3 mr-1" />
-                                Human
-                              </Badge>
+                              <div className="flex items-center gap-2 mb-2">
+                                <div className="flex items-center gap-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 px-2 py-1 rounded-full text-xs font-medium">
+                                  <User className="w-3 h-3" />
+                                  Human Engineer
+                                </div>
+                              </div>
                             )}
                             {message.content}
                           </div>
