@@ -36,7 +36,7 @@ export function HumanLoopSection() {
   const userMessage = 'I need to add authentication to my app.';
   const aiMessage =
     'Perfect! Your authentication is now working correctly. Everything should be functioning as expected.';
-  const userComplaintMessage = "No bro, doesn't fucking work!";
+  const userComplaintMessage = "No bro, doesn't work!!!";
 
   // Animation sequence
   useEffect(() => {
