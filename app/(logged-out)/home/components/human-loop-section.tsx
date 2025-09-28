@@ -33,7 +33,6 @@ export function HumanLoopSection() {
   const [textareaTypingText, setTextareaTypingText] = useState('');
   const [isHelpButtonPulsing, setIsHelpButtonPulsing] = useState(false);
   const [showCursor, setShowCursor] = useState(false);
-  const [cursorPosition, setCursorPosition] = useState({ x: 0, y: 0 });
 
   const userMessage = 'I need to add authentication to my app.';
   const aiMessage =
@@ -91,11 +90,9 @@ export function HumanLoopSection() {
       setIsHelpButtonPulsing(true);
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      // Step 7: Show cursor and animate to Help Me button
+      // Step 7: Show cursor on Help Me button
       setCurrentStep('cursorHover');
       setShowCursor(true);
-      // Animate cursor to Help Me button position
-      setCursorPosition({ x: 300, y: -50 });
       await new Promise(resolve => setTimeout(resolve, 1000));
 
       // Step 8: Cursor click animation
@@ -112,7 +109,7 @@ export function HumanLoopSection() {
           id: '4',
           role: 'human',
           content:
-            "Hi! I'm Sarah, a senior engineer. I can see the issue in your auth flow. Let me fix this for you right now.",
+            "Hi! I'm Pietro, a senior engineer. I can see the issue in your auth flow. Let me fix this for you right now.",
         },
       ]);
 
@@ -204,16 +201,14 @@ export function HumanLoopSection() {
                 <AnimatePresence>
                   {showCursor && (
                     <motion.div
-                      className="absolute w-6 h-6 pointer-events-none z-50"
-                      initial={{ opacity: 0, x: 0, y: 0 }}
+                      className="absolute w-6 h-6 pointer-events-none z-50 top-8 right-12"
+                      initial={{ opacity: 0 }}
                       animate={{
                         opacity: 1,
-                        x: cursorPosition.x,
-                        y: cursorPosition.y,
                         scale: currentStep === 'cursorClick' ? 0.8 : 1,
                       }}
                       exit={{ opacity: 0 }}
-                      transition={{ duration: 0.8, ease: 'easeInOut' }}
+                      transition={{ duration: 0.3, ease: 'easeInOut' }}
                     >
                       <svg
                         viewBox="0 0 24 24"
