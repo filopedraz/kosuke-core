@@ -310,15 +310,6 @@ export function HumanLoopSection() {
                       }`}
                       rows={5}
                     />
-                    {/* Typing cursor for textarea */}
-                    {(currentStep === 'userTyping' || currentStep === 'userComplaintTyping') && (
-                      <span
-                        className="absolute top-3 animate-pulse text-foreground"
-                        style={{ left: `${3 + textareaTypingText.length * 7.2}px` }}
-                      >
-                        |
-                      </span>
-                    )}
 
                     <div className="flex items-center gap-2 px-3 absolute bottom-3 right-0">
                       <div className="flex gap-1">
