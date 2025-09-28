@@ -1,5 +1,6 @@
 'use client';
 
+import { AuroraText } from '@/components/ui/aurora-text';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { MagicCard } from '@/components/ui/magic-card';
 import { motion } from 'framer-motion';
@@ -66,7 +67,11 @@ export function CoreFeaturesSection() {
             transition={{ duration: 0.6 }}
           >
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-3 sm:mb-4 font-mono">
-              Let Kosuke handle the hard stuff
+              Start{' '}
+              <AuroraText colors={['#10B981', '#22c55e', '#34D399', '#059669']}>
+                Shipping
+              </AuroraText>{' '}
+              today
             </h2>
             <p className="text-base sm:text-lg text-muted-foreground max-w-3xl mx-auto font-sans px-2">
               Smart retries, isolation safeguards, prompt linting, human-in-the-loop intervention.

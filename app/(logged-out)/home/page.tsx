@@ -47,14 +47,14 @@ export default function HomePage() {
       {/* Reviews Section */}
       <ReviewsMarquee />
 
+      {/* Core Values Section */}
+      <CoreValuesSection />
+
       {/* Private Alpha CTA */}
       <CTASection onApplyClick={() => setIsModalOpen(true)} />
 
       {/* FAQ Section */}
       <FAQSection />
-
-      {/* Core Values Section */}
-      <CoreValuesSection />
 
       {/* Private Alpha Modal */}
       <PrivateAlphaModal open={isModalOpen} onOpenChange={setIsModalOpen} />

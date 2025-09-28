@@ -8,20 +8,20 @@ const coreValues = [
   {
     icon: Rocket,
     title: "Ship, Don't Demo",
-    description: 'We care about finished, working products—not "almost done" prototypes.',
+    description: 'We care about finished, working products; not "almost done" prototypes.',
     colSpan: 'col-span-full sm:col-span-3 lg:col-span-2',
   },
   {
     icon: CheckCircle,
     title: 'Human-in-the-Loop',
     description:
-      'AI kicks off, but senior engineers always check, fix, and sign off. Quality = trust.',
+      'AI kicks off, but senior engineers always check, fix, and sign off. Quality equals trust.',
     colSpan: 'col-span-full sm:col-span-3 lg:col-span-2',
   },
   {
     icon: Eye,
     title: 'Open and Transparent',
-    description: 'No hidden quotas, no vendor lock-in. All code is open—yours to use or move.',
+    description: 'No hidden quotas, no vendor lock-in. All code is open; yours to use or move.',
     colSpan: 'col-span-full sm:col-span-3 lg:col-span-2',
   },
   {

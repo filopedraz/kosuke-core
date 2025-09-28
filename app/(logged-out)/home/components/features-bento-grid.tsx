@@ -1,5 +1,6 @@
 'use client';
 
+import { AuroraText } from '@/components/ui/aurora-text';
 import { Card, CardContent } from '@/components/ui/card';
 import { motion } from 'framer-motion';
 import { Database, Lock, Rocket } from 'lucide-react';
@@ -16,7 +17,9 @@ export function FeaturesBentoGrid() {
           transition={{ duration: 0.6 }}
         >
           <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-3 sm:mb-4 font-mono">
-            Let Kosuke handle the hard stuff
+            Let{' '}
+            <AuroraText colors={['#10B981', '#22c55e', '#34D399', '#059669']}>Kosuke</AuroraText>{' '}
+            handle the hard stuff
           </h2>
           <p className="text-base sm:text-lg text-muted-foreground max-w-3xl mx-auto font-sans px-2">
             Smart retries, isolation safeguards, prompt linting, human-in-the-loop intervention.{' '}

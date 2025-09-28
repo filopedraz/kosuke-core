@@ -161,7 +161,7 @@ export default function PrivacyPolicyPage() {
               <h2 className="text-2xl font-semibold font-mono mb-4">8. Contact Us</h2>
               <p className="text-muted-foreground leading-relaxed">
                 To exercise your rights or for any questions about this Privacy Policy, please
-                contact us at: XXXXXXXX
+                contact us at: filippo.pedrazzini@joandko.io
               </p>
             </section>
 
