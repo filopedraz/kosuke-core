@@ -7,6 +7,7 @@ import { CTASection } from './components/cta-section';
 import { FAQSection } from './components/faq-section';
 import { FeaturesBentoGrid } from './components/features-bento-grid';
 import { HeroSection } from './components/hero-section';
+import { HumanLoopSection } from './components/human-loop-section';
 import { PrivateAlphaModal } from './components/private-alpha-modal';
 import { ReviewsMarquee } from './components/reviews-marquee';
 
@@ -43,6 +44,9 @@ export default function HomePage() {
 
       {/* Bento Grid Features */}
       <FeaturesBentoGrid />
+
+      {/* Human in the Loop Section */}
+      <HumanLoopSection />
 
       {/* Reviews Section */}
       <ReviewsMarquee />

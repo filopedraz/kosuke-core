@@ -30,13 +30,13 @@ export function FAQSection() {
       id: 'item-4',
       question: 'How do I get started?',
       answer:
-        "Simply sign up for early access and we'll guide you through building your first project. No technical setup required - just bring your ideas.",
+        "Simply sign up for early access and we'll guide you through building your first project. No technical setup required; just bring your ideas.",
     },
     {
       id: 'item-5',
       question: 'What kind of projects can I build?',
       answer:
-        'Web applications, mobile apps, APIs, and more. Our platform handles the infrastructure so you can focus on creating amazing user experiences.',
+        'Web applications, APIs, and more. Our platform handles the infrastructure so you can focus on creating amazing user experiences.',
     },
   ];
 
