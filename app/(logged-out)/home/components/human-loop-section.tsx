@@ -112,7 +112,7 @@ export function HumanLoopSection() {
         },
       ]);
 
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      await new Promise(resolve => setTimeout(resolve, 6000));
 
       // Loop back
       sequence();

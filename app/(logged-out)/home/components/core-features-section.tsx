@@ -91,6 +91,8 @@ export function CoreFeaturesSection() {
                 <Card className="w-full border-none p-0 shadow-none h-full">
                   <MagicCard
                     gradientColor={theme === 'dark' ? '#262626' : '#D9D9D955'}
+                    gradientFrom="#10B981"
+                    gradientTo="#22c55e"
                     className="p-0 h-full"
                   >
                     <CardHeader className="pb-4">
