@@ -55,11 +55,11 @@ export function FeaturesBentoGrid() {
                   </div>
                   <div className="space-y-2 text-sm font-mono">
                     <div className="flex justify-between text-primary">
-                      <span>SDLC</span>
+                      <span>Process</span>
                       <span>Preserved</span>
                     </div>
                     <div className="flex justify-between text-primary">
-                      <span>PRs</span>
+                      <span>Reviews</span>
                       <span>Required</span>
                     </div>
                     <div className="flex justify-between text-primary">
