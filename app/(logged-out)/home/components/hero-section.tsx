@@ -113,7 +113,7 @@ export function HeroSection({ onApplyClick }: HeroSectionProps) {
           id: '4',
           role: 'human',
           content:
-            "Hi! I'm Pietro, a senior engineer. I can see the issue in your auth flow. Let me fix this for you right now.",
+            "Hi! I'm Pietro, a senior engineer. I managed to identify the bug in your auth flow. Let me fix this for you right now.",
         },
       ]);
 
@@ -130,40 +130,6 @@ export function HeroSection({ onApplyClick }: HeroSectionProps) {
     <section className="pt-12 sm:pt-20 pb-16 sm:pb-32">
       <div className="container mx-auto px-4 sm:px-6">
         <div className="max-w-7xl mx-auto">
-          {/* Badge */}
-          <motion.div
-            className="text-center mb-8 sm:mb-12"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.5, delay: 0.3 }}
-            >
-              <Badge
-                variant="outline"
-                className="mb-4 sm:mb-6 px-2 sm:px-3 py-1 text-xs font-mono bg-emerald-500/10 border-emerald-500/20 text-emerald-600 hover:bg-emerald-500/20 hover:border-emerald-500/40 transition-all duration-300 cursor-default relative overflow-hidden"
-              >
-                {/* Shine effect */}
-                <motion.div
-                  className="absolute inset-0 -top-1 -bottom-1 bg-gradient-to-r from-transparent via-white/20 to-transparent"
-                  initial={{ x: '-100%' }}
-                  animate={{ x: '200%' }}
-                  transition={{
-                    duration: 2,
-                    repeat: Infinity,
-                    repeatDelay: 3,
-                    ease: 'easeInOut',
-                  }}
-                />
-                <Sparkles className="w-3 h-3 mr-1" />
-                Private Alpha
-              </Badge>
-            </motion.div>
-          </motion.div>
-
           {/* Two Column Layout */}
           <div className="grid lg:grid-cols-2 gap-8 lg:gap-16 items-center">
             {/* Left Column - Content */}
@@ -173,6 +139,33 @@ export function HeroSection({ onApplyClick }: HeroSectionProps) {
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
             >
+              {/* Badge */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.5, delay: 0.3 }}
+              >
+                <Badge
+                  variant="outline"
+                  className="mb-0 sm:mb-0 px-2 sm:px-3 py-1 text-xs font-mono bg-emerald-500/10 border-emerald-500/20 text-emerald-600 hover:bg-emerald-500/20 hover:border-emerald-500/40 transition-all duration-300 cursor-default relative overflow-hidden"
+                >
+                  {/* Shine effect */}
+                  <motion.div
+                    className="absolute inset-0 -top-1 -bottom-1 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+                    initial={{ x: '-100%' }}
+                    animate={{ x: '200%' }}
+                    transition={{
+                      duration: 2,
+                      repeat: Infinity,
+                      repeatDelay: 3,
+                      ease: 'easeInOut',
+                    }}
+                  />
+                  <Sparkles className="w-3 h-3 mr-1" />
+                  Private Alpha
+                </Badge>
+              </motion.div>
+
               <h1 className="text-3xl sm:text-5xl lg:text-6xl font-bold mb-4 sm:mb-6 leading-tight tracking-tight">
                 Start with AI. <br />
                 Finish with{' '}
@@ -183,8 +176,8 @@ export function HeroSection({ onApplyClick }: HeroSectionProps) {
               </h1>
 
               <p className="text-base sm:text-lg lg:text-xl text-muted-foreground mb-6 sm:mb-8 font-sans leading-relaxed">
-                Turn ideas into real functional products, using AI for speed and Developers for
-                quality. No more endless prompt fixing, buggy code or unfinished projects.
+                Build your software product by chatting with AI, and connect with a real engineer
+                whenever you get stuck.
               </p>
 
               {/* CTA Button */}
@@ -217,7 +210,7 @@ export function HeroSection({ onApplyClick }: HeroSectionProps) {
               <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 via-transparent to-blue-500/5 rounded-2xl blur-3xl" />
 
               {/* Chat Interface Container */}
-              <div className="relative bg-background/80 backdrop-blur-xl border border-border/50 rounded-2xl p-6 shadow-2xl h-[550px] flex flex-col">
+              <div className="relative bg-background/80 backdrop-blur-xl border border-border/50 rounded-2xl p-4 sm:p-6 shadow-2xl h-[500px] sm:h-[550px] flex flex-col">
                 {/* Animated Cursor */}
                 <AnimatePresence>
                   {showCursor && (
@@ -263,8 +256,8 @@ export function HeroSection({ onApplyClick }: HeroSectionProps) {
                 </div>
 
                 {/* Animated Chat Messages */}
-                <div className="space-y-4 mb-6 flex-1 overflow-hidden flex flex-col justify-start">
-                  <div className="space-y-4">
+                <div className="space-y-3 sm:space-y-4 mb-4 sm:mb-6 flex-1 overflow-y-auto flex flex-col justify-start">
+                  <div className="space-y-3 sm:space-y-4">
                     <AnimatePresence mode="popLayout">
                       {/* Render messages */}
                       {messages.map(message => (
@@ -276,7 +269,7 @@ export function HeroSection({ onApplyClick }: HeroSectionProps) {
                           transition={{ delay: 0.2 }}
                         >
                           <div
-                            className={`px-4 py-2 rounded-2xl max-w-xs font-sans text-sm ${
+                            className={`px-3 sm:px-4 py-2 rounded-2xl max-w-xs font-sans text-xs sm:text-sm ${
                               message.role === 'user'
                                 ? 'bg-primary text-primary-foreground rounded-br-md'
                                 : message.role === 'ai'

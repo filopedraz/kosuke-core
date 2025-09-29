@@ -74,7 +74,7 @@ export function CoreFeaturesSection() {
               today
             </h2>
             <p className="text-base sm:text-lg text-muted-foreground max-w-3xl mx-auto font-sans px-2">
-              From idea to production in minutes, not months. AI-powered development with expert
+              From idea to production in days, not months. AI-powered development with expert
               oversight to ensure quality and reliability.
             </p>
           </motion.div>
