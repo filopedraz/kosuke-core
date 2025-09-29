@@ -55,7 +55,7 @@ export default function Footer() {
             <Twitter className="h-5 w-5 text-muted-foreground group-hover:text-foreground group-hover:scale-110 transition-all" />
           </Link>
           <Link
-            href="https://www.linkedin.com/in/filippo-pedrazzini-a5083b242/"
+            href="https://www.linkedin.com/in/filopedraz/"
             target="_blank"
             rel="noopener noreferrer"
             aria-label="LinkedIn"
