@@ -22,8 +22,8 @@ export function FeaturesBentoGrid() {
             handle the hard stuff
           </h2>
           <p className="text-base sm:text-lg text-muted-foreground max-w-3xl mx-auto font-sans px-2">
-            Smart retries, isolation safeguards, prompt linting, human-in-the-loop intervention.{' '}
-            <br /> Fully managed.
+            Skip the endless prompt tweaking and debugging cycles. Focus on building while we handle
+            <br /> the complexity, quality, and deployment details.
           </p>
         </motion.div>
 
@@ -49,9 +49,8 @@ export function FeaturesBentoGrid() {
                       </h3>
                     </div>
                     <p className="text-sm sm:text-base text-muted-foreground font-sans mb-4 sm:mb-6 leading-relaxed">
-                      Tired of fixing prompt after prompt, only to see nothing working in the end?
-                      With Kosuke, you work smart: fast iteration with AI, then a senior developer
-                      reviews and finishes what matters.
+                      Hit a wall with your AI-generated code? Our expert developers jump in to
+                      debug, optimize, and get your project back on track within hours.
                     </p>
                   </div>
                   <div className="space-y-2 text-sm font-mono">
@@ -137,8 +136,8 @@ export function FeaturesBentoGrid() {
                     </div>
                   </div>
                   <p className="text-sm text-muted-foreground font-sans">
-                    You want easy UI, local LLM compatibility, meaningful results—not hype. Kosuke
-                    is clean, supports your workflow, and keeps codebase bloat away.
+                    No vendor lock-in, no proprietary frameworks, no bloated dependencies. Build
+                    with standard tools, export everything, and own your code completely.
                   </p>
                 </CardContent>
               </Card>

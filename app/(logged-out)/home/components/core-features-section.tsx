@@ -15,7 +15,7 @@ const workflowSteps = [
     icon: MessageSquare,
     title: 'Describe Your Idea',
     description:
-      "Website, workflow, automation - be specific and we'll translate it into actionable development steps.",
+      "Website, workflow, automation; be specific and we'll translate it into actionable development steps.",
   },
   {
     step: 2,
@@ -36,7 +36,7 @@ const workflowSteps = [
     icon: Rocket,
     title: 'Ship Your Product',
     description:
-      'Your finished product is fully exportable, open-source, and completely yours. No vendor lock-in.',
+      'Your finished product is fully exportable, and completely yours. No vendor lock-in.',
   },
 ];
 
@@ -74,8 +74,8 @@ export function CoreFeaturesSection() {
               today
             </h2>
             <p className="text-base sm:text-lg text-muted-foreground max-w-3xl mx-auto font-sans px-2">
-              Smart retries, isolation safeguards, prompt linting, human-in-the-loop intervention.
-              Fully managed.
+              From idea to production in minutes, not months. AI-powered development with expert
+              oversight to ensure quality and reliability.
             </p>
           </motion.div>
 

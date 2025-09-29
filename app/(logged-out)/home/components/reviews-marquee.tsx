@@ -125,7 +125,7 @@ export function ReviewsMarquee() {
               What you Told Us
             </h2>
             <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto font-sans px-2">
-              Real Customer Voices
+              Real Customer Voices concerning current Vibe Coding Platforms
             </p>
           </div>
 
