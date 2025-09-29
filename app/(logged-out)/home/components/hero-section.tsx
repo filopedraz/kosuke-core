@@ -215,14 +215,19 @@ export function HeroSection({ onApplyClick }: HeroSectionProps) {
                 <AnimatePresence>
                   {showCursor && (
                     <motion.div
-                      className="absolute w-6 h-6 pointer-events-none z-50 top-8 right-12"
-                      initial={{ opacity: 0 }}
+                      className="absolute w-6 h-6 pointer-events-none z-50"
+                      initial={{ opacity: 0, right: '6rem', top: '6rem' }}
                       animate={{
                         opacity: 1,
+                        right: '3rem', // right-12 position (48px = 3rem)
+                        top: '2rem', // top-8 position (32px = 2rem)
                         scale: currentStep === 'cursorClick' ? 0.8 : 1,
                       }}
                       exit={{ opacity: 0 }}
-                      transition={{ duration: 0.3, ease: 'easeInOut' }}
+                      transition={{
+                        duration: currentStep === 'cursorHover' ? 1.2 : 0.3,
+                        ease: 'easeInOut',
+                      }}
                     >
                       <svg
                         viewBox="0 0 24 24"
@@ -245,13 +250,29 @@ export function HeroSection({ onApplyClick }: HeroSectionProps) {
                   <Button
                     variant="outline"
                     size="sm"
-                    className={`font-mono text-xs bg-emerald-500/10 border-emerald-500/20 text-emerald-600 hover:bg-emerald-500/20 hover:border-emerald-500/40 transition-all duration-300 cursor-default ${
-                      isHelpButtonPulsing ? 'animate-pulse ring-2 ring-emerald-500/50' : ''
+                    className={`font-mono text-xs relative overflow-hidden transition-all duration-300 cursor-default ${
+                      currentStep === 'humanHelp'
+                        ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 shadow-sm shadow-emerald-500/5'
+                        : 'bg-emerald-500/20 border-emerald-500/60 text-emerald-500 shadow-lg shadow-emerald-500/25 animate-pulse'
                     }`}
                     disabled
                   >
-                    <Sparkles className="w-3 h-3 mr-1" />
-                    Help Me
+                    {/* Shine effect for Help Me button */}
+                    {currentStep !== 'humanHelp' && (
+                      <motion.div
+                        className="absolute inset-0 bg-gradient-to-r from-transparent via-emerald-300/40 to-transparent"
+                        initial={{ x: '-100%' }}
+                        animate={{ x: '200%' }}
+                        transition={{
+                          duration: 1.5,
+                          repeat: Infinity,
+                          repeatDelay: 1,
+                          ease: 'easeInOut',
+                        }}
+                      />
+                    )}
+                    <Sparkles className="w-3 h-3 mr-1 relative z-10" />
+                    <span className="relative z-10">Help Me</span>
                   </Button>
                 </div>
 
