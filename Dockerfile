@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.4
-FROM node:20-slim AS base
+FROM node:22.20.0-slim AS base
 
 # Install dependencies only when needed
 FROM base AS deps
