@@ -143,7 +143,7 @@ MOCK_COMPLEX_LLM_RESPONSE = {
 }
 
 
-@pytest.fixture()
+@pytest.fixture
 def temp_project_dir():
     """Create a temporary project directory with sample files"""
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -165,7 +165,7 @@ def temp_project_dir():
         yield project_path
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_llm_service():
     """Mock LLM service for testing"""
     mock_service = MagicMock()
@@ -179,7 +179,7 @@ def mock_llm_service():
     return mock_service
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_anthropic_client():
     """Mock Anthropic client for testing (for direct API calls)"""
     mock_client = MagicMock()
@@ -190,7 +190,7 @@ def mock_anthropic_client():
     return mock_client
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_pydantic_ai_model():
     """Mock PydanticAI AnthropicModel"""
     return MagicMock()
@@ -203,19 +203,19 @@ def mock_anthropic_response(content: dict | None = None) -> Any:
     return mock_response
 
 
-@pytest.fixture()
+@pytest.fixture
 def sample_chat_request():
     """Sample chat request for testing"""
     return ChatRequest(project_id=123, prompt="Create a button component", chat_history=[])
 
 
-@pytest.fixture()
+@pytest.fixture
 def sample_chat_message():
     """Sample chat message for testing"""
     return ChatMessage(role="user", content="Create a new React component")
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_fs_service():
     """Mock file system service"""
     mock_service = MagicMock()
@@ -229,7 +229,7 @@ def mock_fs_service():
     return mock_service
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_webhook_service():
     """Mock webhook service"""
     mock_service = MagicMock()

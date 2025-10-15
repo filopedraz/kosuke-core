@@ -130,7 +130,8 @@ class GitHubService:
             # Optionally clone locally if a project_id is provided
             if getattr(request, "project_id", None) is not None:
                 try:
-                    from app.models.github import ImportRepoRequest
+                    # Import here to avoid circular imports
+                    from app.models.github import ImportRepoRequest  # noqa: PLC0415
 
                     clone_url = created_repo.url
                     project_id = int(request.project_id)  # type: ignore[arg-type]

@@ -2,6 +2,8 @@ import logging
 import os
 from typing import Any
 
+from langfuse import Langfuse
+
 logger = logging.getLogger(__name__)
 
 
@@ -28,8 +30,6 @@ def initialize_langfuse(settings_instance):
         return None
 
     try:
-        from langfuse import Langfuse
-
         logger.info(f"🔧 Creating Langfuse client for {host}")
         _langfuse_client = Langfuse(
             public_key=public_key,

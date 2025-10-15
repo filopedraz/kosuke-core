@@ -10,6 +10,7 @@ from app.api.routes import github
 from app.api.routes import health
 from app.api.routes import preview
 from app.api.routes import revert
+from app.services.docker_service import DockerService
 
 # Configure logging for the entire application
 logging.basicConfig(
@@ -26,8 +27,6 @@ async def startup_tasks():
     logger = logging.getLogger(__name__)
     try:
         # Initialize DockerService to ensure preview image is pre-pulled
-        from app.services.docker_service import DockerService
-
         _docker_service = DockerService()
         logger.info("✅ DockerService initialized and preview image pre-pull started")
     except Exception as e:

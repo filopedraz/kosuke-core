@@ -5,34 +5,20 @@ python_files=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(py)
 if [ -n "$python_files" ]; then
   echo "🐍 Running Python code quality checks for agent/..."
 
-  # Check if we're in a Python virtual environment for agent
-  if [ -f "./venv/bin/activate" ]; then
-    source ./venv/bin/activate
-    cd agent
-
-    echo "  → Running ruff linting..."
-    ruff check . --fix
-    if [ $? -ne 0 ]; then
-      echo "❌ Python linting failed. Please fix the errors before committing."
-      exit 1
-    fi
-
-    echo "  → Running ruff formatting..."
-    ruff format .
-
-    cd ..
-    deactivate
-    echo "✅ Python checks passed!"
-  else
-    echo "⚠️  Python virtual environment not found at agent/.venv"
-    echo "   Run: cd agent && python -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt"
+  echo "  → Running ruff linting..."
+  ruff check . --fix --exclude projects
+  if [ $? -ne 0 ]; then
+    echo "❌ Python linting failed. Please fix the errors before committing."
     exit 1
   fi
+
+  echo "  → Running ruff formatting..."
+  ruff format . --exclude projects
 fi
 
-# Check if we have TypeScript/JavaScript files in the commit
-js_files=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(js|jsx|ts|tsx)$' || true)
-mobile_files=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^mobile/.*\.(js|jsx|ts|tsx)$' || true)
+# Check if we have TypeScript/JavaScript files in the commit (excluding projects folder)
+js_files=$(git diff --cached --name-only --diff-filter=ACM | grep -v '^projects/' | grep -E '\.(js|jsx|ts|tsx)$' || true)
+mobile_files=$(git diff --cached --name-only --diff-filter=ACM | grep -v '^projects/' | grep -E '^mobile/.*\.(js|jsx|ts|tsx)$' || true)
 
 # Run Node.js checks if there are JS/TS files (excluding mobile)
 if [ -n "$js_files" ]; then

@@ -3,6 +3,7 @@ import logging
 from contextlib import suppress
 from pathlib import Path
 
+import aiohttp
 import docker
 from docker.errors import ImageNotFound
 
@@ -49,7 +50,7 @@ class DockerService:
             try:
                 await asyncio.wait_for(loop.run_in_executor(None, self.client.images.get, image_name), timeout=5.0)
                 logger.info(f"Preview image {image_name} is available locally")
-            except (ImageNotFound, asyncio.TimeoutError):
+            except (ImageNotFound, TimeoutError):
                 logger.info(f"Pulling preview image {image_name}...")
                 await asyncio.wait_for(
                     loop.run_in_executor(None, lambda: self.client.images.pull(image_name)), timeout=300.0
@@ -106,8 +107,6 @@ class DockerService:
 
     async def _check_container_health(self, url: str, timeout: float = 2.0) -> bool:
         try:
-            import aiohttp
-
             # Adjust for DinD probing only
             base_url = url.replace("localhost", "host.docker.internal")
             health_url = base_url.rstrip("/") + settings.preview_health_path
@@ -133,7 +132,8 @@ class DockerService:
     async def _ensure_database_exists(self, project_id: int, session_id: str) -> None:
         """Ensure the database exists for the given project and session"""
         try:
-            from app.services.database_service import DatabaseService
+            # Import DatabaseService here to avoid circular imports
+            from app.services.database_service import DatabaseService  # noqa: PLC0415
 
             # Create DatabaseService instance to trigger database creation
             db_service = DatabaseService(project_id, session_id)

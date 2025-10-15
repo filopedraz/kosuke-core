@@ -33,7 +33,7 @@ def oklab_to_linear_srgb(L: float, a: float, b: float) -> Tuple[float, float, fl
     s_ = L - 0.0894841775 * a - 1.2914855480 * b
 
     # Nonlinear to linear (cube)
-    l = l_**3
+    l = l_**3  # noqa: E741
     m = m_**3
     s = s_**3
 
