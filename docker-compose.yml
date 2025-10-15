@@ -11,27 +11,6 @@ services:
     networks:
       - kosuke_network
 
-  nextjs:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: kosuke_nextjs
-    env_file:
-      - .env
-    environment:
-      - AGENT_SERVICE_URL=http://agent:8000
-      - WEBHOOK_SECRET=dev-secret-change-in-production
-    ports:
-      - '3001:3000'
-    volumes:
-      - next_build_cache:/app/.next/cache
-    depends_on:
-      - postgres
-      - agent
-    networks:
-      - kosuke_network
-    restart: unless-stopped
-
   agent:
     build:
       context: ./agent
