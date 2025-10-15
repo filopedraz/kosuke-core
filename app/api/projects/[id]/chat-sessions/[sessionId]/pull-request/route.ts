@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { auth } from '@/lib/auth/server';
+import { SESSION_BRANCH_PREFIX } from '@/lib/constants';
 import { db } from '@/lib/db/drizzle';
 import { chatSessions, projects } from '@/lib/db/schema';
 import { getGitHubToken } from '@/lib/github/auth';
@@ -110,7 +111,7 @@ export async function POST(
     const { title, description, target_branch } = parseResult.data;
 
     // Set defaults
-    const sourceBranch = session.githubBranchName || `kosuke-chat-${sessionId}`;
+    const sourceBranch = `${SESSION_BRANCH_PREFIX}${session.sessionId}`;
     const targetBranch = target_branch || project.defaultBranch || 'main';
     const prTitle = title || `Updates from chat session: ${session.title}`;
     const prDescription = description || `Automated changes from Kosuke chat session: ${session.title}\n\nSession ID: ${sessionId}`;
