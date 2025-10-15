@@ -1,6 +1,7 @@
 """
 Agent - Advanced agentic pipeline using claude-code-sdk with Langfuse observability
 """
+
 import logging
 import time
 from collections.abc import AsyncGenerator
