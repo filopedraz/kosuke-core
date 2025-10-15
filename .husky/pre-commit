@@ -16,9 +16,9 @@ if [ -n "$python_files" ]; then
   ruff format . --exclude projects
 fi
 
-# Check if we have TypeScript/JavaScript files in the commit (excluding projects folder)
-js_files=$(git diff --cached --name-only --diff-filter=ACM | grep -v '^projects/' | grep -E '\.(js|jsx|ts|tsx)$' || true)
-mobile_files=$(git diff --cached --name-only --diff-filter=ACM | grep -v '^projects/' | grep -E '^mobile/.*\.(js|jsx|ts|tsx)$' || true)
+# Check if we have TypeScript/JavaScript files in the commit
+js_files=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(js|jsx|ts|tsx)$' || true)
+mobile_files=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^mobile/.*\.(js|jsx|ts|tsx)$' || true)
 
 # Run Node.js checks if there are JS/TS files (excluding mobile)
 if [ -n "$js_files" ]; then
