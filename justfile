@@ -3,7 +3,11 @@ default:
 
 run-backend:
     @echo "Running all services..."
-    @docker compose up --build -d postgres agent
+    @docker compose up --build -d
+
+up:
+    @echo "Starting up containers..."
+    @docker compose up -d --remove-orphans
 
 deploy-prod:
     @docker compose -f docker-compose.production.yml up --build -d
