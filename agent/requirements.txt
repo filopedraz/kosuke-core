@@ -38,6 +38,6 @@ pytest==7.4.3
 pytest-asyncio==0.21.1
 pytest-cov==4.1.0
 mypy==1.7.1
-ruff==0.1.7
+ruff==0.13.3
 bandit[toml]==1.7.5
 httpx==0.28.1
