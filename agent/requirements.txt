@@ -7,7 +7,7 @@ claude-code-sdk==0.0.19
 # FastAPI
 fastapi==0.112.4
 uvicorn[standard]==0.32.0
-python-multipart==0.0.12
+python-multipart==0.0.18
 
 # Database
 psycopg2-binary==2.9.9
