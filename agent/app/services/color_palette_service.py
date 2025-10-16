@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import re
@@ -304,8 +305,6 @@ class ColorPaletteService:
             try:
                 response = await _call_once()
             except Exception:
-                import asyncio
-
                 await asyncio.sleep(0.3)
                 response = await _call_once()
 

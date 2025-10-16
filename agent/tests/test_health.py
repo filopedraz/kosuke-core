@@ -4,13 +4,15 @@ import logging
 
 import pytest
 from fastapi.testclient import TestClient
+from httpx import ASGITransport
+from httpx import AsyncClient
 
 from app.main import app
 
 logger = logging.getLogger(__name__)
 
 
-@pytest.fixture()
+@pytest.fixture
 def client():
     """Test client for FastAPI app"""
     return TestClient(app)
@@ -50,12 +52,9 @@ def test_root_endpoint(client: TestClient):
     assert "documentation" in data
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 async def test_health_endpoint_async():
     """Test health endpoint with async test"""
-    from httpx import ASGITransport
-    from httpx import AsyncClient
-
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         response = await ac.get("/api/health")

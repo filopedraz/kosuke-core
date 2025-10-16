@@ -28,30 +28,31 @@ sys.path.insert(0, str(agent_dir))
 
 def get_test_client():
     """Get FastAPI test client with proper imports"""
-    from app.main import app
+    # Import app here to ensure environment variables are set first
+    from app.main import app  # noqa: PLC0415
 
     return TestClient(app)
 
 
-@pytest.fixture()
+@pytest.fixture
 def client():
     """FastAPI test client"""
     return get_test_client()
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_project_id():
     """Standard project ID for testing"""
     return 123
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_env_vars():
     """Sample environment variables for testing"""
     return {"CLERK_SECRET_KEY": "sk_test_example", "DATABASE_URL": "postgresql://test:test@localhost:5432/test_db"}
 
 
-@pytest.fixture()
+@pytest.fixture
 def sample_files_structure():
     """Sample project files structure for testing"""
     return {
@@ -62,7 +63,7 @@ def sample_files_structure():
     }
 
 
-@pytest.fixture()
+@pytest.fixture
 def temp_project_dir():
     """Create a temporary project directory with sample files"""
     with tempfile.TemporaryDirectory() as temp_dir:

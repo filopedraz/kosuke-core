@@ -44,6 +44,7 @@ Example workflow:
 
 import asyncio
 import json
+import shutil
 from collections.abc import AsyncGenerator
 from pathlib import Path
 
@@ -118,8 +119,6 @@ class KosukeAgentClient:
         try:
             project_path = self.projects_dir / str(project_id)
             if project_path.exists():
-                import shutil
-
                 shutil.rmtree(project_path)
                 self.console.print(f"🗑️ Project {project_id} deleted")
                 return True
@@ -142,9 +141,10 @@ class KosukeAgentClient:
             self.console.print("🤖 [green]Using Kosuke pipeline[/green]")
 
         try:
-            async with httpx.AsyncClient(timeout=300.0) as client, client.stream(
-                "POST", endpoint, json=payload, headers={"Accept": "text/event-stream"}
-            ) as response:
+            async with (
+                httpx.AsyncClient(timeout=300.0) as client,
+                client.stream("POST", endpoint, json=payload, headers={"Accept": "text/event-stream"}) as response,
+            ):
                 if response.status_code != 200:
                     yield {"type": "error", "message": f"HTTP {response.status_code}: {response.text}"}
                     return
@@ -236,7 +236,7 @@ class KosukeAgentClient:
             if file_path.is_file() and not any(part.startswith(".") for part in file_path.parts):
                 try:
                     relative_path = file_path.relative_to(project_path)
-                    async with aiofiles.open(file_path, "r", encoding="utf-8") as f:
+                    async with aiofiles.open(file_path, encoding="utf-8") as f:
                         files[str(relative_path)] = await f.read()
                 except Exception:
                     # Skip binary files or files that can't be read

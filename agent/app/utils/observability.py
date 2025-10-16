@@ -4,6 +4,7 @@ Observability utilities for Langfuse integration
 This module provides decorators and utilities for comprehensive observability
 of agentic workflows, including claude-code-sdk integrations.
 """
+
 import logging
 import time
 from collections.abc import AsyncGenerator
@@ -292,10 +293,10 @@ def _finalize_successful_workflow(
             token_usage,
         )
         _add_workflow_scores(generation, tool_executions, error_occurred, workflow_duration)
-        logger.info(f"✅ Completed Langfuse generation: {operation_name} " f"(Duration: {workflow_duration:.2f}s)")
+        logger.info(f"✅ Completed Langfuse generation: {operation_name} (Duration: {workflow_duration:.2f}s)")
     else:
         logger.debug(
-            f"✅ Completed workflow without observability: {operation_name} " f"(Duration: {workflow_duration:.2f}s)"
+            f"✅ Completed workflow without observability: {operation_name} (Duration: {workflow_duration:.2f}s)"
         )
 
 

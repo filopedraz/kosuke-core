@@ -1,7 +1,9 @@
 """
 Claude Code Service - Wrapper for claude-code-sdk agentic pipeline
 """
+
 import logging
+import os
 from collections.abc import AsyncGenerator
 from pathlib import Path
 from typing import Any
@@ -158,8 +160,6 @@ class ClaudeCodeService:
         logger.info(f"  🔧 Tools ({len(all_tools)}): {all_tools}")
         logger.info(f"  🔐 Permission mode: {options.permission_mode}")
         logger.info(f"  🔄 Max turns: {options.max_turns}")
-
-        import os
 
         current_model = os.getenv("ANTHROPIC_MODEL", "default")
         logger.info(f"🤖 Model (from env): {current_model}")

@@ -1,5 +1,4 @@
 import logging
-import os
 import shutil
 from pathlib import Path
 from typing import Any
@@ -42,7 +41,7 @@ class FileSystemService:
         Mirrors the TypeScript readFile function from lib/fs/operations.ts
         """
         try:
-            async with aiofiles.open(file_path, "r", encoding="utf-8") as f:
+            async with aiofiles.open(file_path, encoding="utf-8") as f:
                 return await f.read()
         except Exception as error:
             logger.error(f"Failed to read file {file_path}: {error}")
@@ -124,7 +123,7 @@ class FileSystemService:
         Mirrors the TypeScript listFiles function from lib/fs/operations.ts
         """
         try:
-            return list(os.listdir(dir_path))
+            return [entry.name for entry in Path(dir_path).iterdir()]
         except Exception as error:
             logger.error(f"Failed to list files in directory {dir_path}: {error}")
             raise error

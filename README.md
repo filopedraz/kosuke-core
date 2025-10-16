@@ -18,14 +18,42 @@ Before you begin, ensure you have the following tools installed and configured:
 - **just** - Command runner for project tasks
   - Install via Homebrew: `brew install just`
   - Or see [alternative installation methods](https://github.com/casey/just#installation)
+- **GitHub OAuth App** - For authentication and repository access
+  1. Go to [GitHub Developer Settings](https://github.com/settings/developers)
+  2. Click **OAuth Apps** → **New OAuth App**
+  3. Fill in the application details:
+     - **Application name**: `Kosuke Core Local` (or your preferred name)
+     - **Homepage URL**: `http://localhost:3000`
+     - **Authorization callback URL**: `https://YOUR_CLERK_DOMAIN/v1/oauth_callback` (you'll get this from Clerk in the next step)
+  4. Click **Register application**
+  5. Copy the **Client ID** (you'll need this for Clerk setup)
+  6. Click **Generate a new client secret** and copy it immediately (you'll need this for Clerk setup)
+  7. Keep this tab open - you'll configure the callback URL after setting up Clerk
 - **Clerk Account** - Authentication provider
   1. Sign up at [clerk.com](https://clerk.com)
-  2. Create a new application
-  3. Navigate to **API Keys** in the dashboard
-  4. Copy the following keys to your `.env` file:
-     - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` - Found under "Publishable key"
-     - `CLERK_SECRET_KEY` - Found under "Secret keys"
-  5. Configure your **Webhook** endpoint (requires ngrok for local development):
+  2. Create a new application with **GitHub as the only login method**:
+     - Click **Create Application**
+     - Enter your application name
+     - Under **Sign-in options**, select only **GitHub**
+     - Click **Create Application**
+  3. Configure **GitHub OAuth** in Clerk:
+     - In your Clerk dashboard, go to **Configure** → **SSO Connections**
+     - Click on **GitHub**
+     - Toggle **Use custom credentials**
+     - Enter your **GitHub Client ID** (from step 5 of GitHub OAuth App setup)
+     - Enter your **GitHub Client Secret** (from step 6 of GitHub OAuth App setup)
+     - Copy the **Authorized redirect URI** shown (e.g., `https://your-app.clerk.accounts.dev/v1/oauth_callback`)
+     - Save the settings
+  4. Update **GitHub OAuth App callback URL**:
+     - Go back to your GitHub OAuth App settings
+     - Update the **Authorization callback URL** with the redirect URI from Clerk
+     - Click **Update application**
+  5. Get Clerk **API Keys**:
+     - Navigate to **API Keys** in the Clerk dashboard
+     - Copy the following keys to your `.env` file:
+       - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` - Found under "Publishable key"
+       - `CLERK_SECRET_KEY` - Found under "Secret keys"
+  6. Configure **Webhook** endpoint (requires ngrok for local development):
      - Install ngrok: `brew install ngrok` or download from [ngrok.com](https://ngrok.com)
      - Sign up for a free ngrok account and get your auth token
      - Authenticate ngrok: `ngrok config add-authtoken YOUR_TOKEN`

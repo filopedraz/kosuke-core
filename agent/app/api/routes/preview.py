@@ -109,7 +109,8 @@ async def pull_project(
         # Perform pull via SessionManager logic, using GitHubService for authenticated fetch if needed
         github_service = get_github_service(github_token)
         # Use SessionManager directly to orchestrate pull
-        from app.services.session_manager import SessionManager
+        # Import is done here to avoid circular imports - SessionManager depends on this module
+        from app.services.session_manager import SessionManager  # noqa: PLC0415
 
         session_manager = SessionManager()
         git_status = await session_manager.pull_session_branch(

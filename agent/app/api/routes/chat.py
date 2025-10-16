@@ -1,6 +1,7 @@
 """
 Chat API - Unified endpoint with session-aware isolation
 """
+
 import json
 import logging
 from collections.abc import AsyncGenerator

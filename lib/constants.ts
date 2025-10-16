@@ -17,6 +17,9 @@ export const STORAGE_BASE_URL = IS_PRODUCTION
 // Agent Service
 export const AGENT_SERVICE_URL = process.env.AGENT_SERVICE_URL || 'http://localhost:8001';
 
+// Git Settings - must match the agent's SESSION_BRANCH_PREFIX
+export const SESSION_BRANCH_PREFIX = process.env.SESSION_BRANCH_PREFIX || 'kosuke/chat-';
+
 // Context for file operations
 export const CONTEXT = {
   EXCLUDE_DIRS: [

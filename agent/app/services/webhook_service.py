@@ -1,6 +1,7 @@
 """
 Webhook service for sending data to Next.js endpoints
 """
+
 import asyncio
 import logging
 from typing import Any

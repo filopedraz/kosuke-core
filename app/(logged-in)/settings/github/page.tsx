@@ -36,7 +36,6 @@ export default function GitHubSettingsPage() {
               <Github className="h-5 w-5" />
               GitHub Account
             </CardTitle>
-            <CardDescription>Your GitHub account is connected and ready to use.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
