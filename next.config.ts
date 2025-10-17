@@ -12,7 +12,7 @@ const nextConfig: NextConfig = {
       config.resolve = config.resolve || {};
       config.resolve.alias = {
         ...(config.resolve.alias || {}),
-        '@sentry/nextjs': require('path').resolve(__dirname, 'lib/stubs/sentry-nextjs.ts'),
+        '@sentry/nextjs': require('path').resolve(__dirname, 'src/lib/stubs/sentry-nextjs.ts'),
       } as Record<string, string>;
     }
     return config;
