@@ -18,13 +18,9 @@ fi
 
 # Check if we have TypeScript/JavaScript files in the commit
 js_files=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(js|jsx|ts|tsx)$' || true)
-mobile_files=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^mobile/.*\.(js|jsx|ts|tsx)$' || true)
 
-# Run Node.js checks if there are JS/TS files (excluding mobile)
+# Run Node.js checks if there are JS/TS files
 if [ -n "$js_files" ]; then
-  non_mobile_files=$(echo "$js_files" | grep -v '^mobile/' || true)
-
-  if [ -n "$non_mobile_files" ]; then
     echo "🌐 Running Next.js code quality checks..."
 
     # Run tests and store the exit code
@@ -53,30 +49,7 @@ if [ -n "$js_files" ]; then
       exit 1
     fi
 
-    echo "✅ Next.js checks passed!"
-  fi
-fi
-
-# Run mobile app checks if there are mobile files
-if [ -n "$mobile_files" ]; then
-  echo "📱 Running mobile app code quality checks..."
-
-  # Change to mobile directory
-  cd mobile
-
-  # Run linting for mobile app
-  echo "🔍 Running mobile linting..."
-  npm run lint
-  if [ $? -ne 0 ]; then
-    echo "❌ Mobile linting failed. Please fix the errors before committing."
-    cd ..
-    exit 1
-  fi
-
-  # Return to root directory
-  cd ..
-
-  echo "✅ Mobile app checks passed!"
+  echo "✅ Next.js checks passed!"
 fi
 
 echo "✅ All pre-commit checks passed!"

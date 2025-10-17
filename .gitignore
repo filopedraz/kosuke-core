@@ -52,7 +52,3 @@ next-env.d.ts
 # uploads (local development)
 public/uploads/*
 !public/uploads/.gitkeep
-
-mobile/ios/
-mobile/android/
-mobile/.expo/
