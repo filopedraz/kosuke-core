@@ -113,62 +113,64 @@ export async function POST(
     const stream = new ReadableStream({
       async start(controller) {
         try {
-          const blocks: Array<{ type: string; content: string; name?: string }> = [];
+          let fullTextContent = '';
+          const toolBlocks: Array<{ type: string; content: string; name?: string }> = [];
 
-          // Process message with Claude Agent SDK
-          for await (const message of processRequirementsMessage(projectId, messageContent)) {
-            if (message.type === 'assistant' && message.message) {
-              const assistantMsg = message.message as {
-                content: Array<{ type: string; text?: string; name?: string; input?: unknown }>;
-              };
+          // Process message with streaming from Claude
+          for await (const event of processRequirementsMessage(projectId, messageContent)) {
+            if (event.type === 'text_delta') {
+              // Stream text token by token
+              fullTextContent += event.text || '';
 
-              if (Array.isArray(assistantMsg.content)) {
-                for (const block of assistantMsg.content) {
-                  if (block.type === 'text' && block.text) {
-                    // Text block
-                    blocks.push({
-                      type: 'text',
-                      content: block.text,
-                    });
+              const data = JSON.stringify({
+                type: 'text_delta',
+                text: event.text,
+              });
+              controller.enqueue(encoder.encode(`data: ${data}\n\n`));
+            } else if (event.type === 'thinking_delta') {
+              // Stream thinking token by token
+              const data = JSON.stringify({
+                type: 'thinking_delta',
+                thinking: event.thinking,
+              });
+              controller.enqueue(encoder.encode(`data: ${data}\n\n`));
+            } else if (event.type === 'tool_use') {
+              // Tool started
+              const data = JSON.stringify({
+                type: 'tool_start',
+                toolName: event.toolName,
+                toolInput: event.toolInput,
+              });
+              controller.enqueue(encoder.encode(`data: ${data}\n\n`));
+            } else if (event.type === 'tool_result') {
+              // Tool completed
+              toolBlocks.push({
+                type: 'tool',
+                name: event.toolName || 'unknown',
+                content: event.toolResult || '',
+              });
 
-                    // Send SSE event
-                    const data = JSON.stringify({
-                      type: 'content_block',
-                      block: {
-                        type: 'text',
-                        content: block.text,
-                      },
-                    });
-                    controller.enqueue(encoder.encode(`data: ${data}\n\n`));
-                  } else if (block.type === 'tool_use') {
-                    // Tool use block
-                    const toolBlock = {
-                      type: 'tool',
-                      name: block.name || 'unknown',
-                      content: `Executed ${block.name}`,
-                    };
-
-                    blocks.push(toolBlock);
-
-                    // Send SSE event
-                    const data = JSON.stringify({
-                      type: 'content_block',
-                      block: toolBlock,
-                    });
-                    controller.enqueue(encoder.encode(`data: ${data}\n\n`));
-                  }
-                }
-              }
-            } else if (message.type === 'result') {
+              const data = JSON.stringify({
+                type: 'tool_stop',
+                toolName: event.toolName,
+                toolResult: event.toolResult,
+              });
+              controller.enqueue(encoder.encode(`data: ${data}\n\n`));
+            } else if (event.type === 'complete') {
               // Conversation complete - save to database
+              const allBlocks = [
+                {
+                  type: 'text',
+                  content: fullTextContent,
+                },
+                ...toolBlocks,
+              ];
+
               await db
                 .update(chatMessages)
                 .set({
-                  blocks: blocks as never,
-                  content: blocks
-                    .filter(b => b.type === 'text')
-                    .map(b => b.content)
-                    .join('\n\n'),
+                  blocks: allBlocks as never,
+                  content: fullTextContent,
                 })
                 .where(eq(chatMessages.id, assistantMessage.id));
 
@@ -182,13 +184,13 @@ export async function POST(
                 })
                 .where(eq(chatSessions.id, requirementsSession.id));
 
-              console.log(`✅ Assistant message saved with ${blocks.length} blocks`);
+              console.log(`✅ Assistant message saved with streaming content`);
 
               // Send completion event
               const data = JSON.stringify({
                 type: 'complete',
                 messageId: assistantMessage.id,
-                usage: message.usage,
+                usage: event.usage,
               });
               controller.enqueue(encoder.encode(`data: ${data}\n\n`));
             }

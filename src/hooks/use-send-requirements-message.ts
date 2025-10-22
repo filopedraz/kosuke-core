@@ -65,6 +65,8 @@ export function useSendRequirementsMessage(projectId: number, sessionId: string)
       const decoder = new TextDecoder();
       let buffer = '';
       const contentBlocks: ContentBlock[] = [];
+      let currentTextBlock: ContentBlock | null = null;
+      let currentToolBlock: ContentBlock | null = null;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -79,19 +81,59 @@ export function useSendRequirementsMessage(projectId: number, sessionId: string)
             try {
               const data = JSON.parse(line.substring(6));
 
-              if (data.type === 'content_block') {
-                // Add block to array
-                const block: ContentBlock = {
-                  id: `block-${Date.now()}-${contentBlocks.length}`,
+              if (data.type === 'text_delta') {
+                // Token-by-token text streaming
+                if (!currentTextBlock) {
+                  // Create new text block
+                  currentTextBlock = {
+                    id: `text-${Date.now()}`,
+                    index: contentBlocks.length,
+                    type: 'text',
+                    content: '',
+                    status: 'streaming',
+                    timestamp: new Date(),
+                  };
+                  contentBlocks.push(currentTextBlock);
+                }
+
+                // Append text token
+                currentTextBlock.content += data.text || '';
+
+                // Update streaming state with latest content
+                setStreamingState(prev => ({
+                  ...prev,
+                  streamingContentBlocks: [...contentBlocks],
+                }));
+              } else if (data.type === 'thinking_delta') {
+                // Thinking streaming (if implemented)
+                // Similar to text_delta but for thinking blocks
+              } else if (data.type === 'tool_start') {
+                // Tool use starting
+                currentToolBlock = {
+                  id: `tool-${Date.now()}`,
                   index: contentBlocks.length,
-                  type: data.block.type,
-                  content: data.block.content || '',
+                  type: 'tool',
+                  content: `Executing ${data.toolName}...`,
                   status: 'streaming',
                   timestamp: new Date(),
-                  toolName: data.block.name,
+                  toolName: data.toolName,
+                  toolInput: data.toolInput,
                 };
 
-                contentBlocks.push(block);
+                contentBlocks.push(currentToolBlock);
+
+                // Update streaming state
+                setStreamingState(prev => ({
+                  ...prev,
+                  streamingContentBlocks: [...contentBlocks],
+                }));
+              } else if (data.type === 'tool_stop') {
+                // Tool completed
+                if (currentToolBlock) {
+                  currentToolBlock.status = 'completed';
+                  currentToolBlock.toolResult = data.toolResult;
+                  currentToolBlock.content = `Executed ${data.toolName}`;
+                }
 
                 // Update streaming state
                 setStreamingState(prev => ({

@@ -2,7 +2,23 @@
 import type { Project } from '@/lib/db/schema';
 
 // Project Status
-export type ProjectStatus = 'requirements' | 'active';
+export type ProjectStatus = 'requirements' | 'ready' | 'active';
+
+// Project Estimate Types
+export type ProjectComplexity = 'simple' | 'medium' | 'complex';
+
+export interface ProjectEstimate {
+  complexity: ProjectComplexity;
+  amount: number;
+  timeline: string;
+  reasoning: string;
+}
+
+export interface GenerateEstimateResponse {
+  success: boolean;
+  estimate?: ProjectEstimate;
+  error?: string;
+}
 
 // Extended Project Types
 export interface ProjectWithStats extends Project {
@@ -118,4 +134,5 @@ export interface CompleteRequirementsResponse {
   success: boolean;
   message?: string;
   project?: Project;
+  estimate?: ProjectEstimate;
 }

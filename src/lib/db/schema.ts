@@ -54,7 +54,12 @@ export const projects = pgTable('projects', {
   autoCommit: boolean('auto_commit').default(true),
   lastGithubSync: timestamp('last_github_sync'),
   defaultBranch: varchar('default_branch', { length: 100 }).default('main'),
-  status: varchar('status', { length: 20 }).notNull().default('requirements'), // 'requirements' | 'active'
+  status: varchar('status', { length: 20 }).notNull().default('requirements'), // 'requirements' | 'ready' | 'active'
+  // Project Estimate fields
+  estimateComplexity: varchar('estimate_complexity', { length: 20 }), // 'simple' | 'medium' | 'complex'
+  estimateAmount: integer('estimate_amount'), // Dollar amount
+  estimateReasoning: text('estimate_reasoning'), // LLM reasoning for the estimate
+  estimateGeneratedAt: timestamp('estimate_generated_at'),
 });
 
 export const chatSessions = pgTable('chat_sessions', {

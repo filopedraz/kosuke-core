@@ -1,18 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { auth } from '@/lib/auth/server';
-import { AGENT_SERVICE_URL } from '@/lib/constants';
 import { db } from '@/lib/db/drizzle';
-import { getProjectEnvironmentVariables } from '@/lib/db/queries';
 import { chatSessions, projects } from '@/lib/db/schema';
 import { getGitHubToken } from '@/lib/github/auth';
 import { cleanupProjectWorkspace, docsExist } from '@/lib/requirements/claude-requirements';
+import { generateProjectEstimateWithRetry } from '@/lib/requirements/estimate-project';
 import { commitDocsToGitHub } from '@/lib/requirements/github-commit';
 import { and, eq } from 'drizzle-orm';
 
 /**
  * POST /api/projects/[id]/requirements/complete
- * Mark requirements gathering as complete and transition project to active status
+ * Mark requirements gathering as complete, generate estimate, and transition project to ready status
  */
 export async function POST(
   request: NextRequest,
@@ -60,6 +59,20 @@ export async function POST(
       );
     }
 
+    // Generate project estimate using Claude AI
+    console.log(`🤖 Generating project estimate for project ${projectId}...`);
+    let estimate;
+    try {
+      estimate = await generateProjectEstimateWithRetry(projectId);
+      console.log(`✅ Estimate generated:`, estimate);
+    } catch (estimateError) {
+      console.error('Failed to generate project estimate:', estimateError);
+      return NextResponse.json(
+        { error: 'Failed to generate project estimate. Please try again.' },
+        { status: 500 }
+      );
+    }
+
     // Get GitHub token for committing
     const githubToken = await getGitHubToken(userId);
     if (!githubToken) {
@@ -89,11 +102,15 @@ export async function POST(
 
     // Use transaction to update project status and archive requirements session
     const updatedProject = await db.transaction(async (tx) => {
-      // Update project status to active
+      // Update project status to ready and store estimate
       const [updated] = await tx
         .update(projects)
         .set({
-          status: 'active',
+          status: 'ready',
+          estimateComplexity: estimate.complexity,
+          estimateAmount: estimate.amount,
+          estimateReasoning: estimate.reasoning,
+          estimateGeneratedAt: new Date(),
           updatedAt: new Date(),
         })
         .where(eq(projects.id, projectId))
@@ -116,35 +133,6 @@ export async function POST(
       return updated;
     });
 
-    // NOW initialize Python agent environment for the default branch
-    // This happens after requirements are complete
-    try {
-      const envVars = await getProjectEnvironmentVariables(projectId);
-      const defaultBranch = project.defaultBranch || 'main';
-
-      const initResponse = await fetch(`${AGENT_SERVICE_URL}/api/preview/start`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          project_id: projectId,
-          session_id: defaultBranch,
-          env_vars: envVars,
-        }),
-      });
-
-      if (!initResponse.ok) {
-        console.warn('Failed to initialize Python agent environment:', await initResponse.text());
-        // Don't fail completion if environment init fails
-      } else {
-        console.log(`✅ Python agent environment initialized for ${defaultBranch}`);
-      }
-    } catch (initError) {
-      console.warn('Error initializing Python agent environment:', initError);
-      // Don't fail completion
-    }
-
     // Clean up local workspace after successful completion
     try {
       cleanupProjectWorkspace(projectId);
@@ -158,6 +146,12 @@ export async function POST(
       success: true,
       message: 'Requirements completed successfully',
       project: updatedProject,
+      estimate: {
+        complexity: estimate.complexity,
+        amount: estimate.amount,
+        timeline: estimate.timeline,
+        reasoning: estimate.reasoning,
+      },
     });
   } catch (error) {
     console.error('Error completing requirements:', error);

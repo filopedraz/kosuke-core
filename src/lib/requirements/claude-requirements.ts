@@ -1,17 +1,23 @@
 /**
- * Claude Agent SDK Integration for Requirements Gathering
+ * Claude Streaming Integration for Requirements Gathering
  *
  * This module handles requirements gathering conversations using Claude Agent SDK
- * to create comprehensive docs.md files before development begins.
+ * with token-by-token streaming to create comprehensive docs.md files.
  */
 
-import { query } from '@anthropic-ai/claude-agent-sdk';
+import { query, type Options } from '@anthropic-ai/claude-agent-sdk';
 import * as fs from 'fs';
 import * as path from 'path';
 
 // In-memory session storage
-const sessionStore = new Map<string, string>(); // projectId -> claudeSessionId
+interface ConversationMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+const conversationHistory = new Map<string, ConversationMessage[]>(); // projectId -> conversation
 const firstRequestTracker = new Map<string, boolean>(); // projectId -> isFirstRequest
+const sessionIds = new Map<string, string>(); // projectId -> sessionId for resuming
 
 /**
  * Get or create workspace directory for a project
@@ -40,8 +46,9 @@ export function cleanupProjectWorkspace(projectId: number): void {
 
   // Clean up session tracking
   const sessionKey = projectId.toString();
-  sessionStore.delete(sessionKey);
+  conversationHistory.delete(sessionKey);
   firstRequestTracker.delete(sessionKey);
+  sessionIds.delete(sessionKey);
 }
 
 /**
@@ -68,162 +75,193 @@ export function readDocs(projectId: number): string | null {
 }
 
 /**
- * Process requirements message using Claude Agent SDK
- * Returns an async generator for streaming responses
+ * Build system prompt for requirements gathering
+ */
+function buildSystemPrompt(): string {
+  return `You are a product requirements expert helping to define a comprehensive project specification.
+
+Your goal is to create a detailed requirements document (docs.md) that will guide development.
+
+You MUST immediately create a comprehensive docs.md file with:
+- Product Overview
+- Core Functionalities (detailed)
+- Technical Architecture
+- User Flows
+- Database Schema
+- API Endpoints
+- Implementation Notes
+
+Use the Write tool to create/update docs.md. You have access to Read and Write tools for file operations.
+
+/*
+COMMENTED OUT - Two-step clarification flow (for later use):
+
+On the FIRST request, you MUST:
+1. Analyze what the user wants to build
+2. List all core functionalities as bullet points
+3. Define a high-level implementation plan
+4. Ask numbered clarification questions about ambiguities
+
+After the user answers your questions, create a comprehensive docs.md file.
+*/`;
+}
+
+/**
+ * Process requirements message with streaming
+ * Returns an async generator for token-by-token streaming using Claude Agent SDK
  */
 export async function* processRequirementsMessage(
   projectId: number,
   userMessage: string
 ): AsyncGenerator<{
-  type: 'user' | 'assistant' | 'result';
-  content?: unknown;
-  sessionId?: string;
-  message?: unknown;
-  subtype?: string;
-  duration_ms?: number;
-  usage?: unknown;
+  type: 'text_delta' | 'tool_use' | 'tool_result' | 'complete' | 'thinking_delta';
+  text?: string;
+  thinking?: string;
+  toolName?: string;
+  toolInput?: Record<string, unknown>;
+  toolResult?: string;
+  usage?: Record<string, unknown>;
 }> {
   const sessionKey = projectId.toString();
   const projectWorkspace = getProjectWorkspace(projectId);
 
-  // Get session ID if exists
-  const existingSessionId = sessionStore.get(sessionKey) || undefined;
+  // Get or initialize conversation history
+  const messages = conversationHistory.get(sessionKey) || [];
   const isFirstRequest = !firstRequestTracker.has(sessionKey);
 
-  // Modify prompt for first request to enforce requirements workflow
-  let effectivePrompt = userMessage;
-
+  // Modify first request prompt
+  let effectiveMessage = userMessage;
   if (isFirstRequest) {
-    effectivePrompt = `${userMessage}
+    effectiveMessage = `${userMessage}
 
-IMPORTANT INSTRUCTIONS FOR FIRST REQUEST:
-This is a product implementation request. You MUST follow this workflow:
+Please immediately create a comprehensive docs.md file based on this request. Make reasonable assumptions where details are unclear.`;
 
-1. **Analyze the Request**: Understand what product needs to be built
-2. **List Core Functionalities**: Present all features in clear bullet points
-3. **Define Implementation Plan**: Create a detailed plan with all required components
-4. **Ask NUMBERED Clarification Questions**: List any ambiguities or missing requirements with numbers
+    /*
+    COMMENTED OUT - Two-step clarification flow (for later use):
 
-Format your response as:
----
-## Product Analysis
-[Brief description of what will be built]
+    effectiveMessage = \`\${userMessage}
 
-## Core Functionalities
-- [Functionality 1]
-- [Functionality 2]
-- [Functionality 3]
-...
+Please analyze this request and provide:
+1. Product Analysis
+2. Core Functionalities (bullet points)
+3. Implementation Plan
+4. Numbered Clarification Questions
 
-## Implementation Plan
-[High-level technical approach and architecture]
+After I answer your questions, create a comprehensive docs.md file.\`;
+    */
 
-## Clarification Questions
-1. [Question 1]
-2. [Question 2]
-3. [Question 3]
-...
-
----
-
-WORKFLOW AFTER USER ANSWERS QUESTIONS:
-Create a comprehensive requirements document in docs.md with:
-   - Product Overview
-   - Core Functionalities (detailed)
-   - Technical Architecture
-   - User Flows
-   - Database Schema
-   - API Endpoints
-   - Implementation Notes
-
-IMPORTANT: This is an INTERACTIVE conversation. After showing this plan, WAIT for the user's response. The conversation continues - do NOT stop the chat loop.`;
-
-    firstRequestTracker.set(sessionKey, false); // Mark as not first request anymore
+    firstRequestTracker.set(sessionKey, false);
   }
 
   try {
-    // Use Claude Agent SDK query function
-    const result = query({
-      prompt: effectivePrompt,
-      options: {
-        cwd: projectWorkspace,
-        settingSources: ['project'],
-        permissionMode: 'acceptEdits',
-        resume: existingSessionId,
-        allowedTools: [
-          'Task',
-          'Bash',
-          'Glob',
-          'Grep',
-          'LS',
-          'ExitPlanMode',
-          'Read',
-          'Edit',
-          'MultiEdit',
-          'Write',
-          'NotebookRead',
-          'NotebookEdit',
-          'WebFetch',
-          'TodoWrite',
-          'WebSearch',
-        ],
-        systemPrompt: {
-          type: 'preset',
-          preset: 'claude_code',
-        },
-      },
-    });
+    // Configure Claude Agent SDK options
+    const options: Options = {
+      model: process.env.ANTHROPIC_MODEL || 'sonnet',
+      cwd: projectWorkspace,
+      systemPrompt: buildSystemPrompt(),
+      allowedTools: ['Read', 'Write'], // Only file operations for requirements
+      maxTurns: 5, // Limit conversation turns
+      includePartialMessages: true, // Enable streaming events
+      permissionMode: 'acceptEdits', // Auto-accept file writes
+      resume: sessionIds.get(sessionKey), // Resume previous session if exists
+    };
 
-    // Stream messages from Claude
-    for await (const message of result) {
-      if (message.type === 'user') {
-        // Store session ID for continuation
-        if (message.session_id && !sessionStore.has(sessionKey)) {
-          sessionStore.set(sessionKey, message.session_id);
+    // Stream from Claude Agent SDK
+    let assistantResponse = '';
+    let completionUsage: Record<string, unknown> = {};
+    let currentSessionId = '';
+
+    const queryStream = query({ prompt: effectiveMessage, options });
+
+    for await (const message of queryStream) {
+      // Handle different message types from Claude Agent SDK
+      if (message.type === 'stream_event') {
+        // Streaming events for real-time updates
+        const event = message.event;
+
+        if (event.type === 'content_block_delta') {
+          if (event.delta.type === 'text_delta') {
+            // Text streaming
+            const text = event.delta.text;
+            assistantResponse += text;
+            yield {
+              type: 'text_delta',
+              text,
+            };
+          }
+        } else if (event.type === 'content_block_start') {
+          if (event.content_block.type === 'tool_use') {
+            // Tool use started
+            yield {
+              type: 'tool_use',
+              toolName: event.content_block.name,
+              toolInput: {},
+            };
+          }
         }
-
-        yield {
-          type: 'user',
-          sessionId: message.session_id,
-        };
       } else if (message.type === 'assistant') {
-        yield {
-          type: 'assistant',
-          message: message.message,
-          sessionId: message.session_id,
-        };
-
-        // Update session ID
-        if (message.session_id) {
-          sessionStore.set(sessionKey, message.session_id);
+        // Full assistant message (for non-streaming or final message)
+        const content = message.message.content;
+        for (const block of content) {
+          if (block.type === 'text') {
+            assistantResponse += block.text;
+          }
         }
+
+        // Capture session ID for resuming
+        currentSessionId = message.session_id;
       } else if (message.type === 'result') {
-        yield {
-          type: 'result',
-          subtype: message.subtype,
-          duration_ms: message.duration_ms,
-          usage: message.usage,
-        };
+        // Final result with usage statistics
+        if (message.usage) {
+          completionUsage = {
+            inputTokens: message.usage.input_tokens,
+            outputTokens: message.usage.output_tokens,
+          };
+        }
+
+        // Save session ID for future resumption
+        if (currentSessionId) {
+          sessionIds.set(sessionKey, currentSessionId);
+        }
+      } else if (message.type === 'system') {
+        // System initialization message
+        if (message.subtype === 'init') {
+          currentSessionId = message.session_id;
+        }
       }
     }
+
+    // Update conversation history
+    messages.push(
+      { role: 'user', content: effectiveMessage },
+      { role: 'assistant', content: assistantResponse }
+    );
+    conversationHistory.set(sessionKey, messages);
+
+    // Yield completion
+    yield {
+      type: 'complete',
+      usage: completionUsage,
+    };
   } catch (error) {
-    console.error('Error processing requirements message:', error);
+    console.error('Error in Claude Agent SDK streaming:', error);
     throw error;
   }
 }
 
 /**
- * Get the current Claude session ID for a project
+ * Get conversation history for a project
  */
-export function getClaudeSessionId(projectId: number): string | undefined {
-  return sessionStore.get(projectId.toString());
+export function getConversationHistory(projectId: number): ConversationMessage[] | undefined {
+  return conversationHistory.get(projectId.toString());
 }
 
 /**
- * Clear Claude session for a project
+ * Clear conversation history for a project
  */
-export function clearClaudeSession(projectId: number): void {
+export function clearConversationHistory(projectId: number): void {
   const sessionKey = projectId.toString();
-  sessionStore.delete(sessionKey);
+  conversationHistory.delete(sessionKey);
   firstRequestTracker.delete(sessionKey);
+  sessionIds.delete(sessionKey);
 }

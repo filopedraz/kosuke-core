@@ -146,8 +146,8 @@ export default function ProjectPage({ params }: ProjectPageProps) {
   const { data: project, isLoading: isProjectLoading, error: projectError } = useProject(projectId);
   const { data: sessions = [] } = useChatSessions(projectId);
 
-  // Check if project is in requirements gathering mode (safe to do before project check)
-  const isRequirementsMode = project?.status === 'requirements';
+  // Check if project is in requirements gathering or ready mode (safe to do before project check)
+  const isRequirementsMode = project?.status === 'requirements' || project?.status === 'ready';
 
   // Fetch requirements session if in requirements mode (must be before early returns)
   const { data: requirementsSession } = useRequirementsSession(projectId, isRequirementsMode);
@@ -225,8 +225,10 @@ export default function ProjectPage({ params }: ProjectPageProps) {
     notFound();
   }
 
-  // REQUIREMENTS MODE - Special rendering
+  // REQUIREMENTS/READY MODE - Special rendering
   if (isRequirementsMode && requirementsSession) {
+    const isReadyState = project?.status === 'ready';
+
     return (
       <div className="flex flex-col h-screen w-full">
         <Navbar
@@ -246,19 +248,26 @@ export default function ProjectPage({ params }: ProjectPageProps) {
           }}
         />
         <div className="flex h-[calc(100vh-3.5rem)] w-full overflow-hidden">
-          {/* LEFT: Chat Interface (no sidebar) */}
-          <div className="h-full overflow-hidden w-full md:w-1/4 lg:w-1/4">
-            <ChatInterface
-              projectId={projectId}
-              activeChatSessionId={requirementsSession.id}
-              currentBranch="main"
-              sessionId={requirementsSession.sessionId} // Use dynamic sessionId
-              isRequirementsMode={true} // Enable requirements mode
-            />
-          </div>
+          {/* LEFT: Chat Interface (no sidebar) - Only show if in requirements, not ready */}
+          {!isReadyState && (
+            <div className="h-full overflow-hidden w-full md:w-1/4 lg:w-1/4">
+              <ChatInterface
+                projectId={projectId}
+                activeChatSessionId={requirementsSession.id}
+                currentBranch="main"
+                sessionId={requirementsSession.sessionId} // Use dynamic sessionId
+                isRequirementsMode={true} // Enable requirements mode
+              />
+            </div>
+          )}
 
           {/* RIGHT: Requirements Docs Preview */}
-          <div className="hidden md:flex md:w-3/4 lg:w-3/4 h-full flex-col overflow-hidden border border-border rounded-md">
+          <div
+            className={cn(
+              'h-full flex flex-col overflow-hidden border border-border rounded-md',
+              isReadyState ? 'w-full' : 'hidden md:flex md:w-3/4 lg:w-3/4'
+            )}
+          >
             <RequirementsDocsPreview projectId={projectId} />
           </div>
         </div>
