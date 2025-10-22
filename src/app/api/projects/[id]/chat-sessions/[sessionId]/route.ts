@@ -7,6 +7,8 @@ import { chatMessages, chatSessions, projects } from '@/lib/db/schema';
 import { getGitHubToken } from '@/lib/github/auth';
 import { uploadFile } from '@/lib/storage';
 import { and, eq } from 'drizzle-orm';
+import { sessionManager } from '@/lib/sessions';
+import { Agent } from '@/lib/agent';
 
 // Schema for updating a chat session
 const updateChatSessionSchema = z.object({
@@ -14,7 +16,7 @@ const updateChatSessionSchema = z.object({
   description: z.string().optional(),
   status: z.enum(['active', 'archived', 'completed']).optional(),
   // GitHub merge status fields
-  branchMergedAt: z.string().optional(),
+  branchMergedAt: z.date().optional(),
   branchMergedBy: z.string().max(100).optional(),
   mergeCommitSha: z.string().max(40).optional(),
   pullRequestNumber: z.number().int().positive().optional(),
@@ -427,13 +429,6 @@ export async function POST(
 
     console.log(`✅ Assistant message placeholder created with ID: ${assistantMessage.id}`);
 
-    // Proxy stream directly to Python FastAPI service
-    const agentServiceUrl = process.env.AGENT_SERVICE_URL || 'http://localhost:8001';
-
-    // Use the session-aware chat endpoint
-    const endpoint = '/api/chat/stream';
-    console.log(`🚀 Routing to: ${endpoint} for session ${chatSession.sessionId}`);
-
     // Mark unused variables for future use
     void includeContext;
     void contextFiles;
@@ -452,41 +447,64 @@ export async function POST(
       console.log(`⚠️ GitHub token retrieval failed: ${error}`);
     }
 
-    const response = await fetch(`${agentServiceUrl}${endpoint}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        project_id: projectId,
-        prompt: messageContent,
-        assistant_message_id: assistantMessage.id,
-        github_token: githubToken,
-        session_id: chatSession.sessionId,
-      }),
-    });
+    // Validate session directory exists
+    const sessionValid = await sessionManager.validateSessionDirectory(projectId, chatSession.sessionId);
 
-    if (!response.ok) {
-      // Get detailed error information from FastAPI
-      let errorDetails = response.statusText;
-      try {
-        const errorBody = await response.text();
-        if (errorBody) {
-          console.error('Python agent service error body:', errorBody);
-          errorDetails = errorBody;
+    if (!sessionValid) {
+      return new Response(
+        JSON.stringify({
+          error: 'Session environment not found. Start a preview for this session first to initialize the environment.',
+        }),
+        {
+          status: 404,
+          headers: { 'Content-Type': 'application/json' }
         }
-      } catch (e) {
-        console.error('Failed to read error response body:', e);
-      }
-
-      console.error('Python agent service error:', response.status, response.statusText);
-      return new Response(`Agent service error: ${errorDetails}`, {
-        status: response.status
-      });
+      );
     }
 
-    // Stream the response from Python service directly to client
-    return new Response(response.body, {
+    console.log(`✅ Session environment validated for session ${chatSession.sessionId}`);
+
+    // Initialize Agent with session configuration
+    const agent = new Agent({
+      projectId,
+      sessionId: chatSession.sessionId,
+      githubToken,
+      assistantMessageId: assistantMessage.id,
+      userId,
+    });
+
+    console.log(`🚀 Starting agent stream for session ${chatSession.sessionId}`);
+
+    // Create a ReadableStream from the agent's async generator
+    const stream = new ReadableStream({
+      async start(controller) {
+        try {
+          // Stream events from agent
+          for await (const event of agent.run(messageContent)) {
+            // Format as Server-Sent Events
+            const data = JSON.stringify(event);
+            controller.enqueue(new TextEncoder().encode(`data: ${data}\n\n`));
+          }
+
+          // Send completion marker
+          controller.enqueue(new TextEncoder().encode('data: [DONE]\n\n'));
+          controller.close();
+        } catch (error) {
+          console.error('❌ Error in agent stream:', error);
+
+          // Send error event
+          const errorEvent = {
+            type: 'error',
+            message: error instanceof Error ? error.message : 'Unknown error occurred',
+          };
+          controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify(errorEvent)}\n\n`));
+          controller.close();
+        }
+      },
+    });
+
+    // Return streaming response
+    return new Response(stream, {
       headers: {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache, no-transform',

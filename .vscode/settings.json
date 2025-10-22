@@ -30,7 +30,7 @@
         "**/.next": true,
         "**/dist": true,
         "**/__pycache__": true,
-        "**/projects": true
+        "projects/**": true
     },
 
     // Python settings
@@ -113,5 +113,6 @@
         "package.json": "package-lock.json, yarn.lock, pnpm-lock.yaml",
         "tailwind.config.*": "postcss.config.*",
         "next.config.*": "next-env.d.ts"
-    }
+    },
+    "typescript.tsdk": "node_modules/typescript/lib"
 }

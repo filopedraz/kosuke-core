@@ -20,7 +20,7 @@ services:
       - '8001:8000'
     volumes:
       - ./agent:/app:cached
-      - ./projects:/app/projects:cached
+      - ./projects:/projects:cached
       - /var/run/docker.sock:/var/run/docker.sock
     env_file:
       - ./agent/.env
