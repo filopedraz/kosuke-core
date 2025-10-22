@@ -80,9 +80,11 @@ export function readDocs(projectId: number): string | null {
 function buildSystemPrompt(): string {
   return `You are a product requirements expert helping to define a comprehensive project specification.
 
-Your goal is to create a detailed requirements document (docs.md) that will guide development.
+Your goal is to create a detailed requirements document that will guide development.
 
-You MUST immediately create a comprehensive docs.md file with:
+CRITICAL: The file MUST be named exactly "docs.md" - no other filename is acceptable.
+
+You MUST immediately use the Write tool to create a file named "docs.md" (not any other name) with the following comprehensive content:
 - Product Overview
 - Core Functionalities (detailed)
 - Technical Architecture
@@ -91,7 +93,9 @@ You MUST immediately create a comprehensive docs.md file with:
 - API Endpoints
 - Implementation Notes
 
-Use the Write tool to create/update docs.md. You have access to Read and Write tools for file operations.
+IMPORTANT: Always use the Write tool with path "docs.md" - never use any other filename like "project-specs.md" or "{project-name}-specs.md". The filename must always be exactly "docs.md".
+
+You have access to Read and Write tools for file operations.
 
 /*
 COMMENTED OUT - Two-step clarification flow (for later use):
@@ -134,7 +138,9 @@ export async function* processRequirementsMessage(
   if (isFirstRequest) {
     effectiveMessage = `${userMessage}
 
-Please immediately create a comprehensive docs.md file based on this request. Make reasonable assumptions where details are unclear.`;
+IMPORTANT: Please immediately use the Write tool to create a file named exactly "docs.md" (not any other filename) with comprehensive specifications based on this request. Make reasonable assumptions where details are unclear.
+
+Remember: The filename must be "docs.md" - do not use any other name.`;
 
     /*
     COMMENTED OUT - Two-step clarification flow (for later use):
