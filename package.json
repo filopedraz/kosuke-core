@@ -25,6 +25,7 @@
     "shadcn:check": "npx shadcn@canary diff"
   },
   "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.1.25",
     "@clerk/nextjs": "^6.28.1",
     "@clerk/themes": "^2.4.4",
     "@hookform/resolvers": "^5.2.1",

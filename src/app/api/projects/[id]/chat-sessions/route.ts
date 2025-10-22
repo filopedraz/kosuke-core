@@ -6,7 +6,7 @@ import { db } from '@/lib/db/drizzle';
 import { chatSessions, projects } from '@/lib/db/schema';
 import { getGitHubToken } from '@/lib/github/auth';
 import { Octokit } from '@octokit/rest';
-import { desc, eq } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 
 // Schema for creating a chat session
 const createChatSessionSchema = z.object({
@@ -136,11 +136,16 @@ export async function GET(
       );
     }
 
-    // Get all chat sessions for the project
+    // Get all chat sessions for the project (excluding requirements sessions)
     let sessions = await db
       .select()
       .from(chatSessions)
-      .where(eq(chatSessions.projectId, projectId))
+      .where(
+        and(
+          eq(chatSessions.projectId, projectId),
+          eq(chatSessions.isRequirementsSession, false) // Filter out requirements sessions
+        )
+      )
       .orderBy(desc(chatSessions.lastActivityAt));
 
     // Return sessions (empty array if none exist)

@@ -19,7 +19,11 @@ import ChatSidebar from './components/chat/chat-sidebar';
 import { DatabaseTab } from './components/database/database-tab';
 import CodeExplorer from './components/preview/code-explorer';
 import PreviewPanel from './components/preview/preview-panel';
+import RequirementsDocsPreview from './components/requirements/docs-preview';
 import { SettingsTab } from './components/settings/settings-tab';
+
+// Import requirements hooks
+import { useRequirementsSession } from '@/hooks/use-requirements-session';
 
 interface ProjectPageProps {
   params: Promise<{
@@ -142,6 +146,12 @@ export default function ProjectPage({ params }: ProjectPageProps) {
   const { data: project, isLoading: isProjectLoading, error: projectError } = useProject(projectId);
   const { data: sessions = [] } = useChatSessions(projectId);
 
+  // Check if project is in requirements gathering mode (safe to do before project check)
+  const isRequirementsMode = project?.status === 'requirements';
+
+  // Fetch requirements session if in requirements mode (must be before early returns)
+  const { data: requirementsSession } = useRequirementsSession(projectId, isRequirementsMode);
+
   // Pull request functionality
   const createPullRequestMutation = useCreatePullRequest(projectId);
 
@@ -215,6 +225,53 @@ export default function ProjectPage({ params }: ProjectPageProps) {
     notFound();
   }
 
+  // REQUIREMENTS MODE - Special rendering
+  if (isRequirementsMode && requirementsSession) {
+    return (
+      <div className="flex flex-col h-screen w-full">
+        <Navbar
+          variant="project"
+          projectProps={{
+            projectName: project?.name || 'Loading Project...',
+            currentView: 'preview', // Locked to preview
+            onViewChange: () => {}, // No-op - tabs locked
+            onRefresh: () => window.location.reload(),
+            isChatCollapsed: false, // Always show chat in requirements mode
+            onToggleChat: () => {}, // No-op - can't collapse chat
+            showSidebar: false, // No sidebar in requirements mode
+            onToggleSidebar: () => {}, // No-op
+            activeChatSessionId: requirementsSession.id,
+            onCreatePullRequest: () => {}, // No-op
+            isRequirementsMode: true, // NEW PROP - signals requirements mode to Navbar
+          }}
+        />
+        <div className="flex h-[calc(100vh-3.5rem)] w-full overflow-hidden">
+          {/* LEFT: Chat Interface (no sidebar) */}
+          <div className="h-full overflow-hidden w-full md:w-1/4 lg:w-1/4">
+            <ChatInterface
+              projectId={projectId}
+              activeChatSessionId={requirementsSession.id}
+              currentBranch="main"
+              sessionId={requirementsSession.sessionId} // Use dynamic sessionId
+              isRequirementsMode={true} // Enable requirements mode
+            />
+          </div>
+
+          {/* RIGHT: Requirements Docs Preview */}
+          <div className="hidden md:flex md:w-3/4 lg:w-3/4 h-full flex-col overflow-hidden border border-border rounded-md">
+            <RequirementsDocsPreview projectId={projectId} />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // If requirements mode but no session yet, show loading
+  if (isRequirementsMode && !requirementsSession) {
+    return <ProjectLoadingSkeleton />;
+  }
+
+  // NORMAL MODE - Existing logic below
   // Handlers
   const handleRefresh = () => {
     // Refresh could trigger a page reload or refetch project data

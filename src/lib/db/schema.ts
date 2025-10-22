@@ -54,6 +54,7 @@ export const projects = pgTable('projects', {
   autoCommit: boolean('auto_commit').default(true),
   lastGithubSync: timestamp('last_github_sync'),
   defaultBranch: varchar('default_branch', { length: 100 }).default('main'),
+  status: varchar('status', { length: 20 }).notNull().default('requirements'), // 'requirements' | 'active'
 });
 
 export const chatSessions = pgTable('chat_sessions', {
@@ -73,6 +74,7 @@ export const chatSessions = pgTable('chat_sessions', {
   lastActivityAt: timestamp('last_activity_at').notNull().defaultNow(),
   messageCount: integer('message_count').default(0),
   isDefault: boolean('is_default').default(false),
+  isRequirementsSession: boolean('is_requirements_session').default(false),
   // GitHub merge status
   branchMergedAt: timestamp('branch_merged_at'),
   branchMergedBy: varchar('branch_merged_by', { length: 100 }),

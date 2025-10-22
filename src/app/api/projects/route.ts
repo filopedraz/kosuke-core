@@ -5,8 +5,9 @@ import { z } from 'zod';
 import { ApiErrorHandler } from '@/lib/api/errors';
 import { ApiResponseHandler } from '@/lib/api/responses';
 import { auth } from '@/lib/auth/server';
+import { AGENT_SERVICE_URL } from '@/lib/constants';
 import { db } from '@/lib/db/drizzle';
-import { projects } from '@/lib/db/schema';
+import { chatMessages, chatSessions, projects } from '@/lib/db/schema';
 import { getGitHubToken } from '@/lib/github/auth';
 
 
@@ -54,6 +55,7 @@ export async function GET() {
   }
 }
 
+
 /**
  * Helper function to create a GitHub repository
  */
@@ -64,7 +66,7 @@ async function createGitHubRepository(
   isPrivate: boolean,
   projectId: number
 ) {
-  const agentUrl = process.env.AGENT_SERVICE_URL || 'http://localhost:8000';
+  const agentUrl = AGENT_SERVICE_URL;
 
   const response = await fetch(`${agentUrl}/api/github/create-repo`, {
     method: 'POST',
@@ -99,7 +101,7 @@ async function importGitHubRepository(
   repositoryUrl: string,
   projectId: number
 ) {
-  const agentUrl = process.env.AGENT_SERVICE_URL || 'http://localhost:8000';
+  const agentUrl = AGENT_SERVICE_URL;
 
   // First get repo info
   const infoResponse = await fetch(
@@ -187,7 +189,7 @@ export async function POST(request: NextRequest) {
 
     // Use a transaction to ensure atomicity
     const result_1 = await db.transaction(async (tx) => {
-      // First create the project
+      // First create the project (status defaults to 'requirements')
       const [project] = await tx
         .insert(projects)
         .values({
@@ -197,8 +199,52 @@ export async function POST(request: NextRequest) {
           createdBy: userId,
           createdAt: new Date(),
           updatedAt: new Date(),
+          // status: 'requirements' is the default from schema
         })
         .returning();
+
+      // Create requirements session immediately after project creation (within transaction)
+      // Use unique sessionId: 'requirements-{projectId}' but still tied to main branch
+      const requirementsSessionId = `requirements-${project.id}`;
+
+      const [requirementsSession] = await tx
+        .insert(chatSessions)
+        .values({
+          projectId: project.id,
+          userId: userId,
+          title: 'Requirements Gathering',
+          description: 'Define your project requirements before development',
+          sessionId: requirementsSessionId, // Unique per project, tied to main branch
+          status: 'active',
+          messageCount: 1, // Will have welcome message
+          isDefault: false,
+          isRequirementsSession: true,
+        })
+        .returning();
+
+      // Add initial welcome message (within transaction)
+      await tx.insert(chatMessages).values({
+        projectId: project.id,
+        chatSessionId: requirementsSession.id,
+        userId: null, // System message
+        role: 'assistant',
+        content: null, // Will use blocks instead
+        blocks: [
+          {
+            type: 'text',
+            content: `Welcome! Let's gather requirements for your project.
+
+Please describe what you want to build. I'll help you:
+1. Analyze your product idea
+2. Define core functionalities
+3. Create a detailed implementation plan
+4. Ask clarifying questions
+
+Once we have all the details, I'll create a comprehensive requirements document (docs.md) that will guide the development.`,
+          },
+        ],
+        timestamp: new Date(),
+      });
 
       try {
         // Handle GitHub operations based on type
@@ -251,6 +297,10 @@ export async function POST(request: NextRequest) {
         throw githubError;
       }
     });
+
+    // Don't initialize Python agent environment during requirements gathering
+    // It will be initialized when requirements are completed
+    console.log('✅ Project created in requirements mode - Python agent will be initialized after requirements complete');
 
     return ApiResponseHandler.created({ project: result_1 });
   } catch (error) {

@@ -9,6 +9,7 @@ import {
   Eye,
   GitPullRequest,
   LayoutDashboard,
+  Lock,
   LogOut,
   PanelLeftClose,
   PanelLeftOpen,
@@ -29,6 +30,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
 type NavbarProps = {
@@ -47,6 +54,8 @@ type NavbarProps = {
     // Floating toggle functionality
     showSidebar?: boolean;
     onToggleSidebar?: () => void;
+    // Requirements mode
+    isRequirementsMode?: boolean;
   };
   className?: string;
 };
@@ -170,8 +179,8 @@ export default function Navbar({
               </div>
 
               {/* Floating toggle button positioned to the left of collapse toggle */}
-              {/* Only show toggle when in chat interface (showSidebar is false) */}
-              {projectProps.onToggleSidebar && !projectProps.showSidebar && (
+              {/* Only show toggle when in chat interface (showSidebar is false) and NOT in requirements mode */}
+              {projectProps.onToggleSidebar && !projectProps.showSidebar && !projectProps.isRequirementsMode && (
                 <Button
                   variant="ghost"
                   size="icon"
@@ -184,7 +193,8 @@ export default function Navbar({
               )}
 
               {/* Toggle button positioned at the right edge of chat width */}
-              {projectProps.onToggleChat && (
+              {/* Hide in requirements mode - chat cannot be collapsed */}
+              {projectProps.onToggleChat && !projectProps.isRequirementsMode && (
                 <Button
                   variant="ghost"
                   size="icon"
@@ -209,58 +219,146 @@ export default function Navbar({
               </h2>
 
               <div className="flex items-center gap-2 mx-auto">
-                <div className="flex border border-input rounded-md overflow-hidden">
-                  <Button
-                    variant={projectProps.currentView === 'preview' ? 'secondary' : 'ghost'}
-                    size="sm"
-                    className="rounded-none px-3 h-8"
-                    onClick={() => projectProps.onViewChange('preview')}
-                  >
-                    <Eye className="h-4 w-4 mr-1" />
-                    Preview
-                  </Button>
-                  <Button
-                    variant={projectProps.currentView === 'code' ? 'secondary' : 'ghost'}
-                    size="sm"
-                    className="rounded-none px-3 h-8"
-                    onClick={() => projectProps.onViewChange('code')}
-                  >
-                    <Code className="h-4 w-4 mr-1" />
-                    Code
-                  </Button>
-                  <Button
-                    variant={projectProps.currentView === 'branding' ? 'secondary' : 'ghost'}
-                    size="sm"
-                    className="rounded-none px-3 h-8"
-                    onClick={() => projectProps.onViewChange('branding')}
-                  >
-                    <Sparkles className="h-4 w-4 mr-1" />
-                    Branding
-                  </Button>
-                  <Button
-                    variant={projectProps.currentView === 'settings' ? 'secondary' : 'ghost'}
-                    size="sm"
-                    className="rounded-none px-3 h-8"
-                    onClick={() => projectProps.onViewChange('settings')}
-                  >
-                    <Settings className="h-4 w-4 mr-1" />
-                    Settings
-                  </Button>
-                  <Button
-                    variant={projectProps.currentView === 'database' ? 'secondary' : 'ghost'}
-                    size="sm"
-                    className="rounded-none px-3 h-8"
-                    onClick={() => projectProps.onViewChange('database')}
-                  >
-                    <Database className="h-4 w-4 mr-1" />
-                    Database
-                  </Button>
-                </div>
+                <TooltipProvider>
+                  <div className="flex border border-input rounded-md overflow-hidden">
+                    {/* Preview Tab - Show "Requirements" in requirements mode */}
+                    <Button
+                      variant={projectProps.currentView === 'preview' ? 'secondary' : 'ghost'}
+                      size="sm"
+                      className="rounded-none px-3 h-8"
+                      onClick={() => projectProps.onViewChange('preview')}
+                      disabled={false} // Always enabled - shows requirements in requirements mode
+                    >
+                      <Eye className="h-4 w-4 mr-1" />
+                      {projectProps.isRequirementsMode ? 'Requirements' : 'Preview'}
+                    </Button>
+
+                    {/* Code Tab - Locked in requirements mode */}
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div>
+                          <Button
+                            variant={projectProps.currentView === 'code' ? 'secondary' : 'ghost'}
+                            size="sm"
+                            className={cn(
+                              "rounded-none px-3 h-8",
+                              projectProps.isRequirementsMode && "opacity-50 cursor-not-allowed"
+                            )}
+                            onClick={() => !projectProps.isRequirementsMode && projectProps.onViewChange('code')}
+                            disabled={projectProps.isRequirementsMode}
+                          >
+                            {projectProps.isRequirementsMode ? (
+                              <Lock className="h-4 w-4 mr-1" />
+                            ) : (
+                              <Code className="h-4 w-4 mr-1" />
+                            )}
+                            Code
+                          </Button>
+                        </div>
+                      </TooltipTrigger>
+                      {projectProps.isRequirementsMode && (
+                        <TooltipContent>
+                          <p>Complete requirements gathering first</p>
+                        </TooltipContent>
+                      )}
+                    </Tooltip>
+
+                    {/* Branding Tab - Locked in requirements mode */}
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div>
+                          <Button
+                            variant={projectProps.currentView === 'branding' ? 'secondary' : 'ghost'}
+                            size="sm"
+                            className={cn(
+                              "rounded-none px-3 h-8",
+                              projectProps.isRequirementsMode && "opacity-50 cursor-not-allowed"
+                            )}
+                            onClick={() => !projectProps.isRequirementsMode && projectProps.onViewChange('branding')}
+                            disabled={projectProps.isRequirementsMode}
+                          >
+                            {projectProps.isRequirementsMode ? (
+                              <Lock className="h-4 w-4 mr-1" />
+                            ) : (
+                              <Sparkles className="h-4 w-4 mr-1" />
+                            )}
+                            Branding
+                          </Button>
+                        </div>
+                      </TooltipTrigger>
+                      {projectProps.isRequirementsMode && (
+                        <TooltipContent>
+                          <p>Complete requirements gathering first</p>
+                        </TooltipContent>
+                      )}
+                    </Tooltip>
+
+                    {/* Settings Tab - Locked in requirements mode */}
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div>
+                          <Button
+                            variant={projectProps.currentView === 'settings' ? 'secondary' : 'ghost'}
+                            size="sm"
+                            className={cn(
+                              "rounded-none px-3 h-8",
+                              projectProps.isRequirementsMode && "opacity-50 cursor-not-allowed"
+                            )}
+                            onClick={() => !projectProps.isRequirementsMode && projectProps.onViewChange('settings')}
+                            disabled={projectProps.isRequirementsMode}
+                          >
+                            {projectProps.isRequirementsMode ? (
+                              <Lock className="h-4 w-4 mr-1" />
+                            ) : (
+                              <Settings className="h-4 w-4 mr-1" />
+                            )}
+                            Settings
+                          </Button>
+                        </div>
+                      </TooltipTrigger>
+                      {projectProps.isRequirementsMode && (
+                        <TooltipContent>
+                          <p>Complete requirements gathering first</p>
+                        </TooltipContent>
+                      )}
+                    </Tooltip>
+
+                    {/* Database Tab - Locked in requirements mode */}
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div>
+                          <Button
+                            variant={projectProps.currentView === 'database' ? 'secondary' : 'ghost'}
+                            size="sm"
+                            className={cn(
+                              "rounded-none px-3 h-8",
+                              projectProps.isRequirementsMode && "opacity-50 cursor-not-allowed"
+                            )}
+                            onClick={() => !projectProps.isRequirementsMode && projectProps.onViewChange('database')}
+                            disabled={projectProps.isRequirementsMode}
+                          >
+                            {projectProps.isRequirementsMode ? (
+                              <Lock className="h-4 w-4 mr-1" />
+                            ) : (
+                              <Database className="h-4 w-4 mr-1" />
+                            )}
+                            Database
+                          </Button>
+                        </div>
+                      </TooltipTrigger>
+                      {projectProps.isRequirementsMode && (
+                        <TooltipContent>
+                          <p>Complete requirements gathering first</p>
+                        </TooltipContent>
+                      )}
+                    </Tooltip>
+                  </div>
+                </TooltipProvider>
               </div>
 
               <div className="flex items-center gap-2 px-4">
-                {/* Create Pull Request Button */}
-                {projectProps.onCreatePullRequest && (
+                {/* Create Pull Request Button - Hidden in requirements mode */}
+                {projectProps.onCreatePullRequest && !projectProps.isRequirementsMode && (
                   <Button
                     variant="outline"
                     size="sm"

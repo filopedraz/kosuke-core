@@ -123,6 +123,7 @@ export interface ChatInterfaceProps {
   activeChatSessionId?: number | null;
   currentBranch?: string;
   sessionId?: string; // Session ID for fetching session-specific messages
+  isRequirementsMode?: boolean; // Use requirements chat endpoint instead of normal chat
 }
 
 // Content Block Types (for streaming UI state)

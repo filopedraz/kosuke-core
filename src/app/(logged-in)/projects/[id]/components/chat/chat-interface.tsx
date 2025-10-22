@@ -11,6 +11,7 @@ import { useUser } from '@clerk/nextjs';
 import { useChatSessionMessages } from '@/hooks/use-chat-sessions';
 import { useChatState } from '@/hooks/use-chat-state';
 import { useSendMessage } from '@/hooks/use-send-message';
+import { useSendRequirementsMessage } from '@/hooks/use-send-requirements-message';
 import type { ChatInterfaceProps } from '@/lib/types';
 
 // Import components
@@ -26,6 +27,7 @@ export default function ChatInterface({
   activeChatSessionId,
   currentBranch,
   sessionId,
+  isRequirementsMode = false,
 }: ChatInterfaceProps) {
 
   // Refs
@@ -40,7 +42,10 @@ export default function ChatInterface({
   } | null>(null);
 
   // Always call hooks at the top level, even if sessionId is not available yet
-  const sendMessageMutation = useSendMessage(projectId, activeChatSessionId, sessionId || '');
+  // Use different hook based on requirements mode
+  const normalSendMessage = useSendMessage(projectId, activeChatSessionId, sessionId || '');
+  const requirementsSendMessage = useSendRequirementsMessage(projectId, sessionId || '');
+
   const messagesQuery = useChatSessionMessages(projectId, sessionId || '');
   const chatState = useChatState(projectId, sessionId);
 
@@ -55,16 +60,19 @@ export default function ChatInterface({
     return msgs;
   }, [messagesData?.messages]);
 
+  // Extract mutation data based on mode
   const {
     sendMessage,
     isLoading: isSending,
     error: sendError,
     isStreaming,
-    expectingWebhookUpdate,
     streamingContentBlocks,
     streamingAssistantMessageId,
     cancelStream,
-  } = sendMessageMutation;
+  } = isRequirementsMode ? requirementsSendMessage : normalSendMessage;
+
+  // expectingWebhookUpdate only exists in normal mode
+  const expectingWebhookUpdate = isRequirementsMode ? false : (normalSendMessage as { expectingWebhookUpdate?: boolean }).expectingWebhookUpdate || false;
 
   const {
     isError,
@@ -137,18 +145,25 @@ export default function ChatInterface({
     // Clear error state
     clearError();
 
-    // Save message for regeneration
-    saveLastMessage(content, options);
+    // In requirements mode, use simpler send (no options support)
+    if (isRequirementsMode) {
+      requirementsSendMessage.sendMessage(content); // Just send string content
+    } else {
+      // Save message for regeneration
+      saveLastMessage(content, options);
 
-    // Send the message
-    sendMessage({ content, options });
+      // Send the message
+      normalSendMessage.sendMessage({ content, options });
+    }
   };
 
-  // Handle regeneration
+  // Handle regeneration (only for normal mode)
   const handleRegenerate = async () => {
-    await regenerateMessage(async (content, options) => {
-      sendMessage({ content, options });
-    });
+    if (!isRequirementsMode) {
+      await regenerateMessage(async (content, options) => {
+        normalSendMessage.sendMessage({ content, options });
+      });
+    }
   };
 
   // Filter and enhance messages for display

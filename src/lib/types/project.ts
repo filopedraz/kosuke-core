@@ -1,6 +1,9 @@
 // Project Management Types
 import type { Project } from '@/lib/db/schema';
 
+// Project Status
+export type ProjectStatus = 'requirements' | 'active';
+
 // Extended Project Types
 export interface ProjectWithStats extends Project {
   messageCount?: number;
@@ -98,4 +101,21 @@ export interface ProjectCreationStep {
   step: 'project-details' | 'github-setup' | 'creating' | 'complete';
   data?: Partial<CreateProjectData>;
   error?: string;
+}
+
+// Requirements Gathering Types
+export interface RequirementsDocument {
+  content: string;
+  exists: boolean;
+  lastUpdated?: Date;
+}
+
+export interface CompleteRequirementsRequest {
+  projectId: number;
+}
+
+export interface CompleteRequirementsResponse {
+  success: boolean;
+  message?: string;
+  project?: Project;
 }

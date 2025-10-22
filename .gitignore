@@ -52,3 +52,6 @@ next-env.d.ts
 # uploads (local development)
 public/uploads/*
 !public/uploads/.gitkeep
+
+# requirements gathering workspaces
+/projects/
