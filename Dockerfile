@@ -7,11 +7,11 @@ FROM base AS deps
 WORKDIR /app
 
 # Install dependencies based on the preferred package manager
-COPY package.json package-lock.json ./
+COPY package.json bun.lock ./
 
 # Use mount cache for npm
 RUN --mount=type=cache,target=/root/.npm \
-    npm ci
+    bun install
 
 # Rebuild the source code only when needed
 FROM base AS builder
@@ -49,7 +49,7 @@ ENV TURBO_REMOTE_ONLY=true
 
 # Use BuildKit cache mount for Next.js
 RUN --mount=type=cache,target=/app/.next/cache \
-    npm run build
+    bun run build
 
 # Production image, copy all the files and run next
 FROM base AS runner
