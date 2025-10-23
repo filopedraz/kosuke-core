@@ -31,80 +31,100 @@ interface ChatMessage {
   isTyping?: boolean;
 }
 
+const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 export function HeroSection({ onApplyClick }: HeroSectionProps) {
   const [currentStep, setCurrentStep] = useState<AnimationStep>('idle');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [textareaTypingText, setTextareaTypingText] = useState('');
-  const [isHelpButtonPulsing, setIsHelpButtonPulsing] = useState(false);
   const [showCursor, setShowCursor] = useState(false);
+  const [animationCycle, setAnimationCycle] = useState(0);
 
   const userMessage = 'I need to add authentication to my app.';
   const aiMessage =
     'Perfect! Your authentication is now working correctly. Everything should be functioning as expected.';
-  const userComplaintMessage = "No bro, doesn't work!!!";
+  const userComplaintMessage = "Still getting errors. This isn't working for me.";
+
+  // Type text character by character
+  const typeText = async (text: string, speed: number, cancelCheck: () => boolean) => {
+    for (let i = 0; i <= text.length; i++) {
+      if (cancelCheck()) return false;
+      setTextareaTypingText(text.slice(0, i));
+      await new Promise(resolve => setTimeout(resolve, speed));
+    }
+    return true;
+  };
 
   // Animation sequence
   useEffect(() => {
+    let cancelled = false;
+
     const sequence = async () => {
       // Reset
       setMessages([]);
       setTextareaTypingText('');
       setCurrentStep('idle');
-      setIsHelpButtonPulsing(false);
+      await wait(1000);
 
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      if (cancelled) return;
 
       // Step 1: User typing first message in textarea
       setCurrentStep('userTyping');
-      for (let i = 0; i <= userMessage.length; i++) {
-        setTextareaTypingText(userMessage.slice(0, i));
-        await new Promise(resolve => setTimeout(resolve, 50));
-      }
+      await typeText(userMessage, 50, () => cancelled);
+      if (cancelled) return;
 
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await wait(500);
 
       // Step 2: Send first user message
       setCurrentStep('userSending');
       setMessages([{ id: '1', role: 'user', content: userMessage }]);
       setTextareaTypingText('');
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await wait(500);
+
+      if (cancelled) return;
 
       // Step 3: AI response
       setCurrentStep('aiResponse');
       setMessages(prev => [...prev, { id: '2', role: 'ai', content: aiMessage }]);
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await wait(1000);
+
+      if (cancelled) return;
 
       // Step 4: User complaint typing in textarea
       setCurrentStep('userComplaintTyping');
-      for (let i = 0; i <= userComplaintMessage.length; i++) {
-        setTextareaTypingText(userComplaintMessage.slice(0, i));
-        await new Promise(resolve => setTimeout(resolve, 80));
-      }
+      await typeText(userComplaintMessage, 80, () => cancelled);
+      if (cancelled) return;
 
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await wait(500);
 
       // Step 5: Send the complaint message
       setCurrentStep('userComplaintSending');
       setMessages(prev => [...prev, { id: '3', role: 'user', content: userComplaintMessage }]);
       setTextareaTypingText('');
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await wait(1000);
+
+      if (cancelled) return;
 
       // Step 6: Help button becomes active
       setCurrentStep('helpButtonActive');
-      setIsHelpButtonPulsing(true);
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await wait(1000);
 
       // Step 7: Show cursor on Help Me button
+      if (cancelled) return;
+
       setCurrentStep('cursorHover');
       setShowCursor(true);
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await wait(1000);
+
+      if (cancelled) return;
 
       // Step 8: Cursor click animation
       setCurrentStep('cursorClick');
-      setIsHelpButtonPulsing(false);
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await wait(500);
 
       // Step 9: Show human help and hide cursor
+      if (cancelled) return;
+
       setCurrentStep('humanHelp');
       setShowCursor(false);
       setMessages(prev => [
@@ -117,14 +137,20 @@ export function HeroSection({ onApplyClick }: HeroSectionProps) {
         },
       ]);
 
-      await new Promise(resolve => setTimeout(resolve, 6000));
+      await wait(6000);
+
+      if (cancelled) return;
 
       // Loop back
-      sequence();
+      setAnimationCycle(prev => prev + 1);
     };
 
     sequence();
-  }, []);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [animationCycle]);
 
   return (
     <section className="pt-12 sm:pt-20 pb-16 sm:pb-32">
@@ -298,7 +324,7 @@ export function HeroSection({ onApplyClick }: HeroSectionProps) {
                                   : 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 rounded-bl-md relative'
                             }`}
                           >
-                            {message.role === 'human' && message.id === '4' && (
+                            {message.role === 'human' && (
                               <div className="flex items-center gap-2 mb-2">
                                 <div className="flex items-center gap-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 px-2 py-1 rounded-full text-xs font-medium">
                                   <User className="w-3 h-3" />
