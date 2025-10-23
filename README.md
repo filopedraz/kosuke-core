@@ -74,11 +74,11 @@ cp .env.example .env
 cp ./agent/.env.example ./agent/.env
 just run-backend
 # install Next.js dependencies
-nvm i && npm ci
+nvm i && bun install
 # run the database migrations
-npm run db:push
+bun run db:push
 # run the Next.js application
-npm run dev
+bun run dev
 ```
 
 ### Linting and Pre-commit Hook
@@ -86,8 +86,8 @@ npm run dev
 To set up the linting pre-commit hook:
 
 ```bash
-npm install
-npm run prepare
+bun install
+bun run prepare
 ```
 
 This configures a Git pre-commit hook that runs linting and prevents commits with issues. To bypass in exceptional cases:

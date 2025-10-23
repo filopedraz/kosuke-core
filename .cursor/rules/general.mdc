@@ -38,36 +38,36 @@ You are thoughtful, precise, and focus on delivering high-quality, maintainable 
 
 ```bash
 # Database Setup & Migrations
-npm run db:generate     # Generate Drizzle migrations from schema changes
-npm run db:migrate      # Apply pending migrations to database
-npm run db:migrate:prod # Apply migrations in production (verbose)
-npm run db:push         # Push schema changes directly (dev only)
-npm run db:studio       # Open Drizzle Studio for database inspection
-npm run db:seed         # Seed database with initial data
+bun run db:generate     # Generate Drizzle migrations from schema changes
+bun run db:migrate      # Apply pending migrations to database
+bun run db:migrate:prod # Apply migrations in production (verbose)
+bun run db:push         # Push schema changes directly (dev only)
+bun run db:studio       # Open Drizzle Studio for database inspection
+bun run db:seed         # Seed database with initial data
 
 # Development
-npm run dev             # Start development server with hot reload
+bun run dev             # Start development server with hot reload
 docker compose up -d    # Start PostgreSQL database locally
 
 # Testing
-npm test                # Run Jest test suite
-npm run test:watch      # Run tests in watch mode
-npm run test:coverage   # Generate test coverage report
+bun run test                # Run Jest test suite
+bun run test:watch      # Run tests in watch mode
+bun run test:coverage   # Generate test coverage report
 
 # Code Quality
-npm run lint            # Run ESLint
-npm run format          # Format code with Prettier
-npm run format:check    # Check code formatting
+bun run lint            # Run ESLint
+bun run format          # Format code with Prettier
+bun run format:check    # Check code formatting
 
 # Shadcn UI Management
-npm run shadcn:update   # Update all shadcn components
-npm run shadcn:check    # Check for available component updates
+bun run shadcn:update   # Update all shadcn components
+bun run shadcn:check    # Check for available component updates
 ```
 
 ### Database & Drizzle ORM Best Practices
 
 - **Schema Management**: Always use Drizzle schema definitions in `./lib/db/schema.ts`
-- **Migrations**: Generate migrations with `npm run db:generate` after schema changes
+- **Migrations**: Generate migrations with `bun run db:generate` after schema changes
 - **Type Safety**: Use `createInsertSchema` and `createSelectSchema` from drizzle-zod
 - **Relations**: Define proper relations for complex queries
 - **Connection**: Use the configured database instance from `./lib/db/drizzle.ts`
@@ -653,7 +653,7 @@ Use the Rubric guidelines as a guide. You should ship only components that have 
 
 ### Quick Setup Checklist for New Features
 
-1. **Database Changes**: Update schema → `npm run db:generate` → `npm run db:migrate`
+1. **Database Changes**: Update schema → `bun run db:generate` → `bun run db:migrate`
 2. **Authentication**: Verify user sessions and permissions
 3. **Billing**: Check subscription tier if feature is gated
 4. **UI Components**: Use existing Shadcn components when possible
