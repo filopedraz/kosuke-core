@@ -25,27 +25,17 @@ if [ -n "$js_files" ]; then
 
     # Run tests and store the exit code
     echo "🧪 Running tests..."
-    npm test
+    bun run test
     if [ $? -ne 0 ]; then
       echo "❌ Tests failed. Please fix the failing tests before committing."
       exit 1
     fi
 
-    # Run linting and store the exit code
-    echo "🔍 Running linting..."
-    npm run lint
+  # Run linting and formatting
+    echo "🌐 Running JS/TS lint-staged checks..."
+    bun run lint-staged
     if [ $? -ne 0 ]; then
-      echo "❌ Linting failed. Please fix the errors before committing."
-      exit 1
-    fi
-
-    # Run formatting
-    echo "💅 Running formatting..."
-    npm run format
-
-    # Check if any files were modified by formatting
-    if [ -n "$(git diff)" ]; then
-      echo "❌ Formatting changed some files. Please stage the changes and try committing again."
+      echo "❌ JS/TS lint-staged checks failed. Please fix the errors before committing."
       exit 1
     fi
 

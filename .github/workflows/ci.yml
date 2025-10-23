@@ -14,6 +14,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
@@ -21,7 +26,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: bun install
 
       - name: Copy environment variables
         run: cp .env.example .env
@@ -30,13 +35,13 @@ jobs:
         run: docker compose up -d postgres
 
       - name: Run ESLint
-        run: npm run lint
+        run: bun run lint
 
       - name: Run tests
-        run: npm run test
+        run: bun run test
 
       - name: Build application
-        run: npm run build
+        run: bun run build
 
   test-agent:
     name: Test Python Agent
