@@ -1,10 +1,12 @@
 # syntax=docker/dockerfile:1.4
 FROM node:22.20.0-slim AS base
 
-# Install curl, unzip and Bun
-RUN apt-get update && apt-get install -y curl unzip && rm -rf /var/lib/apt/lists/*
-RUN curl -fsSL https://bun.sh/install | bash
-ENV PATH="/root/.bun/bin:$PATH"
+RUN npm install -g bun@latest
+
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NEXT_STANDALONE=true
+ENV NODE_OPTIONS="--max-old-space-size=4096"
 
 # Install dependencies only when needed
 FROM base AS deps
@@ -16,7 +18,7 @@ COPY package.json bun.lock ./
 
 # Use mount cache for Bun
 RUN --mount=type=cache,target=/root/.bun/install/cache \
-    bun install
+    bun install --frozen-lockfile
 
 # Rebuild the source code only when needed
 FROM base AS builder
@@ -24,6 +26,7 @@ WORKDIR /app
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/package.json ./package.json
+COPY --from=deps /app/bun.lock ./bun.lock
 
 # Copy only the necessary files for the build
 COPY next.config.* .
@@ -37,20 +40,10 @@ COPY eslint.config.* .
 COPY jest.config.* .
 COPY jest.setup.* .
 COPY components.json .
-COPY middleware.ts .
 COPY public ./public
-COPY app ./app
-COPY components ./components
-COPY lib ./lib
-COPY hooks ./hooks
-COPY scripts ./scripts
+COPY src ./src
 COPY .env* ./
 
-# Enable Turbo build
-ENV NEXT_TELEMETRY_DISABLED=1
-ENV NEXT_STANDALONE=true
-ENV NODE_OPTIONS="--max-old-space-size=4096"
-ENV TURBO_REMOTE_ONLY=true
 
 # Use BuildKit cache mount for Next.js
 RUN --mount=type=cache,target=/app/.next/cache \
@@ -59,9 +52,6 @@ RUN --mount=type=cache,target=/app/.next/cache \
 # Production image, copy all the files and run next
 FROM base AS runner
 WORKDIR /app
-
-ENV NODE_ENV=production
-ENV NEXT_TELEMETRY_DISABLED=1
 
 RUN \
     groupadd --system --gid 1001 nodejs && \
@@ -77,11 +67,10 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/.env* ./
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nextjs:nodejs /app/drizzle.config.* ./
-COPY --from=builder --chown=nextjs:nodejs /app/middleware.ts ./
+COPY --from=builder --chown=nextjs:nodejs /app/src/middleware.ts ./middleware.ts
 COPY --from=builder --chown=nextjs:nodejs /app/sentry*.config.* ./
 COPY --from=builder --chown=nextjs:nodejs /app/instrumentation*.ts ./
-COPY --from=builder --chown=nextjs:nodejs /app/lib ./lib
-COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts
+COPY --from=builder --chown=nextjs:nodejs /app/src/lib ./lib
 
 USER nextjs
 
