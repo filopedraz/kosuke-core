@@ -12,7 +12,7 @@ FROM base AS deps
 WORKDIR /app
 
 # Install dependencies based on the preferred package manager
-COPY package.json bun.lockb ./
+COPY package.json bun.lock ./
 
 # Use mount cache for Bun
 RUN --mount=type=cache,target=/root/.bun/install/cache \
