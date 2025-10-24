@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024">
+  <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" fill="none" viewBox="0 0 1024 1024">
+    <g clip-path="url(#clip0_7743_5314)">
+      <g filter="url(#filter0_d_7743_5314)">
+        <path fill="url(#paint0_linear_7743_5314)" d="M0 0h1024v1024H0z"/>
+      </g>
+      <g filter="url(#filter1_di_7743_5314)">
+        <path stroke="#fff" stroke-width="100" d="M512.5 189C687.175 189 830 332.854 830 511.826c0 178.973-142.825 322.826-317.5 322.826S195 690.799 195 511.826C195 332.854 337.825 189 512.5 189Z"/>
+      </g>
+    </g>
+    <defs>
+      <filter id="SvgjsFilter1007" width="1032" height="1032" x="-4" y="0" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse">
+        <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+        <feColorMatrix in="SourceAlpha" result="hardAlpha" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0"/>
+        <feOffset dy="4"/>
+        <feGaussianBlur stdDeviation="2"/>
+        <feComposite in2="hardAlpha" operator="out"/>
+        <feColorMatrix values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.25 0"/>
+        <feBlend in2="BackgroundImageFix" result="effect1_dropShadow_7743_5314"/>
+        <feBlend in="SourceGraphic" in2="effect1_dropShadow_7743_5314" result="shape"/>
+      </filter>
+      <filter id="SvgjsFilter1006" width="743" height="753.652" x="141" y="139" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse">
+        <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+        <feColorMatrix in="SourceAlpha" result="hardAlpha" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0"/>
+        <feOffset dy="4"/>
+        <feGaussianBlur stdDeviation="2"/>
+        <feComposite in2="hardAlpha" operator="out"/>
+        <feColorMatrix values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.25 0"/>
+        <feBlend in2="BackgroundImageFix" result="effect1_dropShadow_7743_5314"/>
+        <feBlend in="SourceGraphic" in2="effect1_dropShadow_7743_5314" result="shape"/>
+        <feColorMatrix in="SourceAlpha" result="hardAlpha" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0"/>
+        <feOffset dy="4"/>
+        <feGaussianBlur stdDeviation="20"/>
+        <feComposite in2="hardAlpha" k2="-1" k3="1" operator="arithmetic"/>
+        <feColorMatrix values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.5 0"/>
+        <feBlend in2="shape" result="effect2_innerShadow_7743_5314"/>
+      </filter>
+      <linearGradient id="SvgjsLinearGradient1005" x1="512" x2="512" y1="0" y2="1024" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#2C2C30"/>
+        <stop offset="1" stop-color="#0A0A0A"/>
+      </linearGradient>
+      <clipPath id="SvgjsClipPath1004">
+        <rect width="1024" height="1024" fill="#fff" rx="200"/>
+      </clipPath>
+    </defs>
+  </svg>
+  <style>
+    @media (prefers-color-scheme:light){:root{filter:none}}@media (prefers-color-scheme:dark){:root{filter:none}}
+  </style>
+</svg>

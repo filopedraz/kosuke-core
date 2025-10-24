@@ -9,7 +9,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useProjects } from '@/hooks/use-projects';
 import { useUser } from '@/hooks/use-user';
 import { useQueryClient } from '@tanstack/react-query';
-import { redirect } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
 
 function ProjectsLoadingSkeleton() {
@@ -37,12 +36,6 @@ export default function ProjectsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const queryClient = useQueryClient();
 
-  // Redirect if not authenticated
-  useEffect(() => {
-    if (!isLoading && !clerkUser) {
-      redirect('/sign-in');
-    }
-  }, [isLoading, clerkUser]);
 
   // Only refetch projects if data is stale (don't force refetch on every mount)
   useEffect(() => {

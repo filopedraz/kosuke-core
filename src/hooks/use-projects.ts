@@ -33,6 +33,7 @@ export function useProjects({ userId, initialData }: UseProjectsOptions) {
     staleTime: 1000 * 60 * 2, // Consider data stale after 2 minutes
     refetchOnWindowFocus: false, // Don't refetch on window focus to reduce glitches
     refetchOnMount: false, // Don't always refetch on mount - let staleTime control this
+    enabled: !!userId,
   });
 }
 
