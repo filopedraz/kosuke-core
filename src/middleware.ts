@@ -1,4 +1,5 @@
-import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
+import { clerkMiddleware, ClerkMiddlewareAuth, createRouteMatcher } from '@clerk/nextjs/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 const isPublicRoute = createRouteMatcher([
   '/',
@@ -9,22 +10,43 @@ const isPublicRoute = createRouteMatcher([
   '/home',
   '/terms',
   '/privacy',
-  '/api/webhooks/clerk',
+  // SEO and metadata routes
+  '/robots.txt',
+  '/sitemap.xml',
+  '/favicon.ico',
+  '/favicon.svg',
+  '/favicon-96x96.png',
+  '/apple-touch-icon.png',
+  '/opengraph-image.png',
 ]);
 
-export default clerkMiddleware(async (auth, req) => {
-  // If it's not a public route and user is not authenticated, redirect to sign-in
-  if (!isPublicRoute(req)) {
-    const { userId } = await auth();
-    if (!userId) {
-      return (await auth()).redirectToSignIn();
-    }
+const isProtectedRoute = createRouteMatcher(['/projects(.*)', '/settings(.*)']);
+const isRootRoute = createRouteMatcher(['/']);
+const isApiRoute = createRouteMatcher(['/api(.*)']);
+
+export const baseMiddleware = async (auth: ClerkMiddlewareAuth, req: NextRequest) => {
+  if (isApiRoute(req)) return NextResponse.next();
+
+  const { isAuthenticated, redirectToSignIn } = await auth();
+
+  if (!isAuthenticated && !isPublicRoute(req)) return redirectToSignIn({ returnBackUrl: req.url });
+
+  if (isAuthenticated) {
+    if (isProtectedRoute(req)) return NextResponse.next();
+    if (isPublicRoute(req) && !isRootRoute(req)) return NextResponse.next();
+    return NextResponse.redirect(new URL(`/projects`, req.url));
   }
-});
+
+  return NextResponse.next();
+};
+
+export default clerkMiddleware(baseMiddleware);
 
 export const config = {
-  // Protects all routes, including api/trpc.
-  // See https://clerk.com/docs/references/nextjs/auth-middleware
-  // for more information about configuring your Middleware
-  matcher: ['/((?!.+\\.[\\w]+$|_next).*)', '/', '/(api|trpc)(.*)'],
+  matcher: [
+    // Skip Next.js internals and all static files, unless found in search params
+    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+    // Always run for API routes
+    '/(api|trpc)(.*)',
+  ],
 };
