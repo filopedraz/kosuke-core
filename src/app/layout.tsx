@@ -19,6 +19,10 @@ const geistMono = Geist_Mono({
   subsets: ['latin'],
 });
 
+const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://kosuke.ai';
+const ogImage = `${baseUrl}/opengraph-image.png`;
+const ogImageSquare = `${baseUrl}/og-image-square.png`;
+
 export const metadata: Metadata = {
   title: 'Kosuke - Build Your Next Web Project with AI',
   description:
@@ -41,7 +45,7 @@ export const metadata: Metadata = {
     address: false,
     telephone: false,
   },
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://kosuke.ai'),
+  metadataBase: new URL(baseUrl),
   alternates: {
     canonical: '/',
   },
@@ -55,9 +59,15 @@ export const metadata: Metadata = {
     type: 'website',
     images: [
       {
-        url: '/logo.svg',
+        url: ogImage,
         width: 1200,
         height: 630,
+        alt: 'Kosuke - AI-Powered Web Development',
+      },
+      {
+        url: ogImageSquare,
+        width: 500,
+        height: 500,
         alt: 'Kosuke - AI-Powered Web Development',
       },
     ],
@@ -67,8 +77,30 @@ export const metadata: Metadata = {
     title: 'Kosuke - Build Your Next Web Project with AI',
     description:
       'Build your next web project with AI. Describe what you want to build, and our AI will help you create it.',
-    images: ['/logo.svg'],
+    images: [ogImage],
   },
+  icons: [
+    {
+      rel: 'icon',
+      type: 'image/png',
+      sizes: '96x96',
+      url: '/favicon-96x96.png',
+    },
+    {
+      rel: 'icon',
+      type: 'image/svg+xml',
+      url: '/favicon.svg',
+    },
+    {
+      rel: 'shortcut icon',
+      url: '/favicon.ico',
+    },
+    {
+      rel: 'apple-touch-icon',
+      sizes: '180x180',
+      url: '/apple-touch-icon.png',
+    },
+  ],
   // TODO: enable to true when we have proper content
   robots: {
     index: false,
