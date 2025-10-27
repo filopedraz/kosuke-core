@@ -108,7 +108,7 @@
     "sonner": "^2.0.6",
     "svix": "^1.70.0",
     "tailwind-merge": "^3.3.0",
-    "tailwindcss-react-aria-components": "^1.0.0",
+    "tailwindcss-react-aria-components": "^2.0.1",
     "tiktoken": "^1.0.21",
     "tree-kill": "^1.2.2",
     "ts-morph": "^26.0.0",
