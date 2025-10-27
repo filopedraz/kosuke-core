@@ -1,5 +1,9 @@
 /**
  * Session Management Exports
+ * Provides centralized access to session management functionality
  */
 
-export { SessionManager, sessionManager } from './session-manager';
+import { SessionManager } from './session-manager';
+
+// Create and export a singleton instance
+export const sessionManager = new SessionManager();
