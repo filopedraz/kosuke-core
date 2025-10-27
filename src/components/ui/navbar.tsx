@@ -232,7 +232,7 @@ export default function Navbar({
                   </Link>
 
                   <a
-                    href="https://calendly.com/filippo-pedrazzini-kosuke/30min"
+                    href="https://form.typeform.com/to/A6zJtlUM"
                     target="_blank"
                     rel="noopener noreferrer"
                   >
@@ -304,7 +304,7 @@ export default function Navbar({
                         </Link>
 
                         <a
-                          href="https://calendly.com/filippo-pedrazzini-kosuke/30min"
+                          href="https://form.typeform.com/to/A6zJtlUM"
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-lg font-medium transition-colors hover:text-primary"

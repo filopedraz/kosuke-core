@@ -8,7 +8,7 @@ import { Calendar, Sparkles } from 'lucide-react';
 
 export function HeroSection() {
   const handleScheduleCall = () => {
-    window.open('https://calendly.com/your-calendly-link', '_blank');
+    window.open('https://form.typeform.com/to/A6zJtlUM', '_blank');
   };
 
   return (
