@@ -30,7 +30,7 @@ export default async function BlogPage({ searchParams }: Props) {
       <BlogHero />
 
       {/* Tag Filter */}
-      <section className="w-full px-6 sm:px-8 md:px-16 lg:px-24 py-8 max-w-screen-2xl mx-auto border-b border-border">
+      <section className="w-full px-6 sm:px-8 md:px-16 lg:px-24 max-w-screen-2xl mx-auto border-border">
         <TagFilter tags={tags} selectedTag={tag} />
       </section>
 

@@ -46,7 +46,7 @@ export default async function CustomerDetailPage({ params }: Props) {
   return (
     <div className="w-full min-h-screen bg-background">
       {/* Header */}
-      <section className="w-full px-6 sm:px-8 md:px-16 lg:px-24 py-8 max-w-screen-2xl mx-auto border-b border-border">
+      <section className="w-full px-6 sm:px-8 md:px-16 lg:px-24 py-8 max-w-screen-2xl mx-auto border-border">
         <Link href="/customers">
           <Button variant="ghost" size="sm" className="gap-2">
             <ArrowLeft className="h-4 w-4" />
