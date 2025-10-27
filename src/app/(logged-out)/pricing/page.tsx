@@ -162,61 +162,103 @@ export default function PricingPage() {
         </div>
       </section>
 
-      {/* Comparison Table */}
+      {/* Comparison Grid */}
       <section className="py-16 md:py-24 bg-muted/50 dark:bg-transparent">
         <div className="container mx-auto px-4 sm:px-6">
-          <div className="max-w-6xl mx-auto">
-            {/* Desktop Table */}
-            <div className="hidden md:block overflow-x-auto">
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left p-4 font-mono text-lg font-semibold"></th>
-                    <th className="text-center p-4 font-mono text-lg font-semibold">Lovable</th>
-                    <th className="text-center p-4 font-mono text-lg font-semibold relative">
-                      <div className="absolute inset-0 bg-emerald-500/5 rounded-t-lg -z-10" />
-                      Kosuke
-                    </th>
-                    <th className="text-center p-4 font-mono text-lg font-semibold">
-                      Software Agency
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {comparisonData.map((row, index) => (
-                    <motion.tr
-                      key={row.feature}
-                      initial={{ opacity: 0, y: 20 }}
-                      whileInView={{ opacity: 1, y: 0 }}
-                      viewport={{ once: true }}
-                      transition={{ duration: 0.5, delay: index * 0.1 }}
-                      className="border-b border-border hover:bg-muted/50 transition-colors"
-                    >
-                      <td className="p-4 font-semibold font-mono">{row.feature}</td>
-                      <td className="p-4 text-center">
-                        <div className="flex justify-center">
-                          {getValueBadge(row.lovable.value as 'Low' | 'Mid' | 'High')}
-                        </div>
-                      </td>
-                      <td className="p-4 text-center relative">
-                        <div className="absolute inset-0 bg-emerald-500/5 -z-10" />
-                        <div className="flex justify-center">
-                          {getValueBadge(row.kosuke.value as 'Low' | 'Mid' | 'High', true)}
-                        </div>
-                      </td>
-                      <td className="p-4 text-center">
-                        <div className="flex justify-center">
-                          {getValueBadge(row.agency.value as 'Low' | 'Mid' | 'High')}
-                        </div>
-                      </td>
-                    </motion.tr>
-                  ))}
-                </tbody>
-              </table>
+          <div className="max-w-7xl mx-auto">
+            {/* Desktop Layout */}
+            <div className="hidden md:block">
+              {/* Provider Headers */}
+              <div className="grid grid-cols-[200px_1fr_1fr_1fr] gap-6 mb-8">
+                <div></div>
+                {/* Lovable */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5 }}
+                >
+                  <Card className="bg-card/50 border-border/50">
+                    <CardContent className="p-6 text-center">
+                      <h3 className="text-2xl font-bold font-mono">Lovable</h3>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+
+                {/* Kosuke - Featured */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5, delay: 0.1 }}
+                >
+                  <Card className="bg-linear-to-br from-emerald-500/10 to-emerald-500/5 border-emerald-500/30 shadow-lg shadow-emerald-500/10 relative overflow-hidden">
+                    <div className="absolute inset-0 bg-grid-white/5 bg-size-[20px_20px]" />
+                    <CardContent className="p-6 text-center relative">
+                      <h3 className="text-2xl font-bold font-mono text-emerald-600">Kosuke</h3>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+
+                {/* Software Agency */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5, delay: 0.2 }}
+                >
+                  <Card className="bg-card/50 border-border/50">
+                    <CardContent className="p-6 text-center">
+                      <h3 className="text-2xl font-bold font-mono">Software Agency</h3>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              </div>
+
+              {/* Comparison Rows */}
+              <div className="space-y-4">
+                {comparisonData.map((row, rowIndex) => (
+                  <motion.div
+                    key={row.feature}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.5, delay: rowIndex * 0.1 }}
+                    className="grid grid-cols-[200px_1fr_1fr_1fr] gap-6 items-center"
+                  >
+                    {/* Feature Label */}
+                    <div className="flex items-center h-full">
+                      <h4 className="text-lg font-bold font-mono">{row.feature}</h4>
+                    </div>
+
+                    {/* Lovable */}
+                    <Card className="bg-card/50 border-border/50 hover:bg-card transition-all duration-300">
+                      <CardContent className="p-6 flex justify-center">
+                        {getValueBadge(row.lovable.value as 'Low' | 'Mid' | 'High')}
+                      </CardContent>
+                    </Card>
+
+                    {/* Kosuke - Featured */}
+                    <Card className="bg-linear-to-br from-emerald-500/10 to-emerald-500/5 border-emerald-500/30 hover:shadow-lg hover:shadow-emerald-500/20 transition-all duration-300 relative overflow-hidden group">
+                      <div className="absolute inset-0 bg-grid-white/5 bg-size-[20px_20px] opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <CardContent className="p-6 flex justify-center relative">
+                        {getValueBadge(row.kosuke.value as 'Low' | 'Mid' | 'High', true)}
+                      </CardContent>
+                    </Card>
+
+                    {/* Software Agency */}
+                    <Card className="bg-card/50 border-border/50 hover:bg-card transition-all duration-300">
+                      <CardContent className="p-6 flex justify-center">
+                        {getValueBadge(row.agency.value as 'Low' | 'Mid' | 'High')}
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                ))}
+              </div>
             </div>
 
-            {/* Mobile Cards */}
-            <div className="md:hidden space-y-6">
+            {/* Mobile Layout */}
+            <div className="md:hidden space-y-8">
               {comparisonData.map((row, index) => (
                 <motion.div
                   key={row.feature}
@@ -225,36 +267,38 @@ export default function PricingPage() {
                   viewport={{ once: true }}
                   transition={{ duration: 0.5, delay: index * 0.1 }}
                 >
-                  <Card>
-                    <CardContent className="p-6">
-                      <h3 className="font-bold text-lg mb-4 font-mono">{row.feature}</h3>
-                      <div className="space-y-4">
-                        {/* Kosuke - Featured */}
-                        <div className="p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-lg">
-                          <div className="flex items-center justify-between">
-                            <span className="font-semibold font-mono">Kosuke</span>
-                            {getValueBadge(row.kosuke.value as 'Low' | 'Mid' | 'High', true)}
-                          </div>
+                  <h3 className="text-xl font-bold font-mono mb-4">{row.feature}</h3>
+                  <div className="space-y-4">
+                    {/* Kosuke - Featured First */}
+                    <Card className="bg-linear-to-br from-emerald-500/10 to-emerald-500/5 border-emerald-500/30">
+                      <CardContent className="p-6">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold font-mono text-emerald-600">Kosuke</span>
+                          {getValueBadge(row.kosuke.value as 'Low' | 'Mid' | 'High', true)}
                         </div>
+                      </CardContent>
+                    </Card>
 
-                        {/* Lovable */}
-                        <div className="p-4 bg-muted rounded-lg">
-                          <div className="flex items-center justify-between">
-                            <span className="font-semibold font-mono">Lovable</span>
-                            {getValueBadge(row.lovable.value as 'Low' | 'Mid' | 'High')}
-                          </div>
+                    {/* Lovable */}
+                    <Card className="bg-card/50 border-border/50">
+                      <CardContent className="p-6">
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold font-mono">Lovable</span>
+                          {getValueBadge(row.lovable.value as 'Low' | 'Mid' | 'High')}
                         </div>
+                      </CardContent>
+                    </Card>
 
-                        {/* Agency */}
-                        <div className="p-4 bg-muted rounded-lg">
-                          <div className="flex items-center justify-between">
-                            <span className="font-semibold font-mono">Software Agency</span>
-                            {getValueBadge(row.agency.value as 'Low' | 'Mid' | 'High')}
-                          </div>
+                    {/* Software Agency */}
+                    <Card className="bg-card/50 border-border/50">
+                      <CardContent className="p-6">
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold font-mono">Software Agency</span>
+                          {getValueBadge(row.agency.value as 'Low' | 'Mid' | 'High')}
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+                      </CardContent>
+                    </Card>
+                  </div>
                 </motion.div>
               ))}
             </div>
