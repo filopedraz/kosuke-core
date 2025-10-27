@@ -4,9 +4,6 @@ import { TextEncoder } from 'util';
 // Setup global TextEncoder/TextDecoder for Node.js environment
 global.TextEncoder = TextEncoder as unknown as typeof global.TextEncoder;
 
-// Setup Web Streams API for Node.js environment
-// global.ReadableStream = ReadableStream as unknown as typeof global.ReadableStream;
-
 // Mock fetch globally
 global.fetch = jest.fn();
 
