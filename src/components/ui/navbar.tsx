@@ -74,11 +74,6 @@ const solutions = [
     href: '/solutions/on-premise',
     description: 'Deploy Kosuke in your own infrastructure with complete data control.',
   },
-  {
-    title: 'Venture Builder',
-    href: '/solutions/venture-builder',
-    description: 'Accelerate your venture building with rapid prototyping and validation.',
-  },
 ];
 
 export default function Navbar({
