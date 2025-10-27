@@ -1,12 +1,5 @@
 # syntax=docker/dockerfile:1.4
-FROM node:22.20.0-slim AS base
-
-RUN npm install -g bun@1.3.1
-
-ENV NODE_ENV=production
-ENV NEXT_TELEMETRY_DISABLED=1
-ENV NEXT_STANDALONE=true
-ENV NODE_OPTIONS="--max-old-space-size=4096"
+FROM oven/bun:1.3.1-slim AS base
 
 # Install dependencies only when needed
 FROM base AS deps
@@ -45,12 +38,17 @@ COPY src ./src
 COPY .env* ./
 
 
+# Enable build optimizations
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NEXT_STANDALONE=true
+ENV NODE_OPTIONS="--max-old-space-size=4096"
+
 # Use BuildKit cache mount for Next.js
 RUN --mount=type=cache,target=/app/.next/cache \
     bun run build
 
 # Production image, copy all the files and run next
-FROM base AS runner
+FROM node:22.20.0-slim AS runner
 WORKDIR /app
 
 RUN \
@@ -74,6 +72,8 @@ COPY --from=builder --chown=nextjs:nodejs /app/src/lib ./lib
 
 USER nextjs
 
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
