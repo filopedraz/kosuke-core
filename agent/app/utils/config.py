@@ -2,65 +2,7 @@ import logging
 import os
 from typing import Any
 
-from langfuse import Langfuse
-
 logger = logging.getLogger(__name__)
-
-
-_langfuse_client = None
-
-
-def initialize_langfuse(settings_instance):
-    """
-    Initialize Langfuse observability for native Anthropic SDK.
-
-    Uses OpenTelemetry instrumentation for Anthropic API calls.
-
-    Returns:
-        Langfuse client or None if not available
-    """
-    global _langfuse_client  # noqa: PLW0603
-    # Check if Langfuse settings are configured
-    public_key = settings_instance.langfuse_public_key
-    secret_key = settings_instance.langfuse_secret_key
-    host = settings_instance.langfuse_host
-
-    if not public_key or not secret_key:
-        logger.info("📊 Langfuse observability disabled (missing credentials)")
-        return None
-
-    try:
-        logger.info(f"🔧 Creating Langfuse client for {host}")
-        _langfuse_client = Langfuse(
-            public_key=public_key,
-            secret_key=secret_key,
-            host=host,
-        )
-        logger.info("✅ Langfuse client created")
-        return _langfuse_client
-
-    except ImportError as e:
-        logger.warning(f"⚠️ Missing Langfuse: {e}")
-        logger.warning("💡 Install with: pip install langfuse")
-        return None
-    except Exception as e:
-        logger.error("❌ Langfuse initialization failed:")
-        logger.error(f"   Error: {e}")
-        logger.error(f"   Type: {type(e).__name__}")
-        logger.error(f"   Module: {getattr(type(e), '__module__', 'unknown')}")
-
-        if hasattr(e, "args") and e.args:
-            logger.error(f"   Args: {e.args}")
-        if hasattr(e, "__dict__"):
-            error_dict = {k: v for k, v in e.__dict__.items() if not k.startswith("_")}
-            logger.error(f"   Attributes: {error_dict}")
-
-        return None
-
-
-def get_langfuse_client():
-    """Get the initialized Langfuse client instance."""
-    return _langfuse_client
 
 
 class Settings:
@@ -106,11 +48,6 @@ class Settings:
         self.postgres_db: str = os.getenv("POSTGRES_DB", "postgres")
         self.postgres_user: str = os.getenv("POSTGRES_USER", "postgres")
         self.postgres_password: str = os.getenv("POSTGRES_PASSWORD", "postgres")
-
-        # Langfuse Observability (Optional)
-        self.langfuse_public_key: str = os.getenv("LANGFUSE_PUBLIC_KEY", "")
-        self.langfuse_secret_key: str = os.getenv("LANGFUSE_SECRET_KEY", "")
-        self.langfuse_host: str = os.getenv("LANGFUSE_HOST", "https://langfuse.joandko.io")
 
         # Processing settings
         self.processing_timeout: int = int(os.getenv("PROCESSING_TIMEOUT", "90000"))
@@ -183,9 +120,6 @@ class Settings:
 # Global settings instance
 settings = Settings()
 
-# Initialize Langfuse observability
-_langfuse_client = initialize_langfuse(settings)
-
 # Validate settings on import
 try:
     settings.validate_settings()
@@ -196,7 +130,6 @@ try:
     logger.info(f"   - Model: {settings.model_name}")
     logger.info(f"   - Preview image: {settings.preview_default_image}")
     logger.info(f"   - Template repository: {settings.template_repository}")
-    logger.info(f"   - Langfuse observability: {'enabled' if _langfuse_client else 'disabled'}")
 except ValueError as e:
     logger.error(f"❌ Configuration error: {e}")
     logger.error("   Please check your environment variables in config.env or .env")
