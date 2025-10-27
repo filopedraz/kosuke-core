@@ -2,6 +2,7 @@ import { Metadata } from 'next';
 
 import { BenefitsSection } from './components/benefits-section';
 import { CTASection } from './components/cta-section';
+import { FAQSection } from './components/faq-section';
 import { HeroSection } from './components/hero-section';
 import { HowItWorksSection } from './components/how-it-works-section';
 
@@ -18,6 +19,7 @@ export default function EnablingCollaborationPage() {
       <BenefitsSection />
       <HowItWorksSection />
       <CTASection />
+      <FAQSection />
     </>
   );
 }
