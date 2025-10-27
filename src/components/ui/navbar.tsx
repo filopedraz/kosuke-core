@@ -3,6 +3,7 @@
 import { useClerk } from '@clerk/nextjs';
 import {
   ArrowLeft,
+  ChevronDown,
   CircleIcon,
   Code,
   Database,
@@ -10,6 +11,7 @@ import {
   GitPullRequest,
   LayoutDashboard,
   LogOut,
+  Menu,
   PanelLeftClose,
   PanelLeftOpen,
   Settings,
@@ -17,9 +19,11 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 
 import { useUser } from '@/hooks/use-user';
 
+import { PrivateAlphaModal } from '@/app/(logged-out)/home/components/private-alpha-modal';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -29,11 +33,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 
 type NavbarProps = {
   variant?: 'standard' | 'project';
   hideSignIn?: boolean;
+  showNavigation?: boolean; // NEW: Show navigation items (Customers, Solutions, Blog, etc.)
   projectProps?: {
     projectName: string;
     currentView: 'preview' | 'code' | 'branding' | 'settings' | 'database';
@@ -51,15 +57,41 @@ type NavbarProps = {
   className?: string;
 };
 
+const solutions = [
+  {
+    title: 'Ship with Engineers',
+    href: '/solutions/ship-with-engineers',
+    description: 'Empower your engineering team to ship faster with AI-powered tools.',
+  },
+  {
+    title: 'Enabling Collaboration',
+    href: '/solutions/enabling-collaboration',
+    description: 'Break down silos and enable seamless cross-functional collaboration.',
+  },
+  {
+    title: 'On Premise',
+    href: '/solutions/on-premise',
+    description: 'Deploy Kosuke in your own infrastructure with complete data control.',
+  },
+  {
+    title: 'Venture Builder',
+    href: '/solutions/venture-builder',
+    description: 'Accelerate your venture building with rapid prototyping and validation.',
+  },
+];
+
 export default function Navbar({
   variant = 'standard',
   hideSignIn = false,
+  showNavigation = false,
   projectProps,
   className,
 }: NavbarProps) {
   const { clerkUser, dbUser, isLoaded, isSignedIn, imageUrl, displayName, initials } = useUser();
   const { signOut } = useClerk();
   const router = useRouter();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -135,23 +167,155 @@ export default function Navbar({
   // Standard navbar for most pages
   if (variant === 'standard') {
     return (
-      <div className="w-full border-b border-border relative z-50">
-        <header className={cn('bg-background w-full h-14', className)}>
-          <div className="w-full h-full px-6 sm:px-8 md:px-16 lg:px-24 flex justify-between items-center max-w-screen-2xl mx-auto">
-            <div
-              className="flex items-center hover:opacity-80 transition-opacity cursor-pointer"
-              onClick={() => {
-                console.log('Kosuke logo clicked, navigating to /home');
-                router.push('/home');
-              }}
-            >
-              <CircleIcon className="h-6 w-6 text-primary" />
-              <span className="ml-2 text-xl text-foreground">Kosuke</span>
+      <>
+        <div className="w-full border-b border-border relative z-50">
+          <header className={cn('bg-background w-full h-14', className)}>
+            <div className="w-full h-full px-6 sm:px-8 md:px-16 lg:px-24 flex justify-between items-center max-w-screen-2xl mx-auto">
+              <div
+                className="flex items-center hover:opacity-80 transition-opacity cursor-pointer"
+                onClick={() => {
+                  console.log('Kosuke logo clicked, navigating to /home');
+                  router.push('/home');
+                }}
+              >
+                <CircleIcon className="h-6 w-6 text-primary" />
+                <span className="ml-2 text-xl text-foreground">Kosuke</span>
+              </div>
+
+              {/* Desktop Navigation */}
+              {showNavigation && (
+                <div className="hidden md:flex items-center gap-6">
+                  <Link href="/customers">
+                    <Button variant="ghost" size="sm">
+                      Customers
+                    </Button>
+                  </Link>
+
+                  {/* Solutions Dropdown */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm">
+                        Solutions
+                        <ChevronDown className="ml-1 h-3 w-3" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="w-56">
+                      {solutions.map(solution => (
+                        <DropdownMenuItem key={solution.href} asChild>
+                          <Link href={solution.href} className="cursor-pointer">
+                            {solution.title}
+                          </Link>
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+
+                  <Link href="/blog">
+                    <Button variant="ghost" size="sm">
+                      Blog
+                    </Button>
+                  </Link>
+
+                  <a
+                    href="https://calendly.com/filippo-pedrazzini-kosuke/30min"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Button variant="ghost" size="sm">
+                      Contact Us
+                    </Button>
+                  </a>
+
+                  {!isSignedIn ? (
+                    <Button size="sm" onClick={() => setModalOpen(true)}>
+                      Get Started
+                    </Button>
+                  ) : (
+                    renderUserSection()
+                  )}
+                </div>
+              )}
+
+              {/* Mobile Menu Button */}
+              {showNavigation && (
+                <div className="md:hidden">
+                  <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+                    <SheetTrigger asChild>
+                      <Button variant="ghost" size="icon">
+                        <Menu className="h-5 w-5" />
+                      </Button>
+                    </SheetTrigger>
+                    <SheetContent side="right" className="w-[300px]">
+                      <div className="flex flex-col gap-6 pt-8">
+                        <Link
+                          href="/customers"
+                          onClick={() => setMobileMenuOpen(false)}
+                          className="text-lg font-medium transition-colors hover:text-primary"
+                        >
+                          Customers
+                        </Link>
+
+                        {/* Solutions Accordion */}
+                        <div className="space-y-3">
+                          <div className="text-lg font-medium text-muted-foreground">Solutions</div>
+                          <div className="ml-4 space-y-3">
+                            {solutions.map(solution => (
+                              <Link
+                                key={solution.href}
+                                href={solution.href}
+                                onClick={() => setMobileMenuOpen(false)}
+                                className="block text-sm transition-colors hover:text-primary"
+                              >
+                                {solution.title}
+                              </Link>
+                            ))}
+                          </div>
+                        </div>
+
+                        <Link
+                          href="/blog"
+                          onClick={() => setMobileMenuOpen(false)}
+                          className="text-lg font-medium transition-colors hover:text-primary"
+                        >
+                          Blog
+                        </Link>
+
+                        <a
+                          href="https://calendly.com/filippo-pedrazzini-kosuke/30min"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-lg font-medium transition-colors hover:text-primary"
+                        >
+                          Contact Us
+                        </a>
+
+                        {!isSignedIn ? (
+                          <Button
+                            onClick={() => {
+                              setMobileMenuOpen(false);
+                              setModalOpen(true);
+                            }}
+                          >
+                            Get Started
+                          </Button>
+                        ) : (
+                          <div onClick={() => setMobileMenuOpen(false)}>{renderUserSection()}</div>
+                        )}
+                      </div>
+                    </SheetContent>
+                  </Sheet>
+                </div>
+              )}
+
+              {/* User section (when not showing navigation) */}
+              {!showNavigation && renderUserSection()}
             </div>
-            {renderUserSection()}
-          </div>
-        </header>
-      </div>
+          </header>
+        </div>
+
+        {/* Private Alpha Modal */}
+        {showNavigation && <PrivateAlphaModal open={modalOpen} onOpenChange={setModalOpen} />}
+      </>
     );
   }
 

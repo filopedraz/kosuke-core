@@ -62,6 +62,7 @@
     "@radix-ui/react-tooltip": "^1.2.7",
     "@sentry/nextjs": "^10.2.0",
     "@tanstack/react-query": "^5.74.4",
+    "@tryghost/content-api": "^1.12.0",
     "@types/bcryptjs": "^3.0.0",
     "@types/dockerode": "^3.3.35",
     "@types/marked": "^5.0.2",
