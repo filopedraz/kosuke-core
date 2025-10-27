@@ -35,6 +35,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
+import Image from 'next/image';
 
 type NavbarProps = {
   variant?: 'standard' | 'project';
@@ -178,7 +179,20 @@ export default function Navbar({
                   router.push('/home');
                 }}
               >
-                <CircleIcon className="h-6 w-6 text-primary" />
+                <Image
+                  src="/logo-dark.svg"
+                  alt="Kosuke"
+                  width={24}
+                  height={24}
+                  className="block dark:hidden"
+                />
+                <Image
+                  src="/logo.svg"
+                  alt="Kosuke"
+                  width={24}
+                  height={24}
+                  className="hidden dark:block"
+                />
                 <span className="ml-2 text-xl text-foreground">Kosuke</span>
               </div>
 

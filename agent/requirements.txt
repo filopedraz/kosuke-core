@@ -1,9 +1,6 @@
 # Core dependencies
 anthropic==0.40.0
 
-# Agent functionality
-claude-code-sdk==0.0.19
-
 # FastAPI
 fastapi==0.112.4
 uvicorn[standard]==0.32.0
@@ -19,9 +16,6 @@ aiofiles==24.1.0
 aiohttp==3.11.12
 docker==7.1.0
 tiktoken==0.7.0
-
-# Observability
-langfuse==3.2.1
 
 # Additional dependencies
 requests==2.32.3

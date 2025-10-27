@@ -41,4 +41,4 @@ COPY . .
 EXPOSE 8000
 
 # Development command with hot reload, only watching app directory
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--reload-exclude", "/app/projects"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

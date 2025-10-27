@@ -1,4 +1,3 @@
-from app.services.claude_code_service import ClaudeCodeService
 from app.services.color_palette_service import ColorPaletteService
 from app.services.database_service import DatabaseService
 from app.services.docker_service import DockerService
@@ -39,7 +38,3 @@ def get_database_service(project_id: int, session_id: str | None = None) -> Data
 
 def get_github_service(github_token: str) -> GitHubService:
     return GitHubService(github_token=github_token)
-
-
-def get_claude_code_service(project_id: int, *, working_directory: str | None = None) -> ClaudeCodeService:
-    return ClaudeCodeService(project_id=project_id, working_directory=working_directory)

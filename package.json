@@ -25,6 +25,7 @@
     "shadcn:check": "npx shadcn@canary diff"
   },
   "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.1.0",
     "@clerk/nextjs": "^6.28.1",
     "@clerk/themes": "^2.4.4",
     "@hookform/resolvers": "^5.2.1",
@@ -66,7 +67,7 @@
     "@types/bcryptjs": "^3.0.0",
     "@types/dockerode": "^3.3.35",
     "@types/marked": "^5.0.2",
-    "@types/node": "^22.15.2",
+    "@types/node": "^24.3.0",
     "@types/react": "19.1.2",
     "@types/react-dom": "19.1.2",
     "@types/uuid": "^10.0.0",
@@ -78,7 +79,7 @@
     "cmdk": "^1.1.1",
     "date-fns": "^4.1.0",
     "dockerode": "^4.0.6",
-    "dotenv": "^16.5.0",
+    "dotenv": "^17.2.1",
     "drizzle-kit": "^0.31.4",
     "drizzle-orm": "^0.44.4",
     "embla-carousel-react": "^8.6.0",
@@ -90,7 +91,7 @@
     "lucide-react": "^0.503.0",
     "marked": "^16.1.1",
     "motion": "^12.23.22",
-    "next": "^15.4.5",
+    "next": "^15.5.4",
     "next-themes": "^0.4.6",
     "node-fetch": "^2.7.0",
     "pnpm": "^10.9.0",
@@ -104,6 +105,7 @@
     "recharts": "^2.15.4",
     "server-only": "^0.0.1",
     "shiki": "^3.3.0",
+    "simple-git": "^3.27.0",
     "sonner": "^2.0.6",
     "svix": "^1.70.0",
     "tailwind-merge": "^3.3.0",
@@ -119,7 +121,7 @@
     "zustand": "^5.0.3"
   },
   "devDependencies": {
-    "@playwright/test": "^1.51.0",
+    "@playwright/test": "^1.56.1",
     "@tailwindcss/postcss": "^4.1.11",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.2.0",
