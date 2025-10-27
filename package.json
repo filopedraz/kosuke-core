@@ -160,5 +160,8 @@
     "*.{yml,yaml,md,json}": [
       "prettier --write"
     ]
+  },
+  "engines": {
+    "node": "22.20.0"
   }
 }

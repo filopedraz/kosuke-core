@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.4
 FROM node:22.20.0-slim AS base
 
-RUN npm install -g bun@latest
+RUN npm install -g bun@1.3.1
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
