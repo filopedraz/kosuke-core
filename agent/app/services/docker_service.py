@@ -78,21 +78,6 @@ class DockerService:
     def _get_container_name(self, project_id: int, session_id: str) -> str:
         return f"{settings.preview_container_name_prefix}{project_id}-{session_id}"
 
-    def _prepare_container_environment(
-        self, project_id: int, session_id: str, env_vars: dict[str, str]
-    ) -> dict[str, str]:
-        postgres_url = (
-            f"postgres://{settings.postgres_user}:{settings.postgres_password}"
-            f"@{settings.postgres_host}:{settings.postgres_port}"
-            f"/kosuke_project_{project_id}_session_{session_id}"
-        )
-        return {
-            "NODE_ENV": "development",
-            "PORT": "3000",
-            "POSTGRES_URL": postgres_url,
-            **env_vars,
-        }
-
     async def is_docker_available(self) -> bool:
         try:
             loop = asyncio.get_event_loop()
@@ -100,10 +85,6 @@ class DockerService:
             return True
         except Exception:
             return False
-
-    def _get_host_session_path(self, project_id: int, session_id: str) -> Path:
-        session_path = Path(self.host_projects_dir) / str(project_id) / "sessions" / session_id
-        return session_path.resolve()
 
     async def _check_container_health(self, url: str, timeout: float = 2.0) -> bool:
         try:
@@ -123,119 +104,6 @@ class DockerService:
             return await asyncio.wait_for(loop.run_in_executor(None, self.client.containers.get, name), timeout=5.0)
         except Exception:
             return None
-
-    async def _ensure_session_environment(self, project_id: int, session_id: str) -> None:
-        if not self.session_manager.validate_session_directory(project_id, session_id):
-            logger.info(f"Creating session environment for {session_id}")
-            self.session_manager.create_session_environment(project_id, session_id)
-
-    async def _ensure_database_exists(self, project_id: int, session_id: str) -> None:
-        """Ensure the database exists for the given project and session"""
-        try:
-            # Import DatabaseService here to avoid circular imports
-            from app.services.database_service import DatabaseService  # noqa: PLC0415
-
-            # Create DatabaseService instance to trigger database creation
-            db_service = DatabaseService(project_id, session_id)
-
-            # Try to get database info - this will create the database if it doesn't exist
-            logger.info(f"Ensuring database exists for project {project_id} session {session_id}")
-            await db_service.get_database_info()
-            logger.info(f"Database verified/created for project {project_id} session {session_id}")
-
-        except Exception as e:
-            logger.error(f"Failed to ensure database exists for project {project_id} session {session_id}: {e}")
-            # Don't fail the preview startup if database creation fails
-            # The container can still start and the app can handle DB errors gracefully
-            logger.warning(
-                f"Preview will start without database guarantee for project {project_id} session {session_id}"
-            )
-
-    async def _get_existing_container_url_or_remove(self, container_name: str) -> str | None:
-        container = await self._get_container_by_name(container_name)
-        if not container:
-            return None
-        if container.status == "running":
-            url = self._resolve_url_from_container(container)
-            if url:
-                return url
-        # Try restart once
-        loop = asyncio.get_event_loop()
-        try:
-            await asyncio.wait_for(loop.run_in_executor(None, container.restart), timeout=30.0)
-            await asyncio.wait_for(loop.run_in_executor(None, container.reload), timeout=5.0)
-            if container.status == "running":
-                url = self._resolve_url_from_container(container)
-                if url:
-                    return url
-        except Exception as e:
-            logger.debug(f"Failed to restart existing container {container_name}: {e}")
-        # Force remove to allow clean recreate
-        with suppress(Exception):
-            await asyncio.wait_for(loop.run_in_executor(None, lambda: container.remove(force=True)), timeout=10.0)
-        return None
-
-    async def _run_container_with_retries(
-        self,
-        project_id: int,
-        session_id: str,
-        environment: dict[str, str],
-        host_session_path: Path,
-        container_name: str,
-    ) -> str:
-        await self._ensure_preview_image()
-        last_error: Exception | None = None
-        loop = asyncio.get_event_loop()
-        for attempt in range(1, 4):
-            ports, labels, url, host_port = self.adapter.prepare_run(project_id, session_id, container_name)
-            logger.info(f"Attempt {attempt}/3 to start preview container {container_name} using host port {host_port}")
-            try:
-                await asyncio.wait_for(
-                    loop.run_in_executor(
-                        None,
-                        lambda ports=ports, labels=labels: self.client.containers.run(
-                            image=settings.preview_default_image,
-                            name=container_name,
-                            command=None,
-                            ports=ports,
-                            volumes={str(host_session_path): {"bind": "/app", "mode": "rw"}},
-                            working_dir="/app",
-                            environment=environment,
-                            network=settings.preview_network,
-                            labels=labels,
-                            detach=True,
-                            auto_remove=False,
-                        ),
-                    ),
-                    timeout=60.0,
-                )
-                return url
-            except Exception as e:
-                last_error = e
-                message = str(e)
-                is_port_conflict = (
-                    "port is already allocated" in message
-                    or "address already in use" in message
-                    or "Bind for 0.0.0.0" in message
-                )
-                # Clean up any partially created container before retrying
-                existing = await self._get_container_by_name(container_name)
-                if existing:
-                    with suppress(Exception):
-                        await asyncio.wait_for(
-                            loop.run_in_executor(None, lambda c=existing: c.remove(force=True)), timeout=10.0
-                        )
-                if is_port_conflict and attempt < 3 and settings.router_mode == "port":
-                    logger.warning(
-                        f"Host port {host_port} is already in use for {container_name}. Retrying with a new port..."
-                    )
-                    await asyncio.sleep(0.2)
-                    continue
-                logger.error(f"Failed to start preview container {container_name} on attempt {attempt}: {message}")
-                break
-        if last_error:
-            raise last_error
-        raise RuntimeError("Failed to start preview container due to unknown error")
 
     def _resolve_url_from_container(self, container) -> str | None:
         labels = container.labels or {}
@@ -260,33 +128,6 @@ class DockerService:
         if mapping and len(mapping) > 0 and mapping[0].get("HostPort"):
             return f"http://localhost:{int(mapping[0]['HostPort'])}"
         return None
-
-    async def start_preview(self, project_id: int, session_id: str, env_vars: dict[str, str] | None = None) -> str:
-        env_vars = env_vars or {}
-
-        container_name = self._get_container_name(project_id, session_id)
-        logger.info(f"Start preview for project {project_id} session {session_id} as {container_name}")
-
-        # Ensure session environment exists
-        await self._ensure_session_environment(project_id, session_id)
-
-        # Ensure database exists for this session
-        await self._ensure_database_exists(project_id, session_id)
-
-        # Reuse existing running container if possible; otherwise ensure it's removed
-        url = await self._get_existing_container_url_or_remove(container_name)
-        if url:
-            return url
-
-        # Create new container
-        host_session_path = self._get_host_session_path(project_id, session_id)
-        if not host_session_path.is_absolute():
-            raise ValueError(f"Host session path must be absolute, got: {host_session_path}")
-
-        environment = self._prepare_container_environment(project_id, session_id, env_vars)
-        return await self._run_container_with_retries(
-            project_id, session_id, environment, host_session_path, container_name
-        )
 
     async def stop_preview(self, project_id: int, session_id: str) -> None:
         container_name = self._get_container_name(project_id, session_id)

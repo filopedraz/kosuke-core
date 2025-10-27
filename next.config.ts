@@ -1,7 +1,7 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ['dockerode'],
+  serverExternalPackages: ['@docker/node-sdk'],
   output: 'standalone',
   experimental: {
     externalDir: true,

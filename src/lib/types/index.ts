@@ -5,6 +5,7 @@ export * from './branding';
 export * from './chat';
 export * from './chat-sessions';
 export * from './database';
+export * from './docker';
 export * from './github';
 export * from './infrastructure';
 export * from './preview';

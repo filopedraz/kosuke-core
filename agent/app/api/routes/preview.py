@@ -10,7 +10,6 @@ from app.models.preview import PreviewStatus
 from app.models.preview import PullRequest
 from app.models.preview import PullResponse
 from app.models.preview import PullResult
-from app.models.preview import StartPreviewRequest
 from app.models.preview import StopPreviewRequest
 from app.services.docker_service import DockerService
 from app.utils.providers import get_github_service
@@ -21,38 +20,6 @@ router = APIRouter()
 
 async def get_docker_service() -> DockerService:
     return DockerService()
-
-
-@router.post("/preview/start")
-async def start_preview(
-    request: StartPreviewRequest, docker_service: Annotated[DockerService, Depends(get_docker_service)]
-):
-    """Start a preview for a project session"""
-    try:
-        if not await docker_service.is_docker_available():
-            raise HTTPException(status_code=503, detail="Docker is not available")
-
-        # Require explicit session_id and start preview
-        session_id = request.session_id
-        url = await docker_service.start_preview(request.project_id, session_id, request.env_vars)
-
-        # Get the full status
-        status = await docker_service.get_preview_status(request.project_id, session_id)
-
-        return {
-            "success": True,
-            "url": url,
-            "project_id": request.project_id,
-            "session_id": session_id,
-            "running": status.running,
-            "is_responding": status.is_responding,
-        }
-    except HTTPException:
-        raise  # Re-raise HTTPExceptions without modification
-    except Exception as e:
-        session_id = request.session_id
-        logger.error(f"Error starting preview for project {request.project_id} session {session_id}: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to start preview: {e!s}") from e
 
 
 @router.post("/preview/stop")
