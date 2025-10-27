@@ -64,7 +64,7 @@
     "@sentry/nextjs": "^10.22.0",
     "@tanstack/react-query": "^5.90.5",
     "@types/bcryptjs": "^3.0.0",
-    "@types/dockerode": "^3.3.35",
+    "@types/dockerode": "^3.3.45",
     "@types/marked": "^5.0.2",
     "@types/node": "^24.9.1",
     "@types/react": "19.2.2",
