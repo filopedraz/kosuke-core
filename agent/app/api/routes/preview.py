@@ -84,17 +84,6 @@ async def get_preview_status_with_session(
         raise HTTPException(status_code=500, detail=f"Failed to get preview status: {e!s}") from e
 
 
-@router.post("/preview/stop-all")
-async def stop_all_previews(docker_service: Annotated[DockerService, Depends(get_docker_service)]):
-    """Stop all preview containers"""
-    try:
-        await docker_service.stop_all_previews()
-        return {"success": True, "message": "All previews stopped"}
-    except Exception as e:
-        logger.error(f"Error stopping all previews: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to stop all previews: {e!s}") from e
-
-
 @router.post("/preview/pull")
 async def pull_project(
     request: PullRequest,
