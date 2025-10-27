@@ -219,6 +219,12 @@ export default function Navbar({
                     </DropdownMenuContent>
                   </DropdownMenu>
 
+                  <Link href="/pricing">
+                    <Button variant="ghost" size="sm">
+                      Pricing
+                    </Button>
+                  </Link>
+
                   <Link href="/blog">
                     <Button variant="ghost" size="sm">
                       Blog
@@ -280,6 +286,14 @@ export default function Navbar({
                             ))}
                           </div>
                         </div>
+
+                        <Link
+                          href="/pricing"
+                          onClick={() => setMobileMenuOpen(false)}
+                          className="text-lg font-medium transition-colors hover:text-primary"
+                        >
+                          Pricing
+                        </Link>
 
                         <Link
                           href="/blog"
