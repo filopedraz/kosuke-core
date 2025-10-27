@@ -111,8 +111,7 @@ export class EventProcessor {
     message: SDKAssistantMessage
   ): AsyncGenerator<StreamEvent> {
     // Access the actual message content from the SDK wrapper
-    const apiMessage = message.message;
-    const content = apiMessage.content;
+    const content = message.message.content;
 
     if (!Array.isArray(content)) {
       return;
@@ -130,6 +129,12 @@ export class EventProcessor {
           input: block.input || {},
         });
       }
+    }
+
+    // Close any active text block at the end of the message
+    if (this.textState.active) {
+      yield this.createContentBlockStopEvent();
+      this.saveTextContent();
     }
   }
 
