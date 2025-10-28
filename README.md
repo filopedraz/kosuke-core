@@ -98,57 +98,6 @@ docker compose -f docker-compose.local.yml down
 docker compose -f docker-compose.local.yml down -v
 ```
 
-### Development Workflow
-
-#### Running Commands Inside Containers
-
-Since the application runs in Docker, you can execute commands inside the containers:
-
-```bash
-# Run database migrations
-docker exec kosuke_nextjs bun run db:push
-
-# Open Drizzle Studio
-docker exec kosuke_nextjs bun run db:studio
-
-# Run linting
-docker exec kosuke_nextjs bun run lint
-
-# Format code
-docker exec kosuke_nextjs bun run format
-
-# Run tests
-docker exec kosuke_nextjs bun test
-
-# Access Next.js container shell
-docker exec -it kosuke_nextjs sh
-
-# Access Agent container shell
-docker exec -it kosuke_agent sh
-
-# View logs
-docker compose -f docker-compose.local.yml logs -f nextjs
-docker compose -f docker-compose.local.yml logs -f agent
-```
-
-#### Linting and Pre-commit Hook (Optional)
-
-If you want to run linting locally on your host machine:
-
-```bash
-# Install dependencies locally
-nvm i && bun install
-
-# Setup pre-commit hook
-bun run prepare
-```
-
-This configures a Git pre-commit hook that runs linting and prevents commits with issues. To bypass in exceptional cases:
-
-```bash
-git commit -m "Your message" --no-verify
-```
-
 ## 🛡️ License
 
 Kosuke is licensed under the [MIT License](https://github.com/filopedraz/kosuke/blob/main/LICENSE).
