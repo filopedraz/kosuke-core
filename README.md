@@ -102,4 +102,4 @@ Kosuke is licensed under the [MIT License](https://github.com/filopedraz/kosuke/
 
 ## 📬 Contact
 
-For questions or support, you can create an issue in the repo or drop me a message at filippo.pedrazzini (at) joandko.io
+For questions or support, you can create an issue in the repo or drop me a message at filippo.pedrazzini (at) kosuke.ai
