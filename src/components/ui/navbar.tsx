@@ -198,7 +198,7 @@ export default function Navbar({
 
               {/* Desktop Navigation */}
               {showNavigation && (
-                <div className="hidden md:flex items-center gap-6">
+                <div className="hidden min-[900px]:flex items-center gap-6">
                   <Link href="/customers">
                     <Button variant="ghost" size="sm">
                       Customers
@@ -258,7 +258,7 @@ export default function Navbar({
 
               {/* Mobile Menu Button */}
               {showNavigation && (
-                <div className="md:hidden">
+                <div className="min-[900px]:hidden">
                   <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
                     <SheetTrigger asChild>
                       <Button variant="ghost" size="icon">
