@@ -1,6 +1,5 @@
 import asyncio
 import logging
-from contextlib import suppress
 from pathlib import Path
 
 import aiohttp
