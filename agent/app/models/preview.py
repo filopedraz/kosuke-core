@@ -21,12 +21,6 @@ class ContainerInfo(BaseModel):
     url: str
 
 
-class PreviewStatus(BaseModel):
-    running: bool
-    url: str | None = None
-    is_responding: bool
-
-
 class StartPreviewRequest(BaseModel):
     project_id: int
     session_id: str

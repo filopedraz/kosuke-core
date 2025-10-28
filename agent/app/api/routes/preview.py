@@ -6,7 +6,6 @@ from fastapi import Depends
 from fastapi import Header
 from fastapi import HTTPException
 
-from app.models.preview import PreviewStatus
 from app.models.preview import PullRequest
 from app.models.preview import PullResponse
 from app.models.preview import PullResult
@@ -19,19 +18,6 @@ router = APIRouter()
 
 async def get_docker_service() -> DockerService:
     return DockerService()
-
-
-@router.get("/preview/status/{project_id}/{session_id}")
-async def get_preview_status_with_session(
-    project_id: int, session_id: str, docker_service: Annotated[DockerService, Depends(get_docker_service)]
-) -> PreviewStatus:
-    """Get preview status for a project session"""
-
-    try:
-        return await docker_service.get_preview_status(project_id, session_id)
-    except Exception as e:
-        logger.error(f"Error getting preview status for project {project_id} session {session_id}: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to get preview status: {e!s}") from e
 
 
 @router.post("/preview/pull")

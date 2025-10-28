@@ -2,11 +2,9 @@ import asyncio
 import logging
 from pathlib import Path
 
-import aiohttp
 import docker
 from docker.errors import ImageNotFound
 
-from app.models.preview import PreviewStatus
 from app.services.domain_service import DomainService
 from app.services.router_adapters import PortRouterAdapter
 from app.services.router_adapters import TraefikRouterAdapter
@@ -85,18 +83,6 @@ class DockerService:
         except Exception:
             return False
 
-    async def _check_container_health(self, url: str, timeout: float = 2.0) -> bool:
-        try:
-            # Adjust for DinD probing only
-            base_url = url.replace("localhost", "host.docker.internal")
-            health_url = base_url.rstrip("/") + settings.preview_health_path
-            timeout_config = aiohttp.ClientTimeout(total=timeout)
-            async with aiohttp.ClientSession(timeout=timeout_config) as session, session.get(health_url) as response:
-                return response.status == 200
-        except Exception as e:
-            logger.debug(f"Health check failed for {url}: {e}")
-            return False
-
     async def _get_container_by_name(self, name: str):
         loop = asyncio.get_event_loop()
         try:
@@ -127,21 +113,6 @@ class DockerService:
         if mapping and len(mapping) > 0 and mapping[0].get("HostPort"):
             return f"http://localhost:{int(mapping[0]['HostPort'])}"
         return None
-
-    async def get_preview_status(self, project_id: int, session_id: str) -> PreviewStatus:
-        container_name = self._get_container_name(project_id, session_id)
-        container = await self._get_container_by_name(container_name)
-        if not container:
-            return PreviewStatus(running=False, url=None, is_responding=False)
-
-        if container.status != "running":
-            return PreviewStatus(running=False, url=None, is_responding=False)
-
-        url = self._resolve_url_from_container(container)
-        is_responding = False
-        if url:
-            is_responding = await self._check_container_health(url)
-        return PreviewStatus(running=True, url=url, is_responding=is_responding)
 
     async def is_container_running(self, project_id: int, session_id: str) -> bool:
         container_name = self._get_container_name(project_id, session_id)
