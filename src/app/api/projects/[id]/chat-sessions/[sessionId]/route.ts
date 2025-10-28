@@ -1,14 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
+import { Agent } from '@/lib/agent';
 import { auth } from '@/lib/auth/server';
 import { db } from '@/lib/db/drizzle';
 import { chatMessages, chatSessions, projects } from '@/lib/db/schema';
+import { getDockerService } from '@/lib/docker';
+import { deleteDir } from '@/lib/fs/operations';
 import { getGitHubToken } from '@/lib/github/auth';
+import { sessionManager } from '@/lib/sessions';
 import { uploadFile } from '@/lib/storage';
 import { and, eq } from 'drizzle-orm';
-import { sessionManager } from '@/lib/sessions';
-import { Agent } from '@/lib/agent';
 
 // Schema for updating a chat session
 const updateChatSessionSchema = z.object({
@@ -253,7 +255,31 @@ export async function DELETE(
       );
     }
 
-    // Delete chat session (cascade will delete associated messages)
+    // Step 1: Stop the preview container for this session
+    try {
+      console.log(`Stopping preview container for session ${sessionId} in project ${projectId}`);
+      const dockerService = getDockerService();
+      await dockerService.stopPreview(projectId, sessionId);
+      console.log(`Preview container stopped successfully for session ${sessionId}`);
+    } catch (containerError) {
+      // Log but continue - we still want to delete the session even if container cleanup fails
+      console.error(`Error stopping preview container for session ${sessionId}:`, containerError);
+      console.log(`Continuing with session deletion despite container cleanup failure`);
+    }
+
+    // Step 2: Delete session files after container is stopped
+    const sessionPath = sessionManager.getSessionPath(projectId, sessionId);
+    let filesWarning = null;
+
+    try {
+      await deleteDir(sessionPath);
+      console.log(`Successfully deleted session directory: ${sessionPath}`);
+    } catch (dirError) {
+      console.error(`Error deleting session directory: ${sessionPath}`, dirError);
+      filesWarning = "Session deleted but some files could not be removed";
+    }
+
+    // Step 3: Delete chat session from database (cascade will delete associated messages)
     await db
       .delete(chatSessions)
       .where(eq(chatSessions.id, session.id));
@@ -261,6 +287,7 @@ export async function DELETE(
     return NextResponse.json({
       success: true,
       message: 'Chat session deleted successfully',
+      ...(filesWarning && { warning: filesWarning }),
     });
   } catch (error) {
     console.error('Error deleting chat session:', error);
