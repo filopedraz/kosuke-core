@@ -15,7 +15,6 @@
         "**/venv": true,
         "**/.venv": true,
         "**/tmp": true,
-        "**/.next": true,
         "**/dist": true,
         "**/__pycache__": true,
         "**/.pytest_cache": true,

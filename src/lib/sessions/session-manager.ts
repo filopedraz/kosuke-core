@@ -41,26 +41,25 @@ export class SessionManager {
    * Validate that a session directory exists and is properly set up
    */
   async validateSessionDirectory(projectId: number, sessionId: string): Promise<boolean> {
+    const sessionPath = this.getSessionPath(projectId, sessionId);
+
+    // Check if directory exists
+    if (!existsSync(sessionPath)) {
+      console.warn(`⚠️ Session directory does not exist: ${sessionPath}`);
+      return false;
+    }
+
+    // Check if it's a valid Git repository
     try {
-      const sessionPath = this.getSessionPath(projectId, sessionId);
-
-      // Check if directory exists
-      if (!existsSync(sessionPath)) {
-        console.warn(`⚠️ Session directory does not exist: ${sessionPath}`);
-        return false;
-      }
-
-      // Check if it's a valid Git repository
-      try {
-        const git = simpleGit(sessionPath);
-        await git.status();
-        return true;
-      } catch {
-        console.warn(`⚠️ Session directory is not a valid Git repository: ${sessionPath}`);
-        return false;
-      }
+      const git = simpleGit(sessionPath);
+      await git.status();
+      return true;
     } catch (error) {
-      console.error(`❌ Error validating session directory:`, error);
+      console.error(`⚠️ Error validating session directory: ${sessionPath}`);
+      console.error(`   Error details:`, error);
+      console.error(`   Current user: ${process.env.USER || 'unknown'}`);
+      console.error(`   Process UID: ${process.getuid?.() || 'N/A'}`);
+      console.error(`   Process GID: ${process.getgid?.() || 'N/A'}`);
       return false;
     }
   }
@@ -100,6 +99,7 @@ export class SessionManager {
       console.log(`Cloning from ${mainProjectPath} to ${sessionPath}`);
       const mainGit = simpleGit(mainProjectPath);
       await mainGit.clone(mainProjectPath, sessionPath, ['--local', '--no-hardlinks']);
+      console.log(`✅ Cloned from ${mainProjectPath} to ${sessionPath}`);
 
       // Configure session repository
       const sessionGit = simpleGit(sessionPath);

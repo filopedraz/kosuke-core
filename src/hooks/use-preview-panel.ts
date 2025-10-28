@@ -28,13 +28,15 @@ export function usePreviewPanel({
   const requestInFlightRef = useRef(false);
   // Removed gitStatus from status flow; pull flow handles its own toasts
 
-  // Check if the preview server is ready by requiring a 200 from server-side probe
-  const checkServerHealth = useCallback(async (url: string): Promise<boolean> => {
+  // Check if the preview server is ready using session-scoped health check
+  // This checks the container health within the Docker network
+  const checkServerHealth = useCallback(async (): Promise<boolean> => {
     try {
-      const healthUrl = `/api/preview/health?url=${encodeURIComponent(url)}&timeout=3000`;
+      const healthUrl = `/api/projects/${projectId}/chat-sessions/${sessionId}/preview/health`;
       const response = await fetch(healthUrl, { method: 'GET' });
       if (!response.ok) return false;
-      const data: { ok: boolean; status?: number } = await response.json();
+      const data: { ok: boolean; running?: boolean; is_responding?: boolean } =
+        await response.json();
       return Boolean(data.ok);
     } catch (error) {
       if (Math.random() < 0.2) {
@@ -45,11 +47,11 @@ export function usePreviewPanel({
       }
       return false;
     }
-  }, []);
+  }, [projectId, sessionId]);
 
   // Poll the server until it's ready
   const pollServerUntilReady = useCallback(
-    async (url: string, maxAttempts = 60) => {
+    async (maxAttempts = 60) => {
       console.log(
         '[Preview Panel] Starting health check polling (waiting for HTTP 200; will wait 5s before first attempt)'
       );
@@ -65,7 +67,7 @@ export function usePreviewPanel({
         attempts++;
         setProgress(Math.min(90, Math.floor((attempts / maxAttempts) * 100)));
 
-        const isHealthy = await checkServerHealth(url);
+        const isHealthy = await checkServerHealth();
 
         if (isHealthy) {
           console.log('[Preview Panel] Server is healthy');
@@ -139,7 +141,7 @@ export function usePreviewPanel({
               if (retryData.previewUrl || retryData.url) {
                 const readyUrl = retryData.previewUrl || retryData.url;
                 setPreviewUrl(readyUrl);
-                pollServerUntilReady(readyUrl);
+                pollServerUntilReady();
                 return;
               }
               throw new Error('No preview URL returned after start');
@@ -159,7 +161,18 @@ export function usePreviewPanel({
           const readyUrl = data.previewUrl || data.url;
           console.log('[Preview Panel] Setting preview URL:', readyUrl);
           setPreviewUrl(readyUrl);
-          pollServerUntilReady(readyUrl);
+          if (data.is_responding && data.running) {
+            console.log(
+              '[Preview Panel] Preview is responding and running, polling server until ready'
+            );
+            setStatus('ready');
+            setProgress(100);
+          } else {
+            console.log(
+              '[Preview Panel] Preview is not responding or not running, starting polling'
+            );
+            pollServerUntilReady();
+          }
         } else {
           throw new Error('No preview URL returned');
         }
@@ -175,7 +188,7 @@ export function usePreviewPanel({
         requestInFlightRef.current = false;
       }
     },
-    [projectId, sessionId, pollServerUntilReady, enabled]
+    [enabled, sessionId, projectId, startPreview, pollServerUntilReady]
   );
 
   // Update ref when fetchPreviewUrl changes

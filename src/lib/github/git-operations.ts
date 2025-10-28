@@ -5,19 +5,89 @@
  */
 
 import type { CommitOptions, GitChangesSummary, GitHubCommit } from '@/lib/types/agent';
+import { existsSync, rmSync } from 'fs';
+import { join } from 'path';
 import simpleGit, { type SimpleGit } from 'simple-git';
 
 const SESSION_BRANCH_PREFIX = process.env.SESSION_BRANCH_PREFIX || 'kosuke/chat-';
+const PROJECTS_BASE_PATH = process.env.PROJECTS_BASE_PATH || './projects';
 
 /**
  * Git Operations Service
  * Provides Git functionality for session-based development
  */
 export class GitOperations {
-  private userId: string;
+  /**
+   * Clone a GitHub repository to the local project directory
+   *
+   * @param repoUrl - GitHub repository URL (HTTPS or SSH)
+   * @param projectId - Project ID for directory naming
+   * @param githubToken - GitHub authentication token
+   * @returns Path to the cloned repository
+   */
+  async cloneRepository(repoUrl: string, projectId: number, githubToken: string): Promise<string> {
+    try {
+      const projectPath = join(PROJECTS_BASE_PATH, String(projectId));
 
-  constructor(userId: string) {
-    this.userId = userId;
+      // Remove existing project directory if it exists
+      if (existsSync(projectPath)) {
+        console.log(`🗑️ Removing existing project directory: ${projectPath}`);
+        rmSync(projectPath, { recursive: true, force: true });
+      }
+
+      // Build authenticated URL for cloning
+      const authenticatedUrl = this.buildAuthenticatedUrl(repoUrl, githubToken);
+      const sanitizedUrl = this.sanitizeUrlForLog(repoUrl);
+
+      console.log(`📦 Cloning repository ${sanitizedUrl} to project ${projectId}`);
+
+      // Clone repository
+      await simpleGit().clone(authenticatedUrl, projectPath);
+
+      // After clone, sanitize remote URL to remove token
+      try {
+        const git = simpleGit(projectPath);
+        const sanitizedRepoUrl = this.sanitizeRepoUrl(repoUrl);
+        await git.remote(['set-url', 'origin', sanitizedRepoUrl]);
+        console.log('🔒 Sanitized remote URL to remove credentials');
+      } catch (sanitizeError) {
+        // Non-fatal if we cannot sanitize
+        console.warn('⚠️ Failed to sanitize remote URL after clone:', sanitizeError);
+      }
+
+      console.log(`✅ Successfully cloned repository to project ${projectId}`);
+      console.log('ℹ️ Repository kept on main branch - branches will be created per chat session');
+
+      return projectPath;
+    } catch (error) {
+      console.error(`❌ Error cloning repository:`, error);
+      throw new Error(
+        `Failed to clone repository: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  /**
+   * Sanitize repository URL to remove credentials
+   */
+  private sanitizeRepoUrl(repoUrl: string): string {
+    try {
+      // Convert SSH to HTTPS
+      if (repoUrl.startsWith('git@github.com:')) {
+        const repoPath = repoUrl.replace('git@github.com:', '');
+        return `https://github.com/${repoPath.endsWith('.git') ? repoPath : `${repoPath}.git`}`;
+      }
+
+      // Remove embedded credentials from HTTPS URL
+      if (repoUrl.startsWith('https://')) {
+        return repoUrl.replace(/https:\/\/[^@]+@github\.com\//, 'https://github.com/');
+      }
+
+      return repoUrl;
+    } catch (error) {
+      console.warn('⚠️ Error sanitizing repo URL:', error);
+      return repoUrl;
+    }
   }
 
   /**

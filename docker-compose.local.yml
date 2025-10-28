@@ -11,6 +11,38 @@ services:
     networks:
       - kosuke_network
 
+  nextjs:
+    build:
+      context: .
+      dockerfile: Dockerfile.local
+    container_name: kosuke_nextjs
+    ports:
+      - '3000:3000'
+    volumes:
+      - .:/app:cached
+      - /app/node_modules
+      - /app/.next
+      - ./projects:/app/projects:cached
+      - /var/run/docker.sock:/var/run/docker.sock
+    env_file:
+      - .env
+    depends_on:
+      - postgres
+      - agent
+    networks:
+      - kosuke_network
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'node -e "require(\"http\").get(\"http://localhost:3000\", (r) => process.exit(r.statusCode === 200 ? 0 : 1))"',
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
   agent:
     build:
       context: ./agent
@@ -27,7 +59,7 @@ services:
     environment:
       - PYTHONPATH=/app
       - PYTHONUNBUFFERED=1
-      - NEXTJS_URL=http://host.docker.internal:3000
+      - NEXTJS_URL=http://nextjs:3000
       - WEBHOOK_SECRET=dev-secret-change-in-production
       - HOST_WORKSPACE_DIR=${PWD}
     depends_on:
@@ -50,7 +82,6 @@ services:
 
 volumes:
   postgres_data:
-  next_build_cache:
 
 networks:
   kosuke_network:

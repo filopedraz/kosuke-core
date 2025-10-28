@@ -43,7 +43,9 @@ class DockerService {
     if (!this.client) {
       try {
         this.client = await DockerClient.fromDockerConfig();
+        console.log('Docker client initialized successfully');
       } catch (error) {
+        console.error('Docker client initialization failed:', error);
         throw new Error(
           `Failed to initialize Docker client: ${error instanceof Error ? error.message : 'Unknown error'}`
         );
@@ -290,25 +292,29 @@ class DockerService {
    * Check container health via HTTP
    */
   private async checkContainerHealth(url: string, timeout = 2000): Promise<boolean> {
+    // Adjust for Docker-in-Docker - replace localhost with host.docker.internal
+    const baseUrl = url.replace('localhost', 'host.docker.internal');
+    const healthUrl = baseUrl.endsWith('/')
+      ? `${baseUrl}${this.config.previewHealthPath.replace(/^\//, '')}`
+      : `${baseUrl}${this.config.previewHealthPath}`;
+
+    console.log(`Checking health of ${healthUrl}`);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+
     try {
-      // Adjust for Docker-in-Docker - replace localhost with host.docker.internal
-      const baseUrl = url.replace('localhost', 'host.docker.internal');
-      const healthUrl = baseUrl.endsWith('/')
-        ? `${baseUrl}${this.config.previewHealthPath.replace(/^\//, '')}`
-        : `${baseUrl}${this.config.previewHealthPath}`;
-
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), timeout);
-
       const response = await fetch(healthUrl, {
         signal: controller.signal,
         method: 'GET',
       });
 
+      console.log(`Health check response: ${response.ok}`);
+
       clearTimeout(timeoutId);
       return response.ok;
     } catch (error) {
-      console.log(`Health check failed for ${url}:`, error);
+      console.log(`Health check failed for ${healthUrl}:`, error);
       return false;
     }
   }

@@ -53,7 +53,7 @@ describe('GitOperations', () => {
   let gitOps: GitOperations;
 
   beforeEach(() => {
-    gitOps = new GitOperations('user-123');
+    gitOps = new GitOperations();
     jest.clearAllMocks();
   });
 

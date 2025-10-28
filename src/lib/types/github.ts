@@ -156,3 +156,19 @@ export interface PullRequestSummary {
   baseRef: string;
   url: string;
 }
+
+// Repository creation from template
+export interface CreateRepositoryFromTemplateRequest {
+  name: string;
+  description?: string;
+  private: boolean;
+  templateRepo: string;
+}
+
+export interface GitHubRepoResponse {
+  name: string;
+  owner: string;
+  url: string;
+  private: boolean;
+  description?: string;
+}

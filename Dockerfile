@@ -51,11 +51,20 @@ RUN --mount=type=cache,target=/app/.next/cache \
 FROM node:22.20.0-slim AS runner
 WORKDIR /app
 
+# Install git and CA certificates for repository operations
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        git \
+        ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+
 RUN \
     groupadd --system --gid 1001 nodejs && \
     useradd --system --uid 1001 --gid nodejs nextjs && \
     mkdir .next && \
-    chown nextjs:nodejs .next
+    chown nextjs:nodejs .next && \
+    mkdir projects && \
+    chown nextjs:nodejs projects
 
 # Copy only the necessary files
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public

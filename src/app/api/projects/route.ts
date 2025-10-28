@@ -7,7 +7,9 @@ import { ApiResponseHandler } from '@/lib/api/responses';
 import { auth } from '@/lib/auth/server';
 import { db } from '@/lib/db/drizzle';
 import { projects } from '@/lib/db/schema';
+import { createRepositoryFromTemplate } from '@/lib/github';
 import { getGitHubToken } from '@/lib/github/auth';
+import { GitOperations } from '@/lib/github/git-operations';
 
 
 // Schema for project creation with GitHub integration
@@ -55,87 +57,107 @@ export async function GET() {
 }
 
 /**
- * Helper function to create a GitHub repository
+ * Helper function to create a GitHub repository from template
  */
 async function createGitHubRepository(
-  githubToken: string,
+  userId: string,
   repositoryName: string,
   description: string,
   isPrivate: boolean,
   projectId: number
 ) {
-  const agentUrl = process.env.AGENT_SERVICE_URL || 'http://localhost:8000';
-
-  const response = await fetch(`${agentUrl}/api/github/create-repo`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-GitHub-Token': githubToken,
-    },
-    body: JSON.stringify({
-      name: repositoryName,
-      description: description || '',
-      private: isPrivate || false,
-      auto_init: true,
-      project_id: projectId,
-    }),
-  });
-
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Failed to create repository: ${error}`);
+  const templateRepo = process.env.TEMPLATE_REPOSITORY;
+  if (!templateRepo) {
+    throw new Error('TEMPLATE_REPOSITORY is not set');
   }
 
-  const repoData = await response.json();
+  // Create repository from template using Octokit
+  const repoData = await createRepositoryFromTemplate(userId, {
+    name: repositoryName,
+    description,
+    private: isPrivate,
+    templateRepo,
+  });
+
+  // Wait for GitHub to initialize the repository (same as Python implementation)
+  await new Promise(resolve => setTimeout(resolve, 10000));
+
+  // Clone the repository locally if project_id is provided
+  try {
+    // Get GitHub token for clone operation
+    const githubToken = await getGitHubToken(userId);
+    if (githubToken) {
+      const gitOps = new GitOperations();
+      await gitOps.cloneRepository(repoData.url, projectId, githubToken);
+      console.log(`✅ Repository cloned successfully to project ${projectId}`);
+    }
+  } catch (cloneError) {
+    console.error('Repository created but failed to clone locally:', cloneError);
+    // Don't throw - repository was created successfully
+  }
 
   return repoData;
 }
 
 /**
  * Helper function to import a GitHub repository
+ * Parses repository URL, gets repo info, and clones it locally
  */
 async function importGitHubRepository(
-  githubToken: string,
+  userId: string,
   repositoryUrl: string,
   projectId: number
 ) {
-  const agentUrl = process.env.AGENT_SERVICE_URL || 'http://localhost:8000';
+  // Parse repository URL to get owner and repo name
+  const urlMatch = repositoryUrl.match(/github\.com[/:]([\w-]+)\/([\w.-]+?)(?:\.git)?$/);
+  if (!urlMatch) {
+    throw new Error('Invalid GitHub repository URL');
+  }
 
-  // First get repo info
-  const infoResponse = await fetch(
-    `${agentUrl}/api/github/repo-info?repo_url=${encodeURIComponent(repositoryUrl)}`,
-    {
-      headers: {
-        'X-GitHub-Token': githubToken,
-      },
+  const [, owner, repo] = urlMatch;
+
+  // Get repository info using Octokit
+  const { createOctokit } = await import('@/lib/github/client');
+  const octokit = await createOctokit(userId);
+
+  try {
+    const { data: repoInfo } = await octokit.rest.repos.get({
+      owner,
+      repo,
+    });
+
+    // Clone repository locally
+    const githubToken = await getGitHubToken(userId);
+    if (!githubToken) {
+      throw new Error('GitHub token not found');
     }
-  );
 
-  if (!infoResponse.ok) {
-    throw new Error('Invalid repository URL');
+    const gitOps = new GitOperations();
+    const projectPath = await gitOps.cloneRepository(repositoryUrl, projectId, githubToken);
+
+    console.log(`✅ Repository imported successfully to ${projectPath}`);
+
+    return {
+      repoInfo: {
+        owner: repoInfo.owner.login,
+        name: repoInfo.name,
+        full_name: repoInfo.full_name,
+        clone_url: repoInfo.clone_url,
+        default_branch: repoInfo.default_branch,
+      },
+      importResult: {
+        success: true,
+        project_id: projectId,
+        project_path: projectPath,
+      },
+    };
+  } catch (error) {
+    console.error('Error importing repository:', error);
+    if (error instanceof Error && error.message.includes('Not Found')) {
+      throw new Error('Repository not found or not accessible');
+    }
+    throw error;
   }
-
-  const repoInfo = await infoResponse.json();
-
-  // Import repository
-  const importResponse = await fetch(`${agentUrl}/api/github/import-repo`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-GitHub-Token': githubToken,
-    },
-    body: JSON.stringify({
-      repo_url: repositoryUrl,
-      project_id: projectId,
-    }),
-  });
-
-  if (!importResponse.ok) {
-    const error = await importResponse.text();
-    throw new Error(`Failed to import repository: ${error}`);
-  }
-
-  return { repoInfo, importResult: await importResponse.json() };
 }
 
 /**
@@ -160,15 +182,6 @@ export async function POST(request: NextRequest) {
     }
 
     const { name, github } = result.data;
-
-    // Get user's GitHub token
-    const githubToken = await getGitHubToken(userId);
-    if (!githubToken) {
-      return NextResponse.json(
-        { error: 'GitHub not connected. Please connect your GitHub account first.' },
-        { status: 400 }
-      );
-    }
 
     // Validate GitHub configuration based on type
     if (github.type === 'create' && !github.repositoryName) {
@@ -204,7 +217,7 @@ export async function POST(request: NextRequest) {
         // Handle GitHub operations based on type
         if (github.type === 'create') {
           const repoData = await createGitHubRepository(
-            githubToken,
+            userId,
             github.repositoryName!,
             github.description || '',
             github.isPrivate || false,
@@ -227,7 +240,7 @@ export async function POST(request: NextRequest) {
         } else {
           // Import mode
           const { repoInfo } = await importGitHubRepository(
-            githubToken,
+            userId,
             github.repositoryUrl!,
             project.id
           );

@@ -8,16 +8,15 @@
 
 Before you begin, ensure you have the following tools installed and configured:
 
-- **nvm (Node Version Manager)** - Manages Node.js versions
-  - Install from [github.com/nvm-sh/nvm](https://github.com/nvm-sh/nvm)
-  - The project includes a `.nvmrc` file to automatically use Node.js 22.20.0
-- **npm** - Package manager (included with Node.js)
-- **Docker Desktop or OrbStack** - Required for running PostgreSQL database locally
+- **Docker Desktop or OrbStack** - Required for running all services (Postgres, Agent, Next.js)
   - [Docker Desktop](https://www.docker.com/products/docker-desktop) - Traditional Docker solution
-  - [OrbStack](https://orbstack.dev/) - Lightweight, faster alternative for macOS
+  - [OrbStack](https://orbstack.dev/) - Lightweight, faster alternative for macOS (Recommended)
 - **just** - Command runner for project tasks
   - Install via Homebrew: `brew install just`
   - Or see [alternative installation methods](https://github.com/casey/just#installation)
+- **nvm (Node Version Manager)** - Optional, only needed if running linting/tests locally
+  - Install from [github.com/nvm-sh/nvm](https://github.com/nvm-sh/nvm)
+  - The project includes a `.nvmrc` file to automatically use Node.js 22.20.0
 - **GitHub OAuth App** - For authentication and repository access
   1. Go to [GitHub Developer Settings](https://github.com/settings/developers)
   2. Click **OAuth Apps** → **New OAuth App**
@@ -69,24 +68,78 @@ Before you begin, ensure you have the following tools installed and configured:
 ### Running Locally
 
 ```bash
-# run the backend
+# Setup environment files
 cp .env.example .env
 cp ./agent/.env.example ./agent/.env
-just run-backend
-# install Next.js dependencies
-nvm i && bun install
-# run the database migrations
-bun run db:push
-# run the Next.js application
-bun run dev
+
+# Start all services (Postgres + Agent + Next.js)
+just run
+
+# The application will be available at:
+# - Next.js app: http://localhost:3000
+# - Agent API: http://localhost:8001
+# - Postgres: localhost:54323
 ```
 
-### Linting and Pre-commit Hook
-
-To set up the linting pre-commit hook:
+**Note**: On first run, you may need to run database migrations. Open a new terminal and run:
 
 ```bash
-bun install
+# Run database migrations inside the Next.js container
+docker exec kosuke_nextjs bun run db:push
+```
+
+### Stopping Services
+
+```bash
+# Stop all services
+docker compose -f docker-compose.local.yml down
+
+# Stop and remove volumes (reset database)
+docker compose -f docker-compose.local.yml down -v
+```
+
+### Development Workflow
+
+#### Running Commands Inside Containers
+
+Since the application runs in Docker, you can execute commands inside the containers:
+
+```bash
+# Run database migrations
+docker exec kosuke_nextjs bun run db:push
+
+# Open Drizzle Studio
+docker exec kosuke_nextjs bun run db:studio
+
+# Run linting
+docker exec kosuke_nextjs bun run lint
+
+# Format code
+docker exec kosuke_nextjs bun run format
+
+# Run tests
+docker exec kosuke_nextjs bun test
+
+# Access Next.js container shell
+docker exec -it kosuke_nextjs sh
+
+# Access Agent container shell
+docker exec -it kosuke_agent sh
+
+# View logs
+docker compose -f docker-compose.local.yml logs -f nextjs
+docker compose -f docker-compose.local.yml logs -f agent
+```
+
+#### Linting and Pre-commit Hook (Optional)
+
+If you want to run linting locally on your host machine:
+
+```bash
+# Install dependencies locally
+nvm i && bun install
+
+# Setup pre-commit hook
 bun run prepare
 ```
 

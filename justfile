@@ -1,13 +1,13 @@
 default:
     @just --list
 
-run-backend:
-    @echo "Running all services..."
-    @docker compose up --build -d
+run:
+    @echo "Running all services with build..."
+    @docker compose -f docker-compose.local.yml up --build -d
 
 up:
-    @echo "Starting up containers..."
-    @docker compose up -d --remove-orphans
+    @echo "Starting up all containers..."
+    @docker compose -f docker-compose.local.yml up -d --remove-orphans
 
 deploy-prod:
     @docker compose -f docker-compose.production.yml up --build -d
