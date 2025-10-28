@@ -171,25 +171,27 @@ export function HeroSection({ onApplyClick }: HeroSectionProps) {
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.5, delay: 0.3 }}
               >
-                <Badge
-                  variant="outline"
-                  className="mb-0 sm:mb-0 px-2 sm:px-3 py-1 text-xs font-mono bg-emerald-500/10 border-emerald-500/20 text-emerald-600 hover:bg-emerald-500/20 hover:border-emerald-500/40 transition-all duration-300 cursor-default relative overflow-hidden"
-                >
-                  {/* Shine effect */}
-                  <motion.div
-                    className="absolute inset-0 -top-1 -bottom-1 bg-gradient-to-r from-transparent via-white/20 to-transparent"
-                    initial={{ x: '-100%' }}
-                    animate={{ x: '200%' }}
-                    transition={{
-                      duration: 2,
-                      repeat: Infinity,
-                      repeatDelay: 3,
-                      ease: 'easeInOut',
-                    }}
-                  />
-                  <Sparkles className="w-3 h-3 mr-1" />
-                  Private Alpha
-                </Badge>
+                <a href="/solutions/venture-builder" className="inline-block">
+                  <Badge
+                    variant="outline"
+                    className="mb-0 sm:mb-0 px-2 sm:px-3 py-1 text-xs font-mono bg-emerald-500/10 border-emerald-500/20 text-emerald-600 hover:bg-emerald-500/30 hover:border-emerald-500/50 transition-all duration-300 cursor-pointer relative overflow-hidden"
+                  >
+                    {/* Shine effect */}
+                    <motion.div
+                      className="absolute inset-0 -top-1 -bottom-1 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+                      initial={{ x: '-100%' }}
+                      animate={{ x: '200%' }}
+                      transition={{
+                        duration: 2,
+                        repeat: Infinity,
+                        repeatDelay: 3,
+                        ease: 'easeInOut',
+                      }}
+                    />
+                    <Sparkles className="w-3 h-3 mr-1" />
+                    🚀 Startup Program: Ship Your MVP for Free
+                  </Badge>
+                </a>
               </motion.div>
 
               <h1 className="text-3xl sm:text-5xl lg:text-6xl font-bold mb-4 sm:mb-6 leading-tight tracking-tight">

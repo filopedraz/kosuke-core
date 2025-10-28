@@ -70,6 +70,11 @@ const solutions = [
     description: 'Break down silos and enable seamless cross-functional collaboration.',
   },
   {
+    title: 'Startup Program',
+    href: '/solutions/startup-program',
+    description: 'Ship your MVP for free with our startup program.',
+  },
+  {
     title: 'On Premise',
     href: '/solutions/on-premise',
     description: 'Deploy Kosuke in your own infrastructure with complete data control.',

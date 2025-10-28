@@ -19,7 +19,7 @@ const isPublicRoute = createRouteMatcher([
   '/solutions/ship-with-engineers',
   '/solutions/enabling-collaboration',
   '/solutions/on-premise',
-  '/solutions/venture-builder',
+  '/solutions/startup-program',
   // SEO and metadata routes
   '/robots.txt',
   '/sitemap.xml',
