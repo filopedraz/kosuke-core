@@ -199,6 +199,16 @@
 /* ----------------------------------------------------------------------------
   * COMPONENT-SPECIFIC UTILITIES
   * ---------------------------------------------------------------------------- */
+@utility scrollbar-hide {
+  /* Hide scrollbar completely */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 @utility terminal-mobile-scroll {
   /* Mobile terminal scroll optimizations */
   scrollbar-width: thin;
