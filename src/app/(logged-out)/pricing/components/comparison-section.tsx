@@ -72,8 +72,8 @@ export function ComparisonSection() {
     <section className="py-12 md:py-24 bg-muted/50 dark:bg-transparent">
       <div className="container mx-auto px-4 sm:px-6">
         <div className="max-w-7xl mx-auto">
-          {/* Desktop Layout - Only on very large screens */}
-          <div className="hidden min-[1600px]:block">
+          {/* Desktop Layout */}
+          <div className="hidden lg:block">
             {/* Provider Headers - Centered */}
             <div className="flex justify-center mb-8">
               <div className="grid grid-cols-3 gap-6 max-w-4xl w-full">
@@ -133,8 +133,8 @@ export function ComparisonSection() {
                   transition={{ duration: 0.5, delay: rowIndex * 0.1 }}
                   className="relative"
                 >
-                  {/* Feature Label - above on tablets, left on desktop */}
-                  <h4 className="text-lg font-bold font-mono mb-3 min-[1600px]:mb-0 min-[1600px]:absolute min-[1600px]:left-30 min-[1600px]:top-1/2 min-[1600px]:-translate-y-1/2 min-[1600px]:-translate-x-full min-[1600px]:pr-8 min-[1600px]:whitespace-nowrap">
+                  {/* Feature Label - above on mobile, left on desktop */}
+                  <h4 className="text-lg font-bold font-mono mb-3 xl:mb-0 xl:absolute xl:left-30 xl:top-1/2 xl:-translate-y-1/2 xl:-translate-x-full xl:pr-8 xl:whitespace-nowrap">
                     {row.feature}
                   </h4>
 
@@ -170,7 +170,7 @@ export function ComparisonSection() {
           </div>
 
           {/* Mobile/Tablet Layout - Compact Side-by-Side */}
-          <div className="min-[1600px]:hidden space-y-5 md:space-y-6">
+          <div className="lg:hidden space-y-5 md:space-y-6">
             {comparisonData.map((row, index) => (
               <motion.div
                 key={row.feature}
@@ -185,7 +185,7 @@ export function ComparisonSection() {
                 </h3>
 
                 {/* Compact 3-column grid */}
-                <div className="grid grid-cols-3 gap-2 sm:gap-3 md:gap-4 max-w-3xl mx-auto">
+                <div className="grid grid-cols-3 gap-2 sm:gap-3 md:gap-4">
                   {/* Lovable */}
                   <Card className="bg-card/50 border-border/50 shadow-sm">
                     <CardContent className="p-3 sm:p-4 md:p-5">
