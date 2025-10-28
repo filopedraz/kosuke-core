@@ -58,6 +58,7 @@ const mockProject: Project = {
   githubBranch: null,
   autoCommit: null,
   lastGithubSync: null,
+  defaultBranch: null,
 };
 
 const mockProjects: Project[] = [mockProject];
@@ -346,17 +347,11 @@ describe('useDeleteProject', () => {
   });
 
   it('should delete a project successfully', async () => {
-    // Mock file deletion API
-    mockFetch
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({}),
-      })
-      // Mock project deletion API
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({}),
-      });
+    // Mock project deletion API (now handles everything internally)
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({}),
+    });
 
     render(
       <TestComponent>
@@ -381,9 +376,8 @@ describe('useDeleteProject', () => {
       { timeout: 3000 }
     );
 
-    expect(mockFetch).toHaveBeenCalledWith('/api/projects/1/files', {
-      method: 'DELETE',
-    });
+    // Should only call the main project deletion endpoint
+    expect(mockFetch).toHaveBeenCalledTimes(1);
     expect(mockFetch).toHaveBeenCalledWith('/api/projects/1', {
       method: 'DELETE',
       headers: {
@@ -394,16 +388,11 @@ describe('useDeleteProject', () => {
   });
 
   it('should handle deletion error', async () => {
-    // Mock file deletion to succeed but project deletion to fail
-    mockFetch
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({}),
-      })
-      .mockResolvedValueOnce({
-        ok: false,
-        status: 500,
-      });
+    // Mock project deletion to fail
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+    });
 
     render(
       <TestComponent>
@@ -425,6 +414,16 @@ describe('useDeleteProject', () => {
       },
       { timeout: 5000 }
     );
+
+    // Should only attempt to call the main project deletion endpoint
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    expect(mockFetch).toHaveBeenCalledWith('/api/projects/1', {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ deleteRepo: false }),
+    });
   });
 });
 

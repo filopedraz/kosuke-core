@@ -7,6 +7,7 @@ import { auth } from '@/lib/auth/server';
 import { db } from '@/lib/db/drizzle';
 import { projects } from '@/lib/db/schema';
 import { getDockerService } from '@/lib/docker';
+import { deleteDir, getProjectPath } from '@/lib/fs/operations';
 import { getGitHubToken } from '@/lib/github/auth';
 import { eq } from 'drizzle-orm';
 
@@ -149,9 +150,9 @@ export async function DELETE(
       // No body provided; keep defaults
     }
 
-    // Stop all preview containers for this project before archiving
+    // Step 1: Stop all preview containers for this project before file deletion
     try {
-      console.log(`Stopping all preview containers for project ${projectId} before archiving`);
+      console.log(`Stopping all preview containers for project ${projectId} before deletion`);
       const dockerService = getDockerService();
       const cleanupResult = await dockerService.stopAllProjectPreviews(projectId);
 
@@ -167,12 +168,24 @@ export async function DELETE(
         );
       }
     } catch (previewError) {
-      // Log but continue - we still want to archive the project even if stopping previews fails
+      // Log but continue - we still want to proceed even if stopping previews fails
       console.error(`Error stopping preview containers for project ${projectId}:`, previewError);
-      console.log(`Continuing with project archival despite preview cleanup failure`);
+      console.log(`Continuing with project deletion despite preview cleanup failure`);
     }
 
-    // Optionally delete the associated GitHub repository
+    // Step 2: Delete project files after containers are stopped
+    const projectDir = getProjectPath(projectId);
+    let filesWarning = null;
+
+    try {
+      await deleteDir(projectDir);
+      console.log(`Successfully deleted project directory: ${projectDir}`);
+    } catch (dirError) {
+      console.error(`Error deleting project directory: ${projectDir}`, dirError);
+      filesWarning = "Project deleted but some files could not be removed";
+    }
+
+    // Step 3: Optionally delete the associated GitHub repository
     if (deleteRepo && project.githubOwner && project.githubRepoName) {
       try {
         const githubToken = await getGitHubToken(userId);
@@ -199,10 +212,13 @@ export async function DELETE(
       }
     }
 
-    // Archive the project
+    // Step 4: Archive the project
     const [archivedProject] = await db.update(projects).set({ isArchived: true, updatedAt: new Date() }).where(eq(projects.id, projectId)).returning();
 
-    return ApiResponseHandler.success(archivedProject);
+    return ApiResponseHandler.success({
+      ...archivedProject,
+      ...(filesWarning && { warning: filesWarning }),
+    });
   } catch (error) {
     return ApiErrorHandler.handle(error);
   }
