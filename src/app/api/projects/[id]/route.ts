@@ -6,6 +6,7 @@ import { ApiResponseHandler } from '@/lib/api/responses';
 import { auth } from '@/lib/auth/server';
 import { db } from '@/lib/db/drizzle';
 import { projects } from '@/lib/db/schema';
+import { getDockerService } from '@/lib/docker';
 import { getGitHubToken } from '@/lib/github/auth';
 import { eq } from 'drizzle-orm';
 
@@ -148,28 +149,27 @@ export async function DELETE(
       // No body provided; keep defaults
     }
 
-    // First, try to stop the project preview if it's running
+    // Stop all preview containers for this project before archiving
     try {
-      console.log(`Stopping preview for project ${projectId} before archiving`);
+      console.log(`Stopping all preview containers for project ${projectId} before archiving`);
+      const dockerService = getDockerService();
+      const cleanupResult = await dockerService.stopAllProjectPreviews(projectId);
 
-      // Proxy stop request to Python agent
-      const agentUrl = process.env.AGENT_SERVICE_URL || 'http://localhost:8000';
-      const response = await fetch(`${agentUrl}/api/preview/stop`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ project_id: projectId }),
-      });
+      console.log(
+        `Preview cleanup completed for project ${projectId}: ` +
+        `${cleanupResult.stopped} stopped, ${cleanupResult.failed} failed`
+      );
 
-      if (response.ok) {
-        console.log(`Preview for project ${projectId} stopped successfully`);
-      } else {
-        console.log(`Preview stop request failed, but continuing with archive`);
+      if (cleanupResult.failed > 0) {
+        console.warn(
+          `Some containers failed to stop for project ${projectId}. ` +
+          `Manual cleanup may be required.`
+        );
       }
     } catch (previewError) {
-      // Log but continue - we still want to archive the project even if stopping the preview fails
-      console.error(`Error stopping preview for project ${projectId}:`, previewError);
+      // Log but continue - we still want to archive the project even if stopping previews fails
+      console.error(`Error stopping preview containers for project ${projectId}:`, previewError);
+      console.log(`Continuing with project archival despite preview cleanup failure`);
     }
 
     // Optionally delete the associated GitHub repository

@@ -398,6 +398,107 @@ class DockerService {
       is_responding: isResponding,
     };
   }
+
+  /**
+   * Stop and remove preview container for a session
+   */
+  async stopPreview(projectId: number, sessionId: string): Promise<void> {
+    const containerName = this.getContainerName(projectId, sessionId);
+    console.log(`Stopping preview container ${containerName}`);
+
+    const container = await this.getContainerByName(containerName);
+    if (!container) {
+      console.log(`Container ${containerName} not found, nothing to stop`);
+      return;
+    }
+
+    const client = await this.ensureClient();
+
+    // Stop container with timeout (suppress errors)
+    try {
+      console.log(`Stopping container ${containerName}...`);
+      await client.containerStop(containerName, { timeout: 5 });
+      console.log(`Container ${containerName} stopped successfully`);
+    } catch (error) {
+      console.log(`Failed to stop container ${containerName}:`, error);
+      // Continue to removal even if stop fails
+    }
+
+    // Remove container forcefully (suppress errors)
+    try {
+      console.log(`Removing container ${containerName}...`);
+      await client.containerDelete(containerName, { force: true });
+      console.log(`Container ${containerName} removed successfully`);
+    } catch (error) {
+      console.log(`Failed to remove container ${containerName}:`, error);
+      // Ignore removal errors
+    }
+  }
+
+  /**
+   * Stop and remove all preview containers for a project
+   * Used when archiving/deleting a project to clean up all associated containers
+   */
+  async stopAllProjectPreviews(projectId: number): Promise<{ stopped: number; failed: number }> {
+    console.log(`Stopping all preview containers for project ${projectId}`);
+
+    try {
+      const client = await this.ensureClient();
+      const namePrefix = `${this.config.previewContainerNamePrefix}${projectId}-`;
+
+      // List all containers (running and stopped)
+      const allContainers = await client.containerList({ all: true });
+
+      // Filter containers by name prefix
+      const projectContainers = allContainers.filter(container => {
+        const name = container.Names?.[0]?.replace(/^\//, '') || '';
+        return name.startsWith(namePrefix);
+      });
+
+      if (projectContainers.length === 0) {
+        console.log(`No preview containers found for project ${projectId}`);
+        return { stopped: 0, failed: 0 };
+      }
+
+      console.log(`Found ${projectContainers.length} container(s) for project ${projectId}`);
+
+      let stopped = 0;
+      let failed = 0;
+
+      // Stop and remove each container
+      for (const container of projectContainers) {
+        const containerName =
+          container.Names?.[0]?.replace(/^\//, '') || container.Id?.substring(0, 12) || 'unknown';
+
+        try {
+          // Stop container if running
+          if (container.State === 'running') {
+            try {
+              await client.containerStop(containerName, { timeout: 5 });
+              console.log(`Stopped container ${containerName}`);
+            } catch (stopError) {
+              console.log(`Failed to stop container ${containerName}:`, stopError);
+              // Continue to removal
+            }
+          }
+
+          // Remove container
+          await client.containerDelete(containerName, { force: true });
+          console.log(`Removed container ${containerName}`);
+          stopped++;
+        } catch (error) {
+          console.error(`Failed to stop/remove container ${containerName}:`, error);
+          failed++;
+        }
+      }
+
+      console.log(`Project ${projectId} cleanup: ${stopped} stopped, ${failed} failed`);
+      return { stopped, failed };
+    } catch (error) {
+      console.error(`Error stopping project previews for project ${projectId}:`, error);
+      throw error;
+    }
+  }
 }
 
 /**

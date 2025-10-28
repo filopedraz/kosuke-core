@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { auth } from '@/lib/auth/server';
-import { AGENT_SERVICE_URL } from '@/lib/constants';
 import { db } from '@/lib/db/drizzle';
 import { getProjectEnvironmentVariables } from '@/lib/db/queries';
 import { chatSessions, projects } from '@/lib/db/schema';
@@ -230,7 +229,7 @@ export async function POST(
 
 /**
  * DELETE /api/projects/[id]/chat-sessions/[sessionId]/preview
- * Stop a preview for a project session (proxied to Python agent)
+ * Stop a preview for a project session
  */
 export async function DELETE(
   request: NextRequest,
@@ -293,32 +292,21 @@ export async function DELETE(
       }
     }
 
-    // Proxy request to Python agent
-    const response = await fetch(`${AGENT_SERVICE_URL}/api/preview/stop`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        project_id: projectId,
-        session_id: sessionId,
-      }),
+    // Stop preview using Docker service
+    const dockerService = getDockerService();
+    await dockerService.stopPreview(projectId, sessionId);
+
+    return NextResponse.json({
+      success: true,
+      project_id: projectId,
+      session_id: sessionId,
     });
-
-    if (!response.ok) {
-      const error = await response.text();
-      return NextResponse.json(
-        { error: 'Failed to stop preview', details: error },
-        { status: response.status }
-      );
-    }
-
-    const result = await response.json();
-    return NextResponse.json(result);
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ?
       `${error.message}\n${error.stack}` :
       String(error);
+
+    console.error('Error stopping preview:', errorMessage);
 
     return NextResponse.json(
       {

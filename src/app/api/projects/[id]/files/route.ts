@@ -6,8 +6,8 @@ import { promisify } from 'util';
 import { auth } from '@/lib/auth/server';
 import { db } from '@/lib/db/drizzle';
 import { projects } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
 import { deleteDir, fileExists, getProjectFiles, getProjectPath } from '@/lib/fs/operations';
+import { eq } from 'drizzle-orm';
 
 const exec = promisify(execCallback);
 

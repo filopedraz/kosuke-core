@@ -10,7 +10,6 @@ from app.models.preview import PreviewStatus
 from app.models.preview import PullRequest
 from app.models.preview import PullResponse
 from app.models.preview import PullResult
-from app.models.preview import StopPreviewRequest
 from app.services.docker_service import DockerService
 from app.utils.providers import get_github_service
 
@@ -20,22 +19,6 @@ router = APIRouter()
 
 async def get_docker_service() -> DockerService:
     return DockerService()
-
-
-@router.post("/preview/stop")
-async def stop_preview(
-    request: StopPreviewRequest, docker_service: Annotated[DockerService, Depends(get_docker_service)]
-):
-    """Stop a preview for a project session"""
-    try:
-        # Require explicit session_id
-        session_id = request.session_id
-        await docker_service.stop_preview(request.project_id, session_id)
-        return {"success": True, "project_id": request.project_id, "session_id": session_id}
-    except Exception as e:
-        session_id = request.session_id
-        logger.error(f"Error stopping preview for project {request.project_id} session {session_id}: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to stop preview: {e!s}") from e
 
 
 @router.get("/preview/status/{project_id}/{session_id}")

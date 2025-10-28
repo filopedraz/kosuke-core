@@ -33,11 +33,6 @@ class StartPreviewRequest(BaseModel):
     env_vars: dict[str, str] = {}
 
 
-class StopPreviewRequest(BaseModel):
-    project_id: int
-    session_id: str
-
-
 class PullResult(BaseModel):
     changed: bool
     commits_pulled: int

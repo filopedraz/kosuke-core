@@ -129,17 +129,6 @@ class DockerService:
             return f"http://localhost:{int(mapping[0]['HostPort'])}"
         return None
 
-    async def stop_preview(self, project_id: int, session_id: str) -> None:
-        container_name = self._get_container_name(project_id, session_id)
-        container = await self._get_container_by_name(container_name)
-        if not container:
-            return
-        loop = asyncio.get_event_loop()
-        with suppress(Exception):
-            await asyncio.wait_for(loop.run_in_executor(None, lambda: container.stop(timeout=5)), timeout=15.0)
-        with suppress(Exception):
-            await asyncio.wait_for(loop.run_in_executor(None, lambda: container.remove(force=True)), timeout=10.0)
-
     async def get_preview_status(self, project_id: int, session_id: str) -> PreviewStatus:
         container_name = self._get_container_name(project_id, session_id)
         container = await self._get_container_by_name(container_name)
