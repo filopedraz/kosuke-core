@@ -87,7 +87,7 @@ export function FAQSection() {
             <p className="text-muted-foreground mt-6 px-8">
               Still have questions?{' '}
               <a
-                href="https://form.typeform.com/to/A6zJtlUM"
+                href="https://links.kosuke.ai/contact"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-primary font-medium hover:underline"
