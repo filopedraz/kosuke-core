@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
+import { Agent } from '@/lib/agent';
 import { auth } from '@/lib/auth/server';
 import { db } from '@/lib/db/drizzle';
 import { chatMessages, chatSessions, projects } from '@/lib/db/schema';
 import { getGitHubToken } from '@/lib/github/auth';
+import { sessionManager } from '@/lib/sessions';
 import { uploadFile } from '@/lib/storage';
 import { and, eq } from 'drizzle-orm';
-import { sessionManager } from '@/lib/sessions';
-import { Agent } from '@/lib/agent';
 
 // Schema for updating a chat session
 const updateChatSessionSchema = z.object({
@@ -151,7 +151,7 @@ export async function PUT(
 
     if (!parseResult.success) {
       return NextResponse.json(
-        { error: 'Invalid request format', details: parseResult.error.format() },
+        { error: 'Invalid request format', details: z.treeifyError(parseResult.error) },
         { status: 400 }
       );
     }
@@ -369,7 +369,7 @@ export async function POST(
       if (!parseResult.success) {
         console.error('Invalid request format:', parseResult.error);
         return new Response(
-          JSON.stringify({ error: 'Invalid request format', details: parseResult.error.format() }),
+          JSON.stringify({ error: 'Invalid request format', details: z.treeifyError(parseResult.error) }),
           {
             status: 400,
             headers: { 'Content-Type': 'application/json' }
