@@ -8,8 +8,8 @@ const hasGhostConfig =
 
 export const ghostClient = hasGhostConfig
   ? new GhostContentAPI({
-      url: process.env.NEXT_PUBLIC_GHOST_URL,
-      key: process.env.NEXT_PUBLIC_GHOST_CONTENT_API_KEY,
+      url: process.env.NEXT_PUBLIC_GHOST_URL!,
+      key: process.env.NEXT_PUBLIC_GHOST_CONTENT_API_KEY!,
       version: 'v5.0',
     })
   : null;
@@ -29,11 +29,11 @@ function ensureGhostClient() {
 export async function getCustomers(): Promise<Customer[]> {
   try {
     const client = ensureGhostClient();
-    const pages = await client.pages.browse({
+    const pages = (await client.pages.browse({
       filter: 'tag:customer',
       include: ['tags'],
       limit: 'all',
-    });
+    })) as GhostPage[];
 
     return pages.map(pageToCustomer);
   } catch (error) {
@@ -48,12 +48,12 @@ export async function getCustomers(): Promise<Customer[]> {
 export async function getCustomerBySlug(slug: string): Promise<Customer | null> {
   try {
     const client = ensureGhostClient();
-    const page = await client.pages.read(
+    const page = (await client.pages.read(
       { slug },
       {
         include: ['tags'],
       }
-    );
+    )) as GhostPage;
 
     return pageToCustomer(page);
   } catch (error) {
@@ -84,7 +84,7 @@ export async function getBlogPosts(params?: {
     });
 
     return {
-      posts: response.map(postToBlogPost),
+      posts: (response as GhostPost[]).map(postToBlogPost),
       pagination: {
         page: response.meta.pagination.page,
         pages: response.meta.pagination.pages,
@@ -103,12 +103,12 @@ export async function getBlogPosts(params?: {
 export async function getBlogPostBySlug(slug: string): Promise<BlogPost | null> {
   try {
     const client = ensureGhostClient();
-    const post = await client.posts.read(
+    const post = (await client.posts.read(
       { slug },
       {
         include: ['tags', 'authors'],
       }
-    );
+    )) as GhostPost;
 
     return postToBlogPost(post);
   } catch (error) {
@@ -123,10 +123,10 @@ export async function getBlogPostBySlug(slug: string): Promise<BlogPost | null> 
 export async function getBlogTags(): Promise<GhostTag[]> {
   try {
     const client = ensureGhostClient();
-    const tags = await client.tags.browse({
+    const tags = (await client.tags.browse({
       limit: 'all',
       filter: 'visibility:public',
-    });
+    })) as GhostTag[];
 
     return tags;
   } catch (error) {
@@ -141,7 +141,7 @@ export async function getBlogTags(): Promise<GhostTag[]> {
 export async function getPageById(id: string): Promise<GhostPage | null> {
   try {
     const client = ensureGhostClient();
-    const page = await client.pages.read({ id });
+    const page = (await client.pages.read({ id })) as GhostPage;
     return page;
   } catch (error) {
     console.error(`Error fetching page ${id}:`, error);
