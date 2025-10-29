@@ -12,7 +12,8 @@ const faqItems = [
     id: 'item-1',
     question: 'How is this different from hiring freelancers or contractors?',
     answer:
-      'Unlike freelancers who work in isolation, our engineers integrate with your team and take full ownership. You get dedicated senior engineers who understand your product, not just task executors. Plus, we handle vetting, management, and quality control.',
+      'Think of it as the best of both worlds. The initial V1 build is similar to hiring a high-end agency, but with a more transparent and rapid framework: we define requirements, give you a clear estimate, get your acceptance, and start building immediately.' +
+      'The difference is that we leave you with your complete code and the Kosuke platform, empowering you to vibe code on top of the professional-grade foundation we built for you.',
   },
   {
     id: 'item-2',
