@@ -1,6 +1,6 @@
 'use client';
 
-import { CoreFeaturesSection } from '@/app/(logged-out)/home/components/core-features-section';
+import { HowItWorksSection } from '@/app/(logged-out)/home/components/core-features-section';
 import { CTASection } from '@/app/(logged-out)/home/components/cta-section';
 import { FAQSection } from '@/app/(logged-out)/home/components/faq-section';
 import { FeaturesBentoGrid } from '@/app/(logged-out)/home/components/features-bento-grid';
@@ -38,7 +38,7 @@ export function Home() {
       <HeroSection onApplyClick={() => setIsModalOpen(true)} />
 
       {/* Core Features */}
-      <CoreFeaturesSection />
+      <HowItWorksSection />
 
       {/* Bento Grid Features */}
       <FeaturesBentoGrid />
