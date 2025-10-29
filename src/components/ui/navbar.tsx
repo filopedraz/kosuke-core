@@ -70,7 +70,7 @@ const solutions = [
     href: '/',
   },
   {
-    title: 'Kosuke Tech Team',
+    title: 'Kosuke Engineers',
     href: '/solutions/ship-with-engineers',
   },
   {
