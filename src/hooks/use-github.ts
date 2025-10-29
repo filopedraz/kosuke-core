@@ -1,11 +1,7 @@
 'use client';
 
 import { useToast } from '@/hooks/use-toast';
-import type {
-  GitHubAccountState,
-  GitHubDisconnectResponse,
-  GitHubStatusResponse,
-} from '@/lib/types/github';
+import type { GitHubAccountState, GitHubStatusResponse } from '@/lib/types/github';
 import { useUser } from '@clerk/nextjs';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -38,9 +34,9 @@ export function useGitHub() {
           setState(prev => ({
             ...prev,
             githubInfo: {
-              githubUsername: data.githubUsername,
-              githubId: data.githubId || '',
-              connectedAt: data.connectedAt || new Date().toISOString(),
+              githubUsername: data.githubUsername ?? '',
+              githubId: data.githubId ?? '',
+              connectedAt: data.connectedAt ?? new Date().toISOString(),
             },
             isLoading: false,
           }));
@@ -91,7 +87,7 @@ export function useGitHub() {
     if (isLoaded && user && !state.githubInfo && !state.isLoading) {
       loadGitHubInfo();
     }
-  }, [isLoaded, user]); // Removed loadGitHubInfo from deps to prevent infinite loop
+  }, [isLoaded, user, loadGitHubInfo, state.githubInfo, state.isLoading]); // Removed loadGitHubInfo from deps to prevent infinite loop
 
   const disconnectGitHub = useCallback(async () => {
     setState(prev => ({ ...prev, isDisconnecting: true }));
@@ -102,7 +98,7 @@ export function useGitHub() {
       });
 
       if (response.ok) {
-        const data: GitHubDisconnectResponse = await response.json();
+        await response.json();
 
         toast({
           title: 'GitHub Account Disconnected',
