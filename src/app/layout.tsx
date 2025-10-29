@@ -20,6 +20,7 @@ const geistMono = Geist_Mono({
 });
 
 const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://kosuke.ai';
+const isProduction = baseUrl === 'https://kosuke.ai';
 const ogImage = `${baseUrl}/opengraph-image.png`;
 const ogImageSquare = `${baseUrl}/og-image-square.png`;
 
@@ -101,17 +102,11 @@ export const metadata: Metadata = {
       url: '/apple-touch-icon.png',
     },
   ],
-  // TODO: enable to true when we have proper content
+  // Dynamic robots configuration based on environment
+  // Only allow indexing in production (kosuke.ai)
   robots: {
-    index: false,
-    follow: false,
-    googleBot: {
-      index: false,
-      follow: false,
-      'max-video-preview': -1,
-      'max-image-preview': 'large',
-      'max-snippet': -1,
-    },
+    index: isProduction,
+    follow: isProduction,
   },
   verification: {
     // google: process.env.GOOGLE_SITE_VERIFICATION,

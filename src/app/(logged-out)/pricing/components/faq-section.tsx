@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/accordion';
 import Link from 'next/link';
 
-const faqItems = [
+export const faqItems = [
   {
     id: 'item-1',
     question: 'How is Kosuke different from Lovable or other AI coding platforms?',

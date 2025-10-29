@@ -7,7 +7,7 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 
-const faqItems = [
+export const faqItems = [
   {
     id: 'item-1',
     question: 'What types of ideas do you accept?',
