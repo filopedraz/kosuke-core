@@ -125,6 +125,19 @@ export async function getBlogTags(): Promise<GhostTag[]> {
 }
 
 /**
+ * Fetch a page by ID
+ */
+export async function getPageById(id: string): Promise<GhostPage | null> {
+  try {
+    const page = await ghostClient.pages.read({ id });
+    return page;
+  } catch (error) {
+    console.error(`Error fetching page ${id}:`, error);
+    return null;
+  }
+}
+
+/**
  * Convert Ghost Page to Customer type
  */
 function pageToCustomer(page: GhostPage): Customer {

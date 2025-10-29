@@ -9,7 +9,7 @@ import Image from 'next/image';
 
 export function HeroSection() {
   const handleScheduleCall = () => {
-    window.open('https://form.typeform.com/to/A6zJtlUM', '_blank');
+    window.open('https://links.kosuke.ai/contact', '_blank');
   };
 
   return (

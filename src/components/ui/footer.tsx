@@ -55,7 +55,7 @@ export default function Footer() {
               <Github className="h-5 w-5 text-muted-foreground group-hover:text-foreground group-hover:scale-110 transition-all" />
             </Link>
             <Link
-              href="https://twitter.com/filopedraz"
+              href="https://x.com/kosuke_vibe"
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Twitter"
@@ -64,7 +64,7 @@ export default function Footer() {
               <Twitter className="h-5 w-5 text-muted-foreground group-hover:text-foreground group-hover:scale-110 transition-all" />
             </Link>
             <Link
-              href="https://www.linkedin.com/in/filopedraz/"
+              href="https://www.linkedin.com/company/kosuke-ai/"
               target="_blank"
               rel="noopener noreferrer"
               aria-label="LinkedIn"

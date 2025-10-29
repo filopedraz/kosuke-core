@@ -238,7 +238,7 @@ export default function Navbar({
                   </Link>
 
                   <a
-                    href="https://form.typeform.com/to/A6zJtlUM"
+                    href="https://links.kosuke.ai/contact"
                     target="_blank"
                     rel="noopener noreferrer"
                   >
@@ -333,7 +333,7 @@ export default function Navbar({
                           </Link>
 
                           <a
-                            href="https://form.typeform.com/to/A6zJtlUM"
+                            href="https://links.kosuke.ai/contact"
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-2xl font-medium tracking-tight transition-colors hover:text-muted-foreground"

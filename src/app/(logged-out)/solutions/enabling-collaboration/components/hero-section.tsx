@@ -29,7 +29,7 @@ const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 export function HeroSection() {
   const handleScheduleCall = () => {
-    window.open('https://form.typeform.com/to/A6zJtlUM', '_blank');
+    window.open('https://links.kosuke.ai/contact', '_blank');
   };
 
   const [currentStep, setCurrentStep] = useState<AnimationStep>('idle');

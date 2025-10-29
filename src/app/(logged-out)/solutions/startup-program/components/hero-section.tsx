@@ -111,7 +111,7 @@ const VentureItem = ({ name, industry, icon, color, status, timeline }: Venture)
 
 export function HeroSection() {
   const handleApply = () => {
-    window.open('https://form.typeform.com/to/A6zJtlUM', '_blank');
+    window.open('https://links.kosuke.ai/contact', '_blank');
   };
 
   return (
