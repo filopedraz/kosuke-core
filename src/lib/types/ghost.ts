@@ -124,3 +124,15 @@ export interface GhostTagsResponse {
     pagination: GhostPagination;
   };
 }
+
+// Newsletter subscription types
+export interface NewsletterSubscription {
+  email: string;
+  name?: string;
+}
+
+export interface NewsletterSubscriptionResponse {
+  success: boolean;
+  message: string;
+  alreadySubscribed?: boolean;
+}

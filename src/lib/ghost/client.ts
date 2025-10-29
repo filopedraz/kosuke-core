@@ -2,24 +2,30 @@ import GhostContentAPI from '@tryghost/content-api';
 
 import type { BlogPost, Customer, GhostPage, GhostPost, GhostTag } from '@/lib/types/ghost';
 
-// Initialize Ghost Content API only if credentials are available
-const hasGhostConfig =
-  process.env.NEXT_PUBLIC_GHOST_URL && process.env.NEXT_PUBLIC_GHOST_CONTENT_API_KEY;
+// Lazy initialization of Ghost Content API client
+let ghostClient: GhostContentAPI | null = null;
 
-export const ghostClient = hasGhostConfig
-  ? new GhostContentAPI({
-      url: process.env.NEXT_PUBLIC_GHOST_URL!,
-      key: process.env.NEXT_PUBLIC_GHOST_CONTENT_API_KEY!,
-      version: 'v5.0',
-    })
-  : null;
-
-function ensureGhostClient() {
+/**
+ * Get or create the Ghost Content API client
+ * This is lazily initialized to avoid errors during build time
+ */
+function getGhostClient(): GhostContentAPI {
   if (!ghostClient) {
-    throw new Error(
-      'Ghost CMS is not configured. Please set NEXT_PUBLIC_GHOST_URL and NEXT_PUBLIC_GHOST_CONTENT_API_KEY environment variables.'
-    );
+    if (!process.env.NEXT_PUBLIC_GHOST_URL) {
+      throw new Error('NEXT_PUBLIC_GHOST_URL environment variable is not set');
+    }
+
+    if (!process.env.NEXT_PUBLIC_GHOST_CONTENT_API_KEY) {
+      throw new Error('NEXT_PUBLIC_GHOST_CONTENT_API_KEY environment variable is not set');
+    }
+
+    ghostClient = new GhostContentAPI({
+      url: process.env.NEXT_PUBLIC_GHOST_URL,
+      key: process.env.NEXT_PUBLIC_GHOST_CONTENT_API_KEY,
+      version: 'v5.0',
+    });
   }
+
   return ghostClient;
 }
 
@@ -28,7 +34,7 @@ function ensureGhostClient() {
  */
 export async function getCustomers(): Promise<Customer[]> {
   try {
-    const client = ensureGhostClient();
+    const client = getGhostClient();
     const pages = (await client.pages.browse({
       filter: 'tag:customer',
       include: ['tags'],
@@ -47,7 +53,7 @@ export async function getCustomers(): Promise<Customer[]> {
  */
 export async function getCustomerBySlug(slug: string): Promise<Customer | null> {
   try {
-    const client = ensureGhostClient();
+    const client = getGhostClient();
     const page = (await client.pages.read(
       { slug },
       {
@@ -71,7 +77,7 @@ export async function getBlogPosts(params?: {
   tag?: string;
 }): Promise<{ posts: BlogPost[]; pagination: { page: number; pages: number; total: number } }> {
   try {
-    const client = ensureGhostClient();
+    const client = getGhostClient();
     const { limit = 12, page = 1, tag } = params || {};
 
     const filter = tag ? `tag:${tag}` : undefined;
@@ -102,7 +108,7 @@ export async function getBlogPosts(params?: {
  */
 export async function getBlogPostBySlug(slug: string): Promise<BlogPost | null> {
   try {
-    const client = ensureGhostClient();
+    const client = getGhostClient();
     const post = (await client.posts.read(
       { slug },
       {
@@ -122,7 +128,7 @@ export async function getBlogPostBySlug(slug: string): Promise<BlogPost | null> 
  */
 export async function getBlogTags(): Promise<GhostTag[]> {
   try {
-    const client = ensureGhostClient();
+    const client = getGhostClient();
     const tags = (await client.tags.browse({
       limit: 'all',
       filter: 'visibility:public',
@@ -140,8 +146,8 @@ export async function getBlogTags(): Promise<GhostTag[]> {
  */
 export async function getPageById(id: string): Promise<GhostPage | null> {
   try {
-    const client = ensureGhostClient();
-    const page = (await client.pages.read({ id })) as GhostPage;
+    const client = getGhostClient();
+    const page = await client.pages.read({ id });
     return page;
   } catch (error) {
     console.error(`Error fetching page ${id}:`, error);

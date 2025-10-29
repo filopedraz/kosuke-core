@@ -6,10 +6,15 @@ import { BlogGrid } from './components/blog-grid';
 import { BlogHero } from './components/blog-hero';
 import { TagFilter } from './components/tag-filter';
 
+const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://kosuke.ai';
+
 export const metadata: Metadata = {
   title: 'Blog | Kosuke',
   description:
     'Insights, updates, and best practices for building better products with AI-powered development.',
+  alternates: {
+    canonical: `${baseUrl}/blog`,
+  },
 };
 
 type Props = {

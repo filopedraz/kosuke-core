@@ -7,7 +7,7 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 
-const faqItems = [
+export const faqItems = [
   {
     id: 'item-1',
     question: 'Can non-technical team members really build production-ready features?',
