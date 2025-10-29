@@ -1,45 +1,18 @@
-# Check if we have Python files in the commit
-python_files=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(py)$' | grep '^agent/' || true)
-
-# Run Python checks if there are Python files in agent/
-if [ -n "$python_files" ]; then
-  echo "🐍 Running Python code quality checks for agent/..."
-
-  echo "  → Running ruff linting..."
-  ruff check . --fix --exclude projects
-  if [ $? -ne 0 ]; then
-    echo "❌ Python linting failed. Please fix the errors before committing."
-    exit 1
-  fi
-
-  echo "  → Running ruff formatting..."
-  ruff format . --exclude projects
-fi
+#!/bin/sh
+set -e
 
 # Check if we have TypeScript/JavaScript files in the commit
 js_files=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(js|jsx|ts|tsx)$' || true)
 
-# Run Node.js checks if there are JS/TS files
-if [ -n "$js_files" ]; then
-    echo "🌐 Running Next.js code quality checks..."
-
-    # Run tests and store the exit code
-    echo "🧪 Running tests..."
-    bun run test
-    if [ $? -ne 0 ]; then
-      echo "❌ Tests failed. Please fix the failing tests before committing."
-      exit 1
-    fi
-
-  # Run linting and formatting
-    echo "🌐 Running JS/TS lint-staged checks..."
-    bun run lint-staged
-    if [ $? -ne 0 ]; then
-      echo "❌ JS/TS lint-staged checks failed. Please fix the errors before committing."
-      exit 1
-    fi
-
-  echo "✅ Next.js checks passed!"
+if [ -z "$js_files" ]; then
+  echo "✅ No JS/TS files to check, skipping pre-commit hooks"
+  exit 0
 fi
+
+echo "Running pre-commit checks..."
+
+bun run lint-staged
+bun run typecheck
+bun run test
 
 echo "✅ All pre-commit checks passed!"

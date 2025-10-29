@@ -3,7 +3,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { type FontInfo } from '@/lib/font-parser';
+import { type FontInfo } from '@/lib/types/branding';
 
 interface FontCardProps {
   font: FontInfo;
