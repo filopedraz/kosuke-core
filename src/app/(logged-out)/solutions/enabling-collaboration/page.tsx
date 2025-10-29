@@ -16,8 +16,8 @@ export default function EnablingCollaborationPage() {
   return (
     <>
       <HeroSection />
-      <BenefitsSection />
       <HowItWorksSection />
+      <BenefitsSection />
       <CTASection />
       <FAQSection />
     </>

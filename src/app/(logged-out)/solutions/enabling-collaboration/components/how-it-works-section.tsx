@@ -2,7 +2,7 @@
 
 import { Card, CardContent } from '@/components/ui/card';
 import { motion } from 'framer-motion';
-import { GitPullRequest, MessageSquare, Upload } from 'lucide-react';
+import { CheckCircle, GitPullRequest, MessageSquare, Upload } from 'lucide-react';
 
 const steps = [
   {
@@ -10,21 +10,28 @@ const steps = [
     icon: Upload,
     title: 'Import Repository',
     description:
-      'Connect your GitHub repository to Kosuke. Your code stays in your own infrastructure—we just help you build on top of it.',
+      'Connect your GitHub repository to Kosuke. Your code stays in your own infrastructure. We just help you build on top of it.',
   },
   {
     step: 2,
     icon: MessageSquare,
     title: 'Start Vibe Coding',
     description:
-      'Describe features in plain English using our chat interface. No technical jargon required—just explain what you want to build.',
+      'Your product team can describe features in plain English using our chat interface. Our agent is trained to do the right questions to build the right code.',
   },
   {
     step: 3,
     icon: GitPullRequest,
     title: 'Submit for Review',
     description:
-      'Your changes are automatically packaged as a pull request. Your developers review, approve, and merge when ready.',
+      'Your changes are automatically packaged as a pull request: something that is very familiar to your developers.',
+  },
+  {
+    step: 4,
+    icon: CheckCircle,
+    title: 'Review and Deploy',
+    description:
+      'Your developers can review the code and eventually modify it with the tools they are used to. Once they are happy with the result, they can deploy it to production.',
   },
 ];
 
@@ -32,7 +39,7 @@ export function HowItWorksSection() {
   return (
     <section className="py-16 md:py-32">
       <div className="container mx-auto px-4 sm:px-6">
-        <div className="max-w-6xl mx-auto">
+        <div className="max-w-7xl mx-auto">
           <motion.div
             className="text-center mb-12 sm:mb-16"
             initial={{ opacity: 0, y: 20 }}
@@ -50,7 +57,7 @@ export function HowItWorksSection() {
           </motion.div>
 
           <div className="relative">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative z-10">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 relative z-10">
               {steps.map((step, index) => (
                 <motion.div
                   key={step.step}

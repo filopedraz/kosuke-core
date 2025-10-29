@@ -183,9 +183,9 @@ export function HeroSection() {
 
               {/* Subheadline */}
               <p className="text-base sm:text-lg lg:text-xl text-muted-foreground font-sans leading-relaxed">
-                Empower your entire team to ship features—no coding skills required. Non-technical
-                team members can build, iterate, and deploy while engineers maintain control and
-                quality.
+                Let your product teams vibe code changes themselves. Kosuke generates the code, and
+                your developers simply review and merge. Unblock your devs, empower your entire
+                company.
               </p>
 
               {/* CTA */}
