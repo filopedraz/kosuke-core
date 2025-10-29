@@ -167,8 +167,8 @@ export function HeroSection() {
               {/* Subheadline */}
               <p className="text-base sm:text-lg lg:text-xl text-muted-foreground font-sans leading-relaxed">
                 Get dedicated senior engineers building the first production-ready version of your
-                startup. Once v1 is launched, you choose: build the next features with vibe coding,
-                or keep working with the same engineers.
+                startup. Once v1 is launched, you choose: keep working with the same engineers or
+                build the next features with our vibe coding platform.
               </p>
 
               {/* CTA */}
