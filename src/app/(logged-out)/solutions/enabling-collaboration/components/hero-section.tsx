@@ -170,7 +170,7 @@ export function HeroSection() {
               </motion.div>
 
               {/* Main Headline */}
-              <h1 className="text-base sm:text-lg lg:text-xl text-muted-foreground font-sans leading-relaxed">
+              <h1 className="text-3xl sm:text-[2rem] md:text-4xl lg:text-6xl sm:leading-tight font-bold leading-tight tracking-tight">
                 Bridge the gap between{' '}
                 <AuroraText colors={['#10B981', '#22c55e', '#34D399', '#059669']}>
                   Product
