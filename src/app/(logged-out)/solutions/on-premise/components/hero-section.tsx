@@ -13,14 +13,14 @@ export function HeroSection() {
   };
 
   return (
-    <section className="pt-12 sm:pt-20 pb-16 sm:pb-32">
-      <div className="container mx-auto px-4 sm:px-6">
+    <section className="pt-12 sm:pt-14 md:pt-16 lg:pt-20 pb-12 sm:pb-14 md:pb-20 lg:pb-32">
+      <div className="container mx-auto px-8 sm:px-12 md:px-6">
         <div className="max-w-7xl mx-auto">
           {/* Two Column Layout */}
-          <div className="grid lg:grid-cols-2 gap-8 lg:gap-16 items-center">
+          <div className="grid md:grid-cols-2 gap-8 md:gap-12 lg:gap-16 items-center">
             {/* Left Column - Content */}
             <motion.div
-              className="space-y-6 lg:pr-8"
+              className="space-y-4 md:space-y-5 lg:space-y-6 md:pr-6 lg:pr-8"
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
@@ -52,7 +52,7 @@ export function HeroSection() {
               </motion.div>
 
               {/* Main Headline */}
-              <h1 className="text-3xl sm:text-5xl lg:text-6xl font-bold leading-tight tracking-tight">
+              <h1 className="text-3xl sm:text-[2rem] md:text-4xl lg:text-6xl sm:leading-tight font-bold leading-tight tracking-tight">
                 The First{' '}
                 <AuroraText colors={['#10B981', '#22c55e', '#34D399', '#059669']}>
                   Open-source
@@ -62,14 +62,45 @@ export function HeroSection() {
               </h1>
 
               {/* Subheadline */}
-              <p className="text-base sm:text-lg lg:text-xl text-muted-foreground font-sans leading-relaxed">
+              <p className="text-base md:text-lg lg:text-xl text-muted-foreground font-sans leading-relaxed">
                 Deploy AI-powered development infrastructure in your own data center. Complete
                 control, maximum security, zero vendor lock-in.
               </p>
 
+              {/* Mac Studio Image - Mobile Only (1 Mac) */}
+              <motion.div
+                className="relative md:hidden"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.4 }}
+              >
+                <div className="max-w-[180px] mx-auto">
+                  <motion.div
+                    className="relative"
+                    animate={{
+                      y: [0, -6, 0],
+                    }}
+                    transition={{
+                      duration: 3,
+                      repeat: Infinity,
+                      ease: 'easeInOut',
+                    }}
+                  >
+                    <Image
+                      src="/mac_studio.png"
+                      alt="Mac Studio"
+                      width={800}
+                      height={600}
+                      className="w-full h-auto"
+                      priority
+                    />
+                  </motion.div>
+                </div>
+              </motion.div>
+
               {/* CTA */}
               <motion.div
-                className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-4"
+                className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-2 sm:pt-3 items-center justify-center md:items-start md:justify-start"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.6 }}
@@ -85,15 +116,15 @@ export function HeroSection() {
               </motion.div>
             </motion.div>
 
-            {/* Right Column - Mac Studio Grid */}
+            {/* Right Column - Mac Studio Grid - Tablet & Desktop */}
             <motion.div
-              className="relative"
+              className="relative hidden md:block"
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6, delay: 0.4 }}
             >
               {/* Mac Studio Grid Container */}
-              <div className="grid grid-cols-2 gap-6 sm:gap-8 max-w-lg mx-auto">
+              <div className="grid grid-cols-2 gap-4 md:gap-5 lg:gap-6 max-w-md md:max-w-sm lg:max-w-lg mx-auto">
                 {[0, 1, 2, 3].map(index => (
                   <motion.div
                     key={index}
