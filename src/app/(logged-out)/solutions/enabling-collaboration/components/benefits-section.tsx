@@ -19,7 +19,7 @@ const benefits = [
     icon: Rocket,
     title: 'Developers as a guardrail',
     description:
-      "Every vibe coded Pull Request is reviewed by your developers, ensuring all code meets your strict security, quality, and architecture standards. This frees your engineers from pixel-pushing and lets them focus on the complex problems that AI can't solve.",
+      "Every vibe coded pull request is reviewed by your developers, ensuring all code meets your standards. This frees your engineers from pixel-pushing and lets them focus on the complex problems that AI can't solve.",
   },
   {
     icon: Zap,
@@ -56,12 +56,15 @@ export function BenefitsSection() {
             transition={{ duration: 0.6 }}
           >
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-3 sm:mb-4 font-mono">
-              Empower Your Entire{' '}
-              <AuroraText colors={['#10B981', '#22c55e', '#34D399', '#059669']}>Team</AuroraText>
+              <AuroraText colors={['#10B981', '#22c55e', '#34D399', '#059669']}>Break</AuroraText>{' '}
+              down{' '}
+              <AuroraText colors={['#10B981', '#22c55e', '#34D399', '#059669']}>
+                technical
+              </AuroraText>{' '}
+              barriers
             </h2>
             <p className="text-base sm:text-lg text-muted-foreground max-w-3xl mx-auto font-sans px-2">
-              Break down barriers between technical and non-technical team members. Everyone
-              contributes to shipping great products.
+              Every person in your organization contributes to shipping great products.
             </p>
           </motion.div>
 

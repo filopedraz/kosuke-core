@@ -60,7 +60,6 @@ export function BenefitsSection() {
               <AuroraText colors={['#10B981', '#22c55e', '#34D399', '#059669']}>AI</AuroraText>{' '}
               secured in your{' '}
               <AuroraText colors={['#10B981', '#22c55e', '#34D399', '#059669']}>network</AuroraText>
-              .
             </h2>
             <p className="text-base sm:text-lg text-muted-foreground max-w-3xl mx-auto font-sans px-2">
               Bring AI to your organization without compromising on security and compliance.

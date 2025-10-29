@@ -4,22 +4,22 @@ import { AuroraText } from '@/components/ui/aurora-text';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { MagicCard } from '@/components/ui/magic-card';
 import { motion } from 'framer-motion';
-import { Shield, Unlock, Users } from 'lucide-react';
+import { DollarSign, Unlock, Users } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { ReactNode } from 'react';
 
 const benefits = [
   {
-    icon: Shield,
-    title: 'Solid foundations',
-    description:
-      'Build the right foundation for your product with our experienced engineers. Avoid broken prototypes that need to be rewritten in six months.',
-  },
-  {
     icon: Users,
     title: 'Dedicated Senior Engineers',
     description:
-      'Work with experienced engineers who understand production systems and can become your tech team as a service.',
+      'Build the right foundation for your product with our experienced engineers Avoid broken prototypes that need to be rewritten in six months.',
+  },
+  {
+    icon: DollarSign,
+    title: 'High quality for a platform price',
+    description:
+      "Our engineers are experts at leveraging AI efficiently. This blend of human expertise and AI-driven speed allows us to deliver software at a price you'd normally only pay for a tool.",
   },
   {
     icon: Unlock,
@@ -56,13 +56,14 @@ export function BenefitsSection() {
             transition={{ duration: 0.6 }}
           >
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-3 sm:mb-4 font-mono">
-              Why building with{' '}
-              <AuroraText colors={['#10B981', '#22c55e', '#34D399', '#059669']}>Kosuke</AuroraText>?
+              Build{' '}
+              <AuroraText colors={['#10B981', '#22c55e', '#34D399', '#059669']}>fast</AuroraText>{' '}
+              and{' '}
+              <AuroraText colors={['#10B981', '#22c55e', '#34D399', '#059669']}>cheap</AuroraText>{' '}
+              with Kosuke Team
             </h2>
             <p className="text-base sm:text-lg text-muted-foreground max-w-3xl mx-auto font-sans px-2">
-              We&apos;ve successfully launched{' '}
-              <span className="text-emerald-600 font-semibold">50+ MVPs</span> across healthcare,
-              fintech, e-commerce, and more. Your idea could be next.
+              Get the expertise of senior engineers at the price of a vibe coding platform.
             </p>
           </motion.div>
 
