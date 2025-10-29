@@ -12,8 +12,8 @@ const faqItems = [
     id: 'item-1',
     question: 'How is this different from hiring freelancers or contractors?',
     answer:
-      'Think of it as the best of both worlds. The initial V1 build is similar to hiring a high-end agency, but with a more transparent and rapid framework: we define requirements, give you a clear estimate, get your acceptance, and start building immediately.' +
-      'The difference is that we leave you with your complete code and the Kosuke platform, empowering you to vibe code on top of the professional-grade foundation we built for you.',
+      'The initial V1 build is similar to hiring a high-end agency but at a fraction of the cost, thanks to our expertise in leveraging AI efficiently to build new software.' +
+      'Moreover, you get access to the Kosuke platform, to eventually build the next features yourself.',
   },
   {
     id: 'item-2',
@@ -35,15 +35,9 @@ const faqItems = [
   },
   {
     id: 'item-5',
-    question: 'How do you ensure code quality and best practices?',
-    answer:
-      'Every commit goes through peer review by senior engineers. We follow industry-standard practices: comprehensive testing, clean architecture, proper documentation, and scalable patterns. Your codebase will be maintainable long-term.',
-  },
-  {
-    id: 'item-6',
     question: 'What happens after the first version is launched?',
     answer:
-      'Once the first version is launched, you can choose to build the next features with our vibe coding platform, or keep working with the same engineers. You are never locked in.',
+      'Once the first version is launched, you can choose to build the next features with our vibe coding platform, or keep working with the same engineers. You can also choose to take your repository and leave us. You are never locked in.',
   },
 ];
 
