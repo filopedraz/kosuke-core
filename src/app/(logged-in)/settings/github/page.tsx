@@ -27,7 +27,7 @@ export default function GitHubSettingsPage() {
   const { githubInfo, isLoading, isDisconnecting, error, disconnectGitHub, retry } = useGitHub();
 
   // Loading skeleton
-  if (isLoading || !githubInfo) {
+  if (isLoading) {
     return (
       <div className="space-y-6">
         <Card>
@@ -49,20 +49,40 @@ export default function GitHubSettingsPage() {
             <Skeleton className="h-4 w-32" />
           </CardContent>
         </Card>
-
-        {error && (
-          <Card className="border-destructive/50">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-destructive">{error}</p>
-                <Button onClick={retry} variant="outline" size="sm">
-                  Retry
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
       </div>
+    );
+  }
+
+  if (!githubInfo) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Github className="h-5 w-5" />
+              GitHub Account
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">Unable to load GitHub information.</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card className="border-destructive/50">
+        <CardContent className="pt-6">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-destructive">{error}</p>
+            <Button onClick={retry} variant="outline" size="sm">
+              Retry
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
