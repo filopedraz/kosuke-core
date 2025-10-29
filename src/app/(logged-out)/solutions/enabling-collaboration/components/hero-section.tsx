@@ -131,14 +131,14 @@ export function HeroSection() {
   }, [animationCycle]);
 
   return (
-    <section className="pt-12 sm:pt-20 pb-16 sm:pb-32">
-      <div className="container mx-auto px-4 sm:px-6">
+    <section className="pt-12 sm:pt-14 md:pt-16 lg:pt-20 pb-12 sm:pb-14 md:pb-20 lg:pb-32">
+      <div className="container mx-auto px-8 sm:px-12 md:px-6">
         <div className="max-w-7xl mx-auto">
           {/* Two Column Layout */}
-          <div className="grid lg:grid-cols-2 gap-8 lg:gap-16 items-center">
+          <div className="grid md:grid-cols-2 gap-8 md:gap-12 lg:gap-16 items-center">
             {/* Left Column - Content */}
             <motion.div
-              className="space-y-6 lg:pr-8"
+              className="space-y-4 md:space-y-5 lg:space-y-6 md:pr-6 lg:pr-8"
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
@@ -170,14 +170,14 @@ export function HeroSection() {
               </motion.div>
 
               {/* Main Headline */}
-              <h1 className="text-3xl sm:text-5xl lg:text-6xl font-bold leading-tight tracking-tight">
+              <h1 className="text-3xl sm:text-[2rem] md:text-4xl lg:text-6xl sm:leading-tight font-bold leading-tight tracking-tight">
                 Enabling{' '}
                 <AuroraText colors={['#10B981', '#22c55e', '#34D399', '#059669']}>REAL</AuroraText>{' '}
                 Collaboration
               </h1>
 
               {/* Subheadline */}
-              <p className="text-base sm:text-lg lg:text-xl text-muted-foreground font-sans leading-relaxed">
+              <p className="text-base md:text-lg lg:text-xl text-muted-foreground font-sans leading-relaxed">
                 Empower your entire team to ship features—no coding skills required. Non-technical
                 team members can build, iterate, and deploy while engineers maintain control and
                 quality.
@@ -185,7 +185,7 @@ export function HeroSection() {
 
               {/* CTA */}
               <motion.div
-                className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-4"
+                className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-2 sm:pt-3 items-center justify-center md:items-start md:justify-start"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.6 }}
@@ -212,7 +212,7 @@ export function HeroSection() {
               <div className="absolute inset-0 bg-linear-to-br from-emerald-500/5 via-transparent to-blue-500/5 rounded-2xl blur-3xl" />
 
               {/* Chat Interface Container */}
-              <div className="relative bg-background/80 backdrop-blur-xl border border-border/50 rounded-2xl p-4 sm:p-6 shadow-2xl h-[500px] sm:h-[550px] flex flex-col">
+              <div className="relative bg-background/80 backdrop-blur-xl border border-border/50 rounded-2xl p-4 sm:p-6 shadow-2xl h-[400px] md:h-[500px] lg:h-[550px] flex flex-col">
                 {/* Animated Cursor */}
                 <AnimatePresence>
                   {showCursor && (

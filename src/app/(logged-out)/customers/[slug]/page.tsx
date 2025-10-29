@@ -98,19 +98,16 @@ export default async function CustomerDetailPage({ params }: Props) {
           __html: JSON.stringify(caseStudyStructuredData),
         }}
       />
-      {/* Header */}
-      <section className="w-full px-6 sm:px-8 md:px-16 lg:px-24 py-8 max-w-screen-2xl mx-auto border-border">
-        <Link href="/customers">
-          <Button variant="ghost" size="sm" className="gap-2">
-            <ArrowLeft className="h-4 w-4" />
-            Back to Customers
-          </Button>
-        </Link>
-      </section>
-
       {/* Hero Section */}
-      <section className="w-full px-6 sm:px-8 md:px-16 lg:px-24 py-12 md:py-16 max-w-screen-2xl mx-auto">
+      <section className="w-full px-6 sm:px-8 md:px-16 lg:px-24 pt-8 pb-12 md:pb-16 max-w-screen-2xl mx-auto">
         <div className="max-w-4xl mx-auto">
+          {/* Back Button */}
+          <Link href="/customers" className="inline-block mb-6">
+            <Button variant="ghost" size="sm" className="gap-2 -ml-3">
+              <ArrowLeft className="h-4 w-4" />
+              Back to Customers
+            </Button>
+          </Link>
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6">
             {customer.title}
           </h1>

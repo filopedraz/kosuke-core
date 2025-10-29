@@ -12,7 +12,7 @@ interface CTASectionProps {
 export function CTASection({ onApplyClick }: CTASectionProps) {
   return (
     <section id="cta-section" className="py-16 sm:py-32 pb-12 sm:pb-24">
-      <div className="container mx-auto px-4 sm:px-6">
+      <div className="container mx-auto px-8 sm:px-12 md:px-6">
         <div className="max-w-6xl mx-auto text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
