@@ -6,9 +6,6 @@ import docker
 from docker.errors import ImageNotFound
 
 from app.services.domain_service import DomainService
-from app.services.router_adapters import PortRouterAdapter
-from app.services.router_adapters import TraefikRouterAdapter
-from app.services.session_manager import SessionManager
 from app.utils.config import settings
 
 logger = logging.getLogger(__name__)
@@ -25,16 +22,9 @@ class DockerService:
             logger.error(f"Failed to initialize Docker client: {e}")
             raise RuntimeError(f"Docker client initialization failed: {e}") from e
 
-        self.session_manager = SessionManager()
         self.domain_service = DomainService()
         self.host_projects_dir = self._get_host_projects_dir()
         logger.info(f"DockerService initialized with host projects directory: {self.host_projects_dir}")
-
-        # Router adapter selection
-        if settings.router_mode == "traefik":
-            self.adapter = TraefikRouterAdapter(self.domain_service)
-        else:
-            self.adapter = PortRouterAdapter(settings.preview_port_range_start, settings.preview_port_range_end)
 
         # Pre-pull image in background
         self._image_pull_task = asyncio.create_task(self._ensure_preview_image())
