@@ -60,7 +60,7 @@ export function FAQSection() {
 
   return (
     <section className="py-16 md:py-24">
-      <div className="container mx-auto px-4 sm:px-6">
+      <div className="container mx-auto px-8 sm:px-12 md:px-6">
         <div className="max-w-6xl mx-auto">
           <div className="mx-auto max-w-xl text-center">
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-3 sm:mb-4 font-mono">
