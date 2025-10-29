@@ -12,7 +12,7 @@ export function CTASection() {
 
   return (
     <section className="py-12 sm:py-24 md:py-32 pb-12 sm:pb-20 md:pb-24 bg-muted/50 dark:bg-transparent">
-      <div className="container mx-auto px-4 sm:px-6">
+      <div className="container mx-auto px-8 sm:px-12 md:px-6">
         <div className="max-w-6xl mx-auto">
           <motion.div
             className="text-center"

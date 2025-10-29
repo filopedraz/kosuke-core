@@ -70,7 +70,7 @@ function getValueBadge(value: 'Low' | 'Mid' | 'High', isKosuke: boolean = false)
 export function ComparisonSection() {
   return (
     <section className="py-12 md:py-24 bg-muted/50 dark:bg-transparent">
-      <div className="container mx-auto px-4 sm:px-6">
+      <div className="container mx-auto px-8 sm:px-12 md:px-6">
         <div className="max-w-7xl mx-auto">
           {/* Desktop Layout */}
           <div className="hidden lg:block">

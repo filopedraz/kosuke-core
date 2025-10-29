@@ -8,7 +8,7 @@ import { Sparkles } from 'lucide-react';
 export function HeroSection() {
   return (
     <section className="pt-12 sm:pt-20 pb-12 sm:pb-20 md:pb-24">
-      <div className="container mx-auto px-4 sm:px-6">
+      <div className="container mx-auto px-8 sm:px-12 md:px-6">
         <div className="max-w-6xl mx-auto text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -35,12 +35,12 @@ export function HeroSection() {
               Honest Comparison
             </Badge>
 
-            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-bold leading-tight tracking-tight">
+            <h1 className="text-3xl sm:text-[2rem] md:text-4xl lg:text-6xl font-bold leading-tight sm:leading-tight tracking-tight">
               Compare Your{' '}
               <AuroraText colors={['#10B981', '#22c55e', '#34D399', '#059669']}>Options</AuroraText>
             </h1>
 
-            <p className="text-base sm:text-lg lg:text-xl text-muted-foreground max-w-3xl mx-auto font-sans leading-relaxed">
+            <p className="text-base md:text-lg lg:text-xl text-muted-foreground max-w-3xl mx-auto font-sans leading-relaxed">
               Stop choosing between speed and quality. See how Kosuke delivers both without the
               typical trade-offs.
             </p>
