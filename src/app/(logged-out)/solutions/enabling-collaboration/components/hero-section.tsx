@@ -171,9 +171,14 @@ export function HeroSection() {
 
               {/* Main Headline */}
               <h1 className="text-3xl sm:text-5xl lg:text-6xl font-bold leading-tight tracking-tight">
-                Enabling{' '}
-                <AuroraText colors={['#10B981', '#22c55e', '#34D399', '#059669']}>REAL</AuroraText>{' '}
-                Collaboration
+                Bridge the gap between{' '}
+                <AuroraText colors={['#10B981', '#22c55e', '#34D399', '#059669']}>
+                  Product
+                </AuroraText>{' '}
+                and{' '}
+                <AuroraText colors={['#10B981', '#22c55e', '#34D399', '#059669']}>
+                  Engineering
+                </AuroraText>
               </h1>
 
               {/* Subheadline */}

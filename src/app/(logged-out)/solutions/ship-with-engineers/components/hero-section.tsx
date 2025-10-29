@@ -156,12 +156,13 @@ export function HeroSection() {
 
               {/* Main Headline */}
               <h1 className="text-3xl sm:text-5xl lg:text-6xl font-bold leading-tight tracking-tight">
-                Ship with{' '}
+                The{' '}
                 <AuroraText colors={['#10B981', '#22c55e', '#34D399', '#059669']}>
-                  Engineers
-                </AuroraText>
-                , <br />
-                at the Price of Vibe Coding.
+                  Tech Team
+                </AuroraText>{' '}
+                for the{' '}
+                <AuroraText colors={['#10B981', '#22c55e', '#34D399', '#059669']}>v1</AuroraText> of
+                Your Startup
               </h1>
 
               {/* Subheadline */}
