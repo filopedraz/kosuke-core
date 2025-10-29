@@ -12,7 +12,7 @@ export default function Footer() {
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5, delay: 0.3 }}
     >
-      <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 backdrop-blur-sm bg-background/30 px-6 py-5 sm:py-3 rounded-2xl sm:rounded-full border border-border/30">
+      <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 backdrop-blur-sm bg-background/30 px-6 py-5 sm:py-3 rounded-2xl sm:rounded-full border-0 sm:border sm:border-border/30">
         {/* Legal Links */}
         <div className="flex items-center gap-4 text-base sm:text-sm">
           <Link
@@ -21,7 +21,7 @@ export default function Footer() {
           >
             Terms
           </Link>
-          <div className="h-4 w-px bg-border/50"></div>
+          <div className="hidden sm:block h-4 w-px bg-border/50"></div>
           <Link
             href="/privacy"
             className="text-muted-foreground hover:text-foreground transition-colors duration-300 font-mono"
