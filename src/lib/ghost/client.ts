@@ -3,22 +3,20 @@ import GhostContentAPI from '@tryghost/content-api';
 import type { BlogPost, Customer, GhostPage, GhostPost, GhostTag } from '@/lib/types/ghost';
 
 // Lazy initialization of Ghost Content API client
-let ghostClient: GhostContentAPI | null = null;
+let ghostClient: InstanceType<typeof GhostContentAPI> | null = null;
 
 /**
  * Get or create the Ghost Content API client
  * This is lazily initialized to avoid errors during build time
+ * Returns null if credentials are missing (allows build to succeed)
  */
-function getGhostClient(): GhostContentAPI {
+function getGhostClient(): InstanceType<typeof GhostContentAPI> | null {
+  // Return null if credentials are missing (e.g., during CI build)
+  if (!process.env.NEXT_PUBLIC_GHOST_URL || !process.env.NEXT_PUBLIC_GHOST_CONTENT_API_KEY) {
+    return null;
+  }
+
   if (!ghostClient) {
-    if (!process.env.NEXT_PUBLIC_GHOST_URL) {
-      throw new Error('NEXT_PUBLIC_GHOST_URL environment variable is not set');
-    }
-
-    if (!process.env.NEXT_PUBLIC_GHOST_CONTENT_API_KEY) {
-      throw new Error('NEXT_PUBLIC_GHOST_CONTENT_API_KEY environment variable is not set');
-    }
-
     ghostClient = new GhostContentAPI({
       url: process.env.NEXT_PUBLIC_GHOST_URL,
       key: process.env.NEXT_PUBLIC_GHOST_CONTENT_API_KEY,
@@ -35,6 +33,8 @@ function getGhostClient(): GhostContentAPI {
 export async function getCustomers(): Promise<Customer[]> {
   try {
     const client = getGhostClient();
+    if (!client) return [];
+
     const pages = (await client.pages.browse({
       filter: 'tag:customer',
       include: ['tags'],
@@ -54,6 +54,8 @@ export async function getCustomers(): Promise<Customer[]> {
 export async function getCustomerBySlug(slug: string): Promise<Customer | null> {
   try {
     const client = getGhostClient();
+    if (!client) return null;
+
     const page = (await client.pages.read(
       { slug },
       {
@@ -78,6 +80,8 @@ export async function getBlogPosts(params?: {
 }): Promise<{ posts: BlogPost[]; pagination: { page: number; pages: number; total: number } }> {
   try {
     const client = getGhostClient();
+    if (!client) return { posts: [], pagination: { page: 1, pages: 0, total: 0 } };
+
     const { limit = 12, page = 1, tag } = params || {};
 
     const filter = tag ? `tag:${tag}` : undefined;
@@ -109,6 +113,8 @@ export async function getBlogPosts(params?: {
 export async function getBlogPostBySlug(slug: string): Promise<BlogPost | null> {
   try {
     const client = getGhostClient();
+    if (!client) return null;
+
     const post = (await client.posts.read(
       { slug },
       {
@@ -129,6 +135,8 @@ export async function getBlogPostBySlug(slug: string): Promise<BlogPost | null> 
 export async function getBlogTags(): Promise<GhostTag[]> {
   try {
     const client = getGhostClient();
+    if (!client) return [];
+
     const tags = (await client.tags.browse({
       limit: 'all',
       filter: 'visibility:public',
@@ -147,7 +155,9 @@ export async function getBlogTags(): Promise<GhostTag[]> {
 export async function getPageById(id: string): Promise<GhostPage | null> {
   try {
     const client = getGhostClient();
-    const page = await client.pages.read({ id });
+    if (!client) return null;
+
+    const page = (await client.pages.read({ id })) as GhostPage;
     return page;
   } catch (error) {
     console.error(`Error fetching page ${id}:`, error);

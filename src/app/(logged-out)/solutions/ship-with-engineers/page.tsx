@@ -3,9 +3,10 @@ import Script from 'next/script';
 
 import { BenefitsSection } from './components/benefits-section';
 import { CTASection } from './components/cta-section';
-import { FAQSection, faqItems } from './components/faq-section';
+import { FAQSection } from './components/faq-section';
 import { HeroSection } from './components/hero-section';
 import { HowItWorksSection } from './components/how-it-works-section';
+import { faqItems } from './data/faq-data';
 
 const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://kosuke.ai';
 
