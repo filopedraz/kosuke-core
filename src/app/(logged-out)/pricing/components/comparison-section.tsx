@@ -73,7 +73,7 @@ export function ComparisonSection() {
       <div className="container mx-auto px-8 sm:px-12 md:px-6">
         <div className="max-w-7xl mx-auto">
           {/* Desktop Layout */}
-          <div className="hidden lg:block">
+          <div className="hidden xl:block">
             {/* Provider Headers - Centered */}
             <div className="flex justify-center mb-8">
               <div className="grid grid-cols-3 gap-6 max-w-4xl w-full">
@@ -170,7 +170,7 @@ export function ComparisonSection() {
           </div>
 
           {/* Mobile/Tablet Layout - Compact Side-by-Side */}
-          <div className="lg:hidden space-y-5 md:space-y-6">
+          <div className="xl:hidden space-y-5 md:space-y-6">
             {comparisonData.map((row, index) => (
               <motion.div
                 key={row.feature}
