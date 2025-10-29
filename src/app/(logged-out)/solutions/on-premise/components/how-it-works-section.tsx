@@ -2,7 +2,7 @@
 
 import { Card, CardContent } from '@/components/ui/card';
 import { motion } from 'framer-motion';
-import { Cpu, FileSearch, Rocket } from 'lucide-react';
+import { BookOpen, Cpu, FileSearch, Rocket } from 'lucide-react';
 
 const steps = [
   {
@@ -17,14 +17,21 @@ const steps = [
     icon: Cpu,
     title: 'Hardware Provisioning',
     description:
-      'We provide enterprise-grade Mac Studio units configured for your exact needs. Plug them into your data center and go.',
+      'We provide enterprise-grade Mac Studio units configured for your exact needs. We avoid the need to provision GPU-enabled VMs in your data center.',
   },
   {
     step: 3,
     icon: Rocket,
-    title: 'Deploy & Scale',
+    title: 'Vibe Coding',
     description:
-      'Your team starts building immediately with full AI capabilities, while your data and code never leave your infrastructure.',
+      'Your team starts building software with the Kosuke platform immediately with full AI capabilities, while your data and code never leave your network.',
+  },
+  {
+    step: 4,
+    icon: BookOpen,
+    title: 'Academy',
+    description:
+      'We optionally provide learning materials and workshops to help your team get the most out of the Kosuke platform.',
   },
 ];
 
@@ -32,7 +39,7 @@ export function HowItWorksSection() {
   return (
     <section className="py-16 md:py-32">
       <div className="container mx-auto px-4 sm:px-6">
-        <div className="max-w-6xl mx-auto">
+        <div className="max-w-7xl mx-auto">
           <motion.div
             className="text-center mb-12 sm:mb-16"
             initial={{ opacity: 0, y: 20 }}
@@ -50,7 +57,7 @@ export function HowItWorksSection() {
           </motion.div>
 
           <div className="relative">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative z-10">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 relative z-10">
               {steps.map((step, index) => (
                 <motion.div
                   key={step.step}

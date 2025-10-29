@@ -16,8 +16,8 @@ export default function OnPremisePage() {
   return (
     <>
       <HeroSection />
-      <BenefitsSection />
       <HowItWorksSection />
+      <BenefitsSection />
       <CTASection />
       <FAQSection />
     </>
