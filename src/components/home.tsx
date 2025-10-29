@@ -6,6 +6,7 @@ import { CTASection } from '@/app/(logged-out)/home/components/cta-section';
 import { FAQSection } from '@/app/(logged-out)/home/components/faq-section';
 import { FeaturesBentoGrid } from '@/app/(logged-out)/home/components/features-bento-grid';
 import { HeroSection } from '@/app/(logged-out)/home/components/hero-section';
+import { NewsletterSection } from '@/app/(logged-out)/home/components/newsletter-section';
 import { PrivateAlphaModal } from '@/app/(logged-out)/home/components/private-alpha-modal';
 import { ReviewsMarquee } from '@/app/(logged-out)/home/components/reviews-marquee';
 import { useEffect, useState } from 'react';
@@ -55,6 +56,9 @@ export function Home() {
 
       {/* FAQ Section */}
       <FAQSection />
+
+      {/* Newsletter Section */}
+      <NewsletterSection />
 
       {/* Private Alpha Modal */}
       <PrivateAlphaModal open={isModalOpen} onOpenChange={setIsModalOpen} />
