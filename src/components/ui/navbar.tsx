@@ -33,7 +33,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
 
@@ -186,6 +192,7 @@ export default function Navbar({
                   width={24}
                   height={24}
                   className="block dark:hidden"
+                  priority
                 />
                 <Image
                   src="/logo.svg"
@@ -193,6 +200,7 @@ export default function Navbar({
                   width={24}
                   height={24}
                   className="hidden dark:block"
+                  priority
                 />
                 <span className="ml-2 text-xl text-foreground">Kosuke</span>
               </div>
@@ -273,6 +281,10 @@ export default function Navbar({
                       </Button>
                     </SheetTrigger>
                     <SheetContent side="right" className="w-full sm:w-[400px] p-0">
+                      <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
+                      <SheetDescription className="sr-only">
+                        Access navigation links and get started with Kosuke
+                      </SheetDescription>
                       <div className="flex flex-col h-full px-6 pt-20 pb-8">
                         <nav className="flex flex-col gap-8">
                           <Link
