@@ -160,16 +160,15 @@ export function HeroSection() {
                 <AuroraText colors={['#10B981', '#22c55e', '#34D399', '#059669']}>
                   Tech Team
                 </AuroraText>{' '}
-                for the{' '}
-                <AuroraText colors={['#10B981', '#22c55e', '#34D399', '#059669']}>v1</AuroraText> of
-                Your Startup
+                to Build your{' '}
+                <AuroraText colors={['#10B981', '#22c55e', '#34D399', '#059669']}>Ideas</AuroraText>
               </h1>
 
               {/* Subheadline */}
               <p className="text-base sm:text-lg lg:text-xl text-muted-foreground font-sans leading-relaxed">
                 Get dedicated senior engineers building the first production-ready version of your
-                startup. Once v1 is launched, you choose: keep working with the same engineers or
-                build the next features with our vibe coding platform.
+                product. After launch, stick with our human experts or build yourself with our vibe
+                coding platform.
               </p>
 
               {/* CTA */}

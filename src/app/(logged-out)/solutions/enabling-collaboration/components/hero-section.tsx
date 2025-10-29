@@ -183,9 +183,8 @@ export function HeroSection() {
 
               {/* Subheadline */}
               <p className="text-base sm:text-lg lg:text-xl text-muted-foreground font-sans leading-relaxed">
-                Let your product teams vibe code changes themselves. Kosuke generates the code, and
-                your developers simply review and merge. Unblock your devs, empower your entire
-                company.
+                Let your product team contribute directly with vibe coding, while your engineers
+                keep full control over the codebase
               </p>
 
               {/* CTA */}
