@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useCallback, useEffect } from 'react';
 import { motion, useMotionTemplate, useMotionValue } from 'motion/react';
+import React, { useCallback, useEffect, useState } from 'react';
 
 import { cn } from '@/lib/utils';
 
@@ -24,6 +24,7 @@ export function MagicCard({
   gradientFrom = '#9E7AFF',
   gradientTo = '#FE8BBB',
 }: MagicCardProps) {
+  const [isMounted, setIsMounted] = useState(false);
   const mouseX = useMotionValue(-gradientSize);
   const mouseY = useMotionValue(-gradientSize);
   const reset = useCallback(() => {
@@ -39,6 +40,10 @@ export function MagicCard({
     },
     [mouseX, mouseY]
   );
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   useEffect(() => {
     reset();
@@ -68,6 +73,18 @@ export function MagicCard({
     };
   }, [reset]);
 
+  const backgroundGradient = useMotionTemplate`
+    radial-gradient(${gradientSize}px circle at ${mouseX}px ${mouseY}px,
+    ${gradientFrom},
+    ${gradientTo},
+    var(--border) 100%
+    )
+  `;
+
+  const overlayGradient = useMotionTemplate`
+    radial-gradient(${gradientSize}px circle at ${mouseX}px ${mouseY}px, ${gradientColor}, transparent 100%)
+  `;
+
   return (
     <div
       className={cn('group relative rounded-[inherit]', className)}
@@ -75,28 +92,28 @@ export function MagicCard({
       onPointerLeave={reset}
       onPointerEnter={reset}
     >
-      <motion.div
-        className="bg-border pointer-events-none absolute inset-0 rounded-[inherit] duration-300 group-hover:opacity-100"
-        style={{
-          background: useMotionTemplate`
-          radial-gradient(${gradientSize}px circle at ${mouseX}px ${mouseY}px,
-          ${gradientFrom}, 
-          ${gradientTo}, 
-          var(--border) 100%
-          )
-          `,
-        }}
-      />
+      {isMounted ? (
+        <motion.div
+          className="bg-border pointer-events-none absolute inset-0 rounded-[inherit] duration-300 group-hover:opacity-100"
+          style={{
+            background: backgroundGradient,
+          }}
+        />
+      ) : (
+        <div className="bg-border pointer-events-none absolute inset-0 rounded-[inherit] duration-300 group-hover:opacity-100" />
+      )}
       <div className="bg-background absolute inset-px rounded-[inherit]" />
-      <motion.div
-        className="pointer-events-none absolute inset-px rounded-[inherit] opacity-0 transition-opacity duration-300 group-hover:opacity-100"
-        style={{
-          background: useMotionTemplate`
-            radial-gradient(${gradientSize}px circle at ${mouseX}px ${mouseY}px, ${gradientColor}, transparent 100%)
-          `,
-          opacity: gradientOpacity,
-        }}
-      />
+      {isMounted ? (
+        <motion.div
+          className="pointer-events-none absolute inset-px rounded-[inherit] opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+          style={{
+            background: overlayGradient,
+            opacity: gradientOpacity,
+          }}
+        />
+      ) : (
+        <div className="pointer-events-none absolute inset-px rounded-[inherit] opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+      )}
       <div className="relative">{children}</div>
     </div>
   );
