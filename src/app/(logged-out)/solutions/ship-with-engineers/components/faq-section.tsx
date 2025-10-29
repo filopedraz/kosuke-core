@@ -7,7 +7,7 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 
-const faqItems = [
+export const faqItems = [
   {
     id: 'item-1',
     question: 'How is this different from hiring freelancers or contractors?',

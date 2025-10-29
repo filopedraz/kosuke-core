@@ -4,6 +4,7 @@ import { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import Script from 'next/script';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -23,14 +24,29 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     };
   }
 
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://kosuke.ai';
+  const images = post.featureImage ? [post.featureImage] : undefined;
+
   return {
     title: `${post.metaTitle || post.title} | Kosuke Blog`,
     description: post.metaDescription || post.excerpt || undefined,
-    openGraph: post.featureImage
-      ? {
-          images: [post.featureImage],
-        }
-      : undefined,
+    alternates: {
+      canonical: `${baseUrl}/blog/${slug}`,
+    },
+    openGraph: {
+      title: `${post.metaTitle || post.title}`,
+      description: post.metaDescription || post.excerpt || undefined,
+      type: 'article',
+      publishedTime: post.publishedAt,
+      authors: post.author ? [post.author.name] : undefined,
+      images,
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: `${post.metaTitle || post.title}`,
+      description: post.metaDescription || post.excerpt || undefined,
+      images,
+    },
   };
 }
 
@@ -50,8 +66,46 @@ export default async function BlogPostPage({ params }: Props) {
     notFound();
   }
 
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://kosuke.ai';
+
+  const articleStructuredData = {
+    '@context': 'https://schema.org',
+    '@type': 'BlogPosting',
+    headline: post.title,
+    description: post.excerpt || post.metaDescription || undefined,
+    image: post.featureImage || undefined,
+    datePublished: post.publishedAt,
+    author: post.author
+      ? {
+          '@type': 'Person',
+          name: post.author.name,
+          url: post.author.website || undefined,
+        }
+      : undefined,
+    publisher: {
+      '@type': 'Organization',
+      name: 'Kosuke',
+      logo: {
+        '@type': 'ImageObject',
+        url: `${baseUrl}/logo.svg`,
+      },
+    },
+    mainEntityOfPage: {
+      '@type': 'WebPage',
+      '@id': `${baseUrl}/blog/${slug}`,
+    },
+    keywords: post.tags.map(tag => tag.name).join(', '),
+  };
+
   return (
     <div className="w-full min-h-screen bg-background">
+      <Script
+        id="blog-post-structured-data"
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(articleStructuredData),
+        }}
+      />
       {/* Header */}
       <section className="w-full px-6 sm:px-8 md:px-16 lg:px-24 py-8 max-w-screen-2xl mx-auto border-border">
         <Link href="/blog">
