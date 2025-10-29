@@ -60,19 +60,19 @@ type NavbarProps = {
 
 const solutions = [
   {
-    title: 'Vibecoders',
+    title: 'Kosuke Platform',
     href: '/',
   },
   {
-    title: 'Businesses without Tech Team',
+    title: 'Kosuke Tech Team',
     href: '/solutions/ship-with-engineers',
   },
   {
-    title: 'Businesses with Tech Team',
+    title: 'Kosuke for Teams',
     href: '/solutions/enabling-collaboration',
   },
   {
-    title: 'On-Premise Enterprises',
+    title: 'Kosuke On-Premise',
     href: '/solutions/on-premise',
   },
 ];
