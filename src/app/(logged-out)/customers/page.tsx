@@ -4,10 +4,15 @@ import Link from 'next/link';
 
 import { getCustomers } from '@/lib/ghost/client';
 
+const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://kosuke.ai';
+
 export const metadata: Metadata = {
   title: 'Customers | Kosuke',
   description:
     'Discover how leading companies use Kosuke to ship better products faster with AI-powered development.',
+  alternates: {
+    canonical: `${baseUrl}/customers`,
+  },
 };
 
 export default async function CustomersPage() {

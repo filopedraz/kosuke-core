@@ -7,12 +7,12 @@ import { Calendar, Phone } from 'lucide-react';
 
 export function CTASection() {
   const handleScheduleCall = () => {
-    window.open('https://form.typeform.com/to/A6zJtlUM', '_blank');
+    window.open('https://links.kosuke.ai/contact', '_blank');
   };
 
   return (
     <section className="py-16 sm:py-32 pb-12 sm:pb-24 bg-muted/50 dark:bg-transparent">
-      <div className="container mx-auto px-4 sm:px-6">
+      <div className="container mx-auto px-8 sm:px-12 md:px-6">
         <div className="max-w-6xl mx-auto">
           <motion.div
             className="text-center"

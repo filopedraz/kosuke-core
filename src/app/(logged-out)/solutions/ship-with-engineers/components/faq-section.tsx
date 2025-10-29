@@ -7,46 +7,14 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 
-const faqItems = [
-  {
-    id: 'item-1',
-    question: 'How is this different from hiring freelancers or contractors?',
-    answer:
-      'The initial V1 build is similar to hiring a high-end agency but at a fraction of the cost, thanks to our expertise in leveraging AI efficiently to build new software.' +
-      'Moreover, you get access to the Kosuke platform, to eventually build the next features yourself.',
-  },
-  {
-    id: 'item-2',
-    question: 'What level of engineers will work on my project?',
-    answer:
-      'Only senior engineers with 5+ years of production experience. No juniors, no interns. Every engineer has shipped real products and knows how to navigate complex technical decisions.',
-  },
-  {
-    id: 'item-3',
-    question: 'How quickly can you start working on my project?',
-    answer:
-      'Typically within 3-5 business days. After our initial call, we take 1 or 2 days to provide a price and a realistic timeline. Once you accept our terms, we start working on the project right away.',
-  },
-  {
-    id: 'item-4',
-    question: 'Do I own the code? Can I take it elsewhere?',
-    answer:
-      'Absolutely. Your code lives in your own repository from day one. No vendor lock-in, no proprietary frameworks. You have complete ownership and can continue development independently at any time.',
-  },
-  {
-    id: 'item-5',
-    question: 'What happens after the first version is launched?',
-    answer:
-      'Once the first version is launched, you can choose to build the next features with our vibe coding platform, or keep working with the same engineers. You can also choose to take your repository and leave us. You are never locked in.',
-  },
-];
+import { faqItems } from '../data/faq-data';
 
 export function FAQSection() {
   return (
     <section className="py-16 md:py-24">
-      <div className="container mx-auto px-4 sm:px-6">
+      <div className="container mx-auto px-8 sm:px-12 md:px-6">
         <div className="max-w-6xl mx-auto">
-          <div className="mx-auto max-w-xl text-center mb-12">
+          <div className="mx-auto max-w-xl text-center mb-12 sm:mb-16">
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-3 sm:mb-4 font-mono">
               Frequently Asked Questions
             </h2>
@@ -65,24 +33,24 @@ export function FAQSection() {
                 <div className="group" key={item.id}>
                   <AccordionItem
                     value={item.id}
-                    className="data-[state=open]:bg-card dark:data-[state=open]:bg-muted peer rounded-xl border-none px-7 py-1 data-[state=open]:border-none data-[state=open]:shadow-sm"
+                    className="data-[state=open]:bg-card dark:data-[state=open]:bg-muted peer rounded-xl border-none px-4 sm:px-7 py-1 data-[state=open]:border-none data-[state=open]:shadow-sm"
                   >
-                    <AccordionTrigger className="cursor-pointer text-base hover:no-underline">
+                    <AccordionTrigger className="cursor-pointer text-sm sm:text-base hover:no-underline">
                       {item.question}
                     </AccordionTrigger>
                     <AccordionContent>
-                      <p className="text-base">{item.answer}</p>
+                      <p className="text-sm sm:text-base">{item.answer}</p>
                     </AccordionContent>
                   </AccordionItem>
-                  <hr className="mx-7 border-dashed group-last:hidden peer-data-[state=open]:opacity-0" />
+                  <hr className="mx-4 sm:mx-7 border-dashed group-last:hidden peer-data-[state=open]:opacity-0" />
                 </div>
               ))}
             </Accordion>
 
-            <p className="text-muted-foreground mt-6 px-8">
+            <p className="text-muted-foreground text-sm sm:text-base mt-6 px-4 sm:px-8">
               Still have questions?{' '}
               <a
-                href="https://form.typeform.com/to/A6zJtlUM"
+                href="https://links.kosuke.ai/contact"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-primary font-medium hover:underline"

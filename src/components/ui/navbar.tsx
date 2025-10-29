@@ -33,7 +33,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
 
@@ -89,6 +95,7 @@ export default function Navbar({
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
+  const [solutionsOpen, setSolutionsOpen] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -181,6 +188,7 @@ export default function Navbar({
                   width={24}
                   height={24}
                   className="block dark:hidden"
+                  priority
                 />
                 <Image
                   src="/logo.svg"
@@ -188,13 +196,14 @@ export default function Navbar({
                   width={24}
                   height={24}
                   className="hidden dark:block"
+                  priority
                 />
                 <span className="ml-2 text-xl text-foreground">Kosuke</span>
               </div>
 
               {/* Desktop Navigation */}
               {showNavigation && (
-                <div className="hidden md:flex items-center gap-6">
+                <div className="hidden min-[900px]:flex items-center gap-6">
                   <Link href="/customers">
                     <Button variant="ghost" size="sm">
                       Customers
@@ -233,7 +242,7 @@ export default function Navbar({
                   </Link>
 
                   <a
-                    href="https://form.typeform.com/to/A6zJtlUM"
+                    href="https://links.kosuke.ai/contact"
                     target="_blank"
                     rel="noopener noreferrer"
                   >
@@ -254,77 +263,112 @@ export default function Navbar({
 
               {/* Mobile Menu Button */}
               {showNavigation && (
-                <div className="md:hidden">
-                  <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+                <div className="min-[900px]:hidden">
+                  <Sheet
+                    open={mobileMenuOpen}
+                    onOpenChange={open => {
+                      setMobileMenuOpen(open);
+                      if (!open) setSolutionsOpen(false); // Reset accordion when closing
+                    }}
+                  >
                     <SheetTrigger asChild>
                       <Button variant="ghost" size="icon">
                         <Menu className="h-5 w-5" />
                       </Button>
                     </SheetTrigger>
-                    <SheetContent side="right" className="w-[300px]">
-                      <div className="flex flex-col gap-6 pt-8">
-                        <Link
-                          href="/customers"
-                          onClick={() => setMobileMenuOpen(false)}
-                          className="text-lg font-medium transition-colors hover:text-primary"
-                        >
-                          Customers
-                        </Link>
-
-                        {/* Solutions Accordion */}
-                        <div className="space-y-3">
-                          <div className="text-lg font-medium text-muted-foreground">Solutions</div>
-                          <div className="ml-4 space-y-3">
-                            {solutions.map(solution => (
-                              <Link
-                                key={solution.href}
-                                href={solution.href}
-                                onClick={() => setMobileMenuOpen(false)}
-                                className="block text-sm transition-colors hover:text-primary"
-                              >
-                                {solution.title}
-                              </Link>
-                            ))}
-                          </div>
-                        </div>
-
-                        <Link
-                          href="/pricing"
-                          onClick={() => setMobileMenuOpen(false)}
-                          className="text-lg font-medium transition-colors hover:text-primary"
-                        >
-                          Pricing
-                        </Link>
-
-                        <Link
-                          href="/blog"
-                          onClick={() => setMobileMenuOpen(false)}
-                          className="text-lg font-medium transition-colors hover:text-primary"
-                        >
-                          Blog
-                        </Link>
-
-                        <a
-                          href="https://form.typeform.com/to/A6zJtlUM"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-lg font-medium transition-colors hover:text-primary"
-                        >
-                          Contact Us
-                        </a>
-
-                        {!isSignedIn ? (
-                          <Button
-                            onClick={() => {
-                              setMobileMenuOpen(false);
-                              setModalOpen(true);
-                            }}
+                    <SheetContent side="right" className="w-full sm:w-[400px] p-0">
+                      <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
+                      <SheetDescription className="sr-only">
+                        Access navigation links and get started with Kosuke
+                      </SheetDescription>
+                      <div className="flex flex-col h-full px-6 pt-20 pb-8">
+                        <nav className="flex flex-col gap-8">
+                          <Link
+                            href="/customers"
+                            onClick={() => setMobileMenuOpen(false)}
+                            className="text-2xl font-medium tracking-tight transition-colors hover:text-muted-foreground"
                           >
-                            Get Started
-                          </Button>
-                        ) : (
-                          <div onClick={() => setMobileMenuOpen(false)}>{renderUserSection()}</div>
-                        )}
+                            Customers
+                          </Link>
+
+                          {/* Solutions Section */}
+                          <div className="flex flex-col gap-3">
+                            <button
+                              onClick={() => setSolutionsOpen(!solutionsOpen)}
+                              className="flex items-center justify-between text-2xl font-medium tracking-tight text-foreground transition-colors hover:text-muted-foreground text-left"
+                            >
+                              Solutions
+                              <ChevronDown
+                                className={cn(
+                                  'h-5 w-5 transition-transform duration-200',
+                                  solutionsOpen && 'rotate-180'
+                                )}
+                              />
+                            </button>
+                            {solutionsOpen && (
+                              <div className="flex flex-col gap-2 pl-4 border-l border-border">
+                                {solutions.map(solution => (
+                                  <Link
+                                    key={solution.href}
+                                    href={solution.href}
+                                    onClick={() => {
+                                      setSolutionsOpen(false);
+                                      setMobileMenuOpen(false);
+                                    }}
+                                    className="text-base font-normal text-muted-foreground transition-colors hover:text-foreground"
+                                  >
+                                    {solution.title}
+                                  </Link>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+
+                          <Link
+                            href="/pricing"
+                            onClick={() => setMobileMenuOpen(false)}
+                            className="text-2xl font-medium tracking-tight transition-colors hover:text-muted-foreground"
+                          >
+                            Pricing
+                          </Link>
+
+                          <Link
+                            href="/blog"
+                            onClick={() => setMobileMenuOpen(false)}
+                            className="text-2xl font-medium tracking-tight transition-colors hover:text-muted-foreground"
+                          >
+                            Blog
+                          </Link>
+
+                          <a
+                            href="https://links.kosuke.ai/contact"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-2xl font-medium tracking-tight transition-colors hover:text-muted-foreground"
+                          >
+                            Contact Us
+                          </a>
+                        </nav>
+
+                        {/* Bottom CTA */}
+                        <div className="mt-auto pt-8">
+                          {!isSignedIn ? (
+                            <Button
+                              className="w-full"
+                              size="lg"
+                              onClick={() => {
+                                setMobileMenuOpen(false);
+                                setModalOpen(true);
+                              }}
+                            >
+                              Get Started
+                            </Button>
+                          ) : (
+                            <div onClick={() => setMobileMenuOpen(false)}>
+                              {renderUserSection()}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </SheetContent>
                   </Sheet>

@@ -32,7 +32,8 @@ const comparisonData = [
 ];
 
 function getValueBadge(value: 'Low' | 'Mid' | 'High', isKosuke: boolean = false) {
-  const baseClasses = 'px-3 py-1 rounded-full text-sm font-semibold font-mono';
+  const baseClasses =
+    'px-2.5 sm:px-3 md:px-3.5 py-1 rounded-full text-xs sm:text-sm font-semibold font-mono';
 
   if (value === 'Low') {
     return (
@@ -68,11 +69,11 @@ function getValueBadge(value: 'Low' | 'Mid' | 'High', isKosuke: boolean = false)
 
 export function ComparisonSection() {
   return (
-    <section className="py-16 md:py-24 bg-muted/50 dark:bg-transparent">
-      <div className="container mx-auto px-4 sm:px-6">
+    <section className="py-12 md:py-24 bg-muted/50 dark:bg-transparent">
+      <div className="container mx-auto px-8 sm:px-12 md:px-6">
         <div className="max-w-7xl mx-auto">
           {/* Desktop Layout */}
-          <div className="hidden md:block">
+          <div className="hidden xl:block">
             {/* Provider Headers - Centered */}
             <div className="flex justify-center mb-8">
               <div className="grid grid-cols-3 gap-6 max-w-4xl w-full">
@@ -121,8 +122,8 @@ export function ComparisonSection() {
               </div>
             </div>
 
-            {/* Comparison Rows - Centered with labels on left */}
-            <div className="space-y-4">
+            {/* Comparison Rows */}
+            <div className="space-y-6">
               {comparisonData.map((row, rowIndex) => (
                 <motion.div
                   key={row.feature}
@@ -132,6 +133,11 @@ export function ComparisonSection() {
                   transition={{ duration: 0.5, delay: rowIndex * 0.1 }}
                   className="relative"
                 >
+                  {/* Feature Label - above on mobile, left on desktop */}
+                  <h4 className="text-lg font-bold font-mono mb-3 xl:mb-0 xl:absolute xl:left-30 xl:top-1/2 xl:-translate-y-1/2 xl:-translate-x-full xl:pr-8 xl:whitespace-nowrap">
+                    {row.feature}
+                  </h4>
+
                   {/* Three provider columns - centered */}
                   <div className="flex justify-center">
                     <div className="grid grid-cols-3 gap-6 max-w-4xl w-full">
@@ -158,18 +164,13 @@ export function ComparisonSection() {
                       </Card>
                     </div>
                   </div>
-
-                  {/* Feature Label - absolutely positioned to the left */}
-                  <div className="absolute left-30 top-1/2 -translate-y-1/2 -translate-x-full pr-8">
-                    <h4 className="text-lg font-bold font-mono whitespace-nowrap">{row.feature}</h4>
-                  </div>
                 </motion.div>
               ))}
             </div>
           </div>
 
-          {/* Mobile Layout */}
-          <div className="md:hidden space-y-8">
+          {/* Mobile/Tablet Layout - Compact Side-by-Side */}
+          <div className="xl:hidden space-y-5 md:space-y-6">
             {comparisonData.map((row, index) => (
               <motion.div
                 key={row.feature}
@@ -178,33 +179,44 @@ export function ComparisonSection() {
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: index * 0.1 }}
               >
-                <h3 className="text-xl font-bold font-mono mb-4">{row.feature}</h3>
-                <div className="space-y-4">
-                  {/* Kosuke - Featured First */}
-                  <Card className="bg-linear-to-br from-emerald-500/10 to-emerald-500/5 border-emerald-500/30">
-                    <CardContent className="p-6">
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold font-mono text-emerald-600">Kosuke</span>
-                        {getValueBadge(row.kosuke.value as 'Low' | 'Mid' | 'High', true)}
-                      </div>
-                    </CardContent>
-                  </Card>
+                {/* Feature label */}
+                <h3 className="text-base sm:text-lg md:text-xl font-bold font-mono mb-3 md:mb-4">
+                  {row.feature}
+                </h3>
 
+                {/* Compact 3-column grid */}
+                <div className="grid grid-cols-3 gap-2 sm:gap-3 md:gap-4">
                   {/* Lovable */}
-                  <Card className="bg-card/50 border-border/50">
-                    <CardContent className="p-6">
-                      <div className="flex items-center justify-between">
-                        <span className="font-semibold font-mono">Lovable</span>
+                  <Card className="bg-card/50 border-border/50 shadow-sm">
+                    <CardContent className="p-3 sm:p-4 md:p-5">
+                      <div className="flex flex-col items-center gap-2 md:gap-3 text-center">
+                        <span className="font-semibold font-mono text-xs sm:text-sm md:text-base leading-tight">
+                          Lovable
+                        </span>
                         {getValueBadge(row.lovable.value as 'Low' | 'Mid' | 'High')}
                       </div>
                     </CardContent>
                   </Card>
 
+                  {/* Kosuke - Featured (Middle) */}
+                  <Card className="bg-linear-to-br from-emerald-500/10 to-emerald-500/5 border-emerald-500/30 shadow-sm">
+                    <CardContent className="p-3 sm:p-4 md:p-5">
+                      <div className="flex flex-col items-center gap-2 md:gap-3 text-center">
+                        <span className="font-bold font-mono text-emerald-600 text-xs sm:text-sm md:text-base leading-tight">
+                          Kosuke
+                        </span>
+                        {getValueBadge(row.kosuke.value as 'Low' | 'Mid' | 'High', true)}
+                      </div>
+                    </CardContent>
+                  </Card>
+
                   {/* Software Agency */}
-                  <Card className="bg-card/50 border-border/50">
-                    <CardContent className="p-6">
-                      <div className="flex items-center justify-between">
-                        <span className="font-semibold font-mono">Software Agency</span>
+                  <Card className="bg-card/50 border-border/50 shadow-sm">
+                    <CardContent className="p-3 sm:p-4 md:p-5">
+                      <div className="flex flex-col items-center gap-2 md:gap-3 text-center">
+                        <span className="font-semibold font-mono text-xs sm:text-sm md:text-base leading-tight">
+                          Agency
+                        </span>
                         {getValueBadge(row.agency.value as 'Low' | 'Mid' | 'High')}
                       </div>
                     </CardContent>

@@ -56,7 +56,7 @@ export function HowItWorksSection() {
 
   return (
     <section className="bg-muted/50 py-16 md:py-32 dark:bg-transparent">
-      <div className="container mx-auto px-4 sm:px-6">
+      <div className="container mx-auto px-8 sm:px-12 md:px-6">
         <div className="max-w-6xl mx-auto">
           <motion.div
             className="text-center"
@@ -74,7 +74,7 @@ export function HowItWorksSection() {
             </p>
           </motion.div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-8 md:mt-16 *:text-center">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-8 md:mt-16 *:text-center">
             {workflowSteps.map((step, index) => (
               <motion.div
                 key={step.step}
