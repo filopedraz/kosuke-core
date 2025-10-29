@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import Script from 'next/script';
 
 import { HomepageStructuredData } from '../page';
-import { faqItems } from './components/faq-section';
+import { faqItems } from './data/faq-data';
 
 export const metadata: Metadata = {
   alternates: {
