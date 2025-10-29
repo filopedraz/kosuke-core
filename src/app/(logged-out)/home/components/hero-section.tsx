@@ -171,7 +171,7 @@ export function HeroSection({ onApplyClick }: HeroSectionProps) {
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.5, delay: 0.3 }}
               >
-                <a href="/solutions/venture-builder" className="inline-block">
+                <a href="/solutions/startup-program" className="inline-block">
                   <Badge
                     variant="outline"
                     className="mb-0 sm:mb-0 px-2 sm:px-3 py-1 text-xs font-mono bg-emerald-500/10 border-emerald-500/20 text-emerald-600 hover:bg-emerald-500/30 hover:border-emerald-500/50 transition-all duration-300 cursor-pointer relative overflow-hidden"
