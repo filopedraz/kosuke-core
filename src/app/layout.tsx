@@ -20,9 +20,11 @@ const geistMono = Geist_Mono({
 });
 
 const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://kosuke.ai';
-const isProduction = baseUrl === 'https://kosuke.ai';
 const ogImage = `${baseUrl}/opengraph-image.png`;
 const ogImageSquare = `${baseUrl}/og-image-square.png`;
+
+// Set NEXT_PUBLIC_ENABLE_INDEXING=true in production environment only
+const enableIndexing = process.env.NEXT_PUBLIC_ENABLE_INDEXING === 'true';
 
 export const metadata: Metadata = {
   title: 'Kosuke - Build Your Next Web Project with AI',
@@ -102,11 +104,9 @@ export const metadata: Metadata = {
       url: '/apple-touch-icon.png',
     },
   ],
-  // Dynamic robots configuration based on environment
-  // Only allow indexing in production (kosuke.ai)
   robots: {
-    index: isProduction,
-    follow: isProduction,
+    index: enableIndexing,
+    follow: enableIndexing,
   },
   verification: {
     // google: process.env.GOOGLE_SITE_VERIFICATION,
