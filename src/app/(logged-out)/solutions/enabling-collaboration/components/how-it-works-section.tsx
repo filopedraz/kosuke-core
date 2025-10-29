@@ -17,7 +17,7 @@ const steps = [
     icon: MessageSquare,
     title: 'Start Vibe Coding',
     description:
-      'Your product team can describe features in plain English using our chat interface. Our agent is trained to do the right questions to build the right code.',
+      'Your product team can describe features in plain English using our chat interface.',
   },
   {
     step: 3,
@@ -31,7 +31,7 @@ const steps = [
     icon: CheckCircle,
     title: 'Review and Deploy',
     description:
-      'Your developers can review the code and eventually modify it with the tools they are used to. Once they are happy with the result, they can deploy it to production.',
+      'Your developers can review the code, eventually modify it using the tools they are already familiar with, and finally deploy it to production.',
   },
 ];
 
@@ -51,8 +51,8 @@ export function HowItWorksSection() {
               How It Works
             </h2>
             <p className="text-base sm:text-lg text-muted-foreground max-w-3xl mx-auto font-sans px-2">
-              A simple workflow that keeps your team moving fast while maintaining code quality and
-              developer oversight.
+              A simple workflow that keeps your team moving fast while maintaining developer
+              oversight.
             </p>
           </motion.div>
 

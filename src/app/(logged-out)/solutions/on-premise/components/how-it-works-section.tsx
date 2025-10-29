@@ -51,8 +51,8 @@ export function HowItWorksSection() {
               How It Works
             </h2>
             <p className="text-base sm:text-lg text-muted-foreground max-w-3xl mx-auto font-sans px-2">
-              From assessment to deployment, we handle everything. Your team gets enterprise AI
-              tools without cloud dependencies.
+              A plug-and-play solution to bring AI to your organization without compromising on
+              security.
             </p>
           </motion.div>
 

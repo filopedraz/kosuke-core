@@ -31,7 +31,7 @@ const steps = [
     icon: ArrowRight,
     title: 'Build the Next Features',
     description:
-      'Once v1 is launched, you choose: build the next features with our vibe coding platform, or keep working with the same engineers.',
+      'Once v1 is launched, you choose: keep working with the same engineers, or build the next features yourself with our vibe coding platform.',
   },
 ];
 
@@ -51,8 +51,7 @@ export function HowItWorksSection() {
               How It Works
             </h2>
             <p className="text-base sm:text-lg text-muted-foreground max-w-3xl mx-auto font-sans px-2">
-              A straightforward process from idea to production. First showable results in{' '}
-              <span className="text-emerald-600 font-semibold">less than 10 days</span>.
+              A straightforward process to get from idea to production in weeks.
             </p>
           </motion.div>
 
