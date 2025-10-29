@@ -52,23 +52,22 @@ export default async function BlogPostPage({ params }: Props) {
 
   return (
     <div className="w-full min-h-screen bg-background">
-      {/* Header */}
-      <section className="w-full px-6 sm:px-8 md:px-16 lg:px-24 py-8 max-w-screen-2xl mx-auto border-border">
-        <Link href="/blog">
-          <Button variant="ghost" size="sm" className="gap-2">
-            <ArrowLeft className="h-4 w-4" />
-            Back to Blog
-          </Button>
-        </Link>
-      </section>
-
       {/* Hero Section */}
-      <section className="w-full px-6 sm:px-8 md:px-16 lg:px-24 py-12 md:py-16 max-w-screen-2xl mx-auto">
+      <section className="w-full px-6 sm:px-8 md:px-16 lg:px-24 pt-8 pb-12 md:pb-16 max-w-screen-2xl mx-auto">
         <div className="max-w-4xl mx-auto">
+          {/* Back Button */}
+          <Link href="/blog" className="block mb-6">
+            <Button variant="ghost" size="sm" className="gap-2 -ml-3">
+              <ArrowLeft className="h-4 w-4" />
+              Back to Blog
+            </Button>
+          </Link>
           {post.primaryTag && (
-            <span className="inline-block px-3 py-1 text-sm font-medium bg-primary/10 text-primary rounded-full mb-4">
-              {post.primaryTag.name}
-            </span>
+            <div className="mb-4">
+              <span className="inline-block px-3 py-1 text-sm font-medium bg-primary/10 text-primary rounded-full">
+                {post.primaryTag.name}
+              </span>
+            </div>
           )}
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6">
             {post.title}
