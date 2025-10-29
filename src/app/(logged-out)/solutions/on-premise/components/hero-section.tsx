@@ -55,7 +55,7 @@ export function HeroSection() {
               <h1 className="text-3xl sm:text-[2rem] md:text-4xl lg:text-6xl sm:leading-tight font-bold leading-tight tracking-tight">
                 The First{' '}
                 <AuroraText colors={['#10B981', '#22c55e', '#34D399', '#059669']}>
-                  Open-source
+                  On-premise
                 </AuroraText>{' '}
                 <br />
                 Vibe Coding Platform
@@ -63,8 +63,8 @@ export function HeroSection() {
 
               {/* Subheadline */}
               <p className="text-base md:text-lg lg:text-xl text-muted-foreground font-sans leading-relaxed">
-                Deploy AI-powered development infrastructure in your own data center. Complete
-                control, maximum security, zero vendor lock-in.
+                Give your teams the powers of vibe coding without compromising your company&apos;s
+                data privacy.
               </p>
 
               {/* Mac Studio Image - Mobile Only (1 Mac) */}

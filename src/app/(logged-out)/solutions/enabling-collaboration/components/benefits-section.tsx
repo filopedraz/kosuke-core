@@ -11,21 +11,21 @@ import { ReactNode } from 'react';
 const benefits = [
   {
     icon: Users,
-    title: 'No Code Knowledge Required',
+    title: 'Enabling real collaboration',
     description:
-      'Product managers, designers, and founders can build features using natural language. No programming experience needed.',
+      'Product teams can finally build their own ideas instead of just writing tickets for them. This creates a true, high-velocity collaboration loop.',
   },
   {
     icon: Rocket,
-    title: 'Move Fast Independently',
+    title: 'Developers as a guardrail',
     description:
-      'Ship features without waiting for developer bandwidth. Your team can iterate quickly while engineers focus on complex problems.',
+      "Every vibe coded pull request is reviewed by your developers, ensuring all code meets your standards. This frees your engineers from pixel-pushing and lets them focus on the complex problems that AI can't solve.",
   },
   {
     icon: Zap,
-    title: 'Save on Expensive AI Platforms',
+    title: 'No vendor lock-in',
     description:
-      'Stop burning credits on AI coding tools. Ship directly to your own repository with no vendor lock-in or usage limits.',
+      'You are never locked in. Both your code and runtime stay in your own infrastructure. We only help you build fasteron top of it.',
   },
 ];
 
@@ -56,12 +56,15 @@ export function BenefitsSection() {
             transition={{ duration: 0.6 }}
           >
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-3 sm:mb-4 font-mono">
-              Empower Your Entire{' '}
-              <AuroraText colors={['#10B981', '#22c55e', '#34D399', '#059669']}>Team</AuroraText>
+              <AuroraText colors={['#10B981', '#22c55e', '#34D399', '#059669']}>Break</AuroraText>{' '}
+              down{' '}
+              <AuroraText colors={['#10B981', '#22c55e', '#34D399', '#059669']}>
+                technical
+              </AuroraText>{' '}
+              barriers
             </h2>
             <p className="text-base sm:text-lg text-muted-foreground max-w-3xl mx-auto font-sans px-2">
-              Break down barriers between technical and non-technical team members. Everyone
-              contributes to shipping great products.
+              Every person in your organization contributes to shipping great products.
             </p>
           </motion.div>
 

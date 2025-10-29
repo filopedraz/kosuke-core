@@ -4,28 +4,28 @@ import { AuroraText } from '@/components/ui/aurora-text';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { MagicCard } from '@/components/ui/magic-card';
 import { motion } from 'framer-motion';
-import { Database, Lock, Server } from 'lucide-react';
+import { LayoutDashboard, Lock, Plug } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { ReactNode } from 'react';
 
 const benefits = [
   {
-    icon: Database,
-    title: 'Your Code Stays With You',
+    icon: LayoutDashboard,
+    title: 'Flexible setup',
     description:
-      'No data ever leaves your infrastructure. Your code, your models, your intellectual property—all under your complete control.',
+      'Our engineers will analyze your existing environment, security protocols, and compliance needs to design a deployment that integrates seamlessly with your infrastructure.',
+  },
+  {
+    icon: Plug,
+    title: 'Plug-and-play',
+    description:
+      "Forget about provisioning and managing complex GPU fleets. We provide a pre-configured, high-performance Mac Studio that's plug-and-play, getting your team up and running in hours.",
   },
   {
     icon: Lock,
-    title: 'Complete Data Control',
+    title: 'Isolated environment',
     description:
-      'Meet the strictest compliance requirements. GDPR, SOC 2, HIPAA—your data never touches third-party servers.',
-  },
-  {
-    icon: Server,
-    title: 'Air-Gapped Deployments',
-    description:
-      'Deploy in completely isolated environments. Perfect for defense, finance, and highly regulated industries.',
+      "The entire system runs inside your network. Your proprietary code, your team's prompts, and all sensitive data never touch the public cloud, ensuring total privacy and security.",
   },
 ];
 
@@ -56,14 +56,13 @@ export function BenefitsSection() {
             transition={{ duration: 0.6 }}
           >
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-3 sm:mb-4 font-mono">
-              Enterprise-Grade{' '}
-              <AuroraText colors={['#10B981', '#22c55e', '#34D399', '#059669']}>
-                Security
-              </AuroraText>
+              The power of{' '}
+              <AuroraText colors={['#10B981', '#22c55e', '#34D399', '#059669']}>AI</AuroraText>{' '}
+              secured in your{' '}
+              <AuroraText colors={['#10B981', '#22c55e', '#34D399', '#059669']}>network</AuroraText>
             </h2>
             <p className="text-base sm:text-lg text-muted-foreground max-w-3xl mx-auto font-sans px-2">
-              Deploy AI-powered development tools without compromising on security, compliance, or
-              control.
+              Bring AI to your organization without compromising on security and compliance.
             </p>
           </motion.div>
 

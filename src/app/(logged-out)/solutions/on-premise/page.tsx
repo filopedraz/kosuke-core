@@ -43,8 +43,8 @@ export default function OnPremisePage() {
         }}
       />
       <HeroSection />
-      <BenefitsSection />
       <HowItWorksSection />
+      <BenefitsSection />
       <CTASection />
       <FAQSection />
     </>

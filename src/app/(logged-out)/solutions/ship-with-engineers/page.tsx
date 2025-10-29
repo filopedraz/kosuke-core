@@ -43,8 +43,8 @@ export default function ShipWithEngineersPage() {
         }}
       />
       <HeroSection />
-      <BenefitsSection />
       <HowItWorksSection />
+      <BenefitsSection />
       <CTASection />
       <FAQSection />
     </>

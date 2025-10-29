@@ -66,24 +66,20 @@ type NavbarProps = {
 
 const solutions = [
   {
-    title: 'Ship with Engineers',
+    title: 'Kosuke Platform',
+    href: '/',
+  },
+  {
+    title: 'Kosuke Engineers',
     href: '/solutions/ship-with-engineers',
-    description: 'Empower your engineering team to ship faster with AI-powered tools.',
   },
   {
-    title: 'Enabling Collaboration',
+    title: 'Kosuke for Teams',
     href: '/solutions/enabling-collaboration',
-    description: 'Break down silos and enable seamless cross-functional collaboration.',
   },
   {
-    title: 'Startup Program',
-    href: '/solutions/startup-program',
-    description: 'Ship your MVP for free with our startup program.',
-  },
-  {
-    title: 'On Premise',
+    title: 'Kosuke On-Premise',
     href: '/solutions/on-premise',
-    description: 'Deploy Kosuke in your own infrastructure with complete data control.',
   },
 ];
 

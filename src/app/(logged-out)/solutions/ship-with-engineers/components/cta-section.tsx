@@ -44,12 +44,11 @@ export function CTASection() {
             </div>
 
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-3 sm:mb-4 font-mono">
-              Ready to Ship Real Products?
+              Ready to Ship your Product?
             </h2>
 
             <p className="text-base sm:text-lg text-muted-foreground mb-8 sm:mb-12 font-sans px-2 max-w-2xl mx-auto">
-              Schedule a call with our team. We&apos;ll discuss your project, provide a transparent
-              estimate, and show you how we can ship your product in weeks, not months.
+              Schedule a call with us. We&apos;ll discuss your project and provide the estimate.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">

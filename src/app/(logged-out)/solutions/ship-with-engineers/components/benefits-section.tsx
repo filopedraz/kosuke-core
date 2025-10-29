@@ -4,7 +4,7 @@ import { AuroraText } from '@/components/ui/aurora-text';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { MagicCard } from '@/components/ui/magic-card';
 import { motion } from 'framer-motion';
-import { CheckCircle, Shield, Users } from 'lucide-react';
+import { DollarSign, Unlock, Users } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { ReactNode } from 'react';
 
@@ -13,19 +13,19 @@ const benefits = [
     icon: Users,
     title: 'Dedicated Senior Engineers',
     description:
-      'Work with experienced engineers who understand production systems, not AI chatbots that hallucinate code.',
+      'Build the right foundation for your product with our experienced engineers Avoid broken prototypes that need to be rewritten in six months.',
   },
   {
-    icon: Shield,
-    title: 'Production-Ready Code',
+    icon: DollarSign,
+    title: 'High quality for a platform price',
     description:
-      'Ship solid products built to scale, not broken prototypes that fall apart under real usage.',
+      "Our engineers are experts at leveraging AI efficiently. This blend of human expertise and AI-driven speed allows us to deliver software at a price you'd normally only pay for a tool.",
   },
   {
-    icon: CheckCircle,
-    title: 'Real Accountability',
+    icon: Unlock,
+    title: 'No vendor lock-in',
     description:
-      'Engineers you can call, not black-box AI systems. We fix bugs, meet deadlines, and stand by our work.',
+      'You are never locked in. You can download your complete code repository at any time and continue development independently.',
   },
 ];
 
@@ -56,14 +56,14 @@ export function BenefitsSection() {
             transition={{ duration: 0.6 }}
           >
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-3 sm:mb-4 font-mono">
-              Benefits of Shipping with{' '}
-              <AuroraText colors={['#10B981', '#22c55e', '#34D399', '#059669']}>
-                Kosuke
-              </AuroraText>{' '}
+              Build{' '}
+              <AuroraText colors={['#10B981', '#22c55e', '#34D399', '#059669']}>fast</AuroraText>{' '}
+              and{' '}
+              <AuroraText colors={['#10B981', '#22c55e', '#34D399', '#059669']}>cheap</AuroraText>{' '}
+              with Kosuke Team
             </h2>
             <p className="text-base sm:text-lg text-muted-foreground max-w-3xl mx-auto font-sans px-2">
-              Stop wasting time debugging AI-generated code. Get professional development with human
-              expertise and accountability.
+              Get the expertise of senior engineers at the price of a vibe coding platform.
             </p>
           </motion.div>
 

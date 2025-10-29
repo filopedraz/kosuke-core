@@ -171,16 +171,20 @@ export function HeroSection() {
 
               {/* Main Headline */}
               <h1 className="text-3xl sm:text-[2rem] md:text-4xl lg:text-6xl sm:leading-tight font-bold leading-tight tracking-tight">
-                Enabling{' '}
-                <AuroraText colors={['#10B981', '#22c55e', '#34D399', '#059669']}>REAL</AuroraText>{' '}
-                Collaboration
+                Bridge the gap between{' '}
+                <AuroraText colors={['#10B981', '#22c55e', '#34D399', '#059669']}>
+                  Product
+                </AuroraText>{' '}
+                and{' '}
+                <AuroraText colors={['#10B981', '#22c55e', '#34D399', '#059669']}>
+                  Engineering
+                </AuroraText>
               </h1>
 
               {/* Subheadline */}
               <p className="text-base md:text-lg lg:text-xl text-muted-foreground font-sans leading-relaxed">
-                Empower your entire team to ship features—no coding skills required. Non-technical
-                team members can build, iterate, and deploy while engineers maintain control and
-                quality.
+                Let your product team contribute directly with vibe coding, while your engineers
+                keep full control over the codebase
               </p>
 
               {/* CTA */}

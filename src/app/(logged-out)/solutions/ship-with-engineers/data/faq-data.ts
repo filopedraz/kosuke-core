@@ -3,7 +3,8 @@ export const faqItems = [
     id: 'item-1',
     question: 'How is this different from hiring freelancers or contractors?',
     answer:
-      'Unlike freelancers who work in isolation, our engineers integrate with your team and take full ownership. You get dedicated senior engineers who understand your product, not just task executors. Plus, we handle vetting, management, and quality control.',
+      'The initial V1 build is similar to hiring a high-end agency but at a fraction of the cost, thanks to our expertise in leveraging AI efficiently to build new software.' +
+      'Moreover, you get access to the Kosuke platform, to eventually build the next features yourself.',
   },
   {
     id: 'item-2',
@@ -15,7 +16,7 @@ export const faqItems = [
     id: 'item-3',
     question: 'How quickly can you start working on my project?',
     answer:
-      'Typically within 3-5 business days. After our initial call, we match you with engineers who have relevant experience in your tech stack, complete onboarding, and start shipping.',
+      'Typically within 3-5 business days. After our initial call, we take 1 or 2 days to provide a price and a realistic timeline. Once you accept our terms, we start working on the project right away.',
   },
   {
     id: 'item-4',
@@ -25,14 +26,8 @@ export const faqItems = [
   },
   {
     id: 'item-5',
-    question: 'How do you ensure code quality and best practices?',
+    question: 'What happens after the first version is launched?',
     answer:
-      'Every commit goes through peer review by senior engineers. We follow industry-standard practices: comprehensive testing, clean architecture, proper documentation, and scalable patterns. Your codebase will be maintainable long-term.',
-  },
-  {
-    id: 'item-6',
-    question: "What if the engineers don't work out for my project?",
-    answer:
-      "We offer flexible engagement terms. If you're not satisfied, we can switch engineers or pause the engagement. Our goal is to deliver value—if we're not, we make it right or part ways professionally.",
+      'Once the first version is launched, you can choose to build the next features with our vibe coding platform, or keep working with the same engineers. You can also choose to take your repository and leave us. You are never locked in.',
   },
 ];

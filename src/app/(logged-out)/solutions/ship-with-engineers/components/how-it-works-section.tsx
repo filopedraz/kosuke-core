@@ -2,7 +2,7 @@
 
 import { Card, CardContent } from '@/components/ui/card';
 import { motion } from 'framer-motion';
-import { DollarSign, Rocket, Search } from 'lucide-react';
+import { ArrowRight, DollarSign, Rocket, Search } from 'lucide-react';
 
 const steps = [
   {
@@ -10,21 +10,28 @@ const steps = [
     icon: Search,
     title: 'Requirements Definition',
     description:
-      'We start with a deep technical assessment of your needs. No assumptions—just clear specs and collaborative planning with our engineers.',
+      'We start with a deep technical assessment of your needs. Our engineers will help you define the scope of the project and the technical requirements.',
   },
   {
     step: 2,
     icon: DollarSign,
     title: 'Transparent Estimate',
     description:
-      'You get both: a fixed price and a realistic timeline. No hidden costs, no surprise compute bills, no vague "it depends" answers.',
+      'You get a fixed price and a realistic timeline to implement the first production-ready version of your startup.',
   },
   {
     step: 3,
     icon: Rocket,
-    title: 'Ship',
+    title: 'Ship v1',
     description:
-      'Our engineers build, test, and deploy your product. You get regular updates, working previews, and shipped features—not endless iterations.',
+      'Our engineers build, test, and deploy the v1 of your product. You get regular updates working previews along the way.',
+  },
+  {
+    step: 4,
+    icon: ArrowRight,
+    title: 'Build the Next Features',
+    description:
+      'Once v1 is launched, you choose: keep working with the same engineers, or build the next features yourself with our vibe coding platform.',
   },
 ];
 
@@ -32,7 +39,7 @@ export function HowItWorksSection() {
   return (
     <section className="py-16 md:py-32">
       <div className="container mx-auto px-8 sm:px-12 md:px-6">
-        <div className="max-w-6xl mx-auto">
+        <div className="max-w-7xl mx-auto">
           <motion.div
             className="text-center mb-12 sm:mb-16"
             initial={{ opacity: 0, y: 20 }}
@@ -44,15 +51,14 @@ export function HowItWorksSection() {
               How It Works
             </h2>
             <p className="text-base sm:text-lg text-muted-foreground max-w-3xl mx-auto font-sans px-2">
-              A straightforward process from idea to production. First showable results in{' '}
-              <span className="text-emerald-600 font-semibold">less than 10 days</span>.
+              A straightforward process to get from idea to production in weeks.
             </p>
           </motion.div>
 
           <div className="relative">
             {/* Connection line between steps - desktop only */}
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative z-10">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 relative z-10">
               {steps.map((step, index) => (
                 <motion.div
                   key={step.step}

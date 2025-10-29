@@ -27,7 +27,7 @@ export function CTASection({ onApplyClick }: CTASectionProps) {
               >
                 {/* Shine effect */}
                 <motion.div
-                  className="absolute inset-0 -top-1 -bottom-1 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+                  className="absolute inset-0 -top-1 -bottom-1 bg-linear-to-r from-transparent via-white/20 to-transparent"
                   initial={{ x: '-100%' }}
                   animate={{ x: '200%' }}
                   transition={{
@@ -47,8 +47,7 @@ export function CTASection({ onApplyClick }: CTASectionProps) {
             </h2>
 
             <p className="text-base sm:text-lg text-muted-foreground mb-8 sm:mb-12 font-sans px-2">
-              Want to use a tool that fixes what others ignore? We read every reply. <br /> Real
-              feedback shapes what we build next.
+              Get early access to the private alpha and become a Kosuke early adopter.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">

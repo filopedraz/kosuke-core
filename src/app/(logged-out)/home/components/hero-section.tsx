@@ -178,7 +178,7 @@ export function HeroSection({ onApplyClick }: HeroSectionProps) {
                   >
                     {/* Shine effect */}
                     <motion.div
-                      className="absolute inset-0 -top-1 -bottom-1 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+                      className="absolute inset-0 -top-1 -bottom-1 bg-linear-to-r from-transparent via-white/20 to-transparent"
                       initial={{ x: '-100%' }}
                       animate={{ x: '200%' }}
                       transition={{
@@ -204,8 +204,8 @@ export function HeroSection({ onApplyClick }: HeroSectionProps) {
               </h1>
 
               <p className="text-base md:text-lg lg:text-xl text-muted-foreground font-sans leading-relaxed">
-                Build your software product by chatting with AI, and connect with a real engineer
-                whenever you get stuck.
+                Build your product by chatting with AI and connecting with a real engineer whenever
+                you get stuck.
               </p>
 
               {/* CTA Button */}
@@ -235,7 +235,7 @@ export function HeroSection({ onApplyClick }: HeroSectionProps) {
               transition={{ duration: 0.6, delay: 0.4 }}
             >
               {/* Background blur effect */}
-              <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 via-transparent to-blue-500/5 rounded-2xl blur-3xl" />
+              <div className="absolute inset-0 bg-linear-to-br from-emerald-500/5 via-transparent to-blue-500/5 rounded-2xl blur-3xl" />
 
               {/* Chat Interface Container */}
               <div className="relative bg-background/80 backdrop-blur-xl border border-border/50 rounded-2xl p-4 sm:p-6 shadow-2xl h-[400px] md:h-[500px] lg:h-[550px] flex flex-col">
@@ -288,7 +288,7 @@ export function HeroSection({ onApplyClick }: HeroSectionProps) {
                     {/* Shine effect for Help Me button */}
                     {currentStep !== 'humanHelp' && (
                       <motion.div
-                        className="absolute inset-0 bg-gradient-to-r from-transparent via-emerald-300/40 to-transparent"
+                        className="absolute inset-0 bg-linear-to-r from-transparent via-emerald-300/40 to-transparent"
                         initial={{ x: '-100%' }}
                         animate={{ x: '200%' }}
                         transition={{
@@ -363,7 +363,7 @@ export function HeroSection({ onApplyClick }: HeroSectionProps) {
                           : 'Describe your project idea...'
                       }
                       disabled
-                      className={`min-h-[100px] resize-none border-0 !bg-transparent px-3 py-3 shadow-none focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 text-sm cursor-not-allowed ${
+                      className={`min-h-[100px] resize-none border-0 bg-transparent! px-3 py-3 shadow-none focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 text-sm cursor-not-allowed ${
                         currentStep === 'userTyping' || currentStep === 'userComplaintTyping'
                           ? 'opacity-100 text-foreground'
                           : 'opacity-75'

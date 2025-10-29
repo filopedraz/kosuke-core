@@ -156,19 +156,19 @@ export function HeroSection() {
 
               {/* Main Headline */}
               <h1 className="text-3xl sm:text-[2rem] md:text-4xl lg:text-6xl font-bold leading-tight sm:leading-tight tracking-tight">
-                Ship with{' '}
+                The{' '}
                 <AuroraText colors={['#10B981', '#22c55e', '#34D399', '#059669']}>
-                  Engineers
-                </AuroraText>
-                , <br />
-                at the Price of Vibe Coding.
+                  Tech Team
+                </AuroraText>{' '}
+                to Build your{' '}
+                <AuroraText colors={['#10B981', '#22c55e', '#34D399', '#059669']}>Ideas</AuroraText>
               </h1>
 
               {/* Subheadline */}
               <p className="text-base md:text-lg lg:text-xl text-muted-foreground font-sans leading-relaxed">
-                Get dedicated senior engineers building production-ready software for your startup.
-                Real accountability, transparent pricing, and shipped products—not endless
-                prototypes.
+                Get dedicated senior engineers building the first production-ready version of your
+                product. After launch, stick with our human experts or build yourself with our vibe
+                coding platform.
               </p>
 
               {/* CTA */}

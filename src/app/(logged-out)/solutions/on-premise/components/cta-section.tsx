@@ -44,12 +44,11 @@ export function CTASection() {
             </div>
 
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-3 sm:mb-4 font-mono">
-              Ready for On-Premise Deployment?
+              Ready for on-premise AI?
             </h2>
 
             <p className="text-base sm:text-lg text-muted-foreground mb-8 sm:mb-12 font-sans px-2 max-w-2xl mx-auto">
-              Talk to our enterprise team about bringing AI-powered development to your data center.
-              We&apos;ll design a custom solution for your security and compliance needs.
+              Talk to our enterprise team.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">

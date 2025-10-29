@@ -43,8 +43,8 @@ export default function EnablingCollaborationPage() {
         }}
       />
       <HeroSection />
-      <BenefitsSection />
       <HowItWorksSection />
+      <BenefitsSection />
       <CTASection />
       <FAQSection />
     </>
