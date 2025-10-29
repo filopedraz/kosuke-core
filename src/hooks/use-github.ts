@@ -8,7 +8,7 @@ import { useState } from 'react';
 
 async function fetchGitHubStatus(): Promise<GitHubInfo | null> {
   const response = await fetch('/api/auth/github/status');
-  console.log(response);
+
   if (!response.ok) {
     if (response.status === 401) {
       return null;
