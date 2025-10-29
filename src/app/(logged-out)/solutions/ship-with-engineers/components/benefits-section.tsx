@@ -46,7 +46,7 @@ export function BenefitsSection() {
 
   return (
     <section className="bg-muted/50 py-16 md:py-32 dark:bg-transparent">
-      <div className="container mx-auto px-4 sm:px-6">
+      <div className="container mx-auto px-8 sm:px-12 md:px-6">
         <div className="max-w-6xl mx-auto">
           <motion.div
             className="text-center mb-12 sm:mb-16"
@@ -67,7 +67,7 @@ export function BenefitsSection() {
             </p>
           </motion.div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 *:text-center">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 *:text-center">
             {benefits.map((benefit, index) => (
               <motion.div
                 key={benefit.title}

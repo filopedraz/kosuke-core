@@ -303,7 +303,10 @@ export default function Navbar({
                                   <Link
                                     key={solution.href}
                                     href={solution.href}
-                                    onClick={() => setMobileMenuOpen(false)}
+                                    onClick={() => {
+                                      setSolutionsOpen(false);
+                                      setMobileMenuOpen(false);
+                                    }}
                                     className="text-base font-normal text-muted-foreground transition-colors hover:text-foreground"
                                   >
                                     {solution.title}
