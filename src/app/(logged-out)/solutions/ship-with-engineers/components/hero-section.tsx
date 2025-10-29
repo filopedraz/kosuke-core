@@ -166,9 +166,9 @@ export function HeroSection() {
 
               {/* Subheadline */}
               <p className="text-base sm:text-lg lg:text-xl text-muted-foreground font-sans leading-relaxed">
-                Get dedicated senior engineers building production-ready software for your startup.
-                Real accountability, transparent pricing, and shipped products—not endless
-                prototypes.
+                Get dedicated senior engineers building the first production-ready version of your
+                startup. Once v1 is launched, you choose: build the next features with vibe coding,
+                or keep working with the same engineers.
               </p>
 
               {/* CTA */}

@@ -16,8 +16,8 @@ export default function ShipWithEngineersPage() {
   return (
     <>
       <HeroSection />
-      <BenefitsSection />
       <HowItWorksSection />
+      <BenefitsSection />
       <CTASection />
       <FAQSection />
     </>

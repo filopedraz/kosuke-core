@@ -24,7 +24,7 @@ const faqItems = [
     id: 'item-3',
     question: 'How quickly can you start working on my project?',
     answer:
-      'Typically within 3-5 business days. After our initial call, we match you with engineers who have relevant experience in your tech stack, complete onboarding, and start shipping.',
+      'Typically within 3-5 business days. After our initial call, we take 1 or 2 days to provide a price and a realistic timeline. Once you accept our terms, we start working on the project right away.',
   },
   {
     id: 'item-4',
@@ -40,9 +40,9 @@ const faqItems = [
   },
   {
     id: 'item-6',
-    question: "What if the engineers don't work out for my project?",
+    question: 'What happens after the first version is launched?',
     answer:
-      "We offer flexible engagement terms. If you're not satisfied, we can switch engineers or pause the engagement. Our goal is to deliver value—if we're not, we make it right or part ways professionally.",
+      'Once the first version is launched, you can choose to build the next features with our vibe coding platform, or keep working with the same engineers. You are never locked in.',
   },
 ];
 

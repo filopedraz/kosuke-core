@@ -1,7 +1,6 @@
 'use client';
 
 import { CoreFeaturesSection } from '@/app/(logged-out)/home/components/core-features-section';
-import { CoreValuesSection } from '@/app/(logged-out)/home/components/core-values-section';
 import { CTASection } from '@/app/(logged-out)/home/components/cta-section';
 import { FAQSection } from '@/app/(logged-out)/home/components/faq-section';
 import { FeaturesBentoGrid } from '@/app/(logged-out)/home/components/features-bento-grid';
@@ -44,14 +43,11 @@ export function Home() {
       {/* Bento Grid Features */}
       <FeaturesBentoGrid />
 
-      {/* Reviews Section */}
-      <ReviewsMarquee />
-
-      {/* Core Values Section */}
-      <CoreValuesSection />
-
       {/* Private Alpha CTA */}
       <CTASection onApplyClick={() => setIsModalOpen(true)} />
+
+      {/* Reviews Section */}
+      <ReviewsMarquee />
 
       {/* FAQ Section */}
       <FAQSection />
