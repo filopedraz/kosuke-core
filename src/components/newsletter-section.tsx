@@ -66,7 +66,7 @@ export function NewsletterSection() {
   };
 
   return (
-    <section className="w-full py-12 sm:py-20 flex flex-col items-center justify-center px-4">
+    <section className="w-full py-12 sm:py-16 flex flex-col items-center justify-center px-4">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         whileInView={{ opacity: 1, y: 0 }}
