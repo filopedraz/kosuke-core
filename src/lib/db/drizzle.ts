@@ -16,7 +16,7 @@ const globalForPg = globalThis as unknown as {
   pg: ReturnType<typeof postgres> | undefined;
 };
 
-export const client = globalForPg.pg || postgres(process.env.POSTGRES_URL, { max: 10 });
+const client = globalForPg.pg || postgres(process.env.POSTGRES_URL, { max: 10 });
 
 // In development, preserve the connection between hot reloads
 if (process.env.NODE_ENV !== 'production') {

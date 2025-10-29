@@ -18,13 +18,3 @@ export function toDashCase(str: string): string {
 export function isValidRepoName(name: string): boolean {
   return /^[a-zA-Z0-9._-]+$/.test(name) && name.length > 0 && name.length <= 100;
 }
-
-/**
- * Formats repository name for display
- */
-export function formatRepoName(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9-]/g, '-')
-    .replace(/-+/g, '-');
-}

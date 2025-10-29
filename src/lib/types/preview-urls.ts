@@ -14,10 +14,3 @@ export interface PreviewUrlsResponse {
   preview_urls: PreviewUrl[];
   total_count: number;
 }
-
-export interface PreviewUrlStats {
-  total_previews: number;
-  active_previews: number;
-  ssl_enabled_count: number;
-  container_status_count: Record<string, number>;
-}

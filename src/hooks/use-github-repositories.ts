@@ -18,25 +18,3 @@ export function useGitHubRepositories(userId: string) {
     enabled: !!userId,
   });
 }
-
-export function useGitHubStatus(userId: string) {
-  return useQuery({
-    queryKey: ['github-status', userId],
-    queryFn: async () => {
-      const response = await fetch('/api/auth/github/status');
-      if (!response.ok) {
-        throw new Error('Failed to fetch GitHub status');
-      }
-      const data: ApiResponse<{
-        connected: boolean;
-        githubUsername?: string;
-        githubId?: string;
-        connectedAt?: string;
-      }> = await response.json();
-      return data.data;
-    },
-    staleTime: 1000 * 60 * 2, // 2 minutes
-    retry: 2,
-    enabled: !!userId,
-  });
-}

@@ -94,7 +94,7 @@ export function SchemaViewer({ projectId, sessionId }: SchemaViewerProps) {
   );
 }
 
-export function SchemaViewerSkeleton() {
+const SchemaViewerSkeleton = () => {
   return (
     <div className="space-y-4">
       {Array.from({ length: 3 }).map((_, index) => (
