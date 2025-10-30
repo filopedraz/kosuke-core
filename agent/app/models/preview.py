@@ -25,24 +25,3 @@ class StartPreviewRequest(BaseModel):
     project_id: int
     session_id: str
     env_vars: dict[str, str] = {}
-
-
-class PullResult(BaseModel):
-    changed: bool
-    commits_pulled: int
-    message: str
-    previous_commit: str | None = None
-    new_commit: str | None = None
-    branch_name: str | None = None
-
-
-class PullRequest(BaseModel):
-    project_id: int
-    session_id: str
-    force: bool = False  # Force pull (ignore cache)
-
-
-class PullResponse(BaseModel):
-    success: bool
-    pull_request: PullResult
-    container_restarted: bool = False

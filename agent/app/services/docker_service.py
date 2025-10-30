@@ -104,24 +104,6 @@ class DockerService:
             return f"http://localhost:{int(mapping[0]['HostPort'])}"
         return None
 
-    async def is_container_running(self, project_id: int, session_id: str) -> bool:
-        container_name = self._get_container_name(project_id, session_id)
-        container = await self._get_container_by_name(container_name)
-        return bool(container and container.status == "running")
-
-    async def restart_preview_container(self, project_id: int, session_id: str) -> None:
-        container_name = self._get_container_name(project_id, session_id)
-        container = await self._get_container_by_name(container_name)
-        if not container:
-            logger.warning(f"Container not found for project {project_id} session {session_id}")
-            return
-        loop = asyncio.get_event_loop()
-        try:
-            await asyncio.wait_for(loop.run_in_executor(None, container.restart), timeout=30.0)
-        except Exception as e:
-            logger.error(f"Error restarting container for project {project_id} session {session_id}: {e}")
-            raise
-
     async def get_project_preview_urls(self, project_id: int) -> dict:
         try:
             name_prefix = f"{settings.preview_container_name_prefix}{project_id}-"

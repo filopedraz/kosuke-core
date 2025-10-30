@@ -86,7 +86,12 @@ export async function GET(
         const envVars = await getProjectEnvironmentVariables(projectId);
 
         // Start preview
-        const url = await dockerService.startPreview(projectId, sessionId, envVars);
+        const url = await dockerService.startPreview(
+          projectId,
+          sessionId,
+          envVars,
+          userId
+        );
 
         // Get updated status
         const updatedStatus = await dockerService.getPreviewStatus(projectId, sessionId);
@@ -200,7 +205,12 @@ export async function POST(
 
     // Start preview using singleton DockerService instance
     const dockerService = getDockerService();
-    const url = await dockerService.startPreview(projectId, sessionId, envVars);
+    const url = await dockerService.startPreview(
+      projectId,
+      sessionId,
+      envVars,
+      userId
+    );
 
     // Get status to check if responding
     const status = await dockerService.getPreviewStatus(projectId, sessionId);

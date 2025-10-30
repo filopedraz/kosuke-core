@@ -325,7 +325,8 @@ class DockerService {
   async startPreview(
     projectId: number,
     sessionId: string,
-    envVars: Record<string, string> = {}
+    envVars: Record<string, string> = {},
+    userId: string
   ): Promise<string> {
     const containerName = this.getContainerName(projectId, sessionId);
     console.log(
@@ -342,7 +343,7 @@ class DockerService {
     }
 
     // Ensure session directory exists (create if needed)
-    await sessionManager.ensureSessionEnvironment(projectId, sessionId);
+    await sessionManager.ensureSessionEnvironment(projectId, sessionId, userId);
 
     // Reuse existing running container if possible
     const existingUrl = await this.getExistingContainerUrlOrRemove(containerName);
@@ -432,6 +433,41 @@ class DockerService {
     } catch (error) {
       console.log(`Failed to remove container ${containerName}:`, error);
       // Ignore removal errors
+    }
+  }
+
+  /**
+   * Check if a container is running for a session
+   */
+  async isContainerRunning(projectId: number, sessionId: string): Promise<boolean> {
+    const containerName = this.getContainerName(projectId, sessionId);
+    const container = await this.getContainerByName(containerName);
+    return Boolean(container && container.State?.Running);
+  }
+
+  /**
+   * Restart a preview container for a session
+   */
+  async restartPreviewContainer(projectId: number, sessionId: string): Promise<void> {
+    const containerName = this.getContainerName(projectId, sessionId);
+    console.log(`Restarting preview container ${containerName}`);
+
+    const container = await this.getContainerByName(containerName);
+    if (!container) {
+      console.warn(`Container ${containerName} not found, cannot restart`);
+      throw new Error(`Container not found: ${containerName}`);
+    }
+
+    const client = await this.ensureClient();
+
+    try {
+      await client.containerRestart(containerName);
+      console.log(`✅ Container ${containerName} restarted successfully`);
+    } catch (error) {
+      console.error(`❌ Failed to restart container ${containerName}:`, error);
+      throw new Error(
+        `Failed to restart container: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 

@@ -13,11 +13,6 @@ export interface GitUpdateStatus {
   branch_name?: string;
 }
 
-// Pull Operation Types
-export interface PullRequest {
-  force?: boolean;
-}
-
 export interface PullResponse {
   success: boolean;
   pullResult: {
