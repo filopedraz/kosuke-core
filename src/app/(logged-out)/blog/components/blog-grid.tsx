@@ -4,7 +4,7 @@ import { format } from 'date-fns';
 import { Clock } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 
 import { Button } from '@/components/ui/button';
 import type { BlogPost } from '@/lib/types/ghost';
@@ -16,20 +16,13 @@ type BlogGridProps = {
     pages: number;
     total: number;
   };
-  currentTag?: string;
 };
 
-export function BlogGrid({ posts, pagination, currentTag }: BlogGridProps) {
+export function BlogGrid({ posts, pagination }: BlogGridProps) {
   const router = useRouter();
-  const searchParams = useSearchParams();
 
   const handlePageChange = (newPage: number) => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set('page', newPage.toString());
-    if (currentTag) {
-      params.set('tag', currentTag);
-    }
-    router.push(`/blog?${params.toString()}`);
+    router.push(`/blog?page=${newPage}`);
   };
 
   if (posts.length === 0) {
@@ -62,11 +55,6 @@ export function BlogGrid({ posts, pagination, currentTag }: BlogGridProps) {
               </div>
             )}
             <div className="p-6">
-              {post.primaryTag && (
-                <span className="inline-block px-3 py-1 text-xs font-medium bg-primary/10 text-primary rounded-full mb-3">
-                  {post.primaryTag.name}
-                </span>
-              )}
               <h2 className="text-xl font-semibold mb-2 group-hover:text-primary transition-colors line-clamp-2">
                 {post.title}
               </h2>
