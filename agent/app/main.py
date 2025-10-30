@@ -7,7 +7,6 @@ from app.api.routes import branding
 from app.api.routes import database
 from app.api.routes import health
 from app.api.routes import revert
-from app.services.docker_service import DockerService
 
 # Configure logging for the entire application
 logging.basicConfig(
@@ -17,18 +16,6 @@ logging.basicConfig(
         logging.StreamHandler()  # Output to stdout for Docker logs
     ],
 )
-
-
-async def startup_tasks():
-    """Startup tasks to run when the application starts"""
-    logger = logging.getLogger(__name__)
-    try:
-        # Initialize DockerService to ensure preview image is pre-pulled
-        _docker_service = DockerService()
-        logger.info("✅ DockerService initialized and preview image pre-pull started")
-    except Exception as e:
-        logger.error(f"❌ Failed to initialize DockerService during startup: {e}")
-        # Don't fail startup if Docker service init fails - let individual requests handle it
 
 
 app = FastAPI(title="Agentic Coding Pipeline", description="AI-powered code generation microservice", version="1.0.0")
@@ -50,13 +37,6 @@ app.include_router(revert.router, prefix="/api", tags=["revert"])
 
 # Also include root endpoint
 app.include_router(health.router, tags=["root"])
-
-
-# Startup event
-@app.on_event("startup")
-async def startup_event():
-    """Run startup tasks when the application starts"""
-    await startup_tasks()
 
 
 if __name__ == "__main__":
