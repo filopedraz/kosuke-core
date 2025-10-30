@@ -202,7 +202,7 @@ export default function Navbar({
 
               {/* Desktop Navigation */}
               {showNavigation && (
-                <div className="hidden min-[900px]:flex items-center gap-6">
+                <div className="hidden min-[900px]:flex items-center gap-2">
                   <Link href="/customers">
                     <Button variant="ghost" size="sm">
                       Customers
