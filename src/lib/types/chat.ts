@@ -1,5 +1,5 @@
 // Tool Input Types
-export type ToolInput = Record<string, unknown>;
+type ToolInput = Record<string, unknown>;
 
 // Assistant Response Block Types
 export type AssistantBlock =
@@ -34,26 +34,6 @@ export interface ChatMessage {
 
 // Error Types
 export type ErrorType = 'timeout' | 'parsing' | 'processing' | 'unknown';
-
-// User Types for Chat
-export interface ChatUser {
-  id: number;
-  role: string;
-  name: string | null;
-  email: string;
-  imageUrl: string | null;
-  marketingEmails: boolean | null;
-  createdAt: Date;
-  updatedAt: Date;
-  deletedAt: Date | null;
-}
-
-// Token Usage Types
-export interface TokenUsageMetrics {
-  tokensSent: number;
-  tokensReceived: number;
-  contextSize: number;
-}
 
 // Message Options for Sending
 export interface MessageOptions {
@@ -160,36 +140,10 @@ export interface AssistantResponse {
   status: 'streaming' | 'completed';
 }
 
-// Streaming Types
-export interface StreamingState {
-  isStreaming: boolean;
-  streamingContentBlocks: ContentBlock[];
-  streamingAssistantMessageId: number | null;
-  streamAbortController: AbortController | null;
-}
-
 // File Upload Types
 export interface AttachedImage {
   file: File;
   previewUrl: string;
-}
-
-// Chat State Types
-export interface ChatState {
-  isError: boolean;
-  errorMessage: string;
-  errorType: ErrorType;
-  lastUserMessage: string;
-  lastMessageOptions: MessageOptions | null;
-  isRegenerating: boolean;
-  tokenUsage: TokenUsageMetrics;
-}
-
-// API Error Response Types
-export interface ChatApiError {
-  error: string;
-  errorType?: ErrorType;
-  code?: string;
 }
 
 // Streaming Event Types (from Python agent)

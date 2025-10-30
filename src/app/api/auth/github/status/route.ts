@@ -11,7 +11,6 @@ import { NextRequest, NextResponse } from 'next/server';
  * Get GitHub account status for the authenticated user
  * Since all users sign up via GitHub, this should always return connected: true
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function GET(_: NextRequest) {
   try {
     const authResult = await auth();

@@ -6,7 +6,7 @@ import path from 'path';
  * File system operations for project management
  */
 
-export interface FileInfo {
+interface FileInfo {
   name: string;
   type: 'file' | 'directory';
   path: string;
@@ -37,65 +37,11 @@ export async function fileExists(filePath: string): Promise<boolean> {
 /**
  * Read a file's content
  */
-export async function readFile(filePath: string): Promise<string> {
+async function readFile(filePath: string): Promise<string> {
   try {
     return await fs.readFile(filePath, 'utf-8');
   } catch (error) {
     console.error(`Failed to read file ${filePath}:`, error);
-    throw error;
-  }
-}
-
-/**
- * Create a file with the given content
- */
-export async function createFile(filePath: string, content: string): Promise<void> {
-  try {
-    // Ensure the directory exists
-    const dir = path.dirname(filePath);
-    await fs.mkdir(dir, { recursive: true });
-    await fs.writeFile(filePath, content, 'utf-8');
-  } catch (error) {
-    console.error(`Failed to create file ${filePath}:`, error);
-    throw error;
-  }
-}
-
-/**
- * Update a file's content
- */
-export async function updateFile(filePath: string, content: string): Promise<void> {
-  try {
-    // Ensure the directory exists
-    const dir = path.dirname(filePath);
-    await fs.mkdir(dir, { recursive: true });
-    await fs.writeFile(filePath, content, 'utf-8');
-  } catch (error) {
-    console.error(`Failed to update file ${filePath}:`, error);
-    throw error;
-  }
-}
-
-/**
- * Delete a file
- */
-export async function deleteFile(filePath: string): Promise<void> {
-  try {
-    await fs.unlink(filePath);
-  } catch (error) {
-    console.error(`Failed to delete file ${filePath}:`, error);
-    throw error;
-  }
-}
-
-/**
- * Create a directory
- */
-export async function createDir(dirPath: string): Promise<void> {
-  try {
-    await fs.mkdir(dirPath, { recursive: true });
-  } catch (error) {
-    console.error(`Failed to create directory ${dirPath}:`, error);
     throw error;
   }
 }
@@ -108,18 +54,6 @@ export async function deleteDir(dirPath: string): Promise<void> {
     await fs.rm(dirPath, { recursive: true, force: true });
   } catch (error) {
     console.error(`Failed to delete directory ${dirPath}:`, error);
-    throw error;
-  }
-}
-
-/**
- * List files in a directory
- */
-export async function listFiles(dirPath: string): Promise<string[]> {
-  try {
-    return await fs.readdir(dirPath);
-  } catch (error) {
-    console.error(`Failed to list files in directory ${dirPath}:`, error);
     throw error;
   }
 }

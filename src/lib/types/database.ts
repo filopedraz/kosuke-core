@@ -1,4 +1,4 @@
-export interface Column {
+interface Column {
   name: string;
   type: string;
   nullable: boolean;
@@ -6,7 +6,7 @@ export interface Column {
   foreign_key?: string;
 }
 
-export interface TableSchema {
+interface TableSchema {
   name: string;
   columns: Column[];
   row_count: number;

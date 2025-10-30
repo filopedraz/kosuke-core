@@ -10,7 +10,6 @@ import type { ChatSession, UseChatSidebarOptions, UseChatSidebarReturn } from '@
 
 export function useChatSidebar({
   projectId,
-  activeChatSessionId,
   onChatSessionChange,
 }: UseChatSidebarOptions): UseChatSidebarReturn {
   // State

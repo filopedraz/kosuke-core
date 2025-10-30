@@ -53,7 +53,6 @@ export default function ChatSidebar({
     isCreating,
   } = useChatSidebar({
     projectId,
-    activeChatSessionId,
     onChatSessionChange,
   });
 

@@ -73,17 +73,9 @@ export interface CreatePullRequestResponse {
   success: boolean;
 }
 
-// GitHub branch information
-export interface GitHubBranch {
-  name: string;
-  commit_sha: string;
-  is_default: boolean;
-}
-
 // Chat Sidebar Hook Types
 export interface UseChatSidebarOptions {
   projectId: number;
-  activeChatSessionId: number | null;
   onChatSessionChange: (sessionId: number) => void;
 }
 

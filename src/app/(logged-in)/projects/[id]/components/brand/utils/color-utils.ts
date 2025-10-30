@@ -1,7 +1,7 @@
 import type { ColorVariable as BaseColorVariable } from '@/lib/types/branding';
 
 // Extend the base ColorVariable type to make scope optional for backward compatibility
-export interface ColorVariable extends Omit<BaseColorVariable, 'scope'> {
+ interface ColorVariable extends Omit<BaseColorVariable, 'scope'> {
   scope?: 'root' | 'dark' | 'light' | 'unknown';
   [key: string]: string | undefined;
 }
