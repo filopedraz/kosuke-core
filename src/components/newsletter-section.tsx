@@ -77,8 +77,8 @@ export function NewsletterSection() {
         <div className="text-center space-y-6">
           {/* Minimal Header */}
           <div className="space-y-2">
-            <h2 className="text-xl sm:text-2xl font-bold font-mono">Stay in the Loop</h2>
-            <p className="text-sm text-muted-foreground font-sans">
+            <h2 className="text-xl sm:text-2xl font-bold">Stay in the Loop</h2>
+            <p className="text-sm text-muted-foreground">
               Get updates on new features and product news
             </p>
           </div>
@@ -92,14 +92,14 @@ export function NewsletterSection() {
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 disabled={isSubmitting}
-                className="flex-1 border-0 shadow-none bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 h-9 px-4 font-mono text-sm placeholder:text-muted-foreground/50"
+                className="flex-1 border-0 shadow-none bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 h-9 px-4 text-sm placeholder:text-muted-foreground/50"
                 required
               />
               <Button
                 type="submit"
                 disabled={isSubmitting}
                 size="sm"
-                className="h-9 px-4 font-mono text-xs"
+                className="h-9 px-4 text-xs"
                 variant="default"
               >
                 {isSubmitting ? (
@@ -115,9 +115,7 @@ export function NewsletterSection() {
           </form>
 
           {/* Privacy Note */}
-          <p className="text-xs text-muted-foreground/60 font-sans">
-            No spam. Unsubscribe anytime.
-          </p>
+          <p className="text-xs text-muted-foreground/60">No spam. Unsubscribe anytime.</p>
         </div>
       </motion.div>
     </section>

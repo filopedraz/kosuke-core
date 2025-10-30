@@ -22,11 +22,11 @@ export default async function CustomersPage() {
     <div className="w-full min-h-screen bg-background">
       {/* Hero Section */}
       <section className="w-full px-6 sm:px-8 md:px-16 lg:px-24 py-16 md:py-24 max-w-screen-2xl mx-auto">
-        <div className="max-w-3xl">
+        <div>
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6">
             Trusted by innovative teams
           </h1>
-          <p className="text-lg md:text-xl text-muted-foreground">
+          <p className="text-lg md:text-xl text-muted-foreground max-w-3xl">
             See how leading companies are using Kosuke to transform their development workflow and
             ship products faster than ever before.
           </p>

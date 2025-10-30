@@ -23,7 +23,7 @@ export function CTASection({ onApplyClick }: CTASectionProps) {
             <div className="mb-6 sm:mb-8">
               <Badge
                 variant="outline"
-                className="px-2 sm:px-3 py-1 text-xs font-mono bg-emerald-500/10 border-emerald-500/20 text-emerald-600 hover:bg-emerald-500/20 hover:border-emerald-500/40 transition-all duration-300 cursor-default relative overflow-hidden"
+                className="px-2 sm:px-3 py-1 text-xs bg-emerald-500/10 border-emerald-500/20 text-emerald-600 hover:bg-emerald-500/20 hover:border-emerald-500/40 transition-all duration-300 cursor-default relative overflow-hidden"
               >
                 {/* Shine effect */}
                 <motion.div
@@ -42,7 +42,7 @@ export function CTASection({ onApplyClick }: CTASectionProps) {
               </Badge>
             </div>
 
-            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-3 sm:mb-4 font-mono">
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-3 sm:mb-4">
               Join the Private Alpha
             </h2>
 
@@ -54,7 +54,7 @@ export function CTASection({ onApplyClick }: CTASectionProps) {
               <Button
                 size="lg"
                 variant="outline"
-                className="w-full sm:w-auto px-6 sm:px-8 py-3 font-mono"
+                className="w-full sm:w-auto px-6 sm:px-8 py-3"
                 onClick={onApplyClick}
               >
                 <Code2 className="mr-2 h-4 w-4" />

@@ -33,7 +33,7 @@ export function HeroSection() {
               >
                 <Badge
                   variant="outline"
-                  className="px-2 sm:px-3 py-1 text-xs font-mono bg-emerald-500/10 border-emerald-500/20 text-emerald-600 hover:bg-emerald-500/20 hover:border-emerald-500/40 transition-all duration-300 cursor-default relative overflow-hidden"
+                  className="px-2 sm:px-3 py-1 text-xs  bg-emerald-500/10 border-emerald-500/20 text-emerald-600 hover:bg-emerald-500/20 hover:border-emerald-500/40 transition-all duration-300 cursor-default relative overflow-hidden"
                 >
                   <motion.div
                     className="absolute inset-0 -top-1 -bottom-1 bg-linear-to-r from-transparent via-white/20 to-transparent"
@@ -107,7 +107,7 @@ export function HeroSection() {
               >
                 <Button
                   size="lg"
-                  className="w-full sm:w-auto px-6 sm:px-8 py-3 font-mono bg-primary hover:bg-primary/90"
+                  className="w-full sm:w-auto px-6 sm:px-8 py-3  bg-primary hover:bg-primary/90"
                   onClick={handleScheduleCall}
                 >
                   <Calendar className="mr-2 h-4 w-4" />

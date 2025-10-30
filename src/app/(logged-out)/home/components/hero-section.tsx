@@ -174,7 +174,7 @@ export function HeroSection({ onApplyClick }: HeroSectionProps) {
                 <a href="/solutions/startup-program" className="inline-block">
                   <Badge
                     variant="outline"
-                    className="mb-0 sm:mb-0 px-2 sm:px-3 py-1 text-xs font-mono bg-emerald-500/10 border-emerald-500/20 text-emerald-600 hover:bg-emerald-500/30 hover:border-emerald-500/50 transition-all duration-300 cursor-pointer relative overflow-hidden"
+                    className="mb-0 sm:mb-0 px-2 sm:px-3 py-1 text-xs bg-emerald-500/10 border-emerald-500/20 text-emerald-600 hover:bg-emerald-500/30 hover:border-emerald-500/50 transition-all duration-300 cursor-pointer relative overflow-hidden"
                   >
                     {/* Shine effect */}
                     <motion.div
@@ -218,7 +218,7 @@ export function HeroSection({ onApplyClick }: HeroSectionProps) {
                 <Button
                   size="lg"
                   variant="outline"
-                  className="w-full sm:w-auto px-6 sm:px-8 py-3 font-mono"
+                  className="w-full sm:w-auto px-6 sm:px-8 py-3"
                   onClick={onApplyClick}
                 >
                   <Code2 className="mr-2 h-4 w-4" />
@@ -278,7 +278,7 @@ export function HeroSection({ onApplyClick }: HeroSectionProps) {
                   <Button
                     variant="outline"
                     size="sm"
-                    className={`font-mono text-xs relative overflow-hidden transition-all duration-300 cursor-default ${
+                    className={`text-xs relative overflow-hidden transition-all duration-300 cursor-default ${
                       currentStep === 'humanHelp'
                         ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 shadow-sm shadow-emerald-500/5'
                         : 'bg-emerald-500/20 border-emerald-500/60 text-emerald-500 shadow-lg shadow-emerald-500/25 animate-pulse'

@@ -33,7 +33,7 @@ const comparisonData = [
 
 function getValueBadge(value: 'Low' | 'Mid' | 'High', isKosuke: boolean = false) {
   const baseClasses =
-    'px-2.5 sm:px-3 md:px-3.5 py-1 rounded-full text-xs sm:text-sm font-semibold font-mono';
+    'px-2.5 sm:px-3 md:px-3.5 py-1 rounded-full text-xs sm:text-sm font-semibold ';
 
   if (value === 'Low') {
     return (
@@ -86,7 +86,7 @@ export function ComparisonSection() {
                 >
                   <Card className="bg-card/50 border-border/50">
                     <CardContent className="p-6 text-center">
-                      <h3 className="text-2xl font-bold font-mono">Lovable</h3>
+                      <h3 className="text-2xl font-bold ">Lovable</h3>
                     </CardContent>
                   </Card>
                 </motion.div>
@@ -101,7 +101,7 @@ export function ComparisonSection() {
                   <Card className="bg-linear-to-br from-emerald-500/10 to-emerald-500/5 border-emerald-500/30 shadow-lg shadow-emerald-500/10 relative overflow-hidden">
                     <div className="absolute inset-0 bg-grid-white/5 bg-size-[20px_20px]" />
                     <CardContent className="p-6 text-center relative">
-                      <h3 className="text-2xl font-bold font-mono text-emerald-600">Kosuke</h3>
+                      <h3 className="text-2xl font-bold  text-emerald-600">Kosuke</h3>
                     </CardContent>
                   </Card>
                 </motion.div>
@@ -115,7 +115,7 @@ export function ComparisonSection() {
                 >
                   <Card className="bg-card/50 border-border/50">
                     <CardContent className="p-6 text-center">
-                      <h3 className="text-2xl font-bold font-mono">Software Agency</h3>
+                      <h3 className="text-2xl font-bold ">Software Agency</h3>
                     </CardContent>
                   </Card>
                 </motion.div>
@@ -134,7 +134,7 @@ export function ComparisonSection() {
                   className="relative"
                 >
                   {/* Feature Label - above on mobile, left on desktop */}
-                  <h4 className="text-lg font-bold font-mono mb-3 xl:mb-0 xl:absolute xl:left-30 xl:top-1/2 xl:-translate-y-1/2 xl:-translate-x-full xl:pr-8 xl:whitespace-nowrap">
+                  <h4 className="text-lg font-bold  mb-3 xl:mb-0 xl:absolute xl:left-30 xl:top-1/2 xl:-translate-y-1/2 xl:-translate-x-full xl:pr-8 xl:whitespace-nowrap">
                     {row.feature}
                   </h4>
 
@@ -180,7 +180,7 @@ export function ComparisonSection() {
                 transition={{ duration: 0.5, delay: index * 0.1 }}
               >
                 {/* Feature label */}
-                <h3 className="text-base sm:text-lg md:text-xl font-bold font-mono mb-3 md:mb-4">
+                <h3 className="text-base sm:text-lg md:text-xl font-bold  mb-3 md:mb-4">
                   {row.feature}
                 </h3>
 
@@ -190,7 +190,7 @@ export function ComparisonSection() {
                   <Card className="bg-card/50 border-border/50 shadow-sm">
                     <CardContent className="p-3 sm:p-4 md:p-5">
                       <div className="flex flex-col items-center gap-2 md:gap-3 text-center">
-                        <span className="font-semibold font-mono text-xs sm:text-sm md:text-base leading-tight">
+                        <span className="font-semibold  text-xs sm:text-sm md:text-base leading-tight">
                           Lovable
                         </span>
                         {getValueBadge(row.lovable.value as 'Low' | 'Mid' | 'High')}
@@ -202,7 +202,7 @@ export function ComparisonSection() {
                   <Card className="bg-linear-to-br from-emerald-500/10 to-emerald-500/5 border-emerald-500/30 shadow-sm">
                     <CardContent className="p-3 sm:p-4 md:p-5">
                       <div className="flex flex-col items-center gap-2 md:gap-3 text-center">
-                        <span className="font-bold font-mono text-emerald-600 text-xs sm:text-sm md:text-base leading-tight">
+                        <span className="font-bold  text-emerald-600 text-xs sm:text-sm md:text-base leading-tight">
                           Kosuke
                         </span>
                         {getValueBadge(row.kosuke.value as 'Low' | 'Mid' | 'High', true)}
@@ -214,7 +214,7 @@ export function ComparisonSection() {
                   <Card className="bg-card/50 border-border/50 shadow-sm">
                     <CardContent className="p-3 sm:p-4 md:p-5">
                       <div className="flex flex-col items-center gap-2 md:gap-3 text-center">
-                        <span className="font-semibold font-mono text-xs sm:text-sm md:text-base leading-tight">
+                        <span className="font-semibold  text-xs sm:text-sm md:text-base leading-tight">
                           Agency
                         </span>
                         {getValueBadge(row.agency.value as 'Low' | 'Mid' | 'High')}

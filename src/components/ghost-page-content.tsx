@@ -10,7 +10,7 @@ interface GhostPageContentProps {
 
 export function GhostPageContent({ page }: GhostPageContentProps) {
   return (
-    <div className="w-full min-h-screen bg-background font-mono">
+    <div className="w-full min-h-screen bg-background">
       {/* Background with subtle grid */}
       <div className="fixed inset-0 -z-10">
         <div className="absolute inset-0 bg-background" />
@@ -37,7 +37,7 @@ export function GhostPageContent({ page }: GhostPageContentProps) {
           <div className="text-center space-y-4">
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold">{page.title}</h1>
             {page.updated_at && (
-              <p className="text-muted-foreground font-sans">
+              <p className="text-muted-foreground">
                 Last updated:{' '}
                 {new Date(page.updated_at).toLocaleDateString('en-US', {
                   year: 'numeric',
@@ -50,7 +50,7 @@ export function GhostPageContent({ page }: GhostPageContentProps) {
 
           {/* Content */}
           <div
-            className="prose prose-neutral dark:prose-invert max-w-none font-sans prose-headings:font-mono prose-h2:text-2xl prose-h2:font-semibold prose-h2:mb-4 prose-p:text-muted-foreground prose-p:leading-relaxed prose-ul:list-disc prose-ul:list-inside prose-ul:space-y-2 prose-ul:text-muted-foreground prose-ul:ml-4 prose-li:text-muted-foreground prose-a:text-primary prose-a:hover:underline prose-strong:text-foreground"
+            className="prose prose-neutral dark:prose-invert max-w-none prose-h2:text-2xl prose-h2:font-semibold prose-h2:mb-4 prose-p:text-muted-foreground prose-p:leading-relaxed prose-ul:list-disc prose-ul:list-inside prose-ul:space-y-2 prose-ul:text-muted-foreground prose-ul:ml-4 prose-li:text-muted-foreground prose-a:text-primary prose-a:hover:underline prose-strong:text-foreground"
             dangerouslySetInnerHTML={{ __html: page.html }}
           />
         </motion.div>

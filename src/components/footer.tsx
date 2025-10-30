@@ -23,14 +23,14 @@ export default function Footer() {
           <div className="flex items-center gap-4 text-base sm:text-sm">
             <Link
               href="/terms"
-              className="text-muted-foreground hover:text-foreground transition-colors duration-300 font-mono"
+              className="text-muted-foreground hover:text-foreground transition-colors duration-300"
             >
               Terms
             </Link>
             <div className="hidden sm:block h-4 w-px bg-border/50"></div>
             <Link
               href="/privacy"
-              className="text-muted-foreground hover:text-foreground transition-colors duration-300 font-mono"
+              className="text-muted-foreground hover:text-foreground transition-colors duration-300"
             >
               Privacy
             </Link>

@@ -40,7 +40,7 @@ export function HowItWorksSection() {
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
           >
-            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-3 sm:mb-4 font-mono">
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-3 sm:mb-4 ">
               How It Works
             </h2>
             <p className="text-base sm:text-lg text-muted-foreground max-w-3xl mx-auto font-sans px-2">
@@ -63,9 +63,7 @@ export function HowItWorksSection() {
                   <Card className="h-full bg-card/50 border-border/50 hover:bg-card transition-all duration-300 relative overflow-hidden group">
                     {/* Step number badge */}
                     <div className="absolute top-4 right-4 w-10 h-10 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-                      <span className="text-emerald-600 font-bold font-mono text-sm">
-                        {step.step}
-                      </span>
+                      <span className="text-emerald-600 font-bold  text-sm">{step.step}</span>
                     </div>
 
                     <CardContent className="p-6 pt-16">
@@ -75,9 +73,7 @@ export function HowItWorksSection() {
                         </div>
                       </div>
 
-                      <h3 className="text-xl font-semibold mb-4 text-center font-mono">
-                        {step.title}
-                      </h3>
+                      <h3 className="text-xl font-semibold mb-4 text-center ">{step.title}</h3>
                       <p className="text-sm text-muted-foreground leading-relaxed text-center font-sans">
                         {step.description}
                       </p>
