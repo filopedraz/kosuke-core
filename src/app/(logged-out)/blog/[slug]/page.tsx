@@ -189,7 +189,7 @@ export default async function BlogPostPage({ params }: Props) {
             prose-ul:my-8 prose-ul:list-disc prose-ul:pl-8 prose-ul:space-y-3
             prose-ol:my-8 prose-ol:list-decimal prose-ol:pl-8 prose-ol:space-y-3
             prose-li:leading-relaxed prose-li:my-2
-            prose-img:rounded-lg prose-img:shadow-md prose-img:my-8
+            prose-img:rounded-lg prose-img:shadow-md prose-img:my-8 prose-img:mx-auto
             prose-blockquote:border-l-4 prose-blockquote:border-primary prose-blockquote:pl-6 prose-blockquote:py-2 prose-blockquote:italic prose-blockquote:text-muted-foreground
             prose-code:bg-muted prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-sm prose-code:font-mono prose-code:text-foreground
             prose-pre:bg-muted prose-pre:p-4 prose-pre:rounded-lg prose-pre:overflow-x-auto prose-pre:border prose-pre:border-border
@@ -202,7 +202,8 @@ export default async function BlogPostPage({ params }: Props) {
             [&_ol]:list-decimal [&_ol]:pl-8 [&_ol]:my-8 [&_ol]:space-y-3
             [&_li]:leading-relaxed [&_li]:my-2
             [&_ul>li]:list-disc [&_ul>li]:ml-0
-            [&_ol>li]:list-decimal [&_ol>li]:ml-0"
+            [&_ol>li]:list-decimal [&_ol>li]:ml-0
+            [&_img]:mx-auto [&_img]:block"
           dangerouslySetInnerHTML={{ __html: post.html }}
         />
       </section>

@@ -16,7 +16,7 @@ export function FeaturesBentoGrid() {
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
         >
-          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-3 sm:mb-4 font-mono">
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-3 sm:mb-4">
             Let{' '}
             <AuroraText colors={['#10B981', '#22c55e', '#34D399', '#059669']}>Kosuke</AuroraText>{' '}
             handle the hard stuff

@@ -18,7 +18,7 @@ export function Home() {
   }, []);
 
   return (
-    <div className="w-full min-h-screen bg-background font-mono">
+    <div className="w-full min-h-screen bg-background font-sans">
       {/* Minimal background with subtle grid */}
       <div className="fixed inset-0 -z-10">
         <div className="absolute inset-0 bg-background" />
