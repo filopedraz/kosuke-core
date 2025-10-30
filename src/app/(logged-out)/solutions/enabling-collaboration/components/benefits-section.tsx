@@ -11,21 +11,21 @@ import { ReactNode } from 'react';
 const benefits = [
   {
     icon: Users,
-    title: 'Enabling real collaboration',
+    title: 'Enable real collaboration',
     description:
-      'Product teams can finally build their own ideas instead of just writing tickets for them. This creates a true, high-velocity collaboration loop.',
+      'Product teams can finally build their own ideas instead of just writing tickets. This creates a true, high-velocity collaboration loop.',
   },
   {
     icon: Rocket,
-    title: 'Developers as a guardrail',
+    title: 'Developers as guardrails',
     description:
-      "Every vibe coded pull request is reviewed by your developers, ensuring all code meets your standards. This frees your engineers from pixel-pushing and lets them focus on the complex problems that AI can't solve.",
+      "Every vibe-coded pull request is reviewed by your developers, ensuring all code meets your standards. This frees your engineers from pixel-pushing and lets them focus on the complex problems that AI can't solve.",
   },
   {
     icon: Zap,
     title: 'No vendor lock-in',
     description:
-      'You are never locked in. Both your code and runtime stay in your own infrastructure. We only help you build fasteron top of it.',
+      'You are never locked in. Both your code and runtime stay in your own infrastructure. We only help you build faster on top of it.',
   },
 ];
 
@@ -64,7 +64,7 @@ export function BenefitsSection() {
               barriers
             </h2>
             <p className="text-base sm:text-lg text-muted-foreground max-w-3xl mx-auto font-sans px-2">
-              Every person in your organization contributes to shipping great products.
+              Everyone in your organization contributes to shipping great products.
             </p>
           </motion.div>
 

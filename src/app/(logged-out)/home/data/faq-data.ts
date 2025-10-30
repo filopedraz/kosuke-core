@@ -9,7 +9,7 @@ export const faqItems = [
     id: 'item-2',
     question: 'What if the AI cannot accomplish my task?',
     answer:
-      "Just hit a button and a real engineer will do it or tells you honestly what's possible.",
+      "Just hit a button and a real engineer will do it or tell you honestly what's possible.",
   },
   {
     id: 'item-3',

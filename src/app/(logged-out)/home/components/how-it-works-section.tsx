@@ -35,7 +35,7 @@ const workflowSteps = [
     icon: Rocket,
     title: 'Ship Your Product',
     description:
-      'Once you are happy with the result, you can deploy your product to production with a single click.',
+      'Once you are happy with the result, deploy your product to production with a single click.',
   },
 ];
 

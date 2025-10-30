@@ -21,6 +21,6 @@ export const faqItems = [
     id: 'item-4',
     question: 'How does licensing work for on-premise deployments?',
     answer:
-      'Kosuke is an open-source project. You will only pay the on-premise service subscirption that includes the plug-and-play solution and our customer support.',
+      'Kosuke is an open-source project. You will only pay the on-premise service subscription that includes the plug-and-play solution and our customer support.',
   },
 ];

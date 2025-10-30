@@ -1,9 +1,9 @@
 export const faqItems = [
   {
     id: 'item-1',
-    question: 'Can I import in Kosuke existing repositories?',
+    question: 'Can I import existing repositories into Kosuke?',
     answer:
-      'Yes. You can import your existing repository to Kosuke and start vibe coding on top of it. You can also start a new project from scratch.',
+      'Yes. You can import your existing repository into Kosuke and start vibe coding on top of it. You can also start a new project from scratch.',
   },
   {
     id: 'item-2',

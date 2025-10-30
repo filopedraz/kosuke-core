@@ -3,8 +3,8 @@ export const faqItems = [
     id: 'item-1',
     question: 'How is this different from hiring freelancers or contractors?',
     answer:
-      'The initial V1 build is similar to hiring a high-end agency but at a fraction of the cost, thanks to our expertise in leveraging AI efficiently to build new software.' +
-      'Moreover, you get access to the Kosuke platform, to eventually build the next features yourself.',
+      'The initial V1 build is similar to hiring a high-end agency but at a fraction of the cost, thanks to our expertise in leveraging AI efficiently to build new software. ' +
+      'Moreover, you get access to the Kosuke platform to eventually build the next features yourself.',
   },
   {
     id: 'item-2',
