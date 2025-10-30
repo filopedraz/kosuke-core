@@ -178,7 +178,6 @@ export default function Navbar({
               <div
                 className="flex items-center hover:opacity-80 transition-opacity cursor-pointer"
                 onClick={() => {
-                  console.log('Kosuke logo clicked, navigating to /home');
                   router.push('/home');
                 }}
               >
@@ -272,7 +271,7 @@ export default function Navbar({
                     }}
                   >
                     <SheetTrigger asChild>
-                      <Button variant="ghost" size="icon">
+                      <Button variant="ghost" size="icon" aria-label="Open navigation menu">
                         <Menu className="h-5 w-5" />
                       </Button>
                     </SheetTrigger>
