@@ -58,7 +58,7 @@ const mockProject: Project = {
   githubBranch: null,
   autoCommit: null,
   lastGithubSync: null,
-  defaultBranch: null,
+  defaultBranch: 'main',
 };
 
 const mockProjects: Project[] = [mockProject];

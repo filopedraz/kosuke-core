@@ -30,7 +30,7 @@ function ProjectsLoadingSkeleton() {
 export default function ProjectsPage() {
   const { clerkUser, dbUser, isLoading } = useUser();
   const { data: projects, isLoading: isProjectsLoading } = useProjects({
-    userId: clerkUser?.id || '',
+    userId: dbUser?.clerkUserId ?? '',
     initialData: []
   });
   const [isModalOpen, setIsModalOpen] = useState(false);

@@ -1,6 +1,6 @@
 # Kosuke - The first generation IDE for non-technical users
 
-> The project is currently under heavy development, so expect a lot of changes and breaking changes. v2.0.0 is coming soon with a managed private alpha. If you want to be notified when we release, please fill this survey [here](https://cooperative-somersault-9ef.notion.site/25aca60065ee80388e90dc22815b1713?pvs=105).
+> The project is currently under heavy development, so expect a lot of changes and breaking changes. v2.0.0 is coming soon with a managed private alpha. If you want to be notified when we release, please fill this survey [here](https://dub.sh/vibe-coding-survey).
 
 ## 🚀 Getting Started
 
@@ -104,4 +104,4 @@ Kosuke is licensed under the [MIT License](https://github.com/filopedraz/kosuke/
 
 ## 📬 Contact
 
-For questions or support, you can create an issue in the repo or drop me a message at filippo.pedrazzini (at) joandko.io
+For questions or support, you can create an issue in the repo or drop me a message at filippo.pedrazzini (at) kosuke.ai
