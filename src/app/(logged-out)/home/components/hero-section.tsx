@@ -343,7 +343,7 @@ export function HeroSection({ onApplyClick }: HeroSectionProps) {
                 </div>
 
                 {/* Mock Chat Input */}
-                <div className="relative mt-auto">
+                <div className="relative mt-auto" aria-hidden="true">
                   <div
                     className={`relative flex flex-col rounded-lg border transition-all duration-300 shadow-lg bg-background/50 backdrop-blur-sm ${
                       currentStep === 'userTyping' || currentStep === 'userComplaintTyping'
@@ -363,6 +363,7 @@ export function HeroSection({ onApplyClick }: HeroSectionProps) {
                           : 'Describe your project idea...'
                       }
                       disabled
+                      tabIndex={-1}
                       className={`min-h-[100px] resize-none border-0 bg-transparent! px-3 py-3 shadow-none focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 text-sm cursor-not-allowed ${
                         currentStep === 'userTyping' || currentStep === 'userComplaintTyping'
                           ? 'opacity-100 text-foreground'
@@ -379,8 +380,9 @@ export function HeroSection({ onApplyClick }: HeroSectionProps) {
                           size="icon"
                           className="h-8 w-8 opacity-50 cursor-not-allowed"
                           disabled
+                          tabIndex={-1}
                         >
-                          <Paperclip className="h-4 w-4" />
+                          <Paperclip className="h-4 w-4" aria-hidden="true" />
                         </Button>
 
                         <Button
@@ -389,8 +391,9 @@ export function HeroSection({ onApplyClick }: HeroSectionProps) {
                           variant="outline"
                           className="h-8 w-8 opacity-50 cursor-not-allowed"
                           disabled
+                          tabIndex={-1}
                         >
-                          <ArrowUp className="h-4 w-4" />
+                          <ArrowUp className="h-4 w-4" aria-hidden="true" />
                         </Button>
                       </div>
                     </div>

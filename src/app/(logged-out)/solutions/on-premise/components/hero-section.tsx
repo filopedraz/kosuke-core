@@ -89,8 +89,8 @@ export function HeroSection() {
                     <Image
                       src="/mac_studio.png"
                       alt="Mac Studio"
-                      width={800}
-                      height={600}
+                      width={1000}
+                      height={1000}
                       className="w-full h-auto"
                       priority
                     />
@@ -159,8 +159,8 @@ export function HeroSection() {
                       <Image
                         src="/mac_studio.png"
                         alt={`Mac Studio ${index + 1}`}
-                        width={800}
-                        height={600}
+                        width={1000}
+                        height={1000}
                         className="w-full h-auto"
                         priority={index === 0}
                       />
