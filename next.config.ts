@@ -54,7 +54,6 @@ const nextConfig: NextConfig = {
   async headers() {
     const ghostUrl = process.env.NEXT_PUBLIC_GHOST_URL ?? '';
     const posthogHost = process.env.NEXT_PUBLIC_POSTHOG_HOST ?? '';
-    const posthogAssets = posthogHost.replace('.i.posthog.com', '-assets.i.posthog.com');
 
     const isDev = process.env.NODE_ENV !== 'production';
 
@@ -64,7 +63,7 @@ const nextConfig: NextConfig = {
       style-src 'self' ${isDev ? "'unsafe-inline'" : ''};
       img-src 'self' data: blob: https://*.public.blob.vercel-storage.com https://lh3.googleusercontent.com https://avatar.vercel.sh ${ghostUrl} https://images.unsplash.com https://static.ghost.org https://img.clerk.com;
       font-src 'self' data:;
-      connect-src 'self' https://*.clerk.accounts.dev https://clerk-telemetry.com https://*.sentry.io wss://*.clerk.accounts.dev https://plausible.io ${posthogHost} ${posthogAssets} ${ghostUrl};
+      connect-src 'self' https://*.clerk.accounts.dev https://clerk-telemetry.com https://*.sentry.io wss://*.clerk.accounts.dev https://plausible.io ${posthogHost} ${ghostUrl};
       worker-src 'self' blob:;
       frame-src 'self' https://challenges.cloudflare.com https://*.clerk.accounts.dev;
       object-src 'none';
