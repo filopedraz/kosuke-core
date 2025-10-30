@@ -17,7 +17,8 @@ const isPublicRoute = createRouteMatcher([
   '/favicon.svg',
   '/favicon-96x96.png',
   '/apple-touch-icon.png',
-  '/opengraph-image.png',
+  '/opengraph-image.jpg',
+  '/opengraph-image-square.jpg',
 ]);
 
 const isProtectedRoute = createRouteMatcher(['/projects(.*)', '/settings(.*)']);
