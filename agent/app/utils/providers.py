@@ -1,7 +1,5 @@
 from app.services.color_palette_service import ColorPaletteService
 from app.services.database_service import DatabaseService
-from app.services.docker_service import DockerService
-from app.services.domain_service import DomainService
 from app.services.fs_service import FileSystemService
 from app.services.github_service import GitHubService
 from app.services.session_manager import SessionManager
@@ -18,14 +16,6 @@ def get_color_palette_service() -> ColorPaletteService:
 
 def get_webhook_service() -> WebhookService:
     return WebhookService()
-
-
-def get_docker_service() -> DockerService:
-    return DockerService()
-
-
-def get_domain_service() -> DomainService:
-    return DomainService()
 
 
 def get_session_manager() -> SessionManager:

@@ -9,12 +9,6 @@ from unittest.mock import MagicMock
 
 import pytest
 
-# Import actual models
-from app.models.actions import Action
-from app.models.actions import ActionType
-from app.models.requests import ChatMessage
-from app.models.requests import ChatRequest
-
 # Sample project files
 SAMPLE_PACKAGE_JSON = """{
   "name": "test-project",
@@ -99,15 +93,6 @@ def create_sample_project_structure():
         "public/favicon.ico": "",  # Empty file
         ".gitignore": "node_modules/\n.next/\n.env.local\n",
     }
-
-
-# Mock action objects using the actual Action model
-def create_mock_action(
-    action_type: ActionType, file_path: str, content: str = "", message: str = "Test action"
-) -> Action:
-    """Create a mock Action object with proper typing"""
-    return Action(action=action_type, file_path=file_path, content=content, message=message)
-
 
 # Mock LLM response structures - using plain dictionaries that can be JSON serialized
 MOCK_LLM_RESPONSE = {
@@ -201,18 +186,6 @@ def mock_anthropic_response(content: dict | None = None) -> Any:
     mock_response = MagicMock()
     mock_response.data = json.dumps(content or MOCK_LLM_RESPONSE)
     return mock_response
-
-
-@pytest.fixture
-def sample_chat_request():
-    """Sample chat request for testing"""
-    return ChatRequest(project_id=123, prompt="Create a button component", chat_history=[])
-
-
-@pytest.fixture
-def sample_chat_message():
-    """Sample chat message for testing"""
-    return ChatMessage(role="user", content="Create a new React component")
 
 
 @pytest.fixture

@@ -5,6 +5,7 @@
 
 import { sessionManager } from '@/lib/sessions';
 import type { DockerContainerStatus, RouteInfo } from '@/lib/types/docker';
+import type { PreviewUrl, PreviewUrlsResponse } from '@/lib/types/preview-urls';
 import { DockerClient, type ContainerCreateRequest } from '@docker/node-sdk';
 import { join } from 'path';
 import { getDockerConfig, validateDockerConfig } from './config';
@@ -469,6 +470,133 @@ class DockerService {
         `Failed to restart container: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
     }
+  }
+
+  /**
+   * Get all preview URLs for a project
+   * Lists all containers for a project and extracts their preview URLs
+   */
+  async getProjectPreviewUrls(projectId: number): Promise<PreviewUrlsResponse> {
+    console.log(`📋 Getting preview URLs for project ${projectId}`);
+
+    try {
+      const client = await this.ensureClient();
+      const namePrefix = `${this.config.previewContainerNamePrefix}${projectId}-`;
+
+      // List all containers (running and stopped)
+      const allContainers = await client.containerList({ all: true });
+
+      // Filter containers by name prefix
+      const projectContainers = allContainers.filter(container => {
+        const name = container.Names?.[0]?.replace(/^\//, '') || '';
+        return name.startsWith(namePrefix);
+      });
+
+      console.log(`Found ${projectContainers.length} container(s) for project ${projectId}`);
+
+      const previewUrls: PreviewUrl[] = [];
+
+      for (const container of projectContainers) {
+        try {
+          const containerName = container.Names?.[0]?.replace(/^\//, '') || '';
+
+          // Get full container details for URL resolution
+          const containerDetails = await client.containerInspect(containerName);
+
+          // Resolve URL using router adapter
+          const fullUrl = this.adapter.getContainerUrl(containerDetails);
+
+          if (!fullUrl) {
+            console.warn(`Could not resolve URL for container: ${containerName}`);
+            continue;
+          }
+
+          // Extract labels
+          const labels = containerDetails.Config?.Labels || {};
+
+          // Get branch name from labels, or parse from container name
+          let branchName = labels['kosuke.branch'] || labels['kosuke.session_id'];
+          if (!branchName) {
+            // Fallback: parse from container name (format: prefix-projectId-sessionId)
+            const nameParts = containerName
+              .replace(this.config.previewContainerNamePrefix, '')
+              .split('-');
+            if (nameParts.length >= 2) {
+              branchName = nameParts.slice(1).join('-'); // Everything after projectId
+            } else {
+              branchName = containerName;
+            }
+          }
+
+          // Extract subdomain from URL
+          let subdomain: string | null = null;
+          if (fullUrl.startsWith('https://')) {
+            const domain = fullUrl.replace('https://', '').split('/')[0];
+            subdomain = domain.split('.')[0]; // First part of domain
+          }
+
+          // Map Docker status to TypeScript status type
+          const rawStatus = container.State || 'unknown';
+          let containerStatus: 'running' | 'stopped' | 'error';
+          if (rawStatus === 'running') {
+            containerStatus = 'running';
+          } else if (rawStatus === 'exited' || rawStatus === 'created' || rawStatus === 'paused') {
+            containerStatus = 'stopped';
+          } else {
+            containerStatus = 'error';
+          }
+
+          // Get created timestamp
+          const createdAt = containerDetails.Created || new Date().toISOString();
+
+          // Build preview URL object
+          const previewUrl: PreviewUrl = {
+            id: this.hashString(containerName), // Generate consistent numeric ID from name
+            project_id: projectId,
+            branch_name: branchName,
+            subdomain: subdomain || '',
+            full_url: fullUrl,
+            container_status: containerStatus,
+            ssl_enabled: fullUrl.startsWith('https://'),
+            created_at: createdAt,
+            last_accessed: null, // Not tracked yet
+          };
+
+          previewUrls.push(previewUrl);
+        } catch (error) {
+          console.warn(`Failed to process container:`, error);
+          // Continue with other containers
+        }
+      }
+
+      console.log(`✅ Found ${previewUrls.length} preview URL(s) for project ${projectId}`);
+
+      return {
+        preview_urls: previewUrls,
+        total_count: previewUrls.length,
+      };
+    } catch (error) {
+      console.error(`❌ Error getting preview URLs for project ${projectId}:`, error);
+      // Return empty response on error to maintain interface compatibility
+      return {
+        preview_urls: [],
+        total_count: 0,
+      };
+    }
+  }
+
+  /**
+   * Generate a consistent numeric hash from a string
+   * Used to create stable IDs for preview URLs
+   */
+  private hashString(str: string): number {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = (hash << 5) - hash + char;
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+    return Math.abs(hash);
   }
 
   /**

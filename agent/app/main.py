@@ -6,7 +6,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import branding
 from app.api.routes import database
 from app.api.routes import health
-from app.api.routes import preview
 from app.api.routes import revert
 from app.services.docker_service import DockerService
 
@@ -47,7 +46,6 @@ app.add_middleware(
 app.include_router(branding.router, prefix="/api", tags=["branding"])
 app.include_router(database.router, prefix="/api", tags=["database"])
 app.include_router(health.router, prefix="/api", tags=["health"])
-app.include_router(preview.router, prefix="/api", tags=["preview"])
 app.include_router(revert.router, prefix="/api", tags=["revert"])
 
 # Also include root endpoint
