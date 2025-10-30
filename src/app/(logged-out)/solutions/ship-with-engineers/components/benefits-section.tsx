@@ -13,7 +13,7 @@ const benefits = [
     icon: Users,
     title: 'Dedicated Senior Engineers',
     description:
-      'Build the right foundation for your product with our experienced engineers Avoid broken prototypes that need to be rewritten in six months.',
+      'Build the right foundation for your product with our experienced engineers. Avoid broken prototypes that need to be rewritten in six months.',
   },
   {
     icon: DollarSign,
