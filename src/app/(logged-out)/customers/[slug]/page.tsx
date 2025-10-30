@@ -89,8 +89,31 @@ export default async function CustomerDetailPage({ params }: Props) {
     },
   };
 
-  // Since we're not displaying the excerpt separately, use the original HTML
-  const processedHtml = customer.html;
+  // Process HTML to ensure videos have proper attributes and remove duplicate controls
+  let processedHtml = customer.html;
+
+  // Extract video elements and unwrap them from Ghost's figure/card structure
+  processedHtml = processedHtml.replace(
+    /<figure[^>]*class="[^"]*kg-video-card[^"]*"[^>]*>([\s\S]*?)<\/figure>/gi,
+    (match, content) => {
+      // Extract just the video tag from the figure
+      const videoMatch = content.match(/<video[^>]*>[\s\S]*?<\/video>/i);
+      if (videoMatch) {
+        // Wrap in a simple div for spacing
+        return `<div class="video-wrapper my-8">${videoMatch[0]}</div>`;
+      }
+      return match;
+    }
+  );
+
+  // Remove any remaining Ghost video player UI elements
+  processedHtml = processedHtml
+    .replace(/<div[^>]*class="[^"]*kg-video[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '')
+    .replace(/<button[^>]*class="[^"]*kg-video[^"]*"[^>]*>[\s\S]*?<\/button>/gi, '')
+    // Add controls attribute to video tags if missing
+    .replace(/<video(?![^>]*\bcontrols\b)/gi, '<video controls')
+    // Ensure videos are playable inline on mobile
+    .replace(/<video/gi, '<video playsinline');
 
   return (
     <div className="w-full min-h-screen bg-background">
@@ -148,6 +171,7 @@ export default async function CustomerDetailPage({ params }: Props) {
             prose-blockquote:border-l-4 prose-blockquote:border-primary prose-blockquote:pl-6 prose-blockquote:py-2 prose-blockquote:italic prose-blockquote:text-muted-foreground
             prose-code:bg-muted prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-sm prose-code: prose-code:text-foreground
             prose-pre:bg-muted prose-pre:p-4 prose-pre:rounded-lg prose-pre:overflow-x-auto prose-pre:border prose-pre:border-border
+            prose-video:rounded-lg prose-video:shadow-md prose-video:my-8 prose-video:mx-auto prose-video:w-full
             [&_h1]:text-4xl [&_h1]:font-extrabold [&_h1]:mb-6 [&_h1]:mt-12 [&_h1]:text-foreground
             [&_h2]:text-3xl [&_h2]:font-bold [&_h2]:mb-6 [&_h2]:mt-12 [&_h2]:text-foreground
             [&_h3]:text-2xl [&_h3]:font-bold [&_h3]:mb-4 [&_h3]:mt-10 [&_h3]:text-foreground
@@ -158,7 +182,13 @@ export default async function CustomerDetailPage({ params }: Props) {
             [&_li]:leading-relaxed [&_li]:my-2
             [&_ul>li]:list-disc [&_ul>li]:ml-0
             [&_ol>li]:list-decimal [&_ol>li]:ml-0
-            [&_img]:mx-auto [&_img]:block"
+            [&_img]:mx-auto [&_img]:block
+            [&_video]:w-full [&_video]:rounded-lg [&_video]:shadow-md [&_video]:my-8 [&_video]:mx-auto
+            [&_iframe]:w-full [&_iframe]:aspect-video [&_iframe]:rounded-lg [&_iframe]:shadow-md [&_iframe]:my-8 [&_iframe]:mx-auto
+            [&_figure]:my-8 [&_figure]:mx-auto
+            [&_figure>video]:my-0
+            [&_figure>iframe]:my-0
+            [&_figcaption]:text-center [&_figcaption]:text-sm [&_figcaption]:text-muted-foreground [&_figcaption]:mt-3"
           dangerouslySetInnerHTML={{ __html: processedHtml }}
         />
       </section>
