@@ -175,7 +175,7 @@ export function usePreviewPanel({
         requestInFlightRef.current = false;
       }
     },
-    [projectId, sessionId, pollServerUntilReady, enabled]
+    [projectId, sessionId, pollServerUntilReady, enabled, startPreview]
   );
 
   // Update ref when fetchPreviewUrl changes

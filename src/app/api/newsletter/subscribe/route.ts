@@ -69,7 +69,7 @@ export async function POST(
       return NextResponse.json(
         {
           success: false,
-          message: validation.error.errors[0]?.message || 'Invalid email address',
+          message: validation.error.issues[0]?.message || 'Invalid email address',
         },
         { status: 400 }
       );

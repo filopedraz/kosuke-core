@@ -272,7 +272,7 @@ export async function POST(
 
     if (!parseResult.success) {
       return NextResponse.json(
-        { error: 'Invalid request format', details: parseResult.error.format() },
+        { error: 'Invalid request format', details: z.treeifyError(parseResult.error) },
         { status: 400 }
       );
     }

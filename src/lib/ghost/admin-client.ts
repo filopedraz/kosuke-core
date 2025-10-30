@@ -1,13 +1,24 @@
 import GhostAdminAPI from '@tryghost/admin-api';
 
+// Type for Ghost member creation - based on @types/tryghost__admin-api
+// The AddFunction requires an intersection with { [key: string]: string }
+// so we use 'unknown' as a safe bridge type for the type assertion
+interface GhostMemberPayload {
+  email: string;
+  name?: string;
+  labels?: Array<{ name: string }>;
+  subscribed?: string;
+  newsletters?: Array<{ id?: string }>;
+}
+
 // Lazy initialization of Ghost Admin API client
-let ghostAdminClient: GhostAdminAPI | null = null;
+let ghostAdminClient: InstanceType<typeof GhostAdminAPI> | null = null;
 
 /**
  * Get or create the Ghost Admin API client
  * This is lazily initialized to avoid errors during build time
  */
-function getGhostAdminClient(): GhostAdminAPI {
+function getGhostAdminClient(): InstanceType<typeof GhostAdminAPI> {
   if (!ghostAdminClient) {
     if (!process.env.NEXT_PUBLIC_GHOST_URL) {
       throw new Error('NEXT_PUBLIC_GHOST_URL environment variable is not set');
@@ -41,16 +52,14 @@ export async function subscribeToNewsletter(
     const client = getGhostAdminClient();
 
     // Create member with immediate subscription (no email verification)
-    await client.members.add(
-      {
-        email,
-        name: name || undefined,
-        labels: ['website-subscriber'],
-        subscribed: true,
-        newsletters: [],
-      },
-      { send_email: false, email_type: 'subscribe' }
-    );
+    const memberPayload: GhostMemberPayload = {
+      email,
+      name: name || undefined,
+      labels: [{ name: 'website-subscriber' }],
+      subscribed: 'true',
+      newsletters: [],
+    };
+    await client.members.add(memberPayload as unknown as Parameters<typeof client.members.add>[0]);
 
     return {
       success: true,

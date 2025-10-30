@@ -92,6 +92,7 @@ export function MagicCard({
         style={{
           background: backgroundGradient,
         }}
+        suppressHydrationWarning
       />
       <div className="bg-background absolute inset-px rounded-[inherit]" />
       <motion.div
@@ -100,6 +101,7 @@ export function MagicCard({
           background: overlayGradient,
           opacity: gradientOpacity,
         }}
+        suppressHydrationWarning
       />
       <div className="relative">{children}</div>
     </div>

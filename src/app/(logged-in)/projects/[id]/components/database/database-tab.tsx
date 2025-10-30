@@ -127,7 +127,7 @@ export function DatabaseTab({ projectId, sessionId }: DatabaseTabProps) {
   );
 }
 
-export function DatabaseTabSkeleton() {
+const DatabaseTabSkeleton = () => {
   return (
     <div className="flex flex-col h-full p-6 space-y-6">
       <div className="flex justify-between items-center">

@@ -63,7 +63,7 @@ export function SubdomainDisplay({ projectId }: SubdomainDisplayProps) {
   );
 }
 
-export function SubdomainDisplaySkeleton() {
+const SubdomainDisplaySkeleton = () => {
   return (
     <div className="space-y-6">
       <Card>

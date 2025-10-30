@@ -1,18 +1,6 @@
 // User Profile and Settings Types
 import type { User } from '@/lib/db/schema';
 
-// Base User Data (from Clerk)
-export interface BaseUser {
-  id: string; // Clerk ID
-  email: string;
-  firstName: string | null;
-  lastName: string | null;
-  imageUrl: string | null;
-  username: string | null;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
 // Database User (from our database)
 export type DatabaseUser = Pick<
   User,
@@ -38,15 +26,7 @@ export interface EnhancedUser extends DatabaseUser {
 }
 
 // Legacy types for backward compatibility
-export type UserProfile = DatabaseUser;
-
-export interface UserWithSubscription extends UserProfile {
-  subscription?: {
-    tier: 'free' | 'pro' | 'business';
-    status: string;
-    currentPeriodEnd?: Date;
-  };
-}
+type UserProfile = DatabaseUser;
 
 // Unified User Hook Return Type
 export interface UseUserReturn {
@@ -78,61 +58,11 @@ export interface UseUserReturn {
   refresh: () => Promise<void>;
 }
 
-// User Preferences
-export interface NotificationSettings {
-  emailNotifications: boolean;
-  marketingEmails: boolean;
-  securityAlerts: boolean;
-}
-
 // Pipeline Preference Types
 export type PipelinePreference = 'kosuke' | 'claude-code';
-
-export interface UserPreferences {
-  notifications: NotificationSettings;
-  theme?: 'light' | 'dark' | 'system';
-  language?: string;
-  pipelinePreference?: PipelinePreference;
-}
-
-// Form State Types for Settings Pages
-export interface FormState {
-  error?: string;
-  success?: string;
-}
-
-export interface ProfileFormData {
-  name: string;
-  email: string;
-  profileImage?: File;
-}
-
-export interface SecurityFormData {
-  currentPassword?: string;
-  newPassword?: string;
-  confirmPassword?: string;
-}
 
 // API Response Types for User Operations
 export interface UpdateProfileResponse {
   success: string;
   user?: UserProfile;
-}
-
-export interface UpdateNotificationResponse {
-  success: string;
-  preferences?: NotificationSettings;
-}
-
-export interface DeleteAccountResponse {
-  success: boolean;
-  message?: string;
-}
-
-// Profile Image Types
-export interface ProfileImageState {
-  imageUrl: string | null;
-  isUploading: boolean;
-  previewUrl: string | null;
-  error: string | null;
 }

@@ -108,9 +108,9 @@ export default function ChatMessage({
   // Handle revert system messages with special styling
   if (isRevertMessage) {
     const handleSystemMessageClick = () => {
-      if (metadata?.revertInfo?.message_id) {
+      if (metadata?.revertInfo?.messageId) {
         // Find and scroll to the original message
-        const targetMessage = document.querySelector(`[data-message-id="${metadata.revertInfo.message_id}"]`);
+        const targetMessage = document.querySelector(`[data-message-id="${metadata.revertInfo.messageId}"]`);
         if (targetMessage) {
           targetMessage.scrollIntoView({
             behavior: 'smooth',
@@ -146,7 +146,7 @@ export default function ChatMessage({
                 </span>
                 {metadata?.revertInfo && (
                   <code className="px-1.5 py-0.5 bg-muted rounded text-xs font-mono text-foreground">
-                    {metadata.revertInfo.commit_sha?.slice(0, 7)}
+                    {metadata.revertInfo.commitSha?.slice(0, 7)}
                   </code>
                 )}
               </div>
