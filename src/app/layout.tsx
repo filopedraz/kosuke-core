@@ -131,6 +131,13 @@ export default function RootLayout({ children }: RootLayoutProps) {
       >
         <body className="min-h-[100dvh] bg-background text-foreground overflow-x-hidden">
           <Script
+            id="Cookiebot"
+            src="https://consent.cookiebot.com/uc.js"
+            data-cbid="1d49650b-72ce-410d-b236-90f662688b3d"
+            data-blockingmode="auto"
+            strategy="beforeInteractive"
+          />
+          <Script
             defer
             data-domain="kosuke.ai"
             src="https://plausible.io/js/script.js"
