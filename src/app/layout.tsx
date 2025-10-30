@@ -20,8 +20,8 @@ const geistMono = Geist_Mono({
 });
 
 const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://kosuke.ai';
-const ogImage = `${baseUrl}/opengraph-image.png`;
-const ogImageSquare = `${baseUrl}/og-image-square.png`;
+const ogImage = `${baseUrl}/opengraph-image.jpg`;
+const ogImageSquare = `${baseUrl}/opengraph-image-square.jpg`;
 
 export const metadata: Metadata = {
   title: 'Kosuke - Build Your Next Web Project with AI',
