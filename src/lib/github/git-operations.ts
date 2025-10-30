@@ -377,6 +377,82 @@ export class GitOperations {
   }
 
   /**
+   * Revert to specific commit in session directory
+   * Used for revert operations to restore a previous state
+   * Resets the branch to the target commit and force pushes to remote
+   *
+   * @param sessionPath - Path to session directory
+   * @param commitSha - Git commit SHA to revert to
+   * @param githubToken - GitHub token for authenticated push
+   * @returns True if successful
+   */
+  async revertToCommit(
+    sessionPath: string,
+    commitSha: string,
+    githubToken: string
+  ): Promise<boolean> {
+    try {
+      console.log(`🔄 Reverting to commit ${commitSha.substring(0, 8)} in ${sessionPath}`);
+
+      // Verify git repository exists
+      const gitPath = join(sessionPath, '.git');
+      if (!existsSync(gitPath)) {
+        console.error(`❌ No git repository found in ${sessionPath}`);
+        return false;
+      }
+
+      // Initialize git in session directory
+      const git: SimpleGit = simpleGit(sessionPath);
+
+      // Get current branch name
+      const status = await git.status();
+      const currentBranch = status.current;
+
+      if (!currentBranch) {
+        console.error(`❌ Could not determine current branch`);
+        return false;
+      }
+
+      console.log(`Current branch: ${currentBranch}`);
+
+      // Hard reset to the target commit
+      await git.reset(['--hard', commitSha]);
+      console.log(`✅ Reset branch ${currentBranch} to commit ${commitSha.substring(0, 8)}`);
+
+      // Get remote URL and build authenticated URL
+      const remotes = await git.getRemotes(true);
+      const origin = remotes.find(r => r.name === 'origin');
+
+      if (!origin || !origin.refs.push) {
+        console.error(`❌ No origin remote found`);
+        return false;
+      }
+
+      const originalUrl = origin.refs.push;
+      const authenticatedUrl = this.buildAuthenticatedUrl(originalUrl, githubToken);
+
+      // Temporarily set authenticated URL
+      await git.remote(['set-url', 'origin', authenticatedUrl]);
+
+      try {
+        // Force push to remote branch
+        console.log(`📤 Force pushing to remote branch ${currentBranch}...`);
+        await git.push(['origin', currentBranch, '--force']);
+        console.log(`✅ Successfully pushed revert to remote`);
+      } finally {
+        // Always restore original URL
+        await git.remote(['set-url', 'origin', originalUrl]);
+      }
+
+      console.log(`✅ Successfully reverted to commit ${commitSha.substring(0, 8)}`);
+      return true;
+    } catch (error) {
+      console.error(`❌ Error during git revert:`, error);
+      return false;
+    }
+  }
+
+  /**
    * Sanitize URL for logging (remove tokens)
    */
   private sanitizeUrlForLog(url: string): string {

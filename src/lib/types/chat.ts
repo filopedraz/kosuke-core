@@ -183,12 +183,10 @@ export interface StreamingEvent {
 // Revert Operation Types
 export interface RevertToMessageRequest {
   message_id: number;
-  create_backup_commit?: boolean;
 }
 
 export interface RevertToMessageResponse {
   success: boolean;
   reverted_to_commit: string;
-  backup_commit?: string;
   message: string;
 }
