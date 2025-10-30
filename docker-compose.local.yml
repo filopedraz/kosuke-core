@@ -67,18 +67,6 @@ services:
     networks:
       - kosuke_network
     restart: unless-stopped
-    healthcheck:
-      test:
-        [
-          'CMD',
-          'python',
-          '-c',
-          "import requests; requests.get('http://localhost:8000/api/health/simple')",
-        ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
 
 volumes:
   postgres_data:

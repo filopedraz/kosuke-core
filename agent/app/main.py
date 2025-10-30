@@ -5,7 +5,6 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes import branding
 from app.api.routes import database
-from app.api.routes import health
 from app.api.routes import revert
 
 # Configure logging for the entire application
@@ -32,11 +31,7 @@ app.add_middleware(
 # Include routers
 app.include_router(branding.router, prefix="/api", tags=["branding"])
 app.include_router(database.router, prefix="/api", tags=["database"])
-app.include_router(health.router, prefix="/api", tags=["health"])
 app.include_router(revert.router, prefix="/api", tags=["revert"])
-
-# Also include root endpoint
-app.include_router(health.router, tags=["root"])
 
 
 if __name__ == "__main__":
