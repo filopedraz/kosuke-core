@@ -334,7 +334,7 @@ export function HeroSection() {
 
                 {/* Chat Input */}
                 {currentStep !== 'prCreated' && (
-                  <div className="relative mt-auto">
+                  <div className="relative mt-auto" aria-hidden="true">
                     <div
                       className={`relative flex flex-col rounded-lg border transition-all duration-300 shadow-lg bg-background/50 backdrop-blur-sm ${
                         currentStep === 'userTyping'
@@ -346,6 +346,7 @@ export function HeroSection() {
                         value={currentStep === 'userTyping' ? textareaTypingText : ''}
                         placeholder={currentStep === 'userTyping' ? '' : 'Describe your feature...'}
                         disabled
+                        tabIndex={-1}
                         className={`min-h-[80px] resize-none border-0 bg-transparent! px-3 py-3 shadow-none focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 text-xs sm:text-sm cursor-not-allowed ${
                           currentStep === 'userTyping'
                             ? 'opacity-100 text-foreground'
@@ -389,8 +390,9 @@ export function HeroSection() {
                             variant="outline"
                             className="h-7 w-7 opacity-50 cursor-not-allowed"
                             disabled
+                            tabIndex={-1}
                           >
-                            <ArrowUp className="h-3 w-3" />
+                            <ArrowUp className="h-3 w-3" aria-hidden="true" />
                           </Button>
                         </div>
                       </div>

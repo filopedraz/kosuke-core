@@ -22,7 +22,7 @@ let activities: Activity[] = [
     name: 'Sarah Chen',
     action: 'deployed authentication feature',
     icon: <Rocket className="w-4 h-4" />,
-    color: '#10B981',
+    color: 'hsl(var(--chart-1))',
     time: 'Just now',
     status: 'deployed',
   },
@@ -30,7 +30,7 @@ let activities: Activity[] = [
     name: 'Mike Johnson',
     action: 'merged dashboard improvements',
     icon: <GitPullRequest className="w-4 h-4" />,
-    color: '#3B82F6',
+    color: 'hsl(var(--chart-2))',
     time: '2m ago',
     status: 'merged',
   },
@@ -38,7 +38,7 @@ let activities: Activity[] = [
     name: 'Alex Rivera',
     action: 'shipped payment integration',
     icon: <Rocket className="w-4 h-4" />,
-    color: '#10B981',
+    color: 'hsl(var(--chart-1))',
     time: '5m ago',
     status: 'deployed',
   },
@@ -46,7 +46,7 @@ let activities: Activity[] = [
     name: 'Emma Wilson',
     action: 'committed API optimizations',
     icon: <Code className="w-4 h-4" />,
-    color: '#F59E0B',
+    color: 'hsl(var(--chart-3))',
     time: '8m ago',
     status: 'in-progress',
   },
@@ -54,7 +54,7 @@ let activities: Activity[] = [
     name: 'James Park',
     action: 'deployed mobile responsive fixes',
     icon: <Rocket className="w-4 h-4" />,
-    color: '#10B981',
+    color: 'hsl(var(--chart-1))',
     time: '12m ago',
     status: 'deployed',
   },
@@ -86,10 +86,13 @@ const ActivityItem = ({ name, action, icon, color, time, status }: Activity) => 
             <Badge
               variant="outline"
               className={cn(
-                'px-1.5 py-0 text-[10px]',
-                status === 'deployed' && 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600',
-                status === 'merged' && 'bg-blue-500/10 border-blue-500/30 text-blue-600',
-                status === 'in-progress' && 'bg-amber-500/10 border-amber-500/30 text-amber-600'
+                'px-1.5 py-0 text-[10px] font-medium',
+                status === 'deployed' &&
+                  'bg-emerald-500/20 border-emerald-600/50 text-emerald-700 dark:text-emerald-400',
+                status === 'merged' &&
+                  'bg-blue-500/20 border-blue-600/50 text-blue-700 dark:text-blue-400',
+                status === 'in-progress' &&
+                  'bg-amber-500/20 border-amber-600/50 text-amber-700 dark:text-amber-400'
               )}
             >
               {status === 'deployed' && (

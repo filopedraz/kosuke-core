@@ -56,3 +56,6 @@ public/uploads/*
 # projects (local development - ignore numbered subdirectories)
 projects/*/
 !projects/.gitkeep
+
+# lighthouse reports
+*.report.html
