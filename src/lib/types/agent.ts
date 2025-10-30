@@ -47,11 +47,11 @@ export interface ToolStopEvent {
   is_error: boolean;
 }
 
-export interface MessageCompleteEvent {
+interface MessageCompleteEvent {
   type: 'message_complete';
 }
 
-export interface ErrorEvent {
+interface ErrorEvent {
   type: 'error';
   message: string;
 }
@@ -62,12 +62,12 @@ export interface ErrorEvent {
 
 export type MessageBlock = TextBlock | ToolUseBlock | ToolResultBlock;
 
-export interface TextBlock {
+interface TextBlock {
   type: 'text';
   content: string;
 }
 
-export interface ToolUseBlock {
+interface ToolUseBlock {
   type: 'tool';
   id: string;
   name: string;
@@ -76,7 +76,7 @@ export interface ToolUseBlock {
   result?: unknown;
 }
 
-export interface ToolResultBlock {
+interface ToolResultBlock {
   type: 'tool_result';
   tool_use_id: string;
   content: unknown;
@@ -99,17 +99,6 @@ export interface AgentOptions {
   maxTurns?: number;
   permissionMode?: 'acceptEdits'; // SDK only supports acceptEdits
   allowedTools?: string[];
-}
-
-// ============================================
-// Token Usage
-// ============================================
-
-export interface TokenUsage {
-  inputTokens: number;
-  outputTokens: number;
-  contextTokens: number;
-  totalTokens: number;
 }
 
 // ============================================
@@ -147,34 +136,3 @@ export interface TextState {
   content: string;
   allBlocks: MessageBlock[];
 }
-
-export interface EventProcessorState {
-  textState: TextState;
-  tokenUsage: TokenUsage;
-  commitSha: string | null;
-}
-
-// ============================================
-// Error Types
-// ============================================
-
-export class AgentError extends Error {
-  constructor(
-    message: string,
-    public code: AgentErrorCode,
-    public details?: unknown
-  ) {
-    super(message);
-    this.name = 'AgentError';
-  }
-}
-
-export type AgentErrorCode =
-  | 'SESSION_NOT_FOUND'
-  | 'SESSION_VALIDATION_FAILED'
-  | 'AGENT_INITIALIZATION_FAILED'
-  | 'STREAMING_ERROR'
-  | 'GIT_OPERATION_FAILED'
-  | 'DATABASE_UPDATE_FAILED'
-  | 'GITHUB_TOKEN_MISSING'
-  | 'UNKNOWN_ERROR';

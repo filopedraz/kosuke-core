@@ -224,7 +224,7 @@ export function TableBrowser({ projectId, sessionId }: TableBrowserProps) {
   );
 }
 
-export function TableBrowserSkeleton() {
+const TableBrowserSkeleton = () => {
   return (
     <div className="space-y-4">
       <Card>

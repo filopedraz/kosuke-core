@@ -1,5 +1,5 @@
 import type { ApiSuccess } from '@/lib/types';
-import type { PreviewUrlsResponse, PreviewUrlStats } from '@/lib/types/preview-urls';
+import type { PreviewUrlsResponse } from '@/lib/types/preview-urls';
 import { useQuery } from '@tanstack/react-query';
 
 export function useProjectPreviewUrls(projectId: number) {
@@ -14,22 +14,6 @@ export function useProjectPreviewUrls(projectId: number) {
       return data.data;
     },
     staleTime: 1000 * 60 * 2, // 2 minutes
-    retry: 2,
-  });
-}
-
-export function usePreviewUrlStats() {
-  return useQuery({
-    queryKey: ['preview-url-stats'],
-    queryFn: async (): Promise<PreviewUrlStats> => {
-      const response = await fetch('/api/preview-urls/stats');
-      if (!response.ok) {
-        throw new Error('Failed to fetch preview URL stats');
-      }
-      const data: ApiSuccess<PreviewUrlStats> = await response.json();
-      return data.data;
-    },
-    staleTime: 1000 * 60 * 5, // 5 minutes
     retry: 2,
   });
 }

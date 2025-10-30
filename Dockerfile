@@ -31,7 +31,6 @@ COPY postcss.config.* .
 COPY drizzle.config.* .
 COPY eslint.config.* .
 COPY jest.config.* .
-COPY jest.setup.* .
 COPY components.json .
 COPY public ./public
 COPY src ./src

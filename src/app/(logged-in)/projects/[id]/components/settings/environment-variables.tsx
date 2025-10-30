@@ -220,7 +220,7 @@ export function EnvironmentVariables({ projectId }: EnvironmentVariablesProps) {
   );
 }
 
-export function EnvironmentVariablesSkeleton() {
+const EnvironmentVariablesSkeleton = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
