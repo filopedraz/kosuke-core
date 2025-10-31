@@ -238,7 +238,7 @@ export function HeroSection({ onApplyClick }: HeroSectionProps) {
               <div className="absolute inset-0 bg-linear-to-br from-emerald-500/5 via-transparent to-blue-500/5 rounded-2xl blur-3xl" />
 
               {/* Chat Interface Container */}
-              <div className="relative bg-background/80 backdrop-blur-xl border border-border/50 rounded-2xl p-4 sm:p-6 shadow-2xl h-[480px] md:h-[550px] lg:h-[600px] flex flex-col">
+              <div className="relative bg-background/80 backdrop-blur-xl border border-border/50 rounded-2xl p-4 sm:p-6 shadow-2xl min-h-[520px] md:h-[600px] flex flex-col">
                 {/* Animated Cursor */}
                 <AnimatePresence>
                   {showCursor && (
@@ -305,7 +305,7 @@ export function HeroSection({ onApplyClick }: HeroSectionProps) {
                 </div>
 
                 {/* Animated Chat Messages */}
-                <div className="space-y-3 sm:space-y-4 mb-4 sm:mb-6 flex-1 overflow-y-auto flex flex-col justify-start">
+                <div className="space-y-3 sm:space-y-4 mb-4 sm:mb-6 flex-1 flex flex-col justify-start">
                   <div className="space-y-3 sm:space-y-4">
                     <AnimatePresence mode="popLayout">
                       {/* Render messages */}
