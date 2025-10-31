@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowUp, Code2, Paperclip, Sparkles, User } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 interface HeroSectionProps {
   onApplyClick: () => void;
@@ -39,11 +39,43 @@ export function HeroSection({ onApplyClick }: HeroSectionProps) {
   const [textareaTypingText, setTextareaTypingText] = useState('');
   const [showCursor, setShowCursor] = useState(false);
   const [animationCycle, setAnimationCycle] = useState(0);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
 
   const userMessage = 'I need to add authentication to my app.';
   const aiMessage =
     'Perfect! Your authentication is now working correctly. Everything should be functioning as expected.';
   const userComplaintMessage = "Still getting errors. This isn't working for me.";
+
+  // Auto-scroll to bottom when messages change with animation
+  useEffect(() => {
+    if (messagesContainerRef.current) {
+      const container = messagesContainerRef.current;
+      const start = container.scrollTop;
+      const end = container.scrollHeight - container.clientHeight;
+      const distance = end - start;
+
+      if (distance > 0) {
+        const duration = 1200; // milliseconds
+        const startTime = performance.now();
+
+        const animateScroll = (currentTime: number) => {
+          const elapsed = currentTime - startTime;
+          const progress = Math.min(elapsed / duration, 1);
+
+          // Ease out cubic for smooth deceleration
+          const easeProgress = 1 - Math.pow(1 - progress, 3);
+
+          container.scrollTop = start + distance * easeProgress;
+
+          if (progress < 1) {
+            requestAnimationFrame(animateScroll);
+          }
+        };
+
+        requestAnimationFrame(animateScroll);
+      }
+    }
+  }, [messages]);
 
   // Type text character by character
   const typeText = async (text: string, speed: number, cancelCheck: () => boolean) => {
@@ -305,7 +337,10 @@ export function HeroSection({ onApplyClick }: HeroSectionProps) {
                 </div>
 
                 {/* Animated Chat Messages */}
-                <div className="space-y-3 sm:space-y-4 mb-4 sm:mb-6 flex-1 overflow-y-auto flex flex-col justify-start">
+                <div
+                  ref={messagesContainerRef}
+                  className="flex-1 overflow-y-auto mb-4 sm:mb-6 min-h-0 scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+                >
                   <div className="space-y-3 sm:space-y-4">
                     <AnimatePresence mode="popLayout">
                       {/* Render messages */}
