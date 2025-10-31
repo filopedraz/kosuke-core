@@ -36,7 +36,7 @@ export interface GhostPost {
 export type GhostPage = GhostPost;
 
 // Ghost Tag type
-export interface GhostTag {
+interface GhostTag {
   id: string;
   name: string;
   slug: string;
@@ -48,7 +48,7 @@ export interface GhostTag {
 }
 
 // Ghost Author type
-export interface GhostAuthor {
+interface GhostAuthor {
   id: string;
   name: string;
   slug: string;
@@ -91,44 +91,6 @@ export interface BlogPost {
   author?: GhostAuthor;
   metaTitle?: string | null;
   metaDescription?: string | null;
-}
-
-// Pagination metadata
-export interface GhostPagination {
-  page: number;
-  limit: number;
-  pages: number;
-  total: number;
-  next: number | null;
-  prev: number | null;
-}
-
-// API Response types
-export interface GhostPostsResponse {
-  posts: GhostPost[];
-  meta: {
-    pagination: GhostPagination;
-  };
-}
-
-export interface GhostPagesResponse {
-  pages: GhostPage[];
-  meta: {
-    pagination: GhostPagination;
-  };
-}
-
-export interface GhostTagsResponse {
-  tags: GhostTag[];
-  meta: {
-    pagination: GhostPagination;
-  };
-}
-
-// Newsletter subscription types
-export interface NewsletterSubscription {
-  email: string;
-  name?: string;
 }
 
 export interface NewsletterSubscriptionResponse {
