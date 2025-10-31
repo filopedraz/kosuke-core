@@ -14,7 +14,7 @@ import type {
   ToolStartEvent,
   ToolStopEvent,
 } from '@/lib/types/agent';
-import { countTokens } from '@/lib/utils/token-counter';
+import { countTokens } from '@/lib/agent/token-counter';
 import type {
   SDKAssistantMessage,
   SDKMessage,
@@ -68,8 +68,8 @@ export class EventProcessor {
    */
   getAccumulatedContent(): string {
     return this.textState.allBlocks
-      .filter((block) => block.type === 'text')
-      .map((block) => (block as { content: string }).content)
+      .filter(block => block.type === 'text')
+      .map(block => (block as { content: string }).content)
       .join('\n');
   }
 
@@ -154,7 +154,8 @@ export class EventProcessor {
       if (block.type === 'tool_result' && 'tool_use_id' in block) {
         yield* this.processToolResultBlock({
           tool_use_id: block.tool_use_id,
-          content: typeof block.content === 'string' ? block.content : JSON.stringify(block.content),
+          content:
+            typeof block.content === 'string' ? block.content : JSON.stringify(block.content),
           is_error: 'is_error' in block ? Boolean(block.is_error) : false,
         });
       }
@@ -178,9 +179,11 @@ export class EventProcessor {
     this.outputTokens += tokens;
   }
 
-  private async *processToolUseBlock(
-    block: { id: string; name: string; input?: unknown }
-  ): AsyncGenerator<StreamEvent> {
+  private async *processToolUseBlock(block: {
+    id: string;
+    name: string;
+    input?: unknown;
+  }): AsyncGenerator<StreamEvent> {
     // End any active text block before starting a tool
     if (this.textState.active) {
       yield this.createContentBlockStopEvent();
@@ -208,9 +211,11 @@ export class EventProcessor {
     this.inputTokens += tokens;
   }
 
-  private async *processToolResultBlock(
-    block: { tool_use_id: string; content: unknown; is_error?: boolean }
-  ): AsyncGenerator<StreamEvent> {
+  private async *processToolResultBlock(block: {
+    tool_use_id: string;
+    content: unknown;
+    is_error?: boolean;
+  }): AsyncGenerator<StreamEvent> {
     // Yield tool stop event
     yield this.createToolStopEvent(block);
 
@@ -301,4 +306,3 @@ export class EventProcessor {
     };
   }
 }
-
