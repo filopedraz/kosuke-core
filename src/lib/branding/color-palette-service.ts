@@ -3,7 +3,7 @@
  * AI-powered color palette generation using Claude
  */
 
-import { extractExistingColors } from '@/lib/css/operations';
+import { extractExistingColors } from '@/lib/branding/operations';
 import type { ColorVariable } from '@/lib/types/branding';
 import Anthropic from '@anthropic-ai/sdk';
 

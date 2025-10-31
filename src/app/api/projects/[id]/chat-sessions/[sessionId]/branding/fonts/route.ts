@@ -1,6 +1,6 @@
 import { ApiErrorHandler } from '@/lib/api/errors';
 import { auth } from '@/lib/auth';
-import { getSessionFonts } from '@/lib/css';
+import { getSessionFonts } from '@/lib/branding';
 import { db } from '@/lib/db';
 import { projects } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';

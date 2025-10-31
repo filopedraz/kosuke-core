@@ -1,6 +1,6 @@
 import { ApiErrorHandler } from '@/lib/api/errors';
 import { auth } from '@/lib/auth';
-import { extractExistingColors, formatColorValue, updateSingleColor } from '@/lib/css';
+import { extractExistingColors, formatColorValue, updateSingleColor } from '@/lib/branding';
 import { db } from '@/lib/db/drizzle';
 import { projects } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';

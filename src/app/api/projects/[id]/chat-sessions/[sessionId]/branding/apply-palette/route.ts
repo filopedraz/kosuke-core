@@ -1,6 +1,6 @@
 import { ApiErrorHandler } from '@/lib/api/errors';
 import { auth } from '@/lib/auth';
-import { applyColorPalette } from '@/lib/css';
+import { applyColorPalette } from '@/lib/branding';
 import { db } from '@/lib/db';
 import { projects } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';

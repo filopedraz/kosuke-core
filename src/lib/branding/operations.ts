@@ -13,7 +13,7 @@ import { join } from 'path';
  * Find globals.css file in session directory
  * Checks common locations: app/, src/, styles/, app/global.css
  */
-export async function findGlobalsCss(projectId: number, sessionId: string): Promise<string | null> {
+async function findGlobalsCss(projectId: number, sessionId: string): Promise<string | null> {
   const sessionPath = sessionManager.getSessionPath(projectId, sessionId);
 
   // Common locations for globals.css
@@ -177,7 +177,7 @@ export function formatColorValue(value: string): string {
  * Detect color format and validate accordingly
  * Supports: OKLCH, HSL, RGB, HEX
  */
-export function validateColorFormat(value: string, name: string, mode: 'light' | 'dark'): void {
+function validateColorFormat(value: string, name: string, mode: 'light' | 'dark'): void {
   const trimmedValue = value.trim();
 
   // Check if it's HSL format
