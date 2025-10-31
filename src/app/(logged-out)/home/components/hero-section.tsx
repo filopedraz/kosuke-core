@@ -238,7 +238,7 @@ export function HeroSection({ onApplyClick }: HeroSectionProps) {
               <div className="absolute inset-0 bg-linear-to-br from-emerald-500/5 via-transparent to-blue-500/5 rounded-2xl blur-3xl" />
 
               {/* Chat Interface Container */}
-              <div className="relative bg-background/80 backdrop-blur-xl border border-border/50 rounded-2xl p-4 sm:p-6 shadow-2xl h-[400px] md:h-[500px] lg:h-[550px] flex flex-col">
+              <div className="relative bg-background/80 backdrop-blur-xl border border-border/50 rounded-2xl p-4 sm:p-6 shadow-2xl h-[480px] md:h-[550px] lg:h-[600px] flex flex-col">
                 {/* Animated Cursor */}
                 <AnimatePresence>
                   {showCursor && (
@@ -318,7 +318,7 @@ export function HeroSection({ onApplyClick }: HeroSectionProps) {
                           transition={{ delay: 0.2 }}
                         >
                           <div
-                            className={`px-3 sm:px-4 py-2 rounded-2xl max-w-xs font-sans text-xs sm:text-sm ${
+                            className={`px-3 sm:px-4 py-2 rounded-2xl max-w-[85%] sm:max-w-md font-sans text-xs sm:text-sm ${
                               message.role === 'user'
                                 ? 'bg-primary text-primary-foreground rounded-br-md'
                                 : message.role === 'ai'
