@@ -11,7 +11,10 @@ Before you begin, ensure you have the following tools installed and configured:
 - **nvm (Node Version Manager)** - Manages Node.js versions
   - Install from [github.com/nvm-sh/nvm](https://github.com/nvm-sh/nvm)
   - The project includes a `.nvmrc` file to automatically use Node.js 22.20.0
-- **npm** - Package manager (included with Node.js)
+- **bun** - Package manager
+  - Install via curl: `curl -fsSL https://bun.com/install | bash`
+  - Install specific version (check `.bun-version` file): `curl -fsSL https://bun.com/install | bash -s "bun-v1.3.1"`
+  - For other installation methods see [Bun installation](https://bun.com/docs/installation)
 - **Docker Desktop or OrbStack** - Required for running PostgreSQL database locally
   - [Docker Desktop](https://www.docker.com/products/docker-desktop) - Traditional Docker solution
   - [OrbStack](https://orbstack.dev/) - Lightweight, faster alternative for macOS

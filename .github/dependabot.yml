@@ -1,41 +1,41 @@
 version: 2
 updates:
-  # Enable version updates for npm
-  - package-ecosystem: "npm"
+  # Enable version updates for bun
+  - package-ecosystem: 'bun'
     # Look for `package.json` and `lock` files in the `root` directory
-    directory: "/"
+    directory: '/'
     # Check for updates once a week
     schedule:
-      interval: "weekly"
-    # Specify labels for npm pull requests
+      interval: 'weekly'
+    # Specify labels for bun pull requests
     labels:
-      - "npm"
-      - "dependencies"
+      - 'bun'
+      - 'dependencies'
     # Set reviewers for pull requests
     reviewers:
-      - "kosuke"
-    # Limit the number of open pull requests for npm dependencies
+      - 'kosuke'
+    # Limit the number of open pull requests for bun dependencies
     open-pull-requests-limit: 10
     # Allow only production dependencies to be updated
     allow:
-      - dependency-type: "production"
+      - dependency-type: 'production'
     # Group all minor and patch updates together
     groups:
       dependencies:
         patterns:
-          - "*"
+          - '*'
         update-types:
-          - "minor"
-          - "patch"
+          - 'minor'
+          - 'patch'
 
   # Enable version updates for GitHub Actions
-  - package-ecosystem: "github-actions"
-    directory: "/"
+  - package-ecosystem: 'github-actions'
+    directory: '/'
     schedule:
-      interval: "weekly"
+      interval: 'weekly'
     labels:
-      - "github-actions"
-      - "dependencies"
+      - 'github-actions'
+      - 'dependencies'
     reviewers:
-      - "kosuke"
+      - 'kosuke'
     open-pull-requests-limit: 5
