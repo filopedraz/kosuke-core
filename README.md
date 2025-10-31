@@ -7,10 +7,6 @@
 ### Prerequisites
 
 Before you begin, ensure you have the following tools installed and configured:
-
-- **nvm (Node Version Manager)** - Manages Node.js versions
-  - Install from [github.com/nvm-sh/nvm](https://github.com/nvm-sh/nvm)
-  - The project includes a `.nvmrc` file to automatically use Node.js 22.20.0
 - **bun** - Package manager
   - Install via curl: `curl -fsSL https://bun.com/install | bash`
   - Install specific version (check `.bun-version` file): `curl -fsSL https://bun.com/install | bash -s "bun-v1.3.1"`
@@ -80,28 +76,27 @@ cp .env.example .env
 
 # Start all services (Postgres + Next.js)
 just run
-
-# The application will be available at:
-# - Next.js app: http://localhost:3000
-# - Postgres: localhost:54323
 ```
+
+The application will be available at:
+- Next.js app: http://localhost:3000
+- Postgres: localhost:54323
+
+For pre-commits and IDE linting install the dependencies locally:
+
+```bash
+just install
+```
+
+
 
 **Note**: On first run, you may need to run database migrations. Open a new terminal and run:
 
 ```bash
 # Run database migrations inside the Next.js container
-docker exec kosuke_nextjs bun run db:push
+just migrate
 ```
 
-### Stopping Services
-
-```bash
-# Stop all services
-docker compose -f docker-compose.local.yml down
-
-# Stop and remove volumes (reset database)
-docker compose -f docker-compose.local.yml down -v
-```
 
 ## 🛡️ License
 
