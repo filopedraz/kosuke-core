@@ -62,8 +62,10 @@ export default async function CustomersPage() {
                   <h2 className="text-xl font-semibold mb-2 group-hover:text-primary transition-colors">
                     {customer.title}
                   </h2>
-                  {customer.excerpt && (
-                    <p className="text-muted-foreground text-sm line-clamp-3">{customer.excerpt}</p>
+                  {(customer.metaDescription || customer.excerpt) && (
+                    <p className="text-muted-foreground text-sm line-clamp-3">
+                      {customer.metaDescription || customer.excerpt}
+                    </p>
                   )}
                   <div className="mt-4 text-sm text-primary font-medium">Read case study →</div>
                 </div>

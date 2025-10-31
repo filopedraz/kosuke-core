@@ -58,8 +58,10 @@ export function BlogGrid({ posts, pagination }: BlogGridProps) {
               <h2 className="text-xl font-semibold mb-2 group-hover:text-primary transition-colors line-clamp-2">
                 {post.title}
               </h2>
-              {post.excerpt && (
-                <p className="text-muted-foreground text-sm line-clamp-3 mb-4">{post.excerpt}</p>
+              {(post.metaDescription || post.excerpt) && (
+                <p className="text-muted-foreground text-sm line-clamp-3 mb-4">
+                  {post.metaDescription || post.excerpt}
+                </p>
               )}
               <div className="flex items-center justify-between text-xs text-muted-foreground">
                 <time dateTime={post.publishedAt}>
