@@ -118,10 +118,10 @@ const ReviewCard = ({
 export function ReviewsMarquee() {
   return (
     <section className="py-12 sm:py-20 bg-background">
-      <div className="container mx-auto px-4 sm:px-6">
+      <div className="container mx-auto px-8 sm:px-12 md:px-6">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12 sm:mb-16">
-            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-3 sm:mb-4 font-mono">
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-3 sm:mb-4">
               What you Told Us
             </h2>
             <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto font-sans px-2">
@@ -140,8 +140,8 @@ export function ReviewsMarquee() {
                 <ReviewCard key={review.username} {...review} />
               ))}
             </Marquee>
-            <div className="from-background pointer-events-none absolute inset-y-0 left-0 w-1/4 bg-gradient-to-r"></div>
-            <div className="from-background pointer-events-none absolute inset-y-0 right-0 w-1/4 bg-gradient-to-l"></div>
+            <div className="from-background pointer-events-none absolute inset-y-0 left-0 w-1/4 bg-linear-to-r"></div>
+            <div className="from-background pointer-events-none absolute inset-y-0 right-0 w-1/4 bg-linear-to-l"></div>
           </div>
         </div>
       </div>

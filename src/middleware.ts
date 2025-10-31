@@ -10,6 +10,17 @@ const isPublicRoute = createRouteMatcher([
   '/home',
   '/terms',
   '/privacy',
+  '/cookies',
+  '/api/webhooks/clerk',
+  '/blog',
+  '/blog/:path*',
+  '/customers',
+  '/pricing',
+  '/customers/:path*',
+  '/solutions/ship-with-engineers',
+  '/solutions/enabling-collaboration',
+  '/solutions/on-premise',
+  '/solutions/startup-program',
   // SEO and metadata routes
   '/robots.txt',
   '/sitemap.xml',
@@ -17,7 +28,8 @@ const isPublicRoute = createRouteMatcher([
   '/favicon.svg',
   '/favicon-96x96.png',
   '/apple-touch-icon.png',
-  '/opengraph-image.png',
+  '/opengraph-image.jpg',
+  '/opengraph-image-square.jpg',
 ]);
 
 const isProtectedRoute = createRouteMatcher(['/projects(.*)', '/settings(.*)']);

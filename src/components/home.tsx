@@ -1,7 +1,6 @@
 'use client';
 
-import { CoreFeaturesSection } from '@/app/(logged-out)/home/components/core-features-section';
-import { CoreValuesSection } from '@/app/(logged-out)/home/components/core-values-section';
+import { HowItWorksSection } from '@/app/(logged-out)/home/components/how-it-works-section';
 import { CTASection } from '@/app/(logged-out)/home/components/cta-section';
 import { FAQSection } from '@/app/(logged-out)/home/components/faq-section';
 import { FeaturesBentoGrid } from '@/app/(logged-out)/home/components/features-bento-grid';
@@ -19,7 +18,7 @@ export function Home() {
   }, []);
 
   return (
-    <div className="w-full min-h-screen bg-background font-mono">
+    <div className="w-full min-h-screen bg-background font-sans">
       {/* Minimal background with subtle grid */}
       <div className="fixed inset-0 -z-10">
         <div className="absolute inset-0 bg-background" />
@@ -39,19 +38,16 @@ export function Home() {
       <HeroSection onApplyClick={() => setIsModalOpen(true)} />
 
       {/* Core Features */}
-      <CoreFeaturesSection />
+      <HowItWorksSection />
 
       {/* Bento Grid Features */}
       <FeaturesBentoGrid />
 
-      {/* Reviews Section */}
-      <ReviewsMarquee />
-
-      {/* Core Values Section */}
-      <CoreValuesSection />
-
       {/* Private Alpha CTA */}
       <CTASection onApplyClick={() => setIsModalOpen(true)} />
+
+      {/* Reviews Section */}
+      <ReviewsMarquee />
 
       {/* FAQ Section */}
       <FAQSection />

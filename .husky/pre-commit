@@ -13,6 +13,7 @@ echo "Running pre-commit checks..."
 
 bun run lint-staged
 bun run typecheck
+bun run knip
 bun run test
 
 echo "✅ All pre-commit checks passed!"

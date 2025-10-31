@@ -35,6 +35,19 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'avatar.vercel.sh',
       },
+      // Ghost CMS images
+      {
+        protocol: 'https',
+        hostname: '*.ghost.io',
+      },
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'static.ghost.org',
+      },
     ],
   },
   webpack: (config, { dev }) => {

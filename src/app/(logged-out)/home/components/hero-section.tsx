@@ -153,14 +153,14 @@ export function HeroSection({ onApplyClick }: HeroSectionProps) {
   }, [animationCycle]);
 
   return (
-    <section className="pt-12 sm:pt-20 pb-16 sm:pb-32">
-      <div className="container mx-auto px-4 sm:px-6">
+    <section className="pt-12 sm:pt-14 md:pt-16 lg:pt-20 pb-12 sm:pb-14 md:pb-20 lg:pb-32">
+      <div className="container mx-auto px-8 sm:px-12 md:px-6">
         <div className="max-w-7xl mx-auto">
           {/* Two Column Layout */}
-          <div className="grid lg:grid-cols-2 gap-8 lg:gap-16 items-center">
+          <div className="grid md:grid-cols-2 gap-8 md:gap-12 lg:gap-16 items-center">
             {/* Left Column - Content */}
             <motion.div
-              className="space-y-6 lg:pr-8"
+              className="space-y-4 md:space-y-5 lg:space-y-6 md:pr-6 lg:pr-8"
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
@@ -171,28 +171,30 @@ export function HeroSection({ onApplyClick }: HeroSectionProps) {
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.5, delay: 0.3 }}
               >
-                <Badge
-                  variant="outline"
-                  className="mb-0 sm:mb-0 px-2 sm:px-3 py-1 text-xs font-mono bg-emerald-500/10 border-emerald-500/20 text-emerald-600 hover:bg-emerald-500/20 hover:border-emerald-500/40 transition-all duration-300 cursor-default relative overflow-hidden"
-                >
-                  {/* Shine effect */}
-                  <motion.div
-                    className="absolute inset-0 -top-1 -bottom-1 bg-gradient-to-r from-transparent via-white/20 to-transparent"
-                    initial={{ x: '-100%' }}
-                    animate={{ x: '200%' }}
-                    transition={{
-                      duration: 2,
-                      repeat: Infinity,
-                      repeatDelay: 3,
-                      ease: 'easeInOut',
-                    }}
-                  />
-                  <Sparkles className="w-3 h-3 mr-1" />
-                  Private Alpha
-                </Badge>
+                <a href="/solutions/startup-program" className="inline-block">
+                  <Badge
+                    variant="outline"
+                    className="mb-0 sm:mb-0 px-2 sm:px-3 py-1 text-xs bg-emerald-500/10 border-emerald-500/20 text-emerald-600 hover:bg-emerald-500/30 hover:border-emerald-500/50 transition-all duration-300 cursor-pointer relative overflow-hidden"
+                  >
+                    {/* Shine effect */}
+                    <motion.div
+                      className="absolute inset-0 -top-1 -bottom-1 bg-linear-to-r from-transparent via-white/20 to-transparent"
+                      initial={{ x: '-100%' }}
+                      animate={{ x: '200%' }}
+                      transition={{
+                        duration: 2,
+                        repeat: Infinity,
+                        repeatDelay: 3,
+                        ease: 'easeInOut',
+                      }}
+                    />
+                    <Sparkles className="w-3 h-3 mr-1" />
+                    🚀 Startup Program: Ship Your MVP for Free
+                  </Badge>
+                </a>
               </motion.div>
 
-              <h1 className="text-3xl sm:text-5xl lg:text-6xl font-bold mb-4 sm:mb-6 leading-tight tracking-tight">
+              <h1 className="text-3xl sm:text-[2rem] md:text-4xl lg:text-6xl font-bold leading-tight sm:leading-tight tracking-tight">
                 Start with AI. <br />
                 Finish with{' '}
                 <AuroraText colors={['#10B981', '#22c55e', '#34D399', '#059669']}>
@@ -201,14 +203,14 @@ export function HeroSection({ onApplyClick }: HeroSectionProps) {
                 .
               </h1>
 
-              <p className="text-base sm:text-lg lg:text-xl text-muted-foreground mb-6 sm:mb-8 font-sans leading-relaxed">
-                Build your software product by chatting with AI, and connect with a real engineer
-                whenever you get stuck.
+              <p className="text-base md:text-lg lg:text-xl text-muted-foreground font-sans leading-relaxed">
+                Build your product by chatting with AI and connecting with a real engineer whenever
+                you get stuck.
               </p>
 
               {/* CTA Button */}
               <motion.div
-                className="flex flex-col sm:flex-row gap-3 sm:gap-4"
+                className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-center justify-center md:items-start md:justify-start"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.6 }}
@@ -216,7 +218,7 @@ export function HeroSection({ onApplyClick }: HeroSectionProps) {
                 <Button
                   size="lg"
                   variant="outline"
-                  className="w-full sm:w-auto px-6 sm:px-8 py-3 font-mono"
+                  className="w-full sm:w-auto px-6 sm:px-8 py-3"
                   onClick={onApplyClick}
                 >
                   <Code2 className="mr-2 h-4 w-4" />
@@ -233,10 +235,10 @@ export function HeroSection({ onApplyClick }: HeroSectionProps) {
               transition={{ duration: 0.6, delay: 0.4 }}
             >
               {/* Background blur effect */}
-              <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 via-transparent to-blue-500/5 rounded-2xl blur-3xl" />
+              <div className="absolute inset-0 bg-linear-to-br from-emerald-500/5 via-transparent to-blue-500/5 rounded-2xl blur-3xl" />
 
               {/* Chat Interface Container */}
-              <div className="relative bg-background/80 backdrop-blur-xl border border-border/50 rounded-2xl p-4 sm:p-6 shadow-2xl h-[500px] sm:h-[550px] flex flex-col">
+              <div className="relative bg-background/80 backdrop-blur-xl border border-border/50 rounded-2xl p-4 sm:p-6 shadow-2xl h-[480px] md:h-[550px] lg:h-[600px] flex flex-col">
                 {/* Animated Cursor */}
                 <AnimatePresence>
                   {showCursor && (
@@ -276,7 +278,7 @@ export function HeroSection({ onApplyClick }: HeroSectionProps) {
                   <Button
                     variant="outline"
                     size="sm"
-                    className={`font-mono text-xs relative overflow-hidden transition-all duration-300 cursor-default ${
+                    className={`text-xs relative overflow-hidden transition-all duration-300 cursor-default ${
                       currentStep === 'humanHelp'
                         ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 shadow-sm shadow-emerald-500/5'
                         : 'bg-emerald-500/20 border-emerald-500/60 text-emerald-500 shadow-lg shadow-emerald-500/25 animate-pulse'
@@ -286,7 +288,7 @@ export function HeroSection({ onApplyClick }: HeroSectionProps) {
                     {/* Shine effect for Help Me button */}
                     {currentStep !== 'humanHelp' && (
                       <motion.div
-                        className="absolute inset-0 bg-gradient-to-r from-transparent via-emerald-300/40 to-transparent"
+                        className="absolute inset-0 bg-linear-to-r from-transparent via-emerald-300/40 to-transparent"
                         initial={{ x: '-100%' }}
                         animate={{ x: '200%' }}
                         transition={{
@@ -316,7 +318,7 @@ export function HeroSection({ onApplyClick }: HeroSectionProps) {
                           transition={{ delay: 0.2 }}
                         >
                           <div
-                            className={`px-3 sm:px-4 py-2 rounded-2xl max-w-xs font-sans text-xs sm:text-sm ${
+                            className={`px-3 sm:px-4 py-2 rounded-2xl max-w-[85%] sm:max-w-md font-sans text-xs sm:text-sm ${
                               message.role === 'user'
                                 ? 'bg-primary text-primary-foreground rounded-br-md'
                                 : message.role === 'ai'
@@ -341,7 +343,7 @@ export function HeroSection({ onApplyClick }: HeroSectionProps) {
                 </div>
 
                 {/* Mock Chat Input */}
-                <div className="relative mt-auto">
+                <div className="relative mt-auto" aria-hidden="true">
                   <div
                     className={`relative flex flex-col rounded-lg border transition-all duration-300 shadow-lg bg-background/50 backdrop-blur-sm ${
                       currentStep === 'userTyping' || currentStep === 'userComplaintTyping'
@@ -361,7 +363,8 @@ export function HeroSection({ onApplyClick }: HeroSectionProps) {
                           : 'Describe your project idea...'
                       }
                       disabled
-                      className={`min-h-[100px] resize-none border-0 !bg-transparent px-3 py-3 shadow-none focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 text-sm cursor-not-allowed ${
+                      tabIndex={-1}
+                      className={`min-h-[100px] resize-none border-0 bg-transparent! px-3 py-3 shadow-none focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 text-sm cursor-not-allowed ${
                         currentStep === 'userTyping' || currentStep === 'userComplaintTyping'
                           ? 'opacity-100 text-foreground'
                           : 'opacity-75'
@@ -377,8 +380,9 @@ export function HeroSection({ onApplyClick }: HeroSectionProps) {
                           size="icon"
                           className="h-8 w-8 opacity-50 cursor-not-allowed"
                           disabled
+                          tabIndex={-1}
                         >
-                          <Paperclip className="h-4 w-4" />
+                          <Paperclip className="h-4 w-4" aria-hidden="true" />
                         </Button>
 
                         <Button
@@ -387,8 +391,9 @@ export function HeroSection({ onApplyClick }: HeroSectionProps) {
                           variant="outline"
                           className="h-8 w-8 opacity-50 cursor-not-allowed"
                           disabled
+                          tabIndex={-1}
                         >
-                          <ArrowUp className="h-4 w-4" />
+                          <ArrowUp className="h-4 w-4" aria-hidden="true" />
                         </Button>
                       </div>
                     </div>
