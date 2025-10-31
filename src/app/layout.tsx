@@ -21,10 +21,13 @@ const ogImageSquare = `${baseUrl}/opengraph-image-square.jpg`;
 // Set NEXT_PUBLIC_ENABLE_INDEXING=true in production environment only
 const enableIndexing = process.env.NEXT_PUBLIC_ENABLE_INDEXING === 'true';
 
+const title = 'Kosuke - Reframing Vibe Coding';
+const description =
+  'Combine AI speed with engineering rigor to help you build faster and ship production-ready products.';
+
 export const metadata: Metadata = {
-  title: 'Kosuke - Build Your Next Web Project with AI',
-  description:
-    'Build your next web project with AI. Describe what you want to build, and our AI will help you create it.',
+  title,
+  description,
   keywords: [
     'AI web development',
     'web project builder',
@@ -48,9 +51,8 @@ export const metadata: Metadata = {
     canonical: '/',
   },
   openGraph: {
-    title: 'Kosuke - Build Your Next Web Project with AI',
-    description:
-      'Build your next web project with AI. Describe what you want to build, and our AI will help you create it.',
+    title,
+    description,
     url: '/',
     siteName: 'Kosuke',
     locale: 'en_US',
@@ -72,9 +74,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Kosuke - Build Your Next Web Project with AI',
-    description:
-      'Build your next web project with AI. Describe what you want to build, and our AI will help you create it.',
+    title,
+    description,
     images: [ogImage],
   },
   icons: [
