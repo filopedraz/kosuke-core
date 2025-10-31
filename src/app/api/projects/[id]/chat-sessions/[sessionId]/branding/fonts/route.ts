@@ -1,4 +1,9 @@
 import { auth } from '@/lib/auth/server';
+import { getSessionFonts } from '@/lib/css';
+import { db } from '@/lib/db';
+import { projects } from '@/lib/db/schema';
+import { ApiErrorHandler } from '@/lib/api/errors';
+import { eq } from 'drizzle-orm';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(
@@ -21,27 +26,30 @@ export async function GET(
       return NextResponse.json({ error: 'Session ID is required' }, { status: 400 });
     }
 
-    // Proxy to Python agent service for session-specific fonts
-    const agentUrl = process.env.AGENT_SERVICE_URL || 'http://localhost:8000';
-    const response = await fetch(`${agentUrl}/api/projects/${projectId}/sessions/${sessionId}/branding/fonts`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+    // Verify project ownership
+    const project = await db.query.projects.findFirst({
+      where: eq(projects.id, projectId),
     });
 
-    if (!response.ok) {
-      const error = await response.text();
-      return NextResponse.json(
-        { error: 'Failed to fetch fonts', details: error },
-        { status: response.status }
-      );
+    if (!project || project.userId !== userId) {
+      return NextResponse.json({ error: 'Project not found or access denied' }, { status: 404 });
     }
 
-    const result = await response.json();
-    return NextResponse.json(result);
+    // Get fonts from session
+    console.log(`🔍 Getting fonts for project ${projectId}, session ${sessionId}`);
+
+    const fonts = await getSessionFonts(projectId, sessionId);
+
+    console.log(`📊 Found ${fonts.length} fonts in session ${sessionId}`);
+
+    return NextResponse.json({
+      success: true,
+      fonts,
+      count: fonts.length,
+      session_id: sessionId,
+    });
   } catch (error) {
     console.error('Error fetching session fonts:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return ApiErrorHandler.handle(error);
   }
 }

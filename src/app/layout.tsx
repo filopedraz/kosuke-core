@@ -134,7 +134,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
         className={`${geistSans.variable} ${geistMono.variable} dark antialiased`}
         suppressHydrationWarning
       >
-        <body className="min-h-[100dvh] bg-background text-foreground overflow-x-hidden">
+        <body className="min-h-dvh bg-background text-foreground overflow-x-hidden">
           <Script
             defer
             data-domain="kosuke.ai"
@@ -142,7 +142,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
             strategy="beforeInteractive"
           />
           <Providers>
-            <div className="flex flex-col min-h-[100dvh]">
+            <div className="flex flex-col min-h-dvh">
               <ErrorBoundary>
                 <main className="flex-1">{children}</main>
               </ErrorBoundary>

@@ -337,6 +337,62 @@ export async function updateSingleColor(
 }
 
 /**
+ * Get font information from the session's layout files
+ */
+export async function getSessionFonts(
+  projectId: number,
+  sessionId: string
+): Promise<Array<{ name: string }>> {
+  try {
+    const sessionPath = sessionManager.getSessionPath(projectId, sessionId);
+
+    // Look for layout.tsx file
+    const layoutPath = join(sessionPath, 'app', 'layout.tsx');
+
+    // Check if layout file exists
+    if (!existsSync(layoutPath)) {
+      console.warn(`⚠️ Layout file not found: ${layoutPath}`);
+      return [];
+    }
+
+    // Read layout file content
+    const layoutContent = await readFile(layoutPath, 'utf-8');
+
+    // Parse fonts from layout content
+    return parseFontsFromLayout(layoutContent);
+  } catch (error) {
+    console.error(`❌ Error getting session fonts:`, error);
+    return [];
+  }
+}
+
+/**
+ * Parse font information from layout file content
+ */
+function parseFontsFromLayout(layoutContent: string): Array<{ name: string }> {
+  const fonts: Array<{ name: string }> = [];
+
+  // Look for Next.js font imports
+  // Matches: import { FontName, AnotherFont } from 'next/font/...'
+  const fontImportPattern = /import\s+\{\s*([^}]+)\s*\}\s+from\s+['"]next\/font[^'"]*['"]/g;
+
+  let match;
+  while ((match = fontImportPattern.exec(layoutContent)) !== null) {
+    const importedNames = match[1];
+    // Split by comma and clean up whitespace
+    const fontNames = importedNames.split(',').map(name => name.trim());
+
+    for (const fontName of fontNames) {
+      if (fontName) {
+        fonts.push({ name: fontName });
+      }
+    }
+  }
+
+  return fonts;
+}
+
+/**
  * Update a color variable within a specific CSS block
  */
 function updateColorInBlock(

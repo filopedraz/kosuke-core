@@ -79,32 +79,3 @@ async def apply_session_color_palette(
     except Exception as error:
         logger.error(f"❌ Error in apply_session_color_palette endpoint: {error}")
         raise HTTPException(status_code=500, detail=f"Failed to apply session color palette: {error!s}") from error
-
-
-@router.get("/projects/{project_id}/sessions/{session_id}/branding/fonts")
-async def get_session_fonts(
-    project_id: int = Path(..., description="Project ID", ge=1),
-    session_id: str = Path(..., description="Session ID"),
-    color_palette_service: ColorPaletteService = ColorPaletteServiceDep,
-) -> dict:
-    """
-    Get font information from the session's layout files
-    """
-    try:
-        logger.info(f"🔍 Getting fonts for project {project_id}, session {session_id}")
-
-        # Get fonts from session
-        fonts = await color_palette_service.get_session_fonts(project_id, session_id)
-
-        logger.info(f"📊 Found {len(fonts)} fonts in session {session_id}")
-
-        return {
-            "success": True,
-            "fonts": fonts,
-            "count": len(fonts),
-            "session_id": session_id,
-        }
-
-    except Exception as error:
-        logger.error(f"❌ Error in get_session_fonts endpoint: {error}")
-        raise HTTPException(status_code=500, detail=f"Failed to get session fonts: {error!s}") from error

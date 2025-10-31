@@ -6,15 +6,6 @@ export type ThemeMode = 'light' | 'dark';
 // Font Types
 export interface FontInfo {
   name: string;
-  provider: string;
-  variable: string;
-  config: {
-    subsets: string[];
-    weights?: number[];
-    display?: string;
-    [key: string]: unknown;
-  };
-  usage: string;
 }
 
 // Color Variable Types
