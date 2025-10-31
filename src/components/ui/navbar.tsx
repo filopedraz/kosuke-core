@@ -175,11 +175,9 @@ export default function Navbar({
         <div className="w-full border-b border-border relative z-50">
           <header className={cn('bg-background w-full h-14', className)}>
             <div className="w-full h-full px-6 sm:px-8 md:px-16 lg:px-24 flex justify-between items-center max-w-screen-2xl mx-auto">
-              <div
+              <Link
+                href="/"
                 className="flex items-center hover:opacity-80 transition-opacity cursor-pointer"
-                onClick={() => {
-                  router.push('/home');
-                }}
               >
                 <Image
                   src="/logo-dark.svg"
@@ -198,7 +196,7 @@ export default function Navbar({
                   priority
                 />
                 <span className="ml-2 text-xl text-foreground">Kosuke</span>
-              </div>
+              </Link>
 
               {/* Desktop Navigation */}
               {showNavigation && (

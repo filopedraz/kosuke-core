@@ -36,29 +36,11 @@ export interface GitHubRepository {
   updated_at: string;
 }
 
-// Enhanced repository selection types for project creation
-
 export interface ProjectGitHubSettings {
   repositoryName: string;
   description: string;
   isPrivate: boolean;
   autoInit: boolean;
-}
-
-// Branch and Pull Request summaries
-export interface BranchSummary {
-  name: string;
-  commitSha: string;
-  protected: boolean;
-}
-
-export interface PullRequestSummary {
-  number: number;
-  title: string;
-  state: 'open' | 'closed' | 'merged';
-  headRef: string;
-  baseRef: string;
-  url: string;
 }
 
 // Repository creation from template

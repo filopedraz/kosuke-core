@@ -1,6 +1,6 @@
 import GhostContentAPI from '@tryghost/content-api';
 
-import type { BlogPost, Customer, GhostPage, GhostPost, GhostTag } from '@/lib/types/ghost';
+import type { BlogPost, Customer, GhostPage, GhostPost } from '@/lib/types/ghost';
 
 // Lazy initialization of Ghost Content API client
 let ghostClient: InstanceType<typeof GhostContentAPI> | null = null;
@@ -126,26 +126,6 @@ export async function getBlogPostBySlug(slug: string): Promise<BlogPost | null> 
   } catch (error) {
     console.error(`Error fetching blog post ${slug}:`, error);
     return null;
-  }
-}
-
-/**
- * Fetch all tags used in blog posts
- */
-export async function getBlogTags(): Promise<GhostTag[]> {
-  try {
-    const client = getGhostClient();
-    if (!client) return [];
-
-    const tags = (await client.tags.browse({
-      limit: 'all',
-      filter: 'visibility:public',
-    })) as GhostTag[];
-
-    return tags;
-  } catch (error) {
-    console.error('Error fetching blog tags:', error);
-    return [];
   }
 }
 
