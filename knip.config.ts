@@ -7,7 +7,11 @@ const knipConfig = {
     'src/components/ui/**',
     // Library barrel exports, infrastructure for template users
     'src/lib/**/index.ts',
-    // used by shadcn/ui unused component. Add here until we use the sidebar component.
+    // Template/infrastructure files - analytics setup for server-side tracking
+    'src/lib/analytics/server.ts',
+    'src/lib/analytics/events.ts',
+    // Template/infrastructure files - ready for future use
+    'src/hooks/use-posthog.ts',
     'src/hooks/use-mobile.ts',
   ],
   ignoreDependencies: [
@@ -28,9 +32,16 @@ const knipConfig = {
     'sonner',
     'eslint-config-next',
     'eslint-config-prettier',
+    'posthog-node',
+    // TODO check if we should use these dependencies
+    '@types/bcryptjs',
+    '@types/dockerode',
+    '@types/marked',
     // Dependencies used in build scripts or configuration
     '@eslint/eslintrc',
   ],
+  // Entry points - tells knip about Next.js App Router pages and API routes
+  entry: ['src/app/**/page.tsx', 'src/app/**/layout.tsx', 'src/app/api/**/*.ts'],
   rules: {
     files: 'error',
     dependencies: 'error',
