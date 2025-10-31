@@ -1,4 +1,9 @@
+import { ApiErrorHandler } from '@/lib/api/errors';
 import { auth } from '@/lib/auth/server';
+import { DatabaseService } from '@/lib/database';
+import { db } from '@/lib/db';
+import { projects } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(
@@ -21,27 +26,24 @@ export async function GET(
       return NextResponse.json({ error: 'Session ID is required' }, { status: 400 });
     }
 
-    // Proxy to Python agent with session-specific endpoint
-    const agentUrl = process.env.AGENT_SERVICE_URL || 'http://localhost:8000';
-    const response = await fetch(`${agentUrl}/api/database/schema/${projectId}/${sessionId}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+    // Verify project ownership
+    const project = await db.query.projects.findFirst({
+      where: eq(projects.id, projectId),
     });
 
-    if (!response.ok) {
-      const error = await response.text();
-      return NextResponse.json(
-        { error: 'Failed to fetch database schema', details: error },
-        { status: response.status }
-      );
+    if (!project || project.userId !== userId) {
+      return NextResponse.json({ error: 'Project not found or access denied' }, { status: 404 });
     }
 
-    const result = await response.json();
-    return NextResponse.json(result);
+    console.log(`📊 Getting database schema for project ${projectId}, session ${sessionId}`);
+
+    // Get database schema using DatabaseService
+    const dbService = new DatabaseService(projectId, sessionId);
+    const schema = await dbService.getSchema();
+
+    return NextResponse.json(schema);
   } catch (error) {
     console.error('Error fetching database schema:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return ApiErrorHandler.handle(error);
   }
 }

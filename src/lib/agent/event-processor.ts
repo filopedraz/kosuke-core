@@ -21,6 +21,9 @@ import type {
   SDKUserMessage,
 } from '@anthropic-ai/claude-agent-sdk';
 
+// Typed constant for empty tool input
+const EMPTY_TOOL_INPUT: Record<string, unknown> = {};
+
 /**
  * Event Processor
  * Handles transformation of SDK events and accumulation of message data
@@ -176,7 +179,7 @@ export class EventProcessor {
   }
 
   private async *processToolUseBlock(
-    block: { id: string; name: string; input: unknown }
+    block: { id: string; name: string; input?: unknown }
   ): AsyncGenerator<StreamEvent> {
     // End any active text block before starting a tool
     if (this.textState.active) {
@@ -184,20 +187,23 @@ export class EventProcessor {
       this.saveTextContent();
     }
 
+    // Use empty object if input is undefined
+    const toolInput = block.input ?? EMPTY_TOOL_INPUT;
+
     // Yield tool start event
-    yield this.createToolStartEvent(block);
+    yield this.createToolStartEvent({ ...block, input: toolInput });
 
     // Store tool use block for DB
     this.textState.allBlocks.push({
       type: 'tool',
       id: block.id,
       name: block.name,
-      input: block.input,
+      input: toolInput,
       status: 'pending',
     });
 
     // Count tokens from tool input
-    const inputStr = JSON.stringify(block.input);
+    const inputStr = JSON.stringify(toolInput);
     const tokens = countTokens(inputStr);
     this.inputTokens += tokens;
   }

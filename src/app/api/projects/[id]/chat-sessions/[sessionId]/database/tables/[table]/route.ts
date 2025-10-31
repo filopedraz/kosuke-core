@@ -1,4 +1,9 @@
+import { ApiErrorHandler } from '@/lib/api/errors';
 import { auth } from '@/lib/auth/server';
+import { DatabaseService } from '@/lib/database';
+import { db } from '@/lib/db';
+import { projects } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(
@@ -26,40 +31,31 @@ export async function GET(
       return NextResponse.json({ error: 'Table name is required' }, { status: 400 });
     }
 
-    // Get query parameters
-    const url = new URL(request.url);
-    const limit = parseInt(url.searchParams.get('limit') || '100');
-    const offset = parseInt(url.searchParams.get('offset') || '0');
-
-    // Proxy to Python agent with session-specific endpoint
-    const agentUrl = process.env.AGENT_SERVICE_URL || 'http://localhost:8000';
-    const queryParams = new URLSearchParams({
-      limit: limit.toString(),
-      offset: offset.toString(),
+    // Verify project ownership
+    const project = await db.query.projects.findFirst({
+      where: eq(projects.id, projectId),
     });
 
-    const response = await fetch(
-      `${agentUrl}/api/database/table/${projectId}/${sessionId}/${tableName}?${queryParams}`,
-      {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-
-    if (!response.ok) {
-      const error = await response.text();
-      return NextResponse.json(
-        { error: 'Failed to fetch table data', details: error },
-        { status: response.status }
-      );
+    if (!project || project.userId !== userId) {
+      return NextResponse.json({ error: 'Project not found or access denied' }, { status: 404 });
     }
 
-    const result = await response.json();
-    return NextResponse.json(result);
+    // Get query parameters
+    const url = new URL(request.url);
+    const limit = Math.min(parseInt(url.searchParams.get('limit') || '100'), 1000);
+    const offset = Math.max(parseInt(url.searchParams.get('offset') || '0'), 0);
+
+    console.log(
+      `📊 Getting table data for project ${projectId}, session ${sessionId}, table ${tableName}`
+    );
+
+    // Get table data using DatabaseService
+    const dbService = new DatabaseService(projectId, sessionId);
+    const tableData = await dbService.getTableData(tableName, limit, offset);
+
+    return NextResponse.json(tableData);
   } catch (error) {
     console.error('Error fetching table data:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return ApiErrorHandler.handle(error);
   }
 }
