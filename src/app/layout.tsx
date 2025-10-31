@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
+import { Inter } from 'next/font/google';
 import Script from 'next/script';
 import { ReactNode } from 'react';
 import './globals.css';
@@ -9,19 +9,17 @@ import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
 import Providers from './providers';
 
-const geistSans = Geist({
-  variable: '--font-geist-sans',
-  subsets: ['latin'],
-});
-
-const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
+const inter = Inter({
+  variable: '--font-inter',
   subsets: ['latin'],
 });
 
 const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://kosuke.ai';
 const ogImage = `${baseUrl}/opengraph-image.jpg`;
 const ogImageSquare = `${baseUrl}/opengraph-image-square.jpg`;
+
+// Set NEXT_PUBLIC_ENABLE_INDEXING=true in production environment only
+const enableIndexing = process.env.NEXT_PUBLIC_ENABLE_INDEXING === 'true';
 
 export const metadata: Metadata = {
   title: 'Kosuke - Build Your Next Web Project with AI',
@@ -101,17 +99,9 @@ export const metadata: Metadata = {
       url: '/apple-touch-icon.png',
     },
   ],
-  // TODO: enable to true when we have proper content
   robots: {
-    index: false,
-    follow: false,
-    googleBot: {
-      index: false,
-      follow: false,
-      'max-video-preview': -1,
-      'max-image-preview': 'large',
-      'max-snippet': -1,
-    },
+    index: enableIndexing,
+    follow: enableIndexing,
   },
   verification: {
     // google: process.env.GOOGLE_SITE_VERIFICATION,
@@ -119,7 +109,8 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  maximumScale: 1,
+  width: 'device-width',
+  initialScale: 1,
 };
 
 interface RootLayoutProps {
@@ -129,12 +120,15 @@ interface RootLayoutProps {
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <ClerkThemeProvider>
-      <html
-        lang="en"
-        className={`${geistSans.variable} ${geistMono.variable} dark antialiased`}
-        suppressHydrationWarning
-      >
-        <body className="min-h-[100dvh] bg-background text-foreground overflow-x-hidden">
+      <html lang="en" className={`${inter.variable} dark antialiased`} suppressHydrationWarning>
+        <body className="min-h-[100dvh] bg-background text-foreground overflow-x-hidden font-sans">
+          <Script
+            id="Cookiebot"
+            src="https://consent.cookiebot.com/uc.js"
+            data-cbid="1d49650b-72ce-410d-b236-90f662688b3d"
+            data-blockingmode="auto"
+            strategy="beforeInteractive"
+          />
           <Script
             defer
             data-domain="kosuke.ai"
