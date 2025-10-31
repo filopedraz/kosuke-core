@@ -1,13 +1,13 @@
 import { ApiErrorHandler } from '@/lib/api/errors';
 import { auth } from '@/lib/auth/server';
-import { ColorPaletteService } from '@/lib/branding';
+import { applyColorPalette } from '@/lib/css';
 import { db } from '@/lib/db';
 import { projects } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * Generate a color palette for a session-specific project using AI
+ * Apply a color palette to the session's globals.css file
  */
 export async function POST(
   request: NextRequest,
@@ -39,20 +39,24 @@ export async function POST(
     }
 
     const requestBody = await request.json();
-    const keywords = requestBody.keywords || '';
+    // Extract request body
+    const colors = requestBody.colors;
+    if (!colors || !Array.isArray(colors) || colors.length === 0) {
+      return NextResponse.json({ error: 'Colors array is required and must not be empty' }, { status: 400 });
+    }
 
-    console.log(`🎨 Color palette generation request for project ${projectId}, session ${sessionId}`);
-    console.log(`📋 Keywords: '${keywords}'`);
+    console.log(`🎨 Color palette application request for project ${projectId}, session ${sessionId}`);
+    console.log(`📊 Colors to apply: ${colors}`);
 
-    // Generate color palette using the service
-    const colorPaletteService = new ColorPaletteService();
-    const result = await colorPaletteService.generateColorPalette(projectId, sessionId, keywords);
+    // Apply colors to globals.css
+    const result = await applyColorPalette(projectId, sessionId, colors);
 
-    console.log(`✅ Color palette generation ${result.success ? 'successful' : 'failed'}`);
+    console.log(`✅ Color palette application ${result.success ? 'successful' : 'failed'}`);
 
     return NextResponse.json(result);
   } catch (error) {
-    console.error('Error in generate-palette API:', error);
+    console.error('Error in apply-palette API:', error);
     return ApiErrorHandler.handle(error);
   }
 }
+

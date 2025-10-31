@@ -126,7 +126,7 @@ export class EventProcessor {
         yield* this.processToolUseBlock({
           id: block.id,
           name: block.name,
-          input: block.input || {},
+          input: block.input,
         });
       }
     }
@@ -176,7 +176,7 @@ export class EventProcessor {
   }
 
   private async *processToolUseBlock(
-    block: { id: string; name: string; input: Record<string, unknown> }
+    block: { id: string; name: string; input: unknown }
   ): AsyncGenerator<StreamEvent> {
     // End any active text block before starting a tool
     if (this.textState.active) {
@@ -272,7 +272,7 @@ export class EventProcessor {
   private createToolStartEvent(block: {
     id: string;
     name: string;
-    input: Record<string, unknown>;
+    input: unknown;
   }): ToolStartEvent {
     return {
       type: 'tool_start',

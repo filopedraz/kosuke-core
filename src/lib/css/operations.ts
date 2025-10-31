@@ -337,6 +337,73 @@ export async function updateSingleColor(
 }
 
 /**
+ * Apply multiple color variables to the session's globals.css file
+ */
+export async function applyColorPalette(
+  projectId: number,
+  sessionId: string,
+  colors: Array<CssVariable>
+): Promise<{
+  success: boolean;
+  message: string;
+  appliedColors: number;
+}> {
+  try {
+    console.log(
+      `🎨 Applying ${colors.length} colors to project ${projectId}, session ${sessionId}`
+    );
+
+    // Find globals.css
+    const globalsPath = await findGlobalsCss(projectId, sessionId);
+    if (!globalsPath) {
+      return {
+        success: false,
+        message: 'Could not find globals.css file in project',
+        appliedColors: 0,
+      };
+    }
+
+    // Read current CSS content
+    let cssContent = await readFile(globalsPath, 'utf-8');
+
+    // Apply each color
+    let appliedCount = 0;
+    for (const color of colors) {
+      try {
+        // Apply light mode color
+        cssContent = updateColorInBlock(cssContent, ':root', color.name, color.lightValue);
+        appliedCount++;
+
+        // Apply dark mode color if provided
+        if (color.darkValue) {
+          cssContent = updateColorInBlock(cssContent, '.dark', color.name, color.darkValue);
+        }
+      } catch (error) {
+        console.warn(`⚠️ Failed to apply color ${color.name}:`, error);
+      }
+    }
+
+    // Write updated CSS back to file
+    await writeFile(globalsPath, cssContent, 'utf-8');
+
+    console.log(`✅ Successfully applied ${appliedCount} colors to globals.css`);
+
+    return {
+      success: true,
+      message: `Successfully applied ${appliedCount} colors to globals.css`,
+      appliedColors: appliedCount,
+    };
+  } catch (error) {
+    console.error(`❌ Error applying color palette:`, error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Failed to apply color palette',
+      appliedColors: 0,
+    };
+  }
+}
+
+/**
  * Get font information from the session's layout files
  */
 export async function getSessionFonts(

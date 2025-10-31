@@ -3,7 +3,6 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import branding
 from app.api.routes import database
 
 # Configure logging for the entire application
@@ -28,7 +27,6 @@ app.add_middleware(
 )
 
 # Include routers
-app.include_router(branding.router, prefix="/api", tags=["branding"])
 app.include_router(database.router, prefix="/api", tags=["database"])
 
 
