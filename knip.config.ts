@@ -7,6 +7,8 @@ const knipConfig = {
     'src/components/ui/**',
     // Library barrel exports, infrastructure for template users
     'src/lib/**/index.ts',
+    // used by shadcn/ui unused component. Add here until we use the sidebar component.
+    'src/hooks/use-mobile.ts',
   ],
   ignoreDependencies: [
     // Shadcn/UI dependencies (only used in components/ui/** which is ignored)
