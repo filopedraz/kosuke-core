@@ -27,13 +27,7 @@ export async function GET(
     }
 
     const { id, sessionId } = await params;
-    const projectId = Number(id);
-    if (isNaN(projectId)) {
-      return NextResponse.json(
-        { error: 'Invalid project ID' },
-        { status: 400 }
-      );
-    }
+    const projectId = id;
 
     // Get the project
     const [project] = await db.select().from(projects).where(eq(projects.id, projectId));
@@ -177,13 +171,7 @@ export async function POST(
     }
 
     const { id, sessionId } = await params;
-    const projectId = Number(id);
-    if (isNaN(projectId)) {
-      return NextResponse.json(
-        { error: 'Invalid project ID' },
-        { status: 400 }
-      );
-    }
+    const projectId = id;
 
     // Get the project
     const [project] = await db.select().from(projects).where(eq(projects.id, projectId));
@@ -292,13 +280,7 @@ export async function DELETE(
     }
 
     const { id, sessionId } = await params;
-    const projectId = Number(id);
-    if (isNaN(projectId)) {
-      return NextResponse.json(
-        { error: 'Invalid project ID' },
-        { status: 400 }
-      );
-    }
+    const projectId = id;
 
     // Get the project
     const [project] = await db.select().from(projects).where(eq(projects.id, projectId));

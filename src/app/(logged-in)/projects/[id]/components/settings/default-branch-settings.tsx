@@ -18,7 +18,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface DefaultBranchSettingsProps {
-  projectId: number;
+  projectId: string;
 }
 
 export default function DefaultBranchSettings({ projectId }: DefaultBranchSettingsProps) {

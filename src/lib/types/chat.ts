@@ -15,7 +15,7 @@ export type AssistantBlock =
 
 // Core Chat Types
 export interface ChatMessage {
-  id: number;
+  id: string;
   content?: string; // For user messages (optional for assistant messages)
   blocks?: AssistantBlock[]; // For assistant response blocks
   role: 'user' | 'assistant' | 'system';
@@ -27,7 +27,7 @@ export interface ChatMessage {
   hasError?: boolean;
   errorType?: ErrorType;
   metadata?: {
-    revertInfo?: { messageId: number; commitSha: string; timestamp: string };
+    revertInfo?: { messageId: string; commitSha: string; timestamp: string };
     [key: string]: unknown;
   };
 }
@@ -44,8 +44,8 @@ export interface MessageOptions {
 
 // API Response Types
 export interface ApiChatMessage {
-  id: number;
-  projectId: number;
+  id: string;
+  projectId: string;
   userId: number | null;
   content?: string; // For user messages
   blocks?: AssistantBlock[]; // For assistant messages
@@ -59,7 +59,7 @@ export interface ApiChatMessage {
 
 // Component Props Types
 export interface ChatMessageProps {
-  id?: number;
+  id?: string;
   content?: string; // For user messages
   blocks?: AssistantBlock[]; // For assistant response blocks
   role: 'user' | 'assistant' | 'system';
@@ -79,11 +79,11 @@ export interface ChatMessageProps {
   tokensOutput?: number;
   contextTokens?: number;
   commitSha?: string; // NEW: Git commit SHA for revert functionality
-  projectId?: number; // NEW: Project ID for revert operations
-  chatSessionId?: number; // NEW: Chat session ID for revert operations
+  projectId?: string; // NEW: Project ID for revert operations
+  chatSessionId?: string; // NEW: Chat session ID for revert operations
   sessionId?: string; // NEW: Session ID string for revert operations
   metadata?: {
-    revertInfo?: { messageId: number; commitSha: string; timestamp: string };
+    revertInfo?: { messageId: string; commitSha: string; timestamp: string };
     [key: string]: unknown;
   }; // NEW: System message metadata
 }
@@ -98,9 +98,9 @@ export interface ChatInputProps {
 }
 
 export interface ChatInterfaceProps {
-  projectId: number;
+  projectId: string;
   className?: string;
-  activeChatSessionId?: number | null;
+  activeChatSessionId?: string | null;
   currentBranch?: string;
   sessionId?: string; // Session ID for fetching session-specific messages
 }
@@ -127,14 +127,14 @@ export interface WebhookAssistantData {
   tokensInput?: number;
   tokensOutput?: number;
   contextTokens?: number;
-  assistantMessageId?: number; // ID of assistant message to update
+  assistantMessageId?: string; // ID of assistant message to update
   commitSha?: string; // Git commit SHA for revert functionality
-  chatSessionId?: number; // For fallback message creation
+  chatSessionId?: string; // For fallback message creation
 }
 
 // Assistant Response Types
 export interface AssistantResponse {
-  id: number;
+  id: string;
   contentBlocks: ContentBlock[];
   timestamp: Date;
   status: 'streaming' | 'completed';
@@ -182,7 +182,7 @@ export interface StreamingEvent {
 
 // Revert Operation Types
 export interface RevertToMessageRequest {
-  message_id: number;
+  message_id: string;
   create_backup_commit?: boolean;
 }
 

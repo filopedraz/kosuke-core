@@ -9,7 +9,7 @@ import type { PreviewUrl } from '@/lib/types/preview-urls';
 import { Activity, Check, ExternalLink, Globe } from 'lucide-react';
 
 interface SubdomainDisplayProps {
-  projectId: number;
+  projectId: string;
 }
 
 export function SubdomainDisplay({ projectId }: SubdomainDisplayProps) {

@@ -2,7 +2,7 @@ import type { StartPreviewResponse } from '@/lib/types';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 // Hook for starting preview
-export function useStartPreview(projectId: number, sessionId: string) {
+export function useStartPreview(projectId: string, sessionId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({

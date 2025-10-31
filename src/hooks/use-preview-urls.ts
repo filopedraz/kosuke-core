@@ -2,7 +2,7 @@ import type { ApiSuccess } from '@/lib/types';
 import type { PreviewUrlsResponse } from '@/lib/types/preview-urls';
 import { useQuery } from '@tanstack/react-query';
 
-export function useProjectPreviewUrls(projectId: number) {
+export function useProjectPreviewUrls(projectId: string) {
   return useQuery({
     queryKey: ['project-preview-urls', projectId],
     queryFn: async (): Promise<PreviewUrlsResponse> => {

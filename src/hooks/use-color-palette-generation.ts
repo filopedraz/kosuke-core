@@ -3,7 +3,7 @@ import type { PaletteGenerationRequest, PaletteGenerationResponse } from '@/lib/
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 // Hook for generating color palettes (session-specific)
-export function useGenerateColorPalette(projectId: number, sessionId: string) {
+export function useGenerateColorPalette(projectId: string, sessionId: string) {
   const { toast } = useToast();
   const effectiveSessionId = sessionId || 'main';
 
@@ -48,7 +48,7 @@ export function useGenerateColorPalette(projectId: number, sessionId: string) {
 }
 
 // Hook for applying generated color palette (session-specific)
-export function useApplyColorPalette(projectId: number, sessionId: string) {
+export function useApplyColorPalette(projectId: string, sessionId: string) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const effectiveSessionId = sessionId || 'main';

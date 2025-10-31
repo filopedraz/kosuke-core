@@ -5,7 +5,7 @@ import { useBrandFonts } from './use-brand-fonts';
 import { useApplyColorPalette, useGenerateColorPalette } from './use-color-palette-generation';
 
 // Hook that combines all brand guidelines functionality (session-specific)
-export function useBrandGuidelines(projectId: number, sessionId: string) {
+export function useBrandGuidelines(projectId: string, sessionId: string) {
   // UI State
   const [previewMode, setPreviewMode] = useState<ThemeMode>('light');
   const [activeTab, setActiveTab] = useState<'colors' | 'fonts'>('colors');

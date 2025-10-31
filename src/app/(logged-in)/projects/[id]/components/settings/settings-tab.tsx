@@ -8,7 +8,7 @@ import { ProductionSettings } from './production-settings';
 import { SubdomainDisplay } from './subdomain-display';
 
 interface SettingsTabProps {
-  projectId: number;
+  projectId: string;
 }
 
 export function SettingsTab({ projectId }: SettingsTabProps) {

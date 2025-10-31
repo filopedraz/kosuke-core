@@ -25,12 +25,7 @@ export async function GET(
     }
 
     const { id } = await params;
-    const projectId = parseInt(id);
-
-    if (isNaN(projectId)) {
-      return ApiErrorHandler.badRequest('Invalid project ID');
-    }
-
+    const projectId = id;
     // Verify project ownership
     const project = await db
       .select()
@@ -67,12 +62,7 @@ export async function POST(
     }
 
     const { id } = await params;
-    const projectId = parseInt(id);
-
-    if (isNaN(projectId)) {
-      return ApiErrorHandler.badRequest('Invalid project ID');
-    }
-
+    const projectId = id;
     // Parse request body
     const body = await request.json();
     const validatedData = createEnvironmentVariableSchema.parse(body);

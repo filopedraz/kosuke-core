@@ -227,7 +227,7 @@ export default function ChatMessage({
           // Render assistant response content blocks
           <AssistantResponse
             response={{
-              id: Date.now(),
+              id: Date.now().toString(),
               contentBlocks,
               timestamp: new Date(timestamp),
               status: isLoading ? 'streaming' : 'completed',

@@ -15,7 +15,7 @@ import { ThemePreviewProvider } from './theme-context';
 import { getCategoryTitle, groupColorsByCategory } from './utils/color-utils';
 
 interface BrandGuidelinesProps {
-  projectId: number;
+  projectId: string;
   sessionId: string;
 }
 

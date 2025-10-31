@@ -10,8 +10,8 @@ import { AlertTriangle, GitCommit, RotateCcw } from 'lucide-react';
 
 interface RevertConfirmationModalProps {
   message: ChatMessage;
-  projectId: number;
-  chatSessionId: number;
+  projectId: string;
+  chatSessionId: string;
   sessionId: string;
   isOpen: boolean;
   onClose: () => void;

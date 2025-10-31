@@ -42,7 +42,7 @@ const environmentVariableSchema = z.object({
 type FormData = z.infer<typeof environmentVariableSchema>;
 
 interface VariableFormProps {
-  projectId: number;
+  projectId: string;
   isOpen: boolean;
   onClose: () => void;
   editingVariable?: EnvironmentVariable | null;

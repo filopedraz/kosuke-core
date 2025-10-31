@@ -88,10 +88,10 @@ interface ToolResultBlock {
 // ============================================
 
 export interface AgentConfig {
-  projectId: number;
+  projectId: string;
   sessionId: string;
   githubToken: string | null;
-  assistantMessageId: number;
+  assistantMessageId: string;
   userId: string;
 }
 

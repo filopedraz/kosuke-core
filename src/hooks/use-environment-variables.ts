@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import type { EnvironmentVariable } from '@/lib/types/environment';
 import type { ApiResponse } from '@/lib/api';
 
-export function useEnvironmentVariables(projectId: number) {
+export function useEnvironmentVariables(projectId: string) {
   return useQuery({
     queryKey: ['environment-variables', projectId],
     queryFn: async (): Promise<EnvironmentVariable[]> => {

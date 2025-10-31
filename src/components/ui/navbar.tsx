@@ -55,7 +55,7 @@ type NavbarProps = {
     isChatCollapsed?: boolean;
     onToggleChat?: () => void;
     // NEW: Pull Request functionality
-    activeChatSessionId?: number | null;
+    activeChatSessionId?: string | null;
     onCreatePullRequest?: () => void;
     // Floating toggle functionality
     showSidebar?: boolean;

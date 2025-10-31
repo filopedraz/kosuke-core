@@ -11,7 +11,7 @@ interface ColorsResponse {
 }
 
 // Hook for fetching brand colors (session-specific)
-export function useBrandColors(projectId: number, sessionId: string) {
+export function useBrandColors(projectId: string, sessionId: string) {
   const effectiveSessionId = sessionId || 'main';
 
   return useQuery({
@@ -33,7 +33,7 @@ export function useBrandColors(projectId: number, sessionId: string) {
 }
 
 // Hook for updating brand colors (session-specific)
-export function useUpdateBrandColor(projectId: number, sessionId: string) {
+export function useUpdateBrandColor(projectId: string, sessionId: string) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const effectiveSessionId = sessionId || 'main';

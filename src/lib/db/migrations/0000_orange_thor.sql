@@ -1,5 +1,5 @@
 CREATE TABLE "activity_logs" (
-	"id" serial PRIMARY KEY NOT NULL,
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" text,
 	"action" text NOT NULL,
 	"timestamp" timestamp DEFAULT now() NOT NULL,
@@ -7,9 +7,9 @@ CREATE TABLE "activity_logs" (
 );
 --> statement-breakpoint
 CREATE TABLE "chat_messages" (
-	"id" serial PRIMARY KEY NOT NULL,
-	"project_id" integer NOT NULL,
-	"chat_session_id" integer NOT NULL,
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"project_id" uuid NOT NULL,
+	"chat_session_id" uuid NOT NULL,
 	"user_id" text,
 	"role" varchar(20) NOT NULL,
 	"content" text,
@@ -24,13 +24,12 @@ CREATE TABLE "chat_messages" (
 );
 --> statement-breakpoint
 CREATE TABLE "chat_sessions" (
-	"id" serial PRIMARY KEY NOT NULL,
-	"project_id" integer NOT NULL,
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"project_id" uuid NOT NULL,
 	"user_id" text NOT NULL,
 	"title" varchar(100) NOT NULL,
 	"description" text,
 	"session_id" varchar(50) NOT NULL,
-	"github_branch_name" varchar(100),
 	"status" varchar(20) DEFAULT 'active',
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL,
@@ -45,9 +44,9 @@ CREATE TABLE "chat_sessions" (
 );
 --> statement-breakpoint
 CREATE TABLE "diffs" (
-	"id" serial PRIMARY KEY NOT NULL,
-	"project_id" integer NOT NULL,
-	"chat_message_id" integer NOT NULL,
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"project_id" uuid NOT NULL,
+	"chat_message_id" uuid NOT NULL,
 	"file_path" text NOT NULL,
 	"content" text NOT NULL,
 	"status" varchar(20) DEFAULT 'pending' NOT NULL,
@@ -56,8 +55,8 @@ CREATE TABLE "diffs" (
 );
 --> statement-breakpoint
 CREATE TABLE "github_sync_sessions" (
-	"id" serial PRIMARY KEY NOT NULL,
-	"project_id" integer NOT NULL,
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"project_id" uuid NOT NULL,
 	"trigger_type" varchar(50) NOT NULL,
 	"status" varchar(20) DEFAULT 'running',
 	"changes" jsonb,
@@ -67,8 +66,8 @@ CREATE TABLE "github_sync_sessions" (
 );
 --> statement-breakpoint
 CREATE TABLE "project_commits" (
-	"id" serial PRIMARY KEY NOT NULL,
-	"project_id" integer NOT NULL,
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"project_id" uuid NOT NULL,
 	"commit_sha" text NOT NULL,
 	"commit_message" text NOT NULL,
 	"commit_url" text,
@@ -77,8 +76,8 @@ CREATE TABLE "project_commits" (
 );
 --> statement-breakpoint
 CREATE TABLE "project_environment_variables" (
-	"id" serial PRIMARY KEY NOT NULL,
-	"project_id" integer NOT NULL,
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"project_id" uuid NOT NULL,
 	"key" text NOT NULL,
 	"value" text NOT NULL,
 	"is_secret" boolean DEFAULT false,
@@ -89,8 +88,8 @@ CREATE TABLE "project_environment_variables" (
 );
 --> statement-breakpoint
 CREATE TABLE "project_integrations" (
-	"id" serial PRIMARY KEY NOT NULL,
-	"project_id" integer NOT NULL,
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"project_id" uuid NOT NULL,
 	"integration_type" text NOT NULL,
 	"integration_name" text NOT NULL,
 	"config" text DEFAULT '{}' NOT NULL,
@@ -101,7 +100,7 @@ CREATE TABLE "project_integrations" (
 );
 --> statement-breakpoint
 CREATE TABLE "projects" (
-	"id" serial PRIMARY KEY NOT NULL,
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"name" varchar(100) NOT NULL,
 	"description" text,
 	"user_id" text NOT NULL,
@@ -119,7 +118,7 @@ CREATE TABLE "projects" (
 );
 --> statement-breakpoint
 CREATE TABLE "user_github_tokens" (
-	"id" serial PRIMARY KEY NOT NULL,
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" text NOT NULL,
 	"github_token" text NOT NULL,
 	"github_username" text,

@@ -9,7 +9,7 @@ import type {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 // Hook to get all chat sessions for a project
-export function useChatSessions(projectId: number) {
+export function useChatSessions(projectId: string) {
   return useQuery({
     queryKey: ['chat-sessions', projectId],
     queryFn: async (): Promise<ChatSession[]> => {
@@ -26,7 +26,7 @@ export function useChatSessions(projectId: number) {
 }
 
 // Hook to get messages for a specific chat session
-export function useChatSessionMessages(projectId: number, sessionId: string) {
+export function useChatSessionMessages(projectId: string, sessionId: string) {
   return useQuery({
     queryKey: ['chat-session-messages', projectId, sessionId],
     queryFn: async (): Promise<ChatSessionMessagesResponse> => {
@@ -44,7 +44,7 @@ export function useChatSessionMessages(projectId: number, sessionId: string) {
 }
 
 // Hook to create a new chat session
-export function useCreateChatSession(projectId: number) {
+export function useCreateChatSession(projectId: string) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -83,7 +83,7 @@ export function useCreateChatSession(projectId: number) {
 }
 
 // Hook to update a chat session
-export function useUpdateChatSession(projectId: number) {
+export function useUpdateChatSession(projectId: string) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -122,7 +122,7 @@ export function useUpdateChatSession(projectId: number) {
 }
 
 // Hook to delete a chat session
-export function useDeleteChatSession(projectId: number) {
+export function useDeleteChatSession(projectId: string) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 

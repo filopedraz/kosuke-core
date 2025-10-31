@@ -3,7 +3,7 @@ import type { ApiResponse } from '@/lib/api';
 import type { RevertToMessageRequest, RevertToMessageResponse } from '@/lib/types/chat';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
-export function useRevertToMessage(projectId: number, chatSessionId: number, sessionId: string) {
+export function useRevertToMessage(projectId: string, chatSessionId: string, sessionId: string) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 

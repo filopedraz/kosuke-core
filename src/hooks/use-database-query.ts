@@ -2,7 +2,7 @@ import { useToast } from '@/hooks/use-toast';
 import type { QueryResult } from '@/lib/types';
 import { useMutation } from '@tanstack/react-query';
 
-export function useDatabaseQuery(projectId: number, sessionId: string) {
+export function useDatabaseQuery(projectId: string, sessionId: string) {
   const { toast } = useToast();
 
   return useMutation({

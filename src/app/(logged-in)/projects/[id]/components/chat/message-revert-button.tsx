@@ -9,8 +9,8 @@ import { RevertConfirmationModal } from './revert-confirmation-modal';
 
 interface MessageRevertButtonProps {
   message: ChatMessage;
-  projectId: number;
-  chatSessionId: number;
+  projectId: string;
+  chatSessionId: string;
   sessionId: string;
   className?: string;
 }

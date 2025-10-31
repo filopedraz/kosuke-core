@@ -6,7 +6,7 @@ import { GitBranch } from 'lucide-react';
 interface ModelBannerProps {
   className?: string;
   currentBranch?: string; // NEW: Display current branch
-  chatSessionId?: number | null; // NEW: Track active session
+  chatSessionId?: string | null; // NEW: Track active session
 }
 
 export default function ModelBanner({ className, currentBranch, chatSessionId }: ModelBannerProps) {

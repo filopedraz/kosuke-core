@@ -18,8 +18,8 @@ interface FileInfo {
 /**
  * Get the absolute path to a project directory
  */
-export function getProjectPath(projectId: number): string {
-  return path.join(process.cwd(), PROJECTS_DIR, projectId.toString());
+export function getProjectPath(projectId: string): string {
+  return path.join(process.cwd(), PROJECTS_DIR, projectId);
 }
 
 /**
@@ -61,7 +61,7 @@ export async function deleteDir(dirPath: string): Promise<void> {
 /**
  * Get the content of a file in a project
  */
-export async function getFileContent(projectId: number, filePath: string): Promise<string> {
+export async function getFileContent(projectId: string, filePath: string): Promise<string> {
   try {
     const projectDir = getProjectPath(projectId);
     const fullPath = path.join(projectDir, filePath);
@@ -89,7 +89,7 @@ export async function getFileContent(projectId: number, filePath: string): Promi
 /**
  * Get project files in a tree structure
  */
-export async function getProjectFiles(projectId: number): Promise<FileInfo[]> {
+export async function getProjectFiles(projectId: string): Promise<FileInfo[]> {
   try {
     const projectDir = getProjectPath(projectId);
 

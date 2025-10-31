@@ -24,25 +24,25 @@ import { useCallback, useState } from 'react';
 import { VariableForm } from './variable-form';
 
 interface EnvironmentVariablesProps {
-  projectId: number;
+  projectId: string;
 }
 
 export function EnvironmentVariables({ projectId }: EnvironmentVariablesProps) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingVariable, setEditingVariable] = useState<EnvironmentVariable | null>(null);
-  const [visibleSecrets, setVisibleSecrets] = useState<Set<number>>(new Set());
+  const [visibleSecrets, setVisibleSecrets] = useState<Set<string>>(new Set());
 
   const { data: variables = [], isLoading, error } = useEnvironmentVariables(projectId);
   const deleteVariableMutation = useDeleteEnvironmentVariable(projectId);
 
   const handleDeleteVariable = useCallback(
-    (id: number) => {
+    (id: string) => {
       deleteVariableMutation.mutate(id);
     },
     [deleteVariableMutation]
   );
 
-  const toggleSecretVisibility = useCallback((id: number) => {
+  const toggleSecretVisibility = useCallback((id: string) => {
     setVisibleSecrets(prev => {
       const newSet = new Set(prev);
       if (newSet.has(id)) {

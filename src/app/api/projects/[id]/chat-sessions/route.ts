@@ -108,13 +108,7 @@ export async function GET(
     }
 
     const { id } = await params;
-    const projectId = Number(id);
-    if (isNaN(projectId)) {
-      return NextResponse.json(
-        { error: 'Invalid project ID' },
-        { status: 400 }
-      );
-    }
+    const projectId = id;
 
     // Verify project access
     const [project] = await db
@@ -238,13 +232,7 @@ export async function POST(
     }
 
     const { id } = await params;
-    const projectId = Number(id);
-    if (isNaN(projectId)) {
-      return NextResponse.json(
-        { error: 'Invalid project ID' },
-        { status: 400 }
-      );
-    }
+    const projectId = id;
 
     // Verify project access
     const [project] = await db

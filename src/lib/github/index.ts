@@ -13,7 +13,7 @@ export async function listUserRepositories(userId: string): Promise<GitHubReposi
     (
       repo: RestEndpointMethodTypes['repos']['listForAuthenticatedUser']['response']['data'][0]
     ) => ({
-      id: repo.id,
+      id: String(repo.id),
       name: repo.name,
       full_name: repo.full_name,
       description: repo.description,

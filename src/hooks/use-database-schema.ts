@@ -1,7 +1,7 @@
 import type { DatabaseSchema } from '@/lib/types';
 import { useQuery } from '@tanstack/react-query';
 
-export function useDatabaseSchema(projectId: number, sessionId: string) {
+export function useDatabaseSchema(projectId: string, sessionId: string) {
   return useQuery({
     queryKey: ['database-schema', projectId, sessionId],
     queryFn: async (): Promise<DatabaseSchema> => {

@@ -40,22 +40,22 @@ export interface QueryResult {
 }
 
 export interface DatabaseTabProps {
-  projectId: number;
+  projectId: string;
   sessionId: string;
 }
 
 export interface SchemaViewerProps {
-  projectId: number;
+  projectId: string;
   sessionId: string;
 }
 
 export interface TableBrowserProps {
-  projectId: number;
+  projectId: string;
   sessionId: string;
 }
 
 export interface QueryRunnerProps {
-  projectId: number;
+  projectId: string;
   sessionId: string;
 }
 

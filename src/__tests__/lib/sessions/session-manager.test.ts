@@ -28,7 +28,7 @@ describe('SessionManager', () => {
 
   describe('getSessionPath', () => {
     it('should generate correct session path', () => {
-      const path = manager.getSessionPath(1, 'test-session-123');
+      const path = manager.getSessionPath('1', 'test-session-123');
       expect(path).toContain('projects');
       expect(path).toContain('1');
       expect(path).toContain('sessions');
@@ -40,14 +40,14 @@ describe('SessionManager', () => {
     it('should return false if directory does not exist', async () => {
       mockExistsSync.mockReturnValue(false);
 
-      const isValid = await manager.validateSessionDirectory(1, 'test-session');
+      const isValid = await manager.validateSessionDirectory('1', 'test-session');
       expect(isValid).toBe(false);
     });
 
     it('should return true if directory exists and is valid git repo', async () => {
       mockExistsSync.mockReturnValue(true);
 
-      const isValid = await manager.validateSessionDirectory(1, 'test-session');
+      const isValid = await manager.validateSessionDirectory('1', 'test-session');
       expect(isValid).toBe(true);
     });
   });

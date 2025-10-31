@@ -38,7 +38,7 @@ interface CompletionLogData {
 
 interface CompletionResponse {
   success: boolean;
-  projectId: number;
+  projectId: string;
   timestamp: string;
   github?: {
     commit?: {
@@ -97,11 +97,7 @@ export async function POST(
     }
 
     const { id } = await params;
-    const projectId = parseInt(id);
-
-    if (isNaN(projectId)) {
-      return NextResponse.json({ error: 'Invalid project ID' }, { status: 400 });
-    }
+    const projectId = id;
 
     // Verify project exists
     const [project] = await db.select().from(projects).where(eq(projects.id, projectId));
@@ -148,7 +144,7 @@ export async function POST(
  * Handle saving assistant message with blocks
  */
 async function handleAssistantMessage(
-  projectId: number,
+  projectId: string,
   userId: string,
   data: WebhookAssistantData
 ): Promise<NextResponse> {
@@ -239,7 +235,7 @@ async function handleAssistantMessage(
  * Handle completion event (for logging and future features)
  */
 async function handleCompletion(
-  projectId: number,
+  projectId: string,
   data: WebhookAssistantData & {
     success?: boolean;
     totalActions?: number;
@@ -323,7 +319,7 @@ async function handleCompletion(
  * Handle saving system message (e.g., revert notifications)
  */
 async function handleSystemMessage(
-  projectId: number,
+  projectId: string,
   userId: string,
   data: SystemMessageData
 ): Promise<NextResponse> {
@@ -335,7 +331,7 @@ async function handleSystemMessage(
     }
 
     // If chatSessionId is a string, look up the integer ID
-    let sessionIntId: number;
+    let sessionIntId: string;
     if (typeof data.chatSessionId === 'string') {
       // Look up session by sessionId string
       const [session] = await db
@@ -352,7 +348,7 @@ async function handleSystemMessage(
 
       sessionIntId = session.id;
     } else {
-      sessionIntId = data.chatSessionId;
+      sessionIntId = String(data.chatSessionId);
     }
 
     // Create system message in database
