@@ -1,5 +1,5 @@
 import { ApiErrorHandler } from '@/lib/api/errors';
-import { auth } from '@/lib/auth/server';
+import { auth } from '@/lib/auth';
 import { ColorPaletteService } from '@/lib/branding';
 import { db } from '@/lib/db';
 import { projects } from '@/lib/db/schema';

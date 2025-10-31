@@ -1,5 +1,5 @@
 import { ApiResponseHandler } from '@/lib/api/responses';
-import { auth } from '@/lib/auth/server';
+import { auth } from '@/lib/auth';
 import { db } from '@/lib/db/drizzle';
 import { users } from '@/lib/db/schema';
 import { createClerkClient } from '@clerk/nextjs/server';
@@ -105,7 +105,7 @@ export async function GET() {
 
 export async function PUT(request: NextRequest) {
   try {
-    const { auth } = await import('@/lib/auth/server');
+    const { auth } = await import('@/lib/auth');
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

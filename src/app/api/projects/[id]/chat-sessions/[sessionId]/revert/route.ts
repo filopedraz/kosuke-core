@@ -1,5 +1,5 @@
 import { ApiErrorHandler } from '@/lib/api/errors';
-import { auth } from '@/lib/auth/server';
+import { auth } from '@/lib/auth';
 import { db } from '@/lib/db/drizzle';
 import { chatMessages, chatSessions, projects } from '@/lib/db/schema';
 import { getGitHubToken } from '@/lib/github/auth';

@@ -3,7 +3,7 @@ import { z } from 'zod';
 
 import { ApiErrorHandler } from '@/lib/api/errors';
 import { ApiResponseHandler } from '@/lib/api/responses';
-import { auth } from '@/lib/auth/server';
+import { auth } from '@/lib/auth';
 import { db } from '@/lib/db/drizzle';
 import { projects } from '@/lib/db/schema';
 import { getDockerService } from '@/lib/docker';

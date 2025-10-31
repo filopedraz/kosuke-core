@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { Agent } from '@/lib/agent';
-import { auth } from '@/lib/auth/server';
+import { auth } from '@/lib/auth';
 import { db } from '@/lib/db/drizzle';
 import { chatMessages, chatSessions, projects } from '@/lib/db/schema';
 import { getDockerService } from '@/lib/docker';

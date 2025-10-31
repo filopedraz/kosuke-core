@@ -1,8 +1,8 @@
-import { auth } from '@/lib/auth/server';
+import { ApiErrorHandler } from '@/lib/api/errors';
+import { auth } from '@/lib/auth';
 import { getSessionFonts } from '@/lib/css';
 import { db } from '@/lib/db';
 import { projects } from '@/lib/db/schema';
-import { ApiErrorHandler } from '@/lib/api/errors';
 import { eq } from 'drizzle-orm';
 import { NextRequest, NextResponse } from 'next/server';
 
