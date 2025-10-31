@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import Script from 'next/script';
 
+import { CTASection } from '@/components/cta-section';
 import { GhostHtmlContent } from '@/components/ghost-html-content';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -176,9 +177,12 @@ export default async function BlogPostPage({ params }: Props) {
       </section>
 
       {/* Content Section */}
-      <section className="w-full px-6 sm:px-8 md:px-16 lg:px-24 pb-24 max-w-screen-2xl mx-auto">
+      <section className="w-full px-6 sm:px-8 md:px-16 lg:px-24 pb-6 max-w-screen-2xl mx-auto">
         <GhostHtmlContent html={post.html} className="max-w-4xl mx-auto" />
       </section>
+
+      {/* CTA Section */}
+      <CTASection />
     </div>
   );
 }
