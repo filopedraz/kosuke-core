@@ -2,8 +2,8 @@
 import type { ChatMessage } from './chat';
 
 export interface ChatSession {
-  id: number;
-  projectId: number;
+  id: string;
+  projectId: string;
   userId: string;
   title: string;
   description?: string;
@@ -40,7 +40,7 @@ export interface ChatSessionListResponse {
 export interface ChatSessionMessagesResponse {
   messages: ChatMessage[];
   sessionInfo: {
-    id: number;
+    id: string;
     sessionId: string;
     title: string;
     status: string;
@@ -75,8 +75,8 @@ export interface CreatePullRequestResponse {
 
 // Chat Sidebar Hook Types
 export interface UseChatSidebarOptions {
-  projectId: number;
-  onChatSessionChange: (sessionId: number) => void;
+  projectId: string;
+  onChatSessionChange: (sessionId: string) => void;
 }
 
 export interface UseChatSidebarReturn {

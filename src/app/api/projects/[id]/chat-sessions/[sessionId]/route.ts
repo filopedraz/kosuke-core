@@ -35,7 +35,7 @@ type ErrorType = 'timeout' | 'parsing' | 'processing' | 'unknown';
 /**
  * Save an uploaded image to storage and return the URL
  */
-async function saveUploadedImage(file: File, projectId: number): Promise<string> {
+async function saveUploadedImage(file: File, projectId: string): Promise<string> {
   // Create a prefix to organize images by project
   const prefix = `chat-images/project-${projectId}`;
 
@@ -53,7 +53,7 @@ async function saveUploadedImage(file: File, projectId: number): Promise<string>
 /**
  * Process a FormData request and extract the content and image
  */
-async function processFormDataRequest(req: NextRequest, projectId: number): Promise<{
+async function processFormDataRequest(req: NextRequest, projectId: string): Promise<{
   content: string;
   includeContext: boolean;
   contextFiles: Array<{ name: string; content: string; }>;
@@ -99,13 +99,7 @@ export async function PUT(
     }
 
     const { id, sessionId } = await params;
-    const projectId = Number(id);
-    if (isNaN(projectId)) {
-      return NextResponse.json(
-        { error: 'Invalid project ID' },
-        { status: 400 }
-      );
-    }
+    const projectId = id;
 
     // Verify project access
     const [project] = await db
@@ -199,13 +193,7 @@ export async function DELETE(
     }
 
     const { id, sessionId } = await params;
-    const projectId = Number(id);
-    if (isNaN(projectId)) {
-      return NextResponse.json(
-        { error: 'Invalid project ID' },
-        { status: 400 }
-      );
-    }
+    const projectId = id;
 
     // Verify project access
     const [project] = await db
@@ -288,14 +276,13 @@ export async function POST(
 
     // Await params to get the id and sessionId
     const { id, sessionId } = await params;
-    const projectId = parseInt(id);
-
-    if (isNaN(projectId)) {
-      return new Response('Invalid project ID', { status: 400 });
-    }
+    const projectId = id;
 
     // Get the project and verify access
     const [project] = await db.select().from(projects).where(eq(projects.id, projectId));
+
+    console.log({project}, 'TESTING')
+
     if (!project) {
       return new Response('Project not found', { status: 404 });
     }

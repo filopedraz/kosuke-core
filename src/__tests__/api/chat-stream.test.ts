@@ -23,7 +23,7 @@ jest.mock('@/lib/db/drizzle', () => ({
       from: jest.fn(() => ({
         where: jest.fn().mockResolvedValue([
           {
-            id: 1,
+            id: '1',
             name: 'Test Project',
             createdBy: 'test-user-123',
           },
@@ -34,7 +34,7 @@ jest.mock('@/lib/db/drizzle', () => ({
       values: jest.fn(() => ({
         returning: jest.fn().mockResolvedValue([
           {
-            id: 1,
+            id: '1',
             content: 'Test message',
             role: 'user',
           },
@@ -95,7 +95,7 @@ describe('Chat Stream API', () => {
       expect(response.status).toBe(401);
     });
 
-    it('should return 400 for invalid project ID', async () => {
+    it('should return 404 for invalid project ID', async () => {
       const invalidParams = Promise.resolve({ id: 'invalid', sessionId: 'test-session' });
 
       const request = new NextRequest(
@@ -106,8 +106,15 @@ describe('Chat Stream API', () => {
         }
       );
 
+      // Override the default db.select mock for this test to simulate no project found
+      (db.select as unknown as jest.Mock).mockImplementationOnce(() => ({
+        from: jest.fn().mockReturnValue({
+          where: jest.fn().mockResolvedValue([]),
+        }),
+      }));
+
       const response = await POST(request, { params: invalidParams });
-      expect(response.status).toBe(400);
+      expect(response.status).toBe(404);
     });
 
     it('should stream response for valid request', async () => {

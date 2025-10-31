@@ -4,7 +4,7 @@ import { useToast } from '@/hooks/use-toast';
 import type { PullRequest, PullResponse } from '@/lib/types';
 
 interface UsePullBranchOptions {
-  projectId: number;
+  projectId: string;
   sessionId: string;
   onSuccess?: (data: PullResponse) => void;
   onError?: (error: Error) => void;

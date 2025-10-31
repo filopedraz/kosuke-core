@@ -24,12 +24,8 @@ export async function PUT(
     }
 
     const { id, varId } = await params;
-    const projectId = parseInt(id);
-    const variableId = parseInt(varId);
-
-    if (isNaN(projectId) || isNaN(variableId)) {
-      return ApiErrorHandler.badRequest('Invalid project ID or variable ID');
-    }
+    const projectId = id;
+    const variableId = varId;
 
     // Parse request body
     const body = await request.json();
@@ -93,12 +89,8 @@ export async function DELETE(
     }
 
     const { id, varId } = await params;
-    const projectId = parseInt(id);
-    const variableId = parseInt(varId);
-
-    if (isNaN(projectId) || isNaN(variableId)) {
-      return ApiErrorHandler.badRequest('Invalid project ID or variable ID');
-    }
+    const projectId = id;
+    const variableId = varId;
 
     // Verify project ownership
     const project = await db

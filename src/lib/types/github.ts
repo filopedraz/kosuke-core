@@ -33,14 +33,14 @@ export interface GitHubCommitData {
 
 export interface GitHubSessionSummary {
   session_id: string;
-  project_id: number;
+  project_id: string;
   files_changed: number;
   duration?: number;
   status: 'active' | 'completed' | 'failed';
 }
 
 export interface GitHubRepository {
-  id: number;
+  id: string;
   name: string;
   full_name: string;
   description: string | null;

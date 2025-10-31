@@ -17,8 +17,8 @@ export async function POST(
 
     const { id, sessionId } = await params;
 
-    const projectId = parseInt(id);
-    const sessionIdNumber = parseInt(sessionId);
+    const projectId = id;
+    const sessionIdNumber = sessionId;
     const body: RevertToMessageRequest = await request.json();
 
     // Verify the message exists and belongs to this session

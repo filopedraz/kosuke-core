@@ -25,14 +25,14 @@ export class SessionManager {
   /**
    * Get the file system path for a session directory
    */
-  getSessionPath(projectId: number, sessionId: string): string {
-    return join(this.projectsBasePath, String(projectId), 'sessions', sessionId);
+  getSessionPath(projectId: string, sessionId: string): string {
+    return join(this.projectsBasePath, projectId, 'sessions', sessionId);
   }
 
   /**
    * Validate that a session directory exists and is properly set up
    */
-  async validateSessionDirectory(projectId: number, sessionId: string): Promise<boolean> {
+  async validateSessionDirectory(projectId: string, sessionId: string): Promise<boolean> {
     try {
       const sessionPath = this.getSessionPath(projectId, sessionId);
 

@@ -62,7 +62,7 @@ async function createGitHubRepository(
   repositoryName: string,
   description: string,
   isPrivate: boolean,
-  projectId: number
+  projectId: string
 ) {
   const agentUrl = process.env.AGENT_SERVICE_URL || 'http://localhost:8000';
 
@@ -97,7 +97,7 @@ async function createGitHubRepository(
 async function importGitHubRepository(
   githubToken: string,
   repositoryUrl: string,
-  projectId: number
+  projectId: string
 ) {
   const agentUrl = process.env.AGENT_SERVICE_URL || 'http://localhost:8000';
 

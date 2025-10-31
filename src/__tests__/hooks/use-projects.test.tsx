@@ -44,7 +44,7 @@ function TestComponent({ children }: { children: ReactNode }) {
 
 // Sample project data
 const mockProject: Project = {
-  id: 1,
+  id: '1',
   name: 'Test Project',
   description: 'A test project',
   userId: 'user_123',
@@ -162,7 +162,7 @@ describe('useProjects', () => {
 });
 
 describe('useProject', () => {
-  function UseProjectTestComponent({ projectId }: { projectId: number }) {
+  function UseProjectTestComponent({ projectId }: { projectId: string }) {
     const { data, isLoading, error } = useProject(projectId);
 
     return (
@@ -188,7 +188,7 @@ describe('useProject', () => {
 
     render(
       <TestComponent>
-        <UseProjectTestComponent projectId={1} />
+        <UseProjectTestComponent projectId="1" />
       </TestComponent>
     );
 
@@ -209,7 +209,7 @@ describe('useProject', () => {
 
     render(
       <TestComponent>
-        <UseProjectTestComponent projectId={999} />
+        <UseProjectTestComponent projectId="999" />
       </TestComponent>
     );
 
@@ -315,7 +315,7 @@ describe('useDeleteProject', () => {
     const deleteProject = useDeleteProject();
 
     const handleDelete = () => {
-      deleteProject.mutate(1);
+      deleteProject.mutate('1');
     };
 
     return (
@@ -435,7 +435,7 @@ describe('useUpdateProject', () => {
 
     const handleUpdate = () => {
       updateProject.mutate({
-        projectId: 1,
+        projectId: '1',
         updates: { name: 'Updated Project' },
       });
     };

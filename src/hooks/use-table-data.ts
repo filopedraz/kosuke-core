@@ -2,7 +2,7 @@ import type { TableData } from '@/lib/types';
 import { useQuery } from '@tanstack/react-query';
 
 export function useTableData(
-  projectId: number,
+  projectId: string,
   tableName: string | null,
   sessionId: string,
   limit: number = 100,

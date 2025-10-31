@@ -6,7 +6,7 @@ interface FontsResponse {
 }
 
 // Hook for fetching brand fonts (session-specific)
-export function useBrandFonts(projectId: number, sessionId: string) {
+export function useBrandFonts(projectId: string, sessionId: string) {
   const effectiveSessionId = sessionId || 'main';
 
   return useQuery({

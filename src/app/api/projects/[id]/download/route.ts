@@ -2,8 +2,8 @@ import { auth } from '@/lib/auth/server';
 import { CONTEXT } from '@/lib/constants';
 import { db } from '@/lib/db/drizzle';
 import { projects } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
 import { exec } from 'child_process';
+import { eq } from 'drizzle-orm';
 import { readFile, unlink } from 'fs/promises';
 import { NextRequest, NextResponse } from 'next/server';
 import { join } from 'path';
@@ -23,11 +23,7 @@ export async function GET(
     }
 
     const { id } = await Promise.resolve(params);
-    const projectId = Number(id);
-    if (isNaN(projectId)) {
-      return new NextResponse('Invalid project ID', { status: 400 });
-    }
-
+    const projectId = id;
     const [project] = await db.select().from(projects).where(eq(projects.id, projectId));
 
     if (!project || project.createdBy !== userId) {

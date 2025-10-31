@@ -13,7 +13,7 @@ type SharedLayoutProps = {
     onRefresh?: () => void;
     isChatCollapsed?: boolean;
     onToggleChat?: () => void;
-    activeChatSessionId?: number | null;
+    activeChatSessionId?: string | null;
     onCreatePullRequest?: () => void;
     showSidebar?: boolean;
     onToggleSidebar?: () => void;
