@@ -8,7 +8,7 @@
 
 Before you begin, ensure you have the following tools installed and configured:
 
-- **Docker Desktop or OrbStack** - Required for running all services (Postgres, Agent, Next.js)
+- **Docker Desktop or OrbStack** - Required for running all services (Postgres, Next.js)
   - [Docker Desktop](https://www.docker.com/products/docker-desktop) - Traditional Docker solution
   - [OrbStack](https://orbstack.dev/) - Lightweight, faster alternative for macOS (Recommended)
 - **just** - Command runner for project tasks
@@ -70,14 +70,12 @@ Before you begin, ensure you have the following tools installed and configured:
 ```bash
 # Setup environment files
 cp .env.example .env
-cp ./agent/.env.example ./agent/.env
 
-# Start all services (Postgres + Agent + Next.js)
+# Start all services (Postgres + Next.js)
 just run
 
 # The application will be available at:
 # - Next.js app: http://localhost:3000
-# - Agent API: http://localhost:8001
 # - Postgres: localhost:54323
 ```
 

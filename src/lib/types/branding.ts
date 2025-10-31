@@ -17,7 +17,7 @@ export interface CssVariable {
   [key: string]: string | undefined;
 }
 
-// Color variable type for Agent service communication
+// Color variable type
 export interface ColorVariable {
   name: string;
   lightValue: string;

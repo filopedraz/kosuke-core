@@ -22,23 +22,6 @@ export interface GitHubStatusResponse {
   connectedAt?: string;
 }
 
-// Webhook Types
-export interface GitHubCommitData {
-  sha: string;
-  message: string;
-  url?: string;
-  files_changed: number;
-  timestamp: string;
-}
-
-export interface GitHubSessionSummary {
-  session_id: string;
-  project_id: number;
-  files_changed: number;
-  duration?: number;
-  status: 'active' | 'completed' | 'failed';
-}
-
 export interface GitHubRepository {
   id: number;
   name: string;

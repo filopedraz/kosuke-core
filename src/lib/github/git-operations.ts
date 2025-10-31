@@ -19,11 +19,6 @@ const PROJECTS_BASE_PATH = process.env.PROJECTS_BASE_PATH || './projects';
 export class GitOperations {
   /**
    * Clone a GitHub repository to the local project directory
-   *
-   * @param repoUrl - GitHub repository URL (HTTPS or SSH)
-   * @param projectId - Project ID for directory naming
-   * @param githubToken - GitHub authentication token
-   * @returns Path to the cloned repository
    */
   async cloneRepository(repoUrl: string, projectId: number, githubToken: string): Promise<string> {
     try {
@@ -380,11 +375,6 @@ export class GitOperations {
    * Revert to specific commit in session directory
    * Used for revert operations to restore a previous state
    * Resets the branch to the target commit and force pushes to remote
-   *
-   * @param sessionPath - Path to session directory
-   * @param commitSha - Git commit SHA to revert to
-   * @param githubToken - GitHub token for authenticated push
-   * @returns True if successful
    */
   async revertToCommit(
     sessionPath: string,

@@ -79,7 +79,7 @@ async function createGitHubRepository(
     templateRepo,
   });
 
-  // Wait for GitHub to initialize the repository (same as Python implementation)
+  // Wait for GitHub to initialize the repository
   await new Promise(resolve => setTimeout(resolve, 10000));
 
   // Clone the repository locally if project_id is provided

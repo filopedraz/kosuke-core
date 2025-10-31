@@ -31,22 +31,6 @@
         "projects/**": true
     },
 
-    // Python settings
-    "[python]": {
-        "editor.codeActionsOnSave": {
-            "source.organizeImports": "always"
-        },
-        "editor.defaultFormatter": "charliermarsh.ruff"
-    },
-
-    // Python testing settings
-    "python.testing.pytestArgs": [
-        "./agent/tests"
-    ],
-    "python.testing.unittestEnabled": false,
-    "python.testing.pytestEnabled": true,
-    "python.testing.cwd": "./agent",
-
     // TypeScript/JavaScript settings
     "[typescript]": {
         "editor.defaultFormatter": "esbenp.prettier-vscode",

@@ -46,8 +46,6 @@ services:
     container_name: kosuke_nextjs
     env_file:
       - .env
-    environment:
-      - AGENT_SERVICE_URL=http://agent:8000
     networks:
       - kosuke_network
     labels:
@@ -57,31 +55,6 @@ services:
       - 'traefik.http.services.main.loadbalancer.server.port=3000'
     depends_on:
       - postgres
-      - agent
-
-  agent:
-    build:
-      context: ./agent
-      dockerfile: Dockerfile
-    container_name: kosuke_agent
-    volumes:
-      - ./agent:/app:cached
-      - ./projects:/app/projects:cached
-      - /var/run/docker.sock:/var/run/docker.sock # Allow agent to manage preview containers
-    env_file:
-      - ./agent/.env
-    environment:
-      - PYTHONPATH=/app
-      - PYTHONUNBUFFERED=1
-      - NEXTJS_URL=http://nextjs:3000
-      - TRAEFIK_ENABLED=true
-      - PREVIEW_BASE_DOMAIN=kosuke.app
-      - HOST_WORKSPACE_DIR=${PWD}
-    networks:
-      - kosuke_network
-    depends_on:
-      - postgres
-    restart: unless-stopped
 
   portainer:
     image: portainer/portainer-ce:latest
