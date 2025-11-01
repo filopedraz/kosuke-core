@@ -29,6 +29,7 @@ function getGhostClient(): InstanceType<typeof GhostContentAPI> | null {
 
 /**
  * Fetch all customers (Pages with 'customer' tag)
+ * Only fetches published pages
  */
 export async function getCustomers(): Promise<Customer[]> {
   try {
@@ -36,7 +37,7 @@ export async function getCustomers(): Promise<Customer[]> {
     if (!client) return [];
 
     const pages = (await client.pages.browse({
-      filter: 'tag:customer',
+      filter: 'tag:customer+status:published',
       include: ['tags'],
       limit: 'all',
     })) as GhostPage[];
@@ -72,6 +73,7 @@ export async function getCustomerBySlug(slug: string): Promise<Customer | null> 
 
 /**
  * Fetch all blog posts
+ * Only fetches published posts
  */
 export async function getBlogPosts(params?: {
   limit?: number;
@@ -84,7 +86,12 @@ export async function getBlogPosts(params?: {
 
     const { limit = 12, page = 1, tag } = params || {};
 
-    const filter = tag ? `tag:${tag}` : undefined;
+    // Build filter to only include published posts
+    const filters = ['status:published'];
+    if (tag) {
+      filters.push(`tag:${tag}`);
+    }
+    const filter = filters.join('+');
 
     const response = await client.posts.browse({
       limit,
