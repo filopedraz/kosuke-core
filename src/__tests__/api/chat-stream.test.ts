@@ -6,14 +6,14 @@
 
 import { POST } from '@/app/api/projects/[id]/chat-sessions/[sessionId]/route';
 import { Agent } from '@/lib/agent';
-import { auth } from '@/lib/auth/server';
+import { auth } from '@/lib/auth';
 import { db } from '@/lib/db/drizzle';
 import { getGitHubToken } from '@/lib/github/auth';
 import { sessionManager } from '@/lib/sessions';
 import { NextRequest } from 'next/server';
 
 // Mock dependencies
-jest.mock('@/lib/auth/server', () => ({
+jest.mock('@/lib/auth', () => ({
   auth: jest.fn().mockResolvedValue({ userId: 'test-user-123' }),
 }));
 

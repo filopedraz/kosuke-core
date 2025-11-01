@@ -36,7 +36,7 @@ export interface ContentBlockStopEvent {
 export interface ToolStartEvent {
   type: 'tool_start';
   tool_name: string;
-  tool_input: Record<string, unknown>;
+  tool_input: unknown;
   tool_id: string;
 }
 
@@ -71,7 +71,7 @@ interface ToolUseBlock {
   type: 'tool';
   id: string;
   name: string;
-  input: Record<string, unknown>;
+  input: unknown;
   status: 'pending' | 'completed' | 'error';
   result?: unknown;
 }

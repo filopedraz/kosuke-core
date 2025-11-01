@@ -14,10 +14,7 @@ export const STORAGE_BASE_URL = IS_PRODUCTION
     : 'https://your-app.vercel.app'
   : 'http://localhost:3000';
 
-// Agent Service
-export const AGENT_SERVICE_URL = process.env.AGENT_SERVICE_URL || 'http://localhost:8001';
-
-// Git Settings - must match the agent's SESSION_BRANCH_PREFIX
+// Git Settings
 export const SESSION_BRANCH_PREFIX = process.env.SESSION_BRANCH_PREFIX || 'kosuke/chat-';
 
 // Context for file operations

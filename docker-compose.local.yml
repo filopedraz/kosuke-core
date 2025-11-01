@@ -1,0 +1,52 @@
+services:
+  postgres:
+    image: postgres:16.4-alpine
+    container_name: kosuke_postgres
+    env_file:
+      - .env
+    ports:
+      - '54323:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - kosuke_network
+
+  nextjs:
+    build:
+      context: .
+      dockerfile: Dockerfile.local
+    container_name: kosuke_nextjs
+    ports:
+      - '3000:3000'
+    volumes:
+      - .:/app:cached
+      - /app/node_modules
+      - /app/.next
+      - ./projects:/app/projects:cached
+      - /var/run/docker.sock:/var/run/docker.sock
+    env_file:
+      - .env
+    depends_on:
+      - postgres
+    networks:
+      - kosuke_network
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'node -e "require(\"http\").get(\"http://localhost:3000\", (r) => process.exit(r.statusCode === 200 ? 0 : 1))"',
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+volumes:
+  postgres_data:
+
+networks:
+  kosuke_network:
+    name: kosuke_network
+    driver: bridge
+    attachable: true

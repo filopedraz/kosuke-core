@@ -1,5 +1,5 @@
 import { ApiErrorHandler, ApiResponseHandler } from '@/lib/api';
-import { auth } from '@/lib/auth/server';
+import { auth } from '@/lib/auth';
 import { db } from '@/lib/db/drizzle';
 import { projectEnvironmentVariables, projects } from '@/lib/db/schema';
 import { and, eq } from 'drizzle-orm';

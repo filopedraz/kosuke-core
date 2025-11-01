@@ -1,17 +1,21 @@
 default:
     @just --list
 
-run-backend:
-    @echo "Running all services..."
-    @docker compose up --build -d
+run:
+    @echo "Running all services with build..."
+    @docker compose -f docker-compose.local.yml up --build -d
 
 up:
-    @echo "Starting up containers..."
-    @docker compose up -d --remove-orphans
+    @echo "Starting up all containers..."
+    @docker compose -f docker-compose.local.yml up -d --remove-orphans
 
-deploy-prod:
-    @docker compose -f docker-compose.production.yml up --build -d
-    @docker compose -f docker-compose.production.yml exec nextjs bun run db:push
+install:
+    @echo "Installing dependencies locally..."
+    @bun install --frozen-lockfile
+
+just migrate:
+    @echo "Migrating database..."
+    @docker exec kosuke_nextjs npm run db:push
 
 remove-previews:
     @docker rm -f $(docker ps -aq --filter "name=kosuke-preview")

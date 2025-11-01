@@ -5,19 +5,84 @@
  */
 
 import type { CommitOptions, GitChangesSummary, GitHubCommit } from '@/lib/types/agent';
+import { existsSync, rmSync } from 'fs';
+import { join } from 'path';
 import simpleGit, { type SimpleGit } from 'simple-git';
 
 const SESSION_BRANCH_PREFIX = process.env.SESSION_BRANCH_PREFIX || 'kosuke/chat-';
+const PROJECTS_BASE_PATH = process.env.PROJECTS_BASE_PATH || './projects';
 
 /**
  * Git Operations Service
  * Provides Git functionality for session-based development
  */
 export class GitOperations {
-  private userId: string;
+  /**
+   * Clone a GitHub repository to the local project directory
+   */
+  async cloneRepository(repoUrl: string, projectId: number, githubToken: string): Promise<string> {
+    try {
+      const projectPath = join(PROJECTS_BASE_PATH, String(projectId));
 
-  constructor(userId: string) {
-    this.userId = userId;
+      // Remove existing project directory if it exists
+      if (existsSync(projectPath)) {
+        console.log(`🗑️ Removing existing project directory: ${projectPath}`);
+        rmSync(projectPath, { recursive: true, force: true });
+      }
+
+      // Build authenticated URL for cloning
+      const authenticatedUrl = this.buildAuthenticatedUrl(repoUrl, githubToken);
+      const sanitizedUrl = this.sanitizeUrlForLog(repoUrl);
+
+      console.log(`📦 Cloning repository ${sanitizedUrl} to project ${projectId}`);
+
+      // Clone repository
+      await simpleGit().clone(authenticatedUrl, projectPath);
+
+      // After clone, sanitize remote URL to remove token
+      try {
+        const git = simpleGit(projectPath);
+        const sanitizedRepoUrl = this.sanitizeRepoUrl(repoUrl);
+        await git.remote(['set-url', 'origin', sanitizedRepoUrl]);
+        console.log('🔒 Sanitized remote URL to remove credentials');
+      } catch (sanitizeError) {
+        // Non-fatal if we cannot sanitize
+        console.warn('⚠️ Failed to sanitize remote URL after clone:', sanitizeError);
+      }
+
+      console.log(`✅ Successfully cloned repository to project ${projectId}`);
+      console.log('ℹ️ Repository kept on main branch - branches will be created per chat session');
+
+      return projectPath;
+    } catch (error) {
+      console.error(`❌ Error cloning repository:`, error);
+      throw new Error(
+        `Failed to clone repository: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  /**
+   * Sanitize repository URL to remove credentials
+   */
+  private sanitizeRepoUrl(repoUrl: string): string {
+    try {
+      // Convert SSH to HTTPS
+      if (repoUrl.startsWith('git@github.com:')) {
+        const repoPath = repoUrl.replace('git@github.com:', '');
+        return `https://github.com/${repoPath.endsWith('.git') ? repoPath : `${repoPath}.git`}`;
+      }
+
+      // Remove embedded credentials from HTTPS URL
+      if (repoUrl.startsWith('https://')) {
+        return repoUrl.replace(/https:\/\/[^@]+@github\.com\//, 'https://github.com/');
+      }
+
+      return repoUrl;
+    } catch (error) {
+      console.warn('⚠️ Error sanitizing repo URL:', error);
+      return repoUrl;
+    }
   }
 
   /**
@@ -304,6 +369,77 @@ export class GitOperations {
     ];
 
     return ignorePatterns.some(pattern => filePath.includes(pattern));
+  }
+
+  /**
+   * Revert to specific commit in session directory
+   * Used for revert operations to restore a previous state
+   * Resets the branch to the target commit and force pushes to remote
+   */
+  async revertToCommit(
+    sessionPath: string,
+    commitSha: string,
+    githubToken: string
+  ): Promise<boolean> {
+    try {
+      console.log(`🔄 Reverting to commit ${commitSha.substring(0, 8)} in ${sessionPath}`);
+
+      // Verify git repository exists
+      const gitPath = join(sessionPath, '.git');
+      if (!existsSync(gitPath)) {
+        console.error(`❌ No git repository found in ${sessionPath}`);
+        return false;
+      }
+
+      // Initialize git in session directory
+      const git: SimpleGit = simpleGit(sessionPath);
+
+      // Get current branch name
+      const status = await git.status();
+      const currentBranch = status.current;
+
+      if (!currentBranch) {
+        console.error(`❌ Could not determine current branch`);
+        return false;
+      }
+
+      console.log(`Current branch: ${currentBranch}`);
+
+      // Hard reset to the target commit
+      await git.reset(['--hard', commitSha]);
+      console.log(`✅ Reset branch ${currentBranch} to commit ${commitSha.substring(0, 8)}`);
+
+      // Get remote URL and build authenticated URL
+      const remotes = await git.getRemotes(true);
+      const origin = remotes.find(r => r.name === 'origin');
+
+      if (!origin || !origin.refs.push) {
+        console.error(`❌ No origin remote found`);
+        return false;
+      }
+
+      const originalUrl = origin.refs.push;
+      const authenticatedUrl = this.buildAuthenticatedUrl(originalUrl, githubToken);
+
+      // Temporarily set authenticated URL
+      await git.remote(['set-url', 'origin', authenticatedUrl]);
+
+      try {
+        // Force push to remote branch
+        console.log(`📤 Force pushing to remote branch ${currentBranch}...`);
+        await git.push(['origin', currentBranch, '--force']);
+        console.log(`✅ Successfully pushed revert to remote`);
+      } finally {
+        // Always restore original URL
+        await git.remote(['set-url', 'origin', originalUrl]);
+      }
+
+      console.log(`✅ Successfully reverted to commit ${commitSha.substring(0, 8)}`);
+      return true;
+    } catch (error) {
+      console.error(`❌ Error during git revert:`, error);
+      return false;
+    }
   }
 
   /**

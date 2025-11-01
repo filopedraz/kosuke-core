@@ -42,7 +42,7 @@ export class Agent {
     // Initialize services
     this.claudeService = new ClaudeService(this.sessionPath);
     this.eventProcessor = new EventProcessor();
-    this.gitOperations = this.githubToken ? new GitOperations(this.userId) : null;
+    this.gitOperations = this.githubToken ? new GitOperations() : null;
 
     console.log(`🚀 Agent initialized for project ${this.projectId}, session ${this.sessionId}`);
     console.log(`📁 Working directory: ${this.sessionPath}`);

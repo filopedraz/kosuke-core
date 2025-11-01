@@ -11,11 +11,9 @@
 
     // File exclusions for better performance
     "files.exclude": {
-        "**/node_modules": true,
         "**/venv": true,
         "**/.venv": true,
         "**/tmp": true,
-        "**/.next": true,
         "**/dist": true,
         "**/__pycache__": true,
         "**/.pytest_cache": true,
@@ -32,22 +30,6 @@
         "**/__pycache__": true,
         "projects/**": true
     },
-
-    // Python settings
-    "[python]": {
-        "editor.codeActionsOnSave": {
-            "source.organizeImports": "always"
-        },
-        "editor.defaultFormatter": "charliermarsh.ruff"
-    },
-
-    // Python testing settings
-    "python.testing.pytestArgs": [
-        "./agent/tests"
-    ],
-    "python.testing.unittestEnabled": false,
-    "python.testing.pytestEnabled": true,
-    "python.testing.cwd": "./agent",
 
     // TypeScript/JavaScript settings
     "[typescript]": {

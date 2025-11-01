@@ -3,7 +3,7 @@ import mime from 'mime-types';
 import { NextRequest, NextResponse } from 'next/server';
 import path from 'path';
 
-import { auth } from '@/lib/auth/server';
+import { auth } from '@/lib/auth';
 import { db } from '@/lib/db/drizzle';
 import { projects } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';

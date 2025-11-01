@@ -1,12 +1,12 @@
-interface Column {
+export interface Column {
   name: string;
   type: string;
   nullable: boolean;
   primary_key: boolean;
-  foreign_key?: string;
+  foreign_key: string | null;
 }
 
-interface TableSchema {
+export interface TableSchema {
   name: string;
   columns: Column[];
   row_count: number;

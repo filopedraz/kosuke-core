@@ -75,7 +75,7 @@ export default function PreviewPanel({
   // Handle pull branch
   const handlePullBranch = async () => {
     try {
-      await pullBranch({ force: true });
+      await pullBranch();
     } catch (error) {
       // Error handling is done in the hook
       console.error('Pull failed:', error);

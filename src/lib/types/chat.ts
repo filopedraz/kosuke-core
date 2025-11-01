@@ -120,18 +120,6 @@ export interface ContentBlock {
   toolId?: string; // For tool blocks - unique identifier for matching tool_start/tool_stop events
 }
 
-// Webhook Data Types
-export interface WebhookAssistantData {
-  content?: string; // For simple text responses
-  blocks?: AssistantBlock[]; // For complex responses with multiple blocks
-  tokensInput?: number;
-  tokensOutput?: number;
-  contextTokens?: number;
-  assistantMessageId?: number; // ID of assistant message to update
-  commitSha?: string; // Git commit SHA for revert functionality
-  chatSessionId?: number; // For fallback message creation
-}
-
 // Assistant Response Types
 export interface AssistantResponse {
   id: number;
@@ -146,7 +134,7 @@ export interface AttachedImage {
   previewUrl: string;
 }
 
-// Streaming Event Types (from Python agent)
+// Streaming Event Types
 export interface StreamingEvent {
   // Event type from Anthropic API
   type:
@@ -183,12 +171,10 @@ export interface StreamingEvent {
 // Revert Operation Types
 export interface RevertToMessageRequest {
   message_id: number;
-  create_backup_commit?: boolean;
 }
 
 export interface RevertToMessageResponse {
   success: boolean;
   reverted_to_commit: string;
-  backup_commit?: string;
   message: string;
 }

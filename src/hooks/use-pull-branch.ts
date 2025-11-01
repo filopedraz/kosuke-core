@@ -1,7 +1,7 @@
 import { useMutation } from '@tanstack/react-query';
 
 import { useToast } from '@/hooks/use-toast';
-import type { PullRequest, PullResponse } from '@/lib/types';
+import type { PullResponse } from '@/lib/types';
 
 interface UsePullBranchOptions {
   projectId: number;
@@ -14,7 +14,7 @@ export function usePullBranch({ projectId, sessionId, onSuccess, onError }: UseP
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async (pullRequest: PullRequest = {}): Promise<PullResponse> => {
+    mutationFn: async (): Promise<PullResponse> => {
       // Always use session-scoped endpoint
       const url = `/api/projects/${projectId}/chat-sessions/${sessionId}/pull`;
 
@@ -23,7 +23,6 @@ export function usePullBranch({ projectId, sessionId, onSuccess, onError }: UseP
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(pullRequest),
       });
 
       if (!response.ok) {

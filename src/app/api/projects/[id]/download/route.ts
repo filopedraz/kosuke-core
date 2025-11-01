@@ -1,9 +1,9 @@
-import { auth } from '@/lib/auth/server';
+import { auth } from '@/lib/auth';
 import { CONTEXT } from '@/lib/constants';
 import { db } from '@/lib/db/drizzle';
 import { projects } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
 import { exec } from 'child_process';
+import { eq } from 'drizzle-orm';
 import { readFile, unlink } from 'fs/promises';
 import { NextRequest, NextResponse } from 'next/server';
 import { join } from 'path';
