@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation';
 import { GhostPageContent } from '@/components/ghost-page-content';
 import { getPageById } from '@/lib/ghost/client';
 
-const COOKIES_POLICY_PAGE_ID = '68ff5e9a79cd1b0001aaa445';
+const COOKIES_POLICY_PAGE_ID = '69032cc2e29d330001edc8ff';
 
 export async function generateMetadata(): Promise<Metadata> {
   const page = await getPageById(COOKIES_POLICY_PAGE_ID);
