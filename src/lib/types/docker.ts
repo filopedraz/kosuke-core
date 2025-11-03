@@ -65,24 +65,3 @@ export interface DockerConfig {
   postgresUser: string;
   postgresPassword: string;
 }
-
-/**
- * Start preview request
- */
-export interface StartPreviewRequest {
-  projectId: number;
-  sessionId: string;
-  envVars?: Record<string, string>;
-}
-
-/**
- * Docker start preview response
- */
-export interface DockerStartPreviewResponse {
-  success: boolean;
-  url: string;
-  project_id: number;
-  session_id: string;
-  running: boolean;
-  is_responding: boolean;
-}

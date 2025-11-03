@@ -3,4 +3,4 @@
  * Centralized exports for Docker-related functionality
  */
 
-export { getDockerService, resetDockerService } from './service';
+export { getDockerService } from './service';

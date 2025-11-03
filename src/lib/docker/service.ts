@@ -682,10 +682,3 @@ export function getDockerService(): DockerService {
   }
   return dockerServiceInstance;
 }
-
-/**
- * Reset the singleton instance (useful for testing or error recovery)
- */
-export function resetDockerService(): void {
-  dockerServiceInstance = null;
-}

@@ -21,7 +21,6 @@ const knipConfig = {
     'embla-carousel-react',
     'input-otp',
     'react-resizable-panels',
-    'tailwindcss',
     'vaul',
     'ts-node',
     // Dependencies used in configuration files or by frameworks
@@ -36,7 +35,6 @@ const knipConfig = {
     'posthog-node',
     // TODO check if we should use these dependencies
     '@types/bcryptjs',
-    '@types/dockerode',
     '@types/marked',
     // Dependencies used in build scripts or configuration
     '@eslint/eslintrc',
