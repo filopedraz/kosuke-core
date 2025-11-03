@@ -11,7 +11,7 @@ interface ModelBannerProps {
 
 export default function ModelBanner({ className, currentBranch, chatSessionId }: ModelBannerProps) {
   // Get model name from environment variable
-  const model = process.env.NEXT_PUBLIC_DEFAULT_MODEL || 'claude-3-7-sonnet-20250219';
+  const model = process.env.NEXT_PUBLIC_DEFAULT_MODEL || 'claude-haiku-4-5';
 
   // Format model name for display
   const getModelDisplayName = (modelId: string) => {
