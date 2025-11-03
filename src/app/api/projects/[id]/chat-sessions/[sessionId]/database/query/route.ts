@@ -31,8 +31,12 @@ export async function POST(
       where: eq(projects.id, projectId),
     });
 
-    if (!project || project.userId !== userId) {
+    if (!project) {
       return ApiErrorHandler.projectNotFound();
+    }
+
+    if (project.userId !== userId) {
+      return ApiErrorHandler.forbidden();
     }
 
     const body = await request.json();
