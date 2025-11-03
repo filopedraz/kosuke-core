@@ -33,10 +33,7 @@ export async function GET() {
   try {
     const { userId } = await auth();
     if (!userId) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return ApiErrorHandler.unauthorized();
     }
 
     // Query projects directly from database
@@ -49,10 +46,7 @@ export async function GET() {
     return NextResponse.json(userProjects);
   } catch (error) {
     console.error('Error fetching projects:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch projects' },
-      { status: 500 }
-    );
+    return ApiErrorHandler.handle(error);
   }
 }
 
@@ -168,10 +162,7 @@ export async function POST(request: NextRequest) {
   try {
     const { userId } = await auth();
     if (!userId) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return ApiErrorHandler.unauthorized();
     }
 
     // Parse and validate the request body
@@ -185,17 +176,11 @@ export async function POST(request: NextRequest) {
 
     // Validate GitHub configuration based on type
     if (github.type === 'create' && !github.repositoryName) {
-      return NextResponse.json(
-        { error: 'Repository name is required for creating new repositories' },
-        { status: 400 }
-      );
+      return ApiErrorHandler.badRequest('Repository name is required for creating new repositories');
     }
 
     if (github.type === 'import' && !github.repositoryUrl) {
-      return NextResponse.json(
-        { error: 'Repository URL is required for importing repositories' },
-        { status: 400 }
-      );
+      return ApiErrorHandler.badRequest('Repository URL is required for importing repositories');
     }
 
     // Use a transaction to ensure atomicity
@@ -272,10 +257,7 @@ export async function POST(request: NextRequest) {
     // Return specific error messages for GitHub-related failures
     if (error instanceof Error) {
       if (error.message.includes('repository')) {
-        return NextResponse.json(
-          { error: error.message },
-          { status: 400 }
-        );
+        return ApiErrorHandler.badRequest(error.message);
       }
     }
 

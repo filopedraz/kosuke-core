@@ -43,7 +43,7 @@ export async function PUT(
       .limit(1);
 
     if (project.length === 0) {
-      return ApiErrorHandler.notFound('Project not found');
+      return ApiErrorHandler.projectNotFound();
     }
 
     // Verify variable exists and belongs to project
@@ -108,7 +108,7 @@ export async function DELETE(
       .limit(1);
 
     if (project.length === 0) {
-      return ApiErrorHandler.notFound('Project not found');
+      return ApiErrorHandler.projectNotFound();
     }
 
     // Verify variable exists and belongs to project

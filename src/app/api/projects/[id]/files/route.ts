@@ -5,6 +5,7 @@ import { db } from '@/lib/db/drizzle';
 import { projects } from '@/lib/db/schema';
 import { getProjectFiles } from '@/lib/fs/operations';
 import { eq } from 'drizzle-orm';
+import { ApiErrorHandler } from '@/lib/api/errors';
 
 /**
  * GET /api/projects/[id]/files
@@ -18,36 +19,24 @@ export async function GET(
     // Get the session
     const { userId } = await auth();
     if (!userId) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return ApiErrorHandler.unauthorized();
     }
 
     const { id } = await params;
     const projectId = Number(id);
     if (isNaN(projectId)) {
-      return NextResponse.json(
-        { error: 'Invalid project ID' },
-        { status: 400 }
-      );
+      return ApiErrorHandler.invalidProjectId();
     }
 
     // Get the project
     const [project] = await db.select().from(projects).where(eq(projects.id, projectId));
     if (!project) {
-      return NextResponse.json(
-        { error: 'Project not found' },
-        { status: 404 }
-      );
+      return ApiErrorHandler.projectNotFound();
     }
 
     // Check if the user has access to the project
     if (project.createdBy !== userId) {
-      return NextResponse.json(
-        { error: 'Forbidden' },
-        { status: 403 }
-      );
+      return ApiErrorHandler.forbidden();
     }
 
     // Get the project files using the shared file operations
@@ -56,10 +45,7 @@ export async function GET(
     return NextResponse.json({ files });
   } catch (error) {
     console.error('Error getting project files:', error);
-    return NextResponse.json(
-      { error: 'Failed to get project files' },
-      { status: 500 }
-    );
+    return ApiErrorHandler.handle(error);
   }
 }
 

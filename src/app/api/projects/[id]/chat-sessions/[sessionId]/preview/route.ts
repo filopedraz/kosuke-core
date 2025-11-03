@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+import { ApiErrorHandler } from '@/lib/api/errors';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db/drizzle';
 import { getProjectEnvironmentVariables } from '@/lib/db/queries';
 import { chatSessions, projects } from '@/lib/db/schema';
 import { getDockerService } from '@/lib/docker';
 import { and, eq } from 'drizzle-orm';
-
 /**
  * GET /api/projects/[id]/chat-sessions/[sessionId]/preview
  * Get the preview URL for a project session
@@ -20,36 +20,24 @@ export async function GET(
     // Get the session
     const { userId } = await auth();
     if (!userId) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return ApiErrorHandler.unauthorized();
     }
 
     const { id, sessionId } = await params;
     const projectId = Number(id);
     if (isNaN(projectId)) {
-      return NextResponse.json(
-        { error: 'Invalid project ID' },
-        { status: 400 }
-      );
+      return ApiErrorHandler.invalidProjectId();
     }
 
     // Get the project
     const [project] = await db.select().from(projects).where(eq(projects.id, projectId));
     if (!project) {
-      return NextResponse.json(
-        { error: 'Project not found' },
-        { status: 404 }
-      );
+      return ApiErrorHandler.projectNotFound();
     }
 
     // Check if the user has access to the project
     if (project.createdBy !== userId) {
-      return NextResponse.json(
-        { error: 'Forbidden' },
-        { status: 403 }
-      );
+      return ApiErrorHandler.forbidden();
     }
 
     // If this is the default branch, allow preview without a chat session record
@@ -67,10 +55,7 @@ export async function GET(
         );
 
       if (!session) {
-        return NextResponse.json(
-          { error: 'Chat session not found' },
-          { status: 404 }
-        );
+        return ApiErrorHandler.chatSessionNotFound();
       }
     }
 
@@ -107,10 +92,7 @@ export async function GET(
           previewUrl: url,
         });
       } catch (startError) {
-        return NextResponse.json(
-          { error: 'Failed to start preview container', details: String(startError) },
-          { status: 500 }
-        );
+        return ApiErrorHandler.handle(startError);
       }
     }
 
@@ -120,18 +102,8 @@ export async function GET(
       previewUrl: status.url || null, // Map 'url' to 'previewUrl' for frontend compatibility
     });
   } catch (error: unknown) {
-    // Return a more detailed error message
-    const errorMessage = error instanceof Error ?
-      `${error.message}\n${error.stack}` :
-      String(error);
-
-    return NextResponse.json(
-      {
-        error: 'Internal Server Error',
-        details: errorMessage
-      },
-      { status: 500 }
-    );
+    console.error('Error in preview GET:', error);
+    return ApiErrorHandler.handle(error);
   }
 }
 
@@ -147,36 +119,24 @@ export async function POST(
     // Get the session
     const { userId } = await auth();
     if (!userId) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return ApiErrorHandler.unauthorized();
     }
 
     const { id, sessionId } = await params;
     const projectId = Number(id);
     if (isNaN(projectId)) {
-      return NextResponse.json(
-        { error: 'Invalid project ID' },
-        { status: 400 }
-      );
+      return ApiErrorHandler.invalidProjectId();
     }
 
     // Get the project
     const [project] = await db.select().from(projects).where(eq(projects.id, projectId));
     if (!project) {
-      return NextResponse.json(
-        { error: 'Project not found' },
-        { status: 404 }
-      );
+      return ApiErrorHandler.projectNotFound();
     }
 
     // Check if the user has access to the project
     if (project.createdBy !== userId) {
-      return NextResponse.json(
-        { error: 'Forbidden' },
-        { status: 403 }
-      );
+      return ApiErrorHandler.forbidden();
     }
 
     // If this is the default branch, allow starting preview without a chat session record
@@ -193,10 +153,7 @@ export async function POST(
         );
 
       if (!session) {
-        return NextResponse.json(
-          { error: 'Chat session not found' },
-          { status: 404 }
-        );
+        return ApiErrorHandler.chatSessionNotFound();
       }
     }
 
@@ -223,16 +180,7 @@ export async function POST(
       error: null,
     });
   } catch (error: unknown) {
-    const errorMessage = error instanceof Error ?
-      `${error.message}\n${error.stack}` :
-      String(error);
-
-    return NextResponse.json(
-      {
-        error: 'Internal Server Error',
-        details: errorMessage
-      },
-      { status: 500 }
-    );
+    console.error('Error in preview POST:', error);
+    return ApiErrorHandler.handle(error);
   }
 }

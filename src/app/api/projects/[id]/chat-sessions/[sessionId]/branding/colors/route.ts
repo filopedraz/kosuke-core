@@ -37,7 +37,7 @@ export async function GET(
     const [project] = await db.select().from(projects).where(eq(projects.id, projectId));
 
     if (!project) {
-      return ApiErrorHandler.notFound('Project not found');
+      return ApiErrorHandler.projectNotFound();
     }
 
     if (project.createdBy !== userId) {
@@ -99,7 +99,7 @@ export async function POST(
     const [project] = await db.select().from(projects).where(eq(projects.id, projectId));
 
     if (!project) {
-      return ApiErrorHandler.notFound('Project not found');
+      return ApiErrorHandler.projectNotFound();
     }
 
     if (project.createdBy !== userId) {

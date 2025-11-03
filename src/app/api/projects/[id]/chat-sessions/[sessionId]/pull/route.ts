@@ -33,7 +33,7 @@ export async function POST(
     // Get the project
     const [project] = await db.select().from(projects).where(eq(projects.id, projectId));
     if (!project) {
-      return ApiErrorHandler.notFound('Project not found');
+      return ApiErrorHandler.projectNotFound();
     }
 
     // Check if the user has access to the project
@@ -52,10 +52,7 @@ export async function POST(
     const pullResult = await sessionManager.pullSessionBranch(projectId, sessionId, githubToken);
 
     if (!pullResult.success) {
-      return NextResponse.json(
-        { error: 'Failed to pull changes', details: pullResult.message },
-        { status: 500 }
-      );
+      return ApiErrorHandler.serverError(new Error(`Failed to pull changes: ${pullResult.message}`));
     }
 
     // Check if we need to restart the container to apply changes

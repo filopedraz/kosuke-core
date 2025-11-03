@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+import { ApiErrorHandler } from '@/lib/api/errors';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db/drizzle';
 import { chatSessions, projects } from '@/lib/db/schema';
@@ -20,23 +21,23 @@ export async function GET(
   try {
     const { userId } = await auth();
     if (!userId) {
-      return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
+      return ApiErrorHandler.unauthorized();
     }
 
     const { id, sessionId } = await params;
     const projectId = Number(id);
     if (isNaN(projectId)) {
-      return NextResponse.json({ ok: false, error: 'Invalid project ID' }, { status: 400 });
+      return ApiErrorHandler.invalidProjectId();
     }
 
     // Verify project access
     const [project] = await db.select().from(projects).where(eq(projects.id, projectId));
     if (!project) {
-      return NextResponse.json({ ok: false, error: 'Project not found' }, { status: 404 });
+      return ApiErrorHandler.projectNotFound();
     }
 
     if (project.createdBy !== userId) {
-      return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
+      return ApiErrorHandler.forbidden();
     }
 
     // If this is the default branch, allow health check without a chat session record
@@ -54,7 +55,7 @@ export async function GET(
         );
 
       if (!session) {
-        return NextResponse.json({ ok: false, error: 'Chat session not found' }, { status: 404 });
+        return ApiErrorHandler.chatSessionNotFound();
       }
     }
 
@@ -72,10 +73,7 @@ export async function GET(
     });
   } catch (error) {
     console.error('Error checking preview health:', error);
-    return NextResponse.json(
-      { ok: false, error: 'Internal server error' },
-      { status: 500 }
-    );
+    return ApiErrorHandler.handle(error);
   }
 }
 

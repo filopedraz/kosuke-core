@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+import { ApiErrorHandler } from '@/lib/api/errors';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db/drizzle';
 import { chatMessages, chatSessions, projects } from '@/lib/db/schema';
 import { and, asc, eq } from 'drizzle-orm';
-
 /**
  * GET /api/projects/[id]/chat-sessions/[sessionId]/messages
  * Get messages for a specific chat session
@@ -16,19 +16,13 @@ export async function GET(
   try {
     const { userId } = await auth();
     if (!userId) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return ApiErrorHandler.unauthorized();
     }
 
     const { id, sessionId } = await params;
     const projectId = Number(id);
     if (isNaN(projectId)) {
-      return NextResponse.json(
-        { error: 'Invalid project ID' },
-        { status: 400 }
-      );
+      return ApiErrorHandler.invalidProjectId();
     }
 
     // Verify project access
@@ -38,17 +32,11 @@ export async function GET(
       .where(eq(projects.id, projectId));
 
     if (!project) {
-      return NextResponse.json(
-        { error: 'Project not found' },
-        { status: 404 }
-      );
+      return ApiErrorHandler.projectNotFound();
     }
 
     if (project.createdBy !== userId) {
-      return NextResponse.json(
-        { error: 'Forbidden' },
-        { status: 403 }
-      );
+      return ApiErrorHandler.forbidden();
     }
 
     // Verify chat session exists and belongs to project
@@ -63,10 +51,7 @@ export async function GET(
       );
 
     if (!session) {
-      return NextResponse.json(
-        { error: 'Chat session not found' },
-        { status: 404 }
-      );
+      return ApiErrorHandler.chatSessionNotFound();
     }
 
     // Get messages for the chat session
@@ -88,9 +73,6 @@ export async function GET(
     });
   } catch (error) {
     console.error('Error getting chat session messages:', error);
-    return NextResponse.json(
-      { error: 'Failed to get chat session messages' },
-      { status: 500 }
-    );
+    return ApiErrorHandler.handle(error);
   }
 }

@@ -16,17 +16,17 @@ export async function POST(
   try {
     const { userId } = await auth();
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return ApiErrorHandler.unauthorized();
     }
 
     const { id, sessionId } = await params;
     const projectId = parseInt(id);
     if (isNaN(projectId)) {
-      return NextResponse.json({ error: 'Invalid project ID' }, { status: 400 });
+      return ApiErrorHandler.invalidProjectId();
     }
 
     if (!sessionId) {
-      return NextResponse.json({ error: 'Session ID is required' }, { status: 400 });
+      return ApiErrorHandler.badRequest('Session ID is required');
     }
 
     // Verify project ownership
@@ -35,14 +35,14 @@ export async function POST(
     });
 
     if (!project || project.userId !== userId) {
-      return NextResponse.json({ error: 'Project not found or access denied' }, { status: 404 });
+      return ApiErrorHandler.projectNotFound();
     }
 
     const requestBody = await request.json();
     // Extract request body
     const colors = requestBody.colors;
     if (!colors || !Array.isArray(colors) || colors.length === 0) {
-      return NextResponse.json({ error: 'Colors array is required and must not be empty' }, { status: 400 });
+      return ApiErrorHandler.badRequest('Colors array is required and must not be empty');
     }
 
     console.log(`🎨 Color palette application request for project ${projectId}, session ${sessionId}`);

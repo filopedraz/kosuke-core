@@ -1,3 +1,4 @@
+import { ApiErrorHandler } from '@/lib/api/errors';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db/drizzle';
 import { users } from '@/lib/db/schema';
@@ -11,25 +12,25 @@ export async function PUT(request: NextRequest) {
   try {
     const { userId } = await auth();
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return ApiErrorHandler.unauthorized();
     }
 
     const formData = await request.formData();
     const file = formData.get('profileImage') as File;
 
     if (!file) {
-      return NextResponse.json({ error: 'No image file provided' }, { status: 400 });
+      return ApiErrorHandler.badRequest('No image file provided');
     }
 
     // Validate file type
     if (!file.type.startsWith('image/')) {
-      return NextResponse.json({ error: 'File must be an image' }, { status: 400 });
+      return ApiErrorHandler.badRequest('File must be an image');
     }
 
     // Validate file size (max 5MB)
     const maxSize = 5 * 1024 * 1024; // 5MB
     if (file.size > maxSize) {
-      return NextResponse.json({ error: 'File size must be less than 5MB' }, { status: 400 });
+      return ApiErrorHandler.badRequest('File size must be less than 5MB');
     }
 
     const isProduction = process.env.NODE_ENV === 'production';
@@ -80,10 +81,10 @@ export async function PUT(request: NextRequest) {
       });
     } catch (uploadError) {
       console.error('Error uploading image:', uploadError);
-      return NextResponse.json({ error: 'Failed to upload image' }, { status: 500 });
+      return ApiErrorHandler.handle(uploadError);
     }
   } catch (error) {
     console.error('Error updating profile image:', error);
-    return NextResponse.json({ error: 'Failed to update profile image' }, { status: 500 });
+    return ApiErrorHandler.handle(error);
   }
 }

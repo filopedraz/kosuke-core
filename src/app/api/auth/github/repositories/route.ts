@@ -1,4 +1,5 @@
 import type { ApiResponse } from '@/lib/api';
+import { ApiErrorHandler } from '@/lib/api/errors';
 import { listUserRepositories } from '@/lib/github';
 import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
@@ -7,7 +8,7 @@ export async function GET() {
   try {
     const { userId } = await auth();
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return ApiErrorHandler.unauthorized();
     }
 
     const repositories = await listUserRepositories(userId);
@@ -18,6 +19,6 @@ export async function GET() {
     });
   } catch (error) {
     console.error('Error fetching GitHub repositories:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return ApiErrorHandler.handle(error);
   }
 }

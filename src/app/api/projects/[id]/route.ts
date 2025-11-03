@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { z } from 'zod';
 
 import { ApiErrorHandler } from '@/lib/api/errors';
@@ -29,25 +29,25 @@ export async function GET(
     // Get the session
     const { userId } = await auth();
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return ApiErrorHandler.unauthorized();
     }
 
     const { id } = await params;
     const projectId = Number(id);
 
     if (isNaN(projectId)) {
-      return NextResponse.json({ error: 'Invalid project ID' }, { status: 400 });
+      return ApiErrorHandler.invalidProjectId();
     }
 
     // Get the project
     const [project] = await db.select().from(projects).where(eq(projects.id, projectId));
     if (!project) {
-      return ApiErrorHandler.notFound('Project not found');
+      return ApiErrorHandler.projectNotFound();
     }
 
     // Check if the user has access to the project
     if (project.createdBy !== userId) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      return ApiErrorHandler.forbidden();
     }
 
     return ApiResponseHandler.success(project);
@@ -68,25 +68,25 @@ export async function PATCH(
     // Get the session
     const { userId } = await auth();
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return ApiErrorHandler.unauthorized();
     }
 
     const { id } = await params;
     const projectId = Number(id);
 
     if (isNaN(projectId)) {
-      return NextResponse.json({ error: 'Invalid project ID' }, { status: 400 });
+      return ApiErrorHandler.invalidProjectId();
     }
 
     // Get the project
     const [project] = await db.select().from(projects).where(eq(projects.id, projectId));
     if (!project) {
-      return ApiErrorHandler.notFound('Project not found');
+      return ApiErrorHandler.projectNotFound();
     }
 
     // Check if the user has access to the project
     if (project.createdBy !== userId) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      return ApiErrorHandler.forbidden();
     }
 
     // Parse the request body
@@ -120,25 +120,25 @@ export async function DELETE(
     // Get the session
     const { userId } = await auth();
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return ApiErrorHandler.unauthorized();
     }
 
     const { id } = await params;
     const projectId = Number(id);
 
     if (isNaN(projectId)) {
-      return NextResponse.json({ error: 'Invalid project ID' }, { status: 400 });
+      return ApiErrorHandler.invalidProjectId();
     }
 
     // Get the project
     const [project] = await db.select().from(projects).where(eq(projects.id, projectId));
     if (!project) {
-      return ApiErrorHandler.notFound('Project not found');
+      return ApiErrorHandler.projectNotFound();
     }
 
     // Check if the user has access to the project
     if (project.createdBy !== userId) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      return ApiErrorHandler.forbidden();
     }
 
     // Read delete options from request body (optional)

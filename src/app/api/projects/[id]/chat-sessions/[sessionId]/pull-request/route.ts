@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
+import { ApiErrorHandler } from '@/lib/api/errors';
 import { auth } from '@/lib/auth';
 import { SESSION_BRANCH_PREFIX } from '@/lib/constants';
 import { db } from '@/lib/db/drizzle';
@@ -27,19 +28,13 @@ export async function POST(
   try {
     const { userId } = await auth();
     if (!userId) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return ApiErrorHandler.unauthorized();
     }
 
     const { id, sessionId } = await params;
     const projectId = Number(id);
     if (isNaN(projectId)) {
-      return NextResponse.json(
-        { error: 'Invalid project ID' },
-        { status: 400 }
-      );
+      return ApiErrorHandler.invalidProjectId();
     }
 
     // Get project
@@ -49,25 +44,16 @@ export async function POST(
       .where(eq(projects.id, projectId));
 
     if (!project) {
-      return NextResponse.json(
-        { error: 'Project not found' },
-        { status: 404 }
-      );
+      return ApiErrorHandler.projectNotFound();
     }
 
     if (project.createdBy !== userId) {
-      return NextResponse.json(
-        { error: 'Forbidden' },
-        { status: 403 }
-      );
+      return ApiErrorHandler.forbidden();
     }
 
     // Verify GitHub repository is connected
     if (!project.githubOwner || !project.githubRepoName) {
-      return NextResponse.json(
-        { error: 'Project is not connected to a GitHub repository' },
-        { status: 400 }
-      );
+      return ApiErrorHandler.badRequest('Project is not connected to a GitHub repository');
     }
 
     // Get chat session
@@ -82,19 +68,13 @@ export async function POST(
       );
 
     if (!session) {
-      return NextResponse.json(
-        { error: 'Chat session not found' },
-        { status: 404 }
-      );
+      return ApiErrorHandler.chatSessionNotFound();
     }
 
     // Get GitHub token
     const githubToken = await getGitHubToken(userId);
     if (!githubToken) {
-      return NextResponse.json(
-        { error: 'GitHub token not found. Please connect your GitHub account.' },
-        { status: 400 }
-      );
+      return ApiErrorHandler.badRequest('GitHub token not found. Please connect your GitHub account.');
     }
 
     // Parse request body
@@ -102,10 +82,7 @@ export async function POST(
     const parseResult = createPullRequestSchema.safeParse(body);
 
     if (!parseResult.success) {
-      return NextResponse.json(
-        { error: 'Invalid request format', details: z.treeifyError(parseResult.error) },
-        { status: 400 }
-      );
+      return ApiErrorHandler.validationError(parseResult.error);
     }
 
     const { title, description, target_branch } = parseResult.data;
@@ -129,10 +106,7 @@ export async function POST(
           branch: sourceBranch,
         });
       } catch {
-        return NextResponse.json(
-          { error: `Source branch '${sourceBranch}' not found. Make sure the chat session has made changes and committed them.` },
-          { status: 400 }
-        );
+        return ApiErrorHandler.badRequest(`Source branch '${sourceBranch}' not found. Make sure the chat session has made changes and committed them.`);
       }
 
       // Check if target branch exists
@@ -143,10 +117,7 @@ export async function POST(
           branch: targetBranch,
         });
       } catch {
-        return NextResponse.json(
-          { error: `Target branch '${targetBranch}' not found` },
-          { status: 400 }
-        );
+        return ApiErrorHandler.badRequest(`Target branch '${targetBranch}' not found`);
       }
 
       // Generate GitHub PR creation URL
@@ -165,17 +136,10 @@ export async function POST(
 
     } catch (error: unknown) {
       console.error('Error preparing pull request:', error);
-
-      return NextResponse.json(
-        { error: 'Failed to prepare pull request' },
-        { status: 500 }
-      );
+      return ApiErrorHandler.handle(error);
     }
   } catch (error) {
     console.error('Error in pull request creation:', error);
-    return NextResponse.json(
-      { error: 'Failed to create pull request' },
-      { status: 500 }
-    );
+    return ApiErrorHandler.handle(error);
   }
 }

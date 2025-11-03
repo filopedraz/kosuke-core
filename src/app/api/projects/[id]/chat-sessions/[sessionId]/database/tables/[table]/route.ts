@@ -13,22 +13,22 @@ export async function GET(
   try {
     const { userId } = await auth();
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return ApiErrorHandler.unauthorized();
     }
 
     const { id, sessionId, table } = await params;
     const projectId = parseInt(id);
     if (isNaN(projectId)) {
-      return NextResponse.json({ error: 'Invalid project ID' }, { status: 400 });
+      return ApiErrorHandler.invalidProjectId();
     }
 
     if (!sessionId) {
-      return NextResponse.json({ error: 'Session ID is required' }, { status: 400 });
+      return ApiErrorHandler.badRequest('Session ID is required');
     }
 
     const tableName = table;
     if (!tableName) {
-      return NextResponse.json({ error: 'Table name is required' }, { status: 400 });
+      return ApiErrorHandler.badRequest('Table name is required');
     }
 
     // Verify project ownership
@@ -37,7 +37,7 @@ export async function GET(
     });
 
     if (!project || project.userId !== userId) {
-      return NextResponse.json({ error: 'Project not found or access denied' }, { status: 404 });
+      return ApiErrorHandler.projectNotFound();
     }
 
     // Get query parameters

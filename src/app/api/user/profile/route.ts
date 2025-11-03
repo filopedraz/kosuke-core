@@ -1,3 +1,4 @@
+import { ApiErrorHandler } from '@/lib/api/errors';
 import { ApiResponseHandler } from '@/lib/api/responses';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db/drizzle';
@@ -11,7 +12,7 @@ export async function GET() {
   try {
     const { userId } = await auth();
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return ApiErrorHandler.unauthorized();
     }
 
     // Get user from database using Drizzle ORM
@@ -26,13 +27,13 @@ export async function GET() {
         const clerkUser = await client.users.getUser(userId);
 
         if (!clerkUser) {
-          return NextResponse.json({ error: 'User not found in Clerk' }, { status: 404 });
+          return ApiErrorHandler.notFound('User not found in Clerk');
         }
 
         const primaryEmail = clerkUser.emailAddresses?.[0]?.emailAddress;
         if (!primaryEmail) {
           console.error(`No email address found for Clerk user: ${userId}`);
-          return NextResponse.json({ error: 'User email not found' }, { status: 404 });
+          return ApiErrorHandler.notFound('User email not found');
         }
 
         const fullName =
@@ -92,14 +93,14 @@ export async function GET() {
         }
       } catch (clerkError) {
         console.error(`Error syncing user ${userId} from Clerk:`, clerkError);
-        return NextResponse.json({ error: 'Failed to sync user from Clerk' }, { status: 404 });
+        return ApiErrorHandler.notFound('Failed to sync user from Clerk');
       }
     }
 
     return ApiResponseHandler.success(user);
   } catch (error) {
     console.error('Error fetching user profile:', error);
-    return NextResponse.json({ error: 'Failed to fetch profile' }, { status: 500 });
+    return ApiErrorHandler.handle(error);
   }
 }
 
@@ -108,7 +109,7 @@ export async function PUT(request: NextRequest) {
     const { auth } = await import('@/lib/auth');
     const { userId } = await auth();
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return ApiErrorHandler.unauthorized();
     }
 
     const formData = await request.formData();
@@ -121,12 +122,12 @@ export async function PUT(request: NextRequest) {
 
     // Validate required fields for profile updates (not pipeline-only updates)
     if (!isPipelineOnlyUpdate && (!name || !email)) {
-      return NextResponse.json({ error: 'Name and email are required' }, { status: 400 });
+      return ApiErrorHandler.badRequest('Name and email are required');
     }
 
     // Validate pipeline preference if provided
     if (pipelinePreference && !['kosuke', 'claude-code'].includes(pipelinePreference)) {
-      return NextResponse.json({ error: 'Invalid pipeline preference' }, { status: 400 });
+      return ApiErrorHandler.badRequest('Invalid pipeline preference');
     }
 
     const { db } = await import('@/lib/db/drizzle');
@@ -157,6 +158,6 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ success: 'Profile updated successfully' });
   } catch (error) {
     console.error('Error updating profile:', error);
-    return NextResponse.json({ error: 'Failed to update profile' }, { status: 500 });
+    return ApiErrorHandler.handle(error);
   }
 }

@@ -1,4 +1,5 @@
 import type { ApiResponse } from '@/lib/api';
+import { ApiErrorHandler } from '@/lib/api/errors';
 import {
   getUserGitHubInfo,
   hasRequiredGitHubScopes,
@@ -20,7 +21,7 @@ export async function GET(_: NextRequest) {
 
     if (!userId) {
       console.warn('No userId found in auth result');
-      return NextResponse.json({ error: 'Unauthorized - No user session found' }, { status: 401 });
+      return ApiErrorHandler.unauthorized('Unauthorized - No user session found');
     }
 
     console.log(`Loading GitHub info for user: ${userId}`);
@@ -68,12 +69,6 @@ export async function GET(_: NextRequest) {
     });
   } catch (error) {
     console.error('Error checking GitHub status:', error);
-    return NextResponse.json(
-      {
-        error: 'Internal server error',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
-      { status: 500 }
-    );
+    return ApiErrorHandler.handle(error);
   }
 }
