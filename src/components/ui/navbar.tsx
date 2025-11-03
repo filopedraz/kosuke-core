@@ -201,12 +201,6 @@ export default function Navbar({
               {/* Desktop Navigation */}
               {showNavigation && (
                 <div className="hidden min-[900px]:flex items-center gap-2">
-                  <Link href="/customers">
-                    <Button variant="ghost" size="sm">
-                      Customers
-                    </Button>
-                  </Link>
-
                   {/* Solutions Dropdown */}
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -280,14 +274,6 @@ export default function Navbar({
                       </SheetDescription>
                       <div className="flex flex-col h-full px-6 pt-20 pb-8">
                         <nav className="flex flex-col gap-8">
-                          <Link
-                            href="/customers"
-                            onClick={() => setMobileMenuOpen(false)}
-                            className="text-2xl font-medium tracking-tight transition-colors hover:text-muted-foreground"
-                          >
-                            Customers
-                          </Link>
-
                           {/* Solutions Section */}
                           <div className="flex flex-col gap-3">
                             <button

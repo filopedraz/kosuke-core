@@ -53,6 +53,11 @@ export function GhostHtmlContent({ html, className = '' }: GhostHtmlContentProps
         prose-a:text-foreground prose-a:font-medium prose-a:underline prose-a:underline-offset-2 hover:prose-a:text-foreground/80
         prose-strong:font-semibold prose-strong:text-foreground
         prose-ul:my-8 prose-ul:list-disc prose-ul:pl-8 prose-ul:space-y-3
+        prose-table:w-full prose-table:border-collapse prose-table:my-8
+        prose-thead:bg-muted
+        prose-th:border prose-th:border-border prose-th:px-4 prose-th:py-3 prose-th:text-left prose-th:font-semibold prose-th:text-foreground
+        prose-td:border prose-td:border-border prose-td:px-4 prose-td:py-3 prose-td:text-muted-foreground
+        prose-tr:border-b prose-tr:border-border
         [&_a]:text-foreground [&_a]:font-medium [&_a]:underline [&_a]:underline-offset-2 [&_a]:decoration-foreground/40 hover:[&_a]:text-foreground/80 hover:[&_a]:decoration-foreground/60
         prose-ol:my-8 prose-ol:list-decimal prose-ol:pl-8 prose-ol:space-y-3
         prose-li:leading-relaxed prose-li:my-2
@@ -72,6 +77,12 @@ export function GhostHtmlContent({ html, className = '' }: GhostHtmlContentProps
         [&_ul>li]:list-disc [&_ul>li]:ml-0
         [&_ol>li]:list-decimal [&_ol>li]:ml-0
         [&_img]:mx-auto [&_img]:block
+        [&_table]:w-full [&_table]:border-collapse [&_table]:my-8 [&_table]:overflow-hidden [&_table]:rounded-lg [&_table]:border [&_table]:border-border
+        [&_thead]:bg-muted
+        [&_th]:border [&_th]:border-border [&_th]:px-4 [&_th]:py-3 [&_th]:text-left [&_th]:font-semibold [&_th]:text-foreground [&_th]:text-sm
+        [&_td]:border [&_td]:border-border [&_td]:px-4 [&_td]:py-3 [&_td]:text-muted-foreground [&_td]:text-sm
+        [&_tbody_tr]:border-b [&_tbody_tr]:border-border last:[&_tbody_tr]:border-b-0
+        [&_tbody_tr:hover]:bg-muted/50
         [&_video]:w-full [&_video]:rounded-lg [&_video]:shadow-md [&_video]:my-8 [&_video]:mx-auto
         [&_iframe]:w-full [&_iframe]:aspect-video [&_iframe]:rounded-lg [&_iframe]:shadow-md [&_iframe]:my-8 [&_iframe]:mx-auto
         [&_figure]:my-8 [&_figure]:mx-auto

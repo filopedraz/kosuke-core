@@ -6,76 +6,76 @@ import Image from 'next/image';
 
 const reviews = [
   {
-    name: 'Alex',
-    username: '@alex_dev',
-    body: 'The human engineers unblocking me when stuck is exactly what Lovable was missing. Game changer.',
-    img: 'https://avatar.vercel.sh/alex',
+    name: 'Thomas',
+    username: '@thomas_ciso',
+    body: 'Full AI capabilities without data leaving our network. Security team approved immediately.',
+    img: 'https://avatar.vercel.sh/thomas',
   },
   {
-    name: 'Maya',
-    username: '@maya_codes',
-    body: 'Got stuck twice, Kosuke engineers helped me in minutes. So cheap and totally worth it.',
-    img: 'https://avatar.vercel.sh/maya',
+    name: 'Rebecca',
+    username: '@rebecca_vp',
+    body: 'Mac Studio deployment was seamless. No GPU provisioning headaches in our data center.',
+    img: 'https://avatar.vercel.sh/rebecca',
   },
   {
-    name: 'Ryan',
-    username: '@ryan_builds',
-    body: "Haven't needed help yet, but knowing real engineers have my back makes me feel secure.",
-    img: 'https://avatar.vercel.sh/ryan',
+    name: 'Ahmed',
+    username: '@ahmed_infra',
+    body: 'Open-source platform means no vendor lock-in. We own the entire stack.',
+    img: 'https://avatar.vercel.sh/ahmed',
   },
   {
-    name: 'Sofia',
-    username: '@sofia_tech',
-    body: 'Used human experts for final security checks before launch. So professional and thorough.',
-    img: 'https://avatar.vercel.sh/sofia',
+    name: 'Julia',
+    username: '@julia_compliance',
+    body: 'HIPAA compliance maintained. Patient data never touches external servers.',
+    img: 'https://avatar.vercel.sh/julia',
   },
   {
-    name: 'David',
-    username: '@david_creates',
-    body: 'The peace of mind knowing I can get expert help anytime is priceless for my startup.',
-    img: 'https://avatar.vercel.sh/david',
+    name: 'Victor',
+    username: '@victor_eng',
+    body: 'Vibe coding power with complete control. This is what enterprise teams needed.',
+    img: 'https://avatar.vercel.sh/victor',
   },
   {
-    name: 'Priya',
-    username: '@priya_designs',
-    body: 'Hit a wall with authentication. Engineer jumped in and fixed it in 10 mins. Incredible.',
-    img: 'https://avatar.vercel.sh/priya',
+    name: 'Sophie',
+    username: '@sophie_devops',
+    body: 'Integration with our existing infrastructure was straightforward. Works perfectly.',
+    img: 'https://avatar.vercel.sh/sophie',
   },
   {
-    name: 'Marcus',
-    username: '@marcus_dev',
-    body: 'This is what every AI platform needs. Real humans when you need them most.',
-    img: 'https://avatar.vercel.sh/marcus',
+    name: 'Daniel',
+    username: '@daniel_security',
+    body: 'Air-gapped deployment option sealed the deal. Maximum security for sensitive projects.',
+    img: 'https://avatar.vercel.sh/daniel',
   },
   {
-    name: 'Elena',
-    username: '@elena_codes',
-    body: 'Got stuck on deployment. Support engineer walked me through it.',
-    img: 'https://avatar.vercel.sh/elena',
+    name: 'Olivia',
+    username: '@olivia_architect',
+    body: 'Custom deployment architecture fit our exact needs. Professional assessment was thorough.',
+    img: 'https://avatar.vercel.sh/olivia',
   },
   {
-    name: 'Kevin',
-    username: '@kevin_builds',
-    body: 'Having experts review my code before production saved me from potential disasters.',
-    img: 'https://avatar.vercel.sh/kevin',
+    name: 'Nathan',
+    username: '@nathan_lead',
+    body: 'Academy training got our team productive fast. Support during rollout was excellent.',
+    img: 'https://avatar.vercel.sh/nathan',
   },
   {
-    name: 'Zara',
-    username: '@zara_tech',
-    body: "Even when I don't need help, knowing it's there lets me build with confidence.",
-    img: 'https://avatar.vercel.sh/zara',
+    name: 'Grace',
+    username: '@grace_privacy',
+    body: "EU data residency requirements met. Finally a vibe coding solution that doesn't compromise.",
+    img: 'https://avatar.vercel.sh/grace',
   },
   {
-    name: 'Ben',
-    username: '@ben_creates',
-    body: 'Complex database issue resolved by their team in under an hour. This support is unmatched.',
-    img: 'https://avatar.vercel.sh/ben',
+    name: 'Isaac',
+    username: '@isaac_tech',
+    body: "Enterprise-grade hardware, zero compromises on AI capabilities. It's the best of both worlds.",
+    img: 'https://avatar.vercel.sh/isaac',
   },
   {
-    name: 'Aria',
-    username: '@aria_dev',
-    body: 'The human touch when AI hits limits. This is the missing piece other platforms ignore.',
-    img: 'https://avatar.vercel.sh/aria',
+    name: 'Clara',
+    username: '@clara_director',
+    body: 'Board approved within a week. Self-hosted solution removed all their concerns.',
+    img: 'https://avatar.vercel.sh/clara',
   },
 ];
 
@@ -122,10 +122,10 @@ export function ReviewsMarquee() {
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12 sm:mb-16">
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-3 sm:mb-4">
-              Loved by Builders
+              Enterprise Trusted
             </h2>
             <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto font-sans px-2">
-              See what first adopters are saying about building with Kosuke
+              See what enterprise leaders are saying about Kosuke
             </p>
           </div>
 

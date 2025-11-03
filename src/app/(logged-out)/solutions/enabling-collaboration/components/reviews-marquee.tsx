@@ -6,76 +6,76 @@ import Image from 'next/image';
 
 const reviews = [
   {
-    name: 'Alex',
-    username: '@alex_dev',
-    body: 'The human engineers unblocking me when stuck is exactly what Lovable was missing. Game changer.',
-    img: 'https://avatar.vercel.sh/alex',
-  },
-  {
-    name: 'Maya',
-    username: '@maya_codes',
-    body: 'Got stuck twice, Kosuke engineers helped me in minutes. So cheap and totally worth it.',
-    img: 'https://avatar.vercel.sh/maya',
-  },
-  {
-    name: 'Ryan',
-    username: '@ryan_builds',
-    body: "Haven't needed help yet, but knowing real engineers have my back makes me feel secure.",
-    img: 'https://avatar.vercel.sh/ryan',
-  },
-  {
-    name: 'Sofia',
-    username: '@sofia_tech',
-    body: 'Used human experts for final security checks before launch. So professional and thorough.',
-    img: 'https://avatar.vercel.sh/sofia',
-  },
-  {
-    name: 'David',
-    username: '@david_creates',
-    body: 'The peace of mind knowing I can get expert help anytime is priceless for my startup.',
-    img: 'https://avatar.vercel.sh/david',
-  },
-  {
-    name: 'Priya',
-    username: '@priya_designs',
-    body: 'Hit a wall with authentication. Engineer jumped in and fixed it in 10 mins. Incredible.',
-    img: 'https://avatar.vercel.sh/priya',
+    name: 'Sarah',
+    username: '@sarah_pm',
+    body: 'Our product team can now ship features without waiting weeks for eng capacity.',
+    img: 'https://avatar.vercel.sh/sarah',
   },
   {
     name: 'Marcus',
-    username: '@marcus_dev',
-    body: 'This is what every AI platform needs. Real humans when you need them most.',
+    username: '@marcus_cto',
+    body: 'Engineers keep full control via PR reviews. Perfect balance between speed and quality.',
     img: 'https://avatar.vercel.sh/marcus',
   },
   {
-    name: 'Elena',
-    username: '@elena_codes',
-    body: 'Got stuck on deployment. Support engineer walked me through it.',
-    img: 'https://avatar.vercel.sh/elena',
+    name: 'Lisa',
+    username: '@lisa_product',
+    body: 'Finally, I can iterate on UI changes myself and submit them for review. Game changer.',
+    img: 'https://avatar.vercel.sh/lisa',
+  },
+  {
+    name: 'James',
+    username: '@james_eng',
+    body: "PR workflow means we're not worried. We review everything before it goes live.",
+    img: 'https://avatar.vercel.sh/james',
+  },
+  {
+    name: 'Priya',
+    username: '@priya_design',
+    body: 'I can build the designs I create. No more endless back-and-forth with developers.',
+    img: 'https://avatar.vercel.sh/priya',
+  },
+  {
+    name: 'David',
+    username: '@david_dev',
+    body: 'Non-technical teammates ship features that actually work. Less maintenance for us.',
+    img: 'https://avatar.vercel.sh/david',
+  },
+  {
+    name: 'Emma',
+    username: '@emma_lead',
+    body: 'The collaboration between product and engineering improved drastically. No more silos.',
+    img: 'https://avatar.vercel.sh/emma',
+  },
+  {
+    name: 'Alex',
+    username: '@alex_startup',
+    body: 'Small team, huge output. Product managers contribute code through PRs now.',
+    img: 'https://avatar.vercel.sh/alex',
+  },
+  {
+    name: 'Zoe',
+    username: '@zoe_ops',
+    body: 'Our shipping velocity doubled. Engineers focus on complex features, product handles simple ones.',
+    img: 'https://avatar.vercel.sh/zoe',
+  },
+  {
+    name: 'Ryan',
+    username: '@ryan_tech',
+    body: "It's like having 3x the engineering capacity without hiring. Revolutionary.",
+    img: 'https://avatar.vercel.sh/ryan',
+  },
+  {
+    name: 'Maya',
+    username: '@maya_founder',
+    body: 'Engineers love it because they maintain quality. Product loves it because they ship faster.',
+    img: 'https://avatar.vercel.sh/maya',
   },
   {
     name: 'Kevin',
-    username: '@kevin_builds',
-    body: 'Having experts review my code before production saved me from potential disasters.',
+    username: '@kevin_vp',
+    body: 'This bridges the product-engineering gap we struggled with for years. Finally solved.',
     img: 'https://avatar.vercel.sh/kevin',
-  },
-  {
-    name: 'Zara',
-    username: '@zara_tech',
-    body: "Even when I don't need help, knowing it's there lets me build with confidence.",
-    img: 'https://avatar.vercel.sh/zara',
-  },
-  {
-    name: 'Ben',
-    username: '@ben_creates',
-    body: 'Complex database issue resolved by their team in under an hour. This support is unmatched.',
-    img: 'https://avatar.vercel.sh/ben',
-  },
-  {
-    name: 'Aria',
-    username: '@aria_dev',
-    body: 'The human touch when AI hits limits. This is the missing piece other platforms ignore.',
-    img: 'https://avatar.vercel.sh/aria',
   },
 ];
 
@@ -122,10 +122,10 @@ export function ReviewsMarquee() {
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12 sm:mb-16">
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-3 sm:mb-4">
-              Loved by Builders
+              Empowering Teams
             </h2>
             <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto font-sans px-2">
-              See what first adopters are saying about building with Kosuke
+              See how teams bridge the gap between product and engineering
             </p>
           </div>
 

@@ -49,7 +49,7 @@ describe('EventProcessor', () => {
             {
               type: 'text',
               text: 'Hello, how can I help you?',
-              citations: null,
+              citations: [],
             },
           ],
         },
@@ -171,7 +171,7 @@ describe('EventProcessor', () => {
             {
               type: 'text',
               text: 'Hello',
-              citations: null,
+              citations: [],
             },
           ],
         },
@@ -293,4 +293,3 @@ describe('EventProcessor', () => {
     });
   });
 });
-

@@ -37,7 +37,18 @@ export default async function CustomersPage() {
       <section className="w-full px-6 sm:px-8 md:px-16 lg:px-24 pb-24 max-w-screen-2xl mx-auto">
         {customers.length === 0 ? (
           <div className="text-center py-16">
-            <p className="text-muted-foreground">No customer stories available yet.</p>
+            <p className="text-muted-foreground">
+              Our customers are still private.{' '}
+              <a
+                href="https://links.kosuke.ai/contact"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:underline"
+              >
+                Contact us
+              </a>{' '}
+              if you want to learn more about who we are working with and what we are shipping.
+            </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
