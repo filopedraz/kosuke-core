@@ -7,6 +7,7 @@
 ### Prerequisites
 
 Before you begin, ensure you have the following tools installed and configured:
+
 - **bun** - Package manager
   - Install via curl: `curl -fsSL https://bun.com/install | bash`
   - Install specific version (check `.bun-version` file): `curl -fsSL https://bun.com/install | bash -s "bun-v1.3.1"`
@@ -79,6 +80,7 @@ just run
 ```
 
 The application will be available at:
+
 - Next.js app: http://localhost:3000
 - Postgres: localhost:54323
 
@@ -88,15 +90,12 @@ For pre-commits and IDE linting install the dependencies locally:
 just install
 ```
 
-
-
 **Note**: On first run, you may need to run database migrations. Open a new terminal and run:
 
 ```bash
 # Run database migrations inside the Next.js container
 just migrate
 ```
-
 
 ## 🛡️ License
 
