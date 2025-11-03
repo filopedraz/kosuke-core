@@ -6,6 +6,7 @@ import { CTASection } from './components/cta-section';
 import { FAQSection } from './components/faq-section';
 import { HeroSection } from './components/hero-section';
 import { HowItWorksSection } from './components/how-it-works-section';
+import { ReviewsMarquee } from './components/reviews-marquee';
 import { faqItems } from './data/faq-data';
 
 const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://kosuke.ai';
@@ -45,6 +46,7 @@ export default function ShipWithEngineersPage() {
       <HeroSection />
       <HowItWorksSection />
       <BenefitsSection />
+      <ReviewsMarquee />
       <CTASection />
       <FAQSection />
     </>

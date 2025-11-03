@@ -9,6 +9,15 @@ import { UUID } from 'crypto';
 describe('EventProcessor', () => {
   let processor: EventProcessor;
 
+  // Mock usage object matching BetaUsage type
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mockUsage: any = {
+    input_tokens: 0,
+    output_tokens: 0,
+    cache_creation_input_tokens: 0,
+    cache_read_input_tokens: 0,
+  };
+
   beforeEach(() => {
     processor = new EventProcessor();
   });
@@ -21,10 +30,26 @@ describe('EventProcessor', () => {
         session_id: 'test-session',
         parent_tool_use_id: null,
         message: {
+          id: 'test-message-id',
+          type: 'message',
+          container: {
+            id: 'test-container-id',
+            expires_at: new Date().toISOString(),
+            skills: [],
+          },
+          context_management: {
+            applied_edits: [],
+          },
+          model: 'test-model',
+          role: 'assistant',
+          stop_reason: null,
+          stop_sequence: null,
+          usage: mockUsage,
           content: [
             {
               type: 'text',
               text: 'Hello, how can I help you?',
+              citations: [],
             },
           ],
         },
@@ -47,6 +72,21 @@ describe('EventProcessor', () => {
         session_id: 'test-session',
         parent_tool_use_id: null,
         message: {
+          id: 'test-message-id-2',
+          type: 'message',
+          container: {
+            id: 'test-container-id',
+            expires_at: new Date().toISOString(),
+            skills: [],
+          },
+          context_management: {
+            applied_edits: [],
+          },
+          model: 'test-model',
+          role: 'assistant',
+          stop_reason: null,
+          stop_sequence: null,
+          usage: mockUsage,
           content: [
             {
               type: 'tool_use',
@@ -78,6 +118,7 @@ describe('EventProcessor', () => {
         session_id: 'test-session',
         parent_tool_use_id: null,
         message: {
+          role: 'user',
           content: [
             {
               type: 'tool_result',
@@ -111,10 +152,26 @@ describe('EventProcessor', () => {
         session_id: 'test-session',
         parent_tool_use_id: null,
         message: {
+          id: 'test-message-id-3',
+          type: 'message',
+          container: {
+            id: 'test-container-id',
+            expires_at: new Date().toISOString(),
+            skills: [],
+          },
+          context_management: {
+            applied_edits: [],
+          },
+          model: 'test-model',
+          role: 'assistant',
+          stop_reason: null,
+          stop_sequence: null,
+          usage: mockUsage,
           content: [
             {
               type: 'text',
               text: 'Hello',
+              citations: [],
             },
           ],
         },
@@ -141,6 +198,21 @@ describe('EventProcessor', () => {
           session_id: 'test-session',
           parent_tool_use_id: null,
           message: {
+            id: 'test-message-id-4',
+            type: 'message',
+            container: {
+              id: 'test-container-id',
+              expires_at: new Date().toISOString(),
+              skills: [],
+            },
+            context_management: {
+              applied_edits: [],
+            },
+            model: 'test-model',
+            role: 'assistant',
+            stop_reason: null,
+            stop_sequence: null,
+            usage: mockUsage,
             content: [
               {
                 type: 'tool_use',
@@ -182,7 +254,28 @@ describe('EventProcessor', () => {
         session_id: 'test-session',
         parent_tool_use_id: null,
         message: {
-          content: [{ type: 'text', text: 'Hello' }],
+          id: 'test-message-id-5',
+          type: 'message',
+          container: {
+            id: 'test-container-id',
+            expires_at: new Date().toISOString(),
+            skills: [],
+          },
+          context_management: {
+            applied_edits: [],
+          },
+          model: 'test-model',
+          role: 'assistant',
+          stop_reason: null,
+          stop_sequence: null,
+          usage: mockUsage,
+          content: [
+            {
+              type: 'text',
+              text: 'Hello',
+              citations: null,
+            },
+          ],
         },
       };
 
