@@ -19,7 +19,7 @@ class Settings:
         self.projects_dir: str = os.getenv("PROJECTS_DIR", "projects")
 
         # Model settings - Claude 3.7 supports thinking blocks
-        self.model_name: str = os.getenv("ANTHROPIC_MODEL", "claude-3-7-sonnet-20250219")
+        self.model_name: str = os.getenv("ANTHROPIC_MODEL", "claude-haiku-4-5")
         self.anthropic_api_key: str = os.getenv("ANTHROPIC_API_KEY", "")
 
         # Preview settings

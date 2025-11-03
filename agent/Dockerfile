@@ -28,7 +28,7 @@ RUN curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /
 RUN npm install -g @anthropic-ai/claude-code
 
 # Set default model for Claude Code CLI (can be overridden by environment variable)
-ENV ANTHROPIC_MODEL=claude-3-7-sonnet-20250219
+ENV ANTHROPIC_MODEL=claude-haiku-4-5
 
 # Copy requirements and install Python deps
 COPY requirements.txt .
