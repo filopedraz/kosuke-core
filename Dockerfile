@@ -40,7 +40,7 @@ COPY .env* ./
 # Enable build optimizations
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NEXT_STANDALONE=true
-ENV NODE_OPTIONS="--max-old-space-size=8192"
+ENV NODE_OPTIONS="--max-old-space-size=4096"
 
 # Use BuildKit cache mount for Next.js
 RUN --mount=type=cache,target=/app/.next/cache \

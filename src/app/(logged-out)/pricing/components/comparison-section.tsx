@@ -4,65 +4,108 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { motion } from 'framer-motion';
 
+type Sentiment = 'positive' | 'neutral' | 'negative';
+
 const comparisonData = [
   {
     feature: 'Quality',
-    lovable: { value: 'Low', description: 'AI-generated prototypes, no human oversight' },
-    kosuke: { value: 'High', description: 'AI + Senior engineers ensure production quality' },
-    agency: { value: 'High', description: 'Manual development, slower iterations' },
+    lovable: {
+      value: 'Low',
+      sentiment: 'negative' as Sentiment,
+      description: 'AI-generated prototypes, no human oversight',
+    },
+    kosuke: {
+      value: 'High',
+      sentiment: 'positive' as Sentiment,
+      description: 'AI + Senior engineers ensure production quality',
+    },
+    agency: {
+      value: 'High',
+      sentiment: 'positive' as Sentiment,
+      description: 'Manual development, slower iterations',
+    },
   },
   {
     feature: 'Cost',
-    lovable: { value: 'Mid', description: 'Credits burn fast, unpredictable costs' },
-    kosuke: { value: 'Low', description: 'Transparent pricing, no usage surprises' },
-    agency: { value: 'High', description: '$50k-$500k per project, long timelines' },
+    lovable: {
+      value: 'Mid',
+      sentiment: 'neutral' as Sentiment,
+      description: 'Credits burn fast, unpredictable costs',
+    },
+    kosuke: {
+      value: 'Low',
+      sentiment: 'positive' as Sentiment,
+      description: 'Transparent pricing, no usage surprises',
+    },
+    agency: {
+      value: 'High',
+      sentiment: 'negative' as Sentiment,
+      description: '$50k-$500k per project, long timelines',
+    },
   },
   {
     feature: 'Lock In',
-    lovable: { value: 'High', description: 'Proprietary platform, hard to export' },
-    kosuke: { value: 'Low', description: 'Your repo, export anytime, open-source' },
-    agency: { value: 'Low', description: 'Own the code, but expensive to maintain' },
+    lovable: {
+      value: 'High',
+      sentiment: 'negative' as Sentiment,
+      description: 'Proprietary platform, hard to export',
+    },
+    kosuke: {
+      value: 'Low',
+      sentiment: 'positive' as Sentiment,
+      description: 'Your repo, export anytime, open-source',
+    },
+    agency: {
+      value: 'Low',
+      sentiment: 'positive' as Sentiment,
+      description: 'Own the code, but expensive to maintain',
+    },
   },
   {
     feature: 'Support',
-    lovable: { value: 'Low', description: 'Community forums, no direct engineering help' },
-    kosuke: { value: 'High', description: 'Real engineers fix bugs and unblock you' },
-    agency: { value: 'High', description: 'Dedicated team, but costly retainers' },
+    lovable: {
+      value: 'Low',
+      sentiment: 'negative' as Sentiment,
+      description: 'Community forums, no direct engineering help',
+    },
+    kosuke: {
+      value: 'High',
+      sentiment: 'positive' as Sentiment,
+      description: 'Real engineers fix bugs and unblock you',
+    },
+    agency: {
+      value: 'High',
+      sentiment: 'positive' as Sentiment,
+      description: 'Dedicated team, but costly retainers',
+    },
   },
 ];
 
-function getValueBadge(value: 'Low' | 'Mid' | 'High', isKosuke: boolean = false) {
+function getValueBadge(value: 'Low' | 'Mid' | 'High', sentiment: Sentiment) {
   const baseClasses =
     'px-2.5 sm:px-3 md:px-3.5 py-1 rounded-full text-xs sm:text-sm font-semibold ';
 
-  if (value === 'Low') {
+  if (sentiment === 'positive') {
     return (
       <Badge className={`${baseClasses} bg-emerald-500/10 text-emerald-600 border-emerald-500/20`}>
-        Low
+        {value}
       </Badge>
     );
   }
 
-  if (value === 'Mid') {
+  if (sentiment === 'neutral') {
     return (
       <Badge className={`${baseClasses} bg-yellow-500/10 text-yellow-600 border-yellow-500/20`}>
-        Mid
+        {value}
       </Badge>
     );
   }
 
-  if (value === 'High') {
-    if (isKosuke) {
-      return (
-        <Badge
-          className={`${baseClasses} bg-emerald-500/10 text-emerald-600 border-emerald-500/20`}
-        >
-          High
-        </Badge>
-      );
-    }
+  if (sentiment === 'negative') {
     return (
-      <Badge className={`${baseClasses} bg-red-500/10 text-red-600 border-red-500/20`}>High</Badge>
+      <Badge className={`${baseClasses} bg-red-500/10 text-red-600 border-red-500/20`}>
+        {value}
+      </Badge>
     );
   }
 }
@@ -144,7 +187,10 @@ export function ComparisonSection() {
                       {/* Lovable */}
                       <Card className="bg-card/50 border-border/50 hover:bg-card transition-all duration-300">
                         <CardContent className="p-6 flex justify-center">
-                          {getValueBadge(row.lovable.value as 'Low' | 'Mid' | 'High')}
+                          {getValueBadge(
+                            row.lovable.value as 'Low' | 'Mid' | 'High',
+                            row.lovable.sentiment
+                          )}
                         </CardContent>
                       </Card>
 
@@ -152,14 +198,20 @@ export function ComparisonSection() {
                       <Card className="bg-linear-to-br from-emerald-500/10 to-emerald-500/5 border-emerald-500/30 hover:shadow-lg hover:shadow-emerald-500/20 transition-all duration-300 relative overflow-hidden group">
                         <div className="absolute inset-0 bg-grid-white/5 bg-size-[20px_20px] opacity-0 group-hover:opacity-100 transition-opacity" />
                         <CardContent className="p-6 flex justify-center relative">
-                          {getValueBadge(row.kosuke.value as 'Low' | 'Mid' | 'High', true)}
+                          {getValueBadge(
+                            row.kosuke.value as 'Low' | 'Mid' | 'High',
+                            row.kosuke.sentiment
+                          )}
                         </CardContent>
                       </Card>
 
                       {/* Software Agency */}
                       <Card className="bg-card/50 border-border/50 hover:bg-card transition-all duration-300">
                         <CardContent className="p-6 flex justify-center">
-                          {getValueBadge(row.agency.value as 'Low' | 'Mid' | 'High')}
+                          {getValueBadge(
+                            row.agency.value as 'Low' | 'Mid' | 'High',
+                            row.agency.sentiment
+                          )}
                         </CardContent>
                       </Card>
                     </div>
@@ -193,7 +245,10 @@ export function ComparisonSection() {
                         <span className="font-semibold  text-xs sm:text-sm md:text-base leading-tight">
                           Lovable
                         </span>
-                        {getValueBadge(row.lovable.value as 'Low' | 'Mid' | 'High')}
+                        {getValueBadge(
+                          row.lovable.value as 'Low' | 'Mid' | 'High',
+                          row.lovable.sentiment
+                        )}
                       </div>
                     </CardContent>
                   </Card>
@@ -205,7 +260,10 @@ export function ComparisonSection() {
                         <span className="font-bold  text-emerald-600 text-xs sm:text-sm md:text-base leading-tight">
                           Kosuke
                         </span>
-                        {getValueBadge(row.kosuke.value as 'Low' | 'Mid' | 'High', true)}
+                        {getValueBadge(
+                          row.kosuke.value as 'Low' | 'Mid' | 'High',
+                          row.kosuke.sentiment
+                        )}
                       </div>
                     </CardContent>
                   </Card>
@@ -217,7 +275,10 @@ export function ComparisonSection() {
                         <span className="font-semibold  text-xs sm:text-sm md:text-base leading-tight">
                           Agency
                         </span>
-                        {getValueBadge(row.agency.value as 'Low' | 'Mid' | 'High')}
+                        {getValueBadge(
+                          row.agency.value as 'Low' | 'Mid' | 'High',
+                          row.agency.sentiment
+                        )}
                       </div>
                     </CardContent>
                   </Card>
