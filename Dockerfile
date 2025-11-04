@@ -36,6 +36,8 @@ COPY public ./public
 COPY src ./src
 COPY .env* ./
 
+# Copy .env.example as .env for build-time (will be overridden at runtime)
+COPY .env.example .env
 
 # Enable build optimizations
 ENV NEXT_TELEMETRY_DISABLED=1
