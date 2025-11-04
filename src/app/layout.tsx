@@ -104,9 +104,6 @@ export const metadata: Metadata = {
     index: enableIndexing,
     follow: enableIndexing,
   },
-  verification: {
-    // google: process.env.GOOGLE_SITE_VERIFICATION,
-  },
 };
 
 export const viewport: Viewport = {
