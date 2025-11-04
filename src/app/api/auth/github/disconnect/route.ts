@@ -1,3 +1,4 @@
+import { ApiErrorHandler } from '@/lib/api/errors';
 import { disconnectGitHub } from '@/lib/github/auth';
 import { auth } from '@clerk/nextjs/server';
 import { NextRequest, NextResponse } from 'next/server';
@@ -10,7 +11,7 @@ export async function POST(_: NextRequest) {
   try {
     const { userId } = await auth();
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return ApiErrorHandler.unauthorized();
     }
 
     // Disconnect GitHub account from Clerk
@@ -27,12 +28,6 @@ export async function POST(_: NextRequest) {
     });
   } catch (error) {
     console.error('Error disconnecting GitHub:', error);
-    return NextResponse.json(
-      {
-        error: 'Failed to disconnect GitHub account',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
-      { status: 500 }
-    );
+    return ApiErrorHandler.handle(error);
   }
 }

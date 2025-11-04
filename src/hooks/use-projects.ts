@@ -135,47 +135,12 @@ export function useDeleteProject() {
     mutationFn: async input => {
       const { projectId, deleteRepo } =
         typeof input === 'number' ? { projectId: input, deleteRepo: false } : input;
-      // Allow more time for deletion to complete
-      const timeoutDuration = 30000; // 30 seconds
 
-      // First, try to delete the project folder with a timeout
-      try {
-        const fileDeletePromise = new Promise<boolean>(async resolve => {
-          try {
-            const folderResponse = await fetch(`/api/projects/${projectId}/files`, {
-              method: 'DELETE',
-            });
-
-            if (folderResponse.ok) {
-              resolve(true);
-            } else {
-              console.error('Error from file deletion API:', await folderResponse.text());
-              resolve(false);
-            }
-          } catch (error) {
-            console.error('Error calling file deletion API:', error);
-            resolve(false);
-          }
-        });
-
-        // Add a timeout to ensure we don't wait indefinitely
-        const timeoutPromise = new Promise<boolean>(resolve => {
-          setTimeout(() => {
-            resolve(false);
-          }, timeoutDuration);
-        });
-
-        // Use Promise.race to either get the result or timeout
-        await Promise.race([fileDeletePromise, timeoutPromise]);
-      } catch (error) {
-        console.error('Error during file deletion process:', error);
-      }
-
-      // Ensure at least 2 seconds pass for UI feedback on faster operations
+      // Ensure at least 2 seconds pass for UI feedback
       const startTime = Date.now();
-      const minOperationTime = 2000; // 2 seconds minimum operation time
+      const minOperationTime = 2000;
 
-      // Always proceed with project deletion even if file deletion failed
+      // Call the main delete endpoint which handles everything
       const response = await fetch(`/api/projects/${projectId}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
@@ -198,7 +163,6 @@ export function useDeleteProject() {
       // Invalidate all relevant queries with proper scope
       queryClient.invalidateQueries({
         queryKey: ['projects'],
-        // Force a refetch right away
         refetchType: 'active',
       });
 

@@ -1,3 +1,4 @@
+import { ApiErrorHandler } from '@/lib/api/errors';
 import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { Webhook } from 'svix';
@@ -47,9 +48,7 @@ export async function POST(request: Request) {
 
   // If there are no headers, error out
   if (!svix_id || !svix_timestamp || !svix_signature) {
-    return new Response('Error occured -- no svix headers', {
-      status: 400,
-    });
+    return ApiErrorHandler.badRequest('Error occured -- no svix headers');
   }
 
   // Get the body
@@ -69,9 +68,7 @@ export async function POST(request: Request) {
     }) as ClerkEvent;
   } catch (err) {
     console.error('Error verifying webhook:', err);
-    return new Response('Error occured', {
-      status: 400,
-    });
+    return ApiErrorHandler.badRequest('Error occured');
   }
 
   // Handle the webhook
@@ -96,7 +93,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: 'Webhook processed successfully' });
   } catch (error) {
     console.error(`Error processing webhook ${type}:`, error);
-    return NextResponse.json({ error: 'Failed to process webhook' }, { status: 500 });
+    return ApiErrorHandler.handle(error);
   }
 }
 

@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
-import { auth } from '@/lib/auth/server';
+import { ApiErrorHandler } from '@/lib/api/errors';
+import { auth } from '@/lib/auth';
 import { db } from '@/lib/db/drizzle';
 import { projects } from '@/lib/db/schema';
 import { getGitHubToken } from '@/lib/github/auth';
 import { Octokit } from '@octokit/rest';
 import { eq } from 'drizzle-orm';
-
 // Schema for updating default branch
 const updateDefaultBranchSchema = z.object({
   default_branch: z.string().min(1, 'Default branch is required'),
@@ -24,19 +24,13 @@ export async function GET(
   try {
     const { userId } = await auth();
     if (!userId) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return ApiErrorHandler.unauthorized();
     }
 
     const { id } = await params;
     const projectId = Number(id);
     if (isNaN(projectId)) {
-      return NextResponse.json(
-        { error: 'Invalid project ID' },
-        { status: 400 }
-      );
+      return ApiErrorHandler.invalidProjectId();
     }
 
     // Get project
@@ -46,17 +40,11 @@ export async function GET(
       .where(eq(projects.id, projectId));
 
     if (!project) {
-      return NextResponse.json(
-        { error: 'Project not found' },
-        { status: 404 }
-      );
+      return ApiErrorHandler.projectNotFound();
     }
 
     if (project.createdBy !== userId) {
-      return NextResponse.json(
-        { error: 'Forbidden' },
-        { status: 403 }
-      );
+      return ApiErrorHandler.forbidden();
     }
 
     let availableBranches: string[] = [];
@@ -89,10 +77,7 @@ export async function GET(
     });
   } catch (error) {
     console.error('Error getting default branch settings:', error);
-    return NextResponse.json(
-      { error: 'Failed to get default branch settings' },
-      { status: 500 }
-    );
+    return ApiErrorHandler.handle(error);
   }
 }
 
@@ -107,19 +92,13 @@ export async function PUT(
   try {
     const { userId } = await auth();
     if (!userId) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return ApiErrorHandler.unauthorized();
     }
 
     const { id } = await params;
     const projectId = Number(id);
     if (isNaN(projectId)) {
-      return NextResponse.json(
-        { error: 'Invalid project ID' },
-        { status: 400 }
-      );
+      return ApiErrorHandler.invalidProjectId();
     }
 
     // Get project
@@ -129,17 +108,11 @@ export async function PUT(
       .where(eq(projects.id, projectId));
 
     if (!project) {
-      return NextResponse.json(
-        { error: 'Project not found' },
-        { status: 404 }
-      );
+      return ApiErrorHandler.projectNotFound();
     }
 
     if (project.createdBy !== userId) {
-      return NextResponse.json(
-        { error: 'Forbidden' },
-        { status: 403 }
-      );
+      return ApiErrorHandler.forbidden();
     }
 
     // Parse request body
@@ -147,10 +120,7 @@ export async function PUT(
     const parseResult = updateDefaultBranchSchema.safeParse(body);
 
     if (!parseResult.success) {
-      return NextResponse.json(
-        { error: 'Invalid request format', details: z.treeifyError(parseResult.error) },
-        { status: 400 }
-      );
+      return ApiErrorHandler.validationError(parseResult.error);
     }
 
     const { default_branch } = parseResult.data;
@@ -172,10 +142,7 @@ export async function PUT(
           });
         }
       } catch {
-        return NextResponse.json(
-          { error: `Branch '${default_branch}' not found in repository` },
-          { status: 400 }
-        );
+        return ApiErrorHandler.badRequest(`Branch '${default_branch}' not found in repository`);
       }
     }
 
@@ -195,9 +162,6 @@ export async function PUT(
     });
   } catch (error) {
     console.error('Error updating default branch:', error);
-    return NextResponse.json(
-      { error: 'Failed to update default branch' },
-      { status: 500 }
-    );
+    return ApiErrorHandler.handle(error);
   }
 }

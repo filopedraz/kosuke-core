@@ -1,4 +1,9 @@
-import { auth } from '@/lib/auth/server';
+import { ApiErrorHandler } from '@/lib/api/errors';
+import { auth } from '@/lib/auth';
+import { DatabaseService } from '@/lib/database';
+import { db } from '@/lib/db';
+import { projects } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(
@@ -8,57 +13,54 @@ export async function POST(
   try {
     const { userId } = await auth();
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return ApiErrorHandler.unauthorized();
     }
 
     const { id, sessionId } = await params;
     const projectId = parseInt(id);
     if (isNaN(projectId)) {
-      return NextResponse.json({ error: 'Invalid project ID' }, { status: 400 });
+      return ApiErrorHandler.invalidProjectId();
     }
 
     if (!sessionId) {
-      return NextResponse.json({ error: 'Session ID is required' }, { status: 400 });
+      return ApiErrorHandler.badRequest('Session ID is required');
+    }
+
+    // Verify project ownership
+    const project = await db.query.projects.findFirst({
+      where: eq(projects.id, projectId),
+    });
+
+    if (!project) {
+      return ApiErrorHandler.projectNotFound();
+    }
+
+    if (project.userId !== userId) {
+      return ApiErrorHandler.forbidden();
     }
 
     const body = await request.json();
     const { query } = body;
 
     if (!query || typeof query !== 'string') {
-      return NextResponse.json({ error: 'Query is required' }, { status: 400 });
+      return ApiErrorHandler.badRequest('Query is required');
     }
 
     // Basic security check - only allow SELECT queries
     const trimmedQuery = query.trim().toUpperCase();
     if (!trimmedQuery.startsWith('SELECT')) {
-      return NextResponse.json(
-        { error: 'Only SELECT queries are allowed for security reasons' },
-        { status: 400 }
-      );
+      return ApiErrorHandler.badRequest('Only SELECT queries are allowed for security reasons');
     }
 
-    // Proxy to Python agent with session-specific endpoint
-    const agentUrl = process.env.AGENT_SERVICE_URL || 'http://localhost:8000';
-    const response = await fetch(`${agentUrl}/api/database/query/${projectId}/${sessionId}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ query }),
-    });
+    console.log(`📊 Executing query for project ${projectId}, session ${sessionId}`);
 
-    if (!response.ok) {
-      const error = await response.text();
-      return NextResponse.json(
-        { error: 'Failed to execute query', details: error },
-        { status: response.status }
-      );
-    }
+    // Execute query using DatabaseService
+    const dbService = new DatabaseService(projectId, sessionId);
+    const result = await dbService.executeQuery(query);
 
-    const result = await response.json();
     return NextResponse.json(result);
   } catch (error) {
     console.error('Error executing database query:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return ApiErrorHandler.handle(error);
   }
 }

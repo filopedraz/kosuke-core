@@ -1,53 +1,52 @@
-import { auth } from '@/lib/auth/server';
-import type { PreviewUrlsResponse } from '@/lib/types/preview-urls';
+import { ApiErrorHandler } from '@/lib/api/errors';
+import { auth } from '@/lib/auth';
+import { db } from '@/lib/db/drizzle';
+import { projects } from '@/lib/db/schema';
+import { getDockerService } from '@/lib/docker';
+import { eq } from 'drizzle-orm';
 import { NextRequest, NextResponse } from 'next/server';
 
+/**
+ * GET /api/projects/[id]/preview-urls
+ * Get all preview URLs (containers) for a project
+ */
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    // Authenticate user
     const { userId } = await auth();
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return ApiErrorHandler.unauthorized();
     }
 
     const { id } = await params;
     const projectId = parseInt(id);
 
-    // Proxy to Python agent to get preview URLs
-    const agentUrl = process.env.AGENT_SERVICE_URL || 'http://localhost:8000';
-    const response = await fetch(`${agentUrl}/api/projects/${projectId}/preview-urls`, {
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      if (response.status === 404) {
-        // No preview URLs found
-        const emptyResponse: PreviewUrlsResponse = {
-          preview_urls: [],
-          total_count: 0,
-        };
-        return NextResponse.json({
-          success: true,
-          data: emptyResponse,
-        });
-      }
-      throw new Error('Failed to fetch preview URLs from agent');
+    if (isNaN(projectId)) {
+      return ApiErrorHandler.badRequest('Invalid project ID');
     }
 
-    const result = await response.json();
+    // Get project and verify ownership
+    const [project] = await db.select().from(projects).where(eq(projects.id, projectId));
+
+    if (!project) {
+      return ApiErrorHandler.projectNotFound();
+    }
+
+    if (project.createdBy !== userId) {
+      return ApiErrorHandler.forbidden();
+    }
+
+    // Get preview URLs from Docker service
+    console.log(`Fetching preview URLs for project ${projectId}`);
+    const dockerService = getDockerService();
+    const result = await dockerService.getProjectPreviewUrls(projectId);
+
     return NextResponse.json({
       success: true,
       data: result,
     });
   } catch (error) {
     console.error('Error fetching project preview URLs:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Internal server error',
-      },
-      { status: 500 }
-    );
+    return ApiErrorHandler.serverError(error);
   }
 }

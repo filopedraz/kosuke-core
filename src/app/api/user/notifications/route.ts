@@ -1,4 +1,5 @@
-import { auth } from '@/lib/auth/server';
+import { ApiErrorHandler } from '@/lib/api/errors';
+import { auth } from '@/lib/auth';
 import { db } from '@/lib/db/drizzle';
 import { users } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
@@ -8,13 +9,13 @@ export async function PUT(request: NextRequest) {
   try {
     const { userId } = await auth();
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return ApiErrorHandler.unauthorized();
     }
 
     const { marketingEmails } = await request.json();
 
     if (typeof marketingEmails !== 'boolean') {
-      return NextResponse.json({ error: 'Invalid marketingEmails value' }, { status: 400 });
+      return ApiErrorHandler.badRequest('Invalid marketingEmails value');
     }
 
     // Update user's notification preferences in database
@@ -31,6 +32,6 @@ export async function PUT(request: NextRequest) {
     });
   } catch (error) {
     console.error('Error updating notification preferences:', error);
-    return NextResponse.json({ error: 'Failed to update preferences' }, { status: 500 });
+    return ApiErrorHandler.handle(error);
   }
 }

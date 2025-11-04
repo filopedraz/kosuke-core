@@ -1,4 +1,9 @@
-import { auth } from '@/lib/auth/server';
+import { ApiErrorHandler } from '@/lib/api/errors';
+import { auth } from '@/lib/auth';
+import { getSessionFonts } from '@/lib/branding';
+import { db } from '@/lib/db';
+import { projects } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(
@@ -8,40 +13,43 @@ export async function GET(
   try {
     const { userId } = await auth();
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return ApiErrorHandler.unauthorized();
     }
 
     const { id, sessionId } = await params;
     const projectId = parseInt(id);
     if (isNaN(projectId)) {
-      return NextResponse.json({ error: 'Invalid project ID' }, { status: 400 });
+      return ApiErrorHandler.invalidProjectId();
     }
 
     if (!sessionId) {
-      return NextResponse.json({ error: 'Session ID is required' }, { status: 400 });
+      return ApiErrorHandler.badRequest('Session ID is required');
     }
 
-    // Proxy to Python agent service for session-specific fonts
-    const agentUrl = process.env.AGENT_SERVICE_URL || 'http://localhost:8000';
-    const response = await fetch(`${agentUrl}/api/projects/${projectId}/sessions/${sessionId}/branding/fonts`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+    // Verify project ownership
+    const project = await db.query.projects.findFirst({
+      where: eq(projects.id, projectId),
     });
 
-    if (!response.ok) {
-      const error = await response.text();
-      return NextResponse.json(
-        { error: 'Failed to fetch fonts', details: error },
-        { status: response.status }
-      );
+    if (!project || project.userId !== userId) {
+      return ApiErrorHandler.projectNotFound();
     }
 
-    const result = await response.json();
-    return NextResponse.json(result);
+    // Get fonts from session
+    console.log(`🔍 Getting fonts for project ${projectId}, session ${sessionId}`);
+
+    const fonts = await getSessionFonts(projectId, sessionId);
+
+    console.log(`📊 Found ${fonts.length} fonts in session ${sessionId}`);
+
+    return NextResponse.json({
+      success: true,
+      fonts,
+      count: fonts.length,
+      session_id: sessionId,
+    });
   } catch (error) {
     console.error('Error fetching session fonts:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return ApiErrorHandler.handle(error);
   }
 }

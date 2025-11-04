@@ -7,20 +7,19 @@
 ### Prerequisites
 
 Before you begin, ensure you have the following tools installed and configured:
-
-- **nvm (Node Version Manager)** - Manages Node.js versions
-  - Install from [github.com/nvm-sh/nvm](https://github.com/nvm-sh/nvm)
-  - The project includes a `.nvmrc` file to automatically use Node.js 22.20.0
 - **bun** - Package manager
   - Install via curl: `curl -fsSL https://bun.com/install | bash`
   - Install specific version (check `.bun-version` file): `curl -fsSL https://bun.com/install | bash -s "bun-v1.3.1"`
   - For other installation methods see [Bun installation](https://bun.com/docs/installation)
-- **Docker Desktop or OrbStack** - Required for running PostgreSQL database locally
+- **Docker Desktop or OrbStack** - Required for running PostgreSQL and Nextjs locally
   - [Docker Desktop](https://www.docker.com/products/docker-desktop) - Traditional Docker solution
-  - [OrbStack](https://orbstack.dev/) - Lightweight, faster alternative for macOS
+  - [OrbStack](https://orbstack.dev/) - Lightweight, faster alternative for macOS (Recommended)
 - **just** - Command runner for project tasks
   - Install via Homebrew: `brew install just`
   - Or see [alternative installation methods](https://github.com/casey/just#installation)
+- **nvm (Node Version Manager)** - Optional, only needed if running linting/tests locally
+  - Install from [github.com/nvm-sh/nvm](https://github.com/nvm-sh/nvm)
+  - The project includes a `.nvmrc` file to automatically use Node.js 22.20.0
 - **GitHub OAuth App** - For authentication and repository access
   1. Go to [GitHub Developer Settings](https://github.com/settings/developers)
   2. Click **OAuth Apps** → **New OAuth App**
@@ -72,32 +71,32 @@ Before you begin, ensure you have the following tools installed and configured:
 ### Running Locally
 
 ```bash
-# run the backend
+# Setup environment files
 cp .env.example .env
-cp ./agent/.env.example ./agent/.env
-just run-backend
-# install Next.js dependencies
-nvm i && bun install
-# run the database migrations
-bun run db:push
-# run the Next.js application
-bun run dev
+
+# Start all services (Postgres + Next.js)
+just run
 ```
 
-### Linting and Pre-commit Hook
+The application will be available at:
+- Next.js app: http://localhost:3000
+- Postgres: localhost:54323
 
-To set up the linting pre-commit hook:
+For pre-commits and IDE linting install the dependencies locally:
 
 ```bash
-bun install
-bun run prepare
+just install
 ```
 
-This configures a Git pre-commit hook that runs linting and prevents commits with issues. To bypass in exceptional cases:
+
+
+**Note**: On first run, you may need to run database migrations. Open a new terminal and run:
 
 ```bash
-git commit -m "Your message" --no-verify
+# Run database migrations inside the Next.js container
+just migrate
 ```
+
 
 ## 🛡️ License
 

@@ -122,7 +122,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <ClerkThemeProvider>
       <html lang="en" className={`${inter.variable} dark antialiased`} suppressHydrationWarning>
-        <body className="min-h-[100dvh] bg-background text-foreground overflow-x-hidden font-sans">
+        <body className="min-h-dvh bg-background text-foreground overflow-x-hidden font-sans">
           <Script
             id="Cookiebot"
             src="https://consent.cookiebot.com/uc.js"
@@ -137,7 +137,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
             strategy="beforeInteractive"
           />
           <Providers>
-            <div className="flex flex-col min-h-[100dvh]">
+            <div className="flex flex-col min-h-dvh">
               <ErrorBoundary>
                 <main className="flex-1">{children}</main>
               </ErrorBoundary>

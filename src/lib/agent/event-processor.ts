@@ -14,12 +14,15 @@ import type {
   ToolStartEvent,
   ToolStopEvent,
 } from '@/lib/types/agent';
-import { countTokens } from '@/lib/utils/token-counter';
+import { countTokens } from '@/lib/agent/token-counter';
 import type {
   SDKAssistantMessage,
   SDKMessage,
   SDKUserMessage,
 } from '@anthropic-ai/claude-agent-sdk';
+
+// Typed constant for empty tool input
+const EMPTY_TOOL_INPUT: Record<string, unknown> = {};
 
 /**
  * Event Processor
@@ -65,8 +68,8 @@ export class EventProcessor {
    */
   getAccumulatedContent(): string {
     return this.textState.allBlocks
-      .filter((block) => block.type === 'text')
-      .map((block) => (block as { content: string }).content)
+      .filter(block => block.type === 'text')
+      .map(block => (block as { content: string }).content)
       .join('\n');
   }
 
@@ -126,7 +129,7 @@ export class EventProcessor {
         yield* this.processToolUseBlock({
           id: block.id,
           name: block.name,
-          input: block.input || {},
+          input: block.input,
         });
       }
     }
@@ -151,7 +154,8 @@ export class EventProcessor {
       if (block.type === 'tool_result' && 'tool_use_id' in block) {
         yield* this.processToolResultBlock({
           tool_use_id: block.tool_use_id,
-          content: typeof block.content === 'string' ? block.content : JSON.stringify(block.content),
+          content:
+            typeof block.content === 'string' ? block.content : JSON.stringify(block.content),
           is_error: 'is_error' in block ? Boolean(block.is_error) : false,
         });
       }
@@ -175,36 +179,43 @@ export class EventProcessor {
     this.outputTokens += tokens;
   }
 
-  private async *processToolUseBlock(
-    block: { id: string; name: string; input: unknown }
-  ): AsyncGenerator<StreamEvent> {
+  private async *processToolUseBlock(block: {
+    id: string;
+    name: string;
+    input?: unknown;
+  }): AsyncGenerator<StreamEvent> {
     // End any active text block before starting a tool
     if (this.textState.active) {
       yield this.createContentBlockStopEvent();
       this.saveTextContent();
     }
 
+    // Use empty object if input is undefined
+    const toolInput = block.input ?? EMPTY_TOOL_INPUT;
+
     // Yield tool start event
-    yield this.createToolStartEvent(block);
+    yield this.createToolStartEvent({ ...block, input: toolInput });
 
     // Store tool use block for DB
     this.textState.allBlocks.push({
       type: 'tool',
       id: block.id,
       name: block.name,
-      input: block.input,
+      input: toolInput,
       status: 'pending',
     });
 
     // Count tokens from tool input
-    const inputStr = JSON.stringify(block.input);
+    const inputStr = JSON.stringify(toolInput);
     const tokens = countTokens(inputStr);
     this.inputTokens += tokens;
   }
 
-  private async *processToolResultBlock(
-    block: { tool_use_id: string; content: unknown; is_error?: boolean }
-  ): AsyncGenerator<StreamEvent> {
+  private async *processToolResultBlock(block: {
+    tool_use_id: string;
+    content: unknown;
+    is_error?: boolean;
+  }): AsyncGenerator<StreamEvent> {
     // Yield tool stop event
     yield this.createToolStopEvent(block);
 
@@ -295,4 +306,3 @@ export class EventProcessor {
     };
   }
 }
-

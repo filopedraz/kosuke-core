@@ -3,7 +3,6 @@ const knipConfig = {
   ignore: [
     'venv/**',
     '.venv/**',
-    'agent/**',
     'projects/**',
     // Shadcn/UI components, we keep them as part of the template
     'src/components/ui/**',
@@ -22,7 +21,6 @@ const knipConfig = {
     'embla-carousel-react',
     'input-otp',
     'react-resizable-panels',
-    'tailwindcss',
     'vaul',
     'ts-node',
     // Dependencies used in configuration files or by frameworks
@@ -37,7 +35,6 @@ const knipConfig = {
     'posthog-node',
     // TODO check if we should use these dependencies
     '@types/bcryptjs',
-    '@types/dockerode',
     '@types/marked',
     // Dependencies used in build scripts or configuration
     '@eslint/eslintrc',

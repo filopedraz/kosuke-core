@@ -1,15 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-import { auth } from '@/lib/auth/server';
-import { AGENT_SERVICE_URL } from '@/lib/constants';
+import { ApiErrorHandler } from '@/lib/api/errors';
+import { auth } from '@/lib/auth';
 import { db } from '@/lib/db/drizzle';
-import { chatSessions, projects } from '@/lib/db/schema';
+import { projects } from '@/lib/db/schema';
+import { getDockerService } from '@/lib/docker';
 import { getGitHubToken } from '@/lib/github/auth';
-import { and, eq } from 'drizzle-orm';
+import { sessionManager } from '@/lib/sessions';
+import { eq } from 'drizzle-orm';
 
 /**
  * POST /api/projects/[id]/chat-sessions/[sessionId]/pull
- * Pull latest changes for session branch (proxied to Python agent)
+ * Pull latest changes for session branch from remote
  */
 export async function POST(
   request: NextRequest,
@@ -19,117 +21,74 @@ export async function POST(
     // Get the session
     const { userId } = await auth();
     if (!userId) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return ApiErrorHandler.unauthorized();
     }
 
     const { id, sessionId } = await params;
     const projectId = Number(id);
     if (isNaN(projectId)) {
-      return NextResponse.json(
-        { error: 'Invalid project ID' },
-        { status: 400 }
-      );
+      return ApiErrorHandler.badRequest('Invalid project ID');
     }
 
     // Get the project
     const [project] = await db.select().from(projects).where(eq(projects.id, projectId));
     if (!project) {
-      return NextResponse.json(
-        { error: 'Project not found' },
-        { status: 404 }
-      );
+      return ApiErrorHandler.projectNotFound();
     }
 
     // Check if the user has access to the project
     if (project.createdBy !== userId) {
-      return NextResponse.json(
-        { error: 'Forbidden' },
-        { status: 403 }
-      );
+      return ApiErrorHandler.forbidden();
     }
-
-    // Verify chat session exists and belongs to project
-    const [session] = await db
-      .select()
-      .from(chatSessions)
-      .where(
-        and(
-          eq(chatSessions.projectId, projectId),
-          eq(chatSessions.sessionId, sessionId)
-        )
-      );
-
-    if (!session) {
-      return NextResponse.json(
-        { error: 'Chat session not found' },
-        { status: 404 }
-      );
-    }
-
-    // Parse request body for force parameter
-    const body = await request.json().catch(() => ({}));
-    const force = body.force || false;
 
     // Get user's GitHub token (mandatory)
     const githubToken = await getGitHubToken(userId);
     if (!githubToken) {
-      return NextResponse.json(
-        { error: 'GitHub not connected' },
-        { status: 400 }
-      );
+      return ApiErrorHandler.badRequest('GitHub not connected');
     }
 
-    // Proxy request to Python agent
-    const response = await fetch(`${AGENT_SERVICE_URL}/api/preview/pull`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-GitHub-Token': githubToken,
-      },
-      body: JSON.stringify({
-        project_id: projectId,
-        session_id: sessionId,
-        force: force,
-      }),
-    });
+    // Pull session branch using SessionManager
+    console.log(`Pulling session branch for project ${projectId} session ${sessionId}`);
+    const pullResult = await sessionManager.pullSessionBranch(projectId, sessionId, githubToken);
 
-    if (!response.ok) {
-      const error = await response.text();
-      return NextResponse.json(
-        { error: 'Failed to pull changes', details: error },
-        { status: response.status }
-      );
+    if (!pullResult.success) {
+      return ApiErrorHandler.serverError(new Error(`Failed to pull changes: ${pullResult.message}`));
     }
 
-    const result = await response.json();
-    // Map backend snake_case to frontend camelCase for compatibility
-    const pr = result.pull_request || result.pullResult;
-    const mapped = {
-      success: !!result.success,
-      container_restarted: !!result.container_restarted,
+    // Check if we need to restart the container to apply changes
+    let containerRestarted = false;
+    if (pullResult.changed && pullResult.commits_pulled > 0) {
+      try {
+        const dockerService = getDockerService();
+        const isRunning = await dockerService.isContainerRunning(projectId, sessionId);
+
+        if (isRunning) {
+          console.log(`Restarting container to apply ${pullResult.commits_pulled} new commit(s)`);
+          await dockerService.restartPreviewContainer(projectId, sessionId);
+          containerRestarted = true;
+          console.log('✅ Container restarted successfully');
+        }
+      } catch (restartError) {
+        // Log but don't fail - pull was successful
+        console.error('Failed to restart container after pull:', restartError);
+      }
+    }
+
+    // Return response in expected format
+    return NextResponse.json({
+      success: true,
+      container_restarted: containerRestarted,
       pullResult: {
-        changed: !!pr?.changed,
-        commitsPulled: Number(pr?.commits_pulled || 0),
-        message: pr?.message || '',
-        previousCommit: pr?.previous_commit || null,
-        newCommit: pr?.new_commit || null,
-        branchName: pr?.branch_name || null,
+        changed: pullResult.changed,
+        commitsPulled: pullResult.commits_pulled,
+        message: pullResult.message,
+        previousCommit: pullResult.previous_commit || null,
+        newCommit: pullResult.new_commit || null,
+        branchName: pullResult.branch_name,
       },
-    } as const;
-    return NextResponse.json(mapped);
-
+    });
   } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     console.error('Error in session pull endpoint:', error);
-    return NextResponse.json(
-      {
-        error: 'Internal server error',
-        details: errorMessage
-      },
-      { status: 500 }
-    );
+    return ApiErrorHandler.serverError(error);
   }
 }

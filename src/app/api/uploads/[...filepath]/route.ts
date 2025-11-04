@@ -1,3 +1,4 @@
+import { ApiErrorHandler } from '@/lib/api/errors';
 import { IS_PRODUCTION, UPLOADS_DIR } from '@/lib/constants';
 import { promises as fs } from 'fs';
 import { NextRequest, NextResponse } from 'next/server';
@@ -9,10 +10,7 @@ export async function GET(
 ) {
   // Only serve files in development
   if (IS_PRODUCTION) {
-    return NextResponse.json(
-      { error: 'File serving not available in production' },
-      { status: 404 }
-    );
+    return ApiErrorHandler.notFound('File serving not available in production');
   }
 
   try {
@@ -20,7 +18,7 @@ export async function GET(
     const filename = filepath.join('/');
 
     if (!filename) {
-      return NextResponse.json({ error: 'Filename is required' }, { status: 400 });
+      return ApiErrorHandler.badRequest('Filename is required');
     }
 
     // Prevent directory traversal attacks
@@ -30,7 +28,7 @@ export async function GET(
     // Ensure the file is within the uploads directory
     const uploadsPath = path.join(process.cwd(), UPLOADS_DIR);
     if (!filePath.startsWith(uploadsPath)) {
-      return NextResponse.json({ error: 'Invalid file path' }, { status: 400 });
+      return ApiErrorHandler.badRequest('Invalid file path');
     }
 
     try {
@@ -76,10 +74,10 @@ export async function GET(
       });
     } catch (error) {
       console.error('Error reading file:', error);
-      return NextResponse.json({ error: 'File not found' }, { status: 404 });
+      return ApiErrorHandler.notFound('File not found');
     }
   } catch (error) {
     console.error('Error serving file:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return ApiErrorHandler.handle(error);
   }
 }

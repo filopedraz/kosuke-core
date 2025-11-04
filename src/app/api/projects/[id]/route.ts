@@ -1,11 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { z } from 'zod';
 
 import { ApiErrorHandler } from '@/lib/api/errors';
 import { ApiResponseHandler } from '@/lib/api/responses';
-import { auth } from '@/lib/auth/server';
+import { auth } from '@/lib/auth';
 import { db } from '@/lib/db/drizzle';
 import { projects } from '@/lib/db/schema';
+import { getDockerService } from '@/lib/docker';
+import { deleteDir, getProjectPath } from '@/lib/fs/operations';
 import { getGitHubToken } from '@/lib/github/auth';
 import { eq } from 'drizzle-orm';
 
@@ -27,25 +29,25 @@ export async function GET(
     // Get the session
     const { userId } = await auth();
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return ApiErrorHandler.unauthorized();
     }
 
     const { id } = await params;
     const projectId = Number(id);
 
     if (isNaN(projectId)) {
-      return NextResponse.json({ error: 'Invalid project ID' }, { status: 400 });
+      return ApiErrorHandler.invalidProjectId();
     }
 
     // Get the project
     const [project] = await db.select().from(projects).where(eq(projects.id, projectId));
     if (!project) {
-      return ApiErrorHandler.notFound('Project not found');
+      return ApiErrorHandler.projectNotFound();
     }
 
     // Check if the user has access to the project
     if (project.createdBy !== userId) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      return ApiErrorHandler.forbidden();
     }
 
     return ApiResponseHandler.success(project);
@@ -66,25 +68,25 @@ export async function PATCH(
     // Get the session
     const { userId } = await auth();
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return ApiErrorHandler.unauthorized();
     }
 
     const { id } = await params;
     const projectId = Number(id);
 
     if (isNaN(projectId)) {
-      return NextResponse.json({ error: 'Invalid project ID' }, { status: 400 });
+      return ApiErrorHandler.invalidProjectId();
     }
 
     // Get the project
     const [project] = await db.select().from(projects).where(eq(projects.id, projectId));
     if (!project) {
-      return ApiErrorHandler.notFound('Project not found');
+      return ApiErrorHandler.projectNotFound();
     }
 
     // Check if the user has access to the project
     if (project.createdBy !== userId) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      return ApiErrorHandler.forbidden();
     }
 
     // Parse the request body
@@ -118,25 +120,25 @@ export async function DELETE(
     // Get the session
     const { userId } = await auth();
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return ApiErrorHandler.unauthorized();
     }
 
     const { id } = await params;
     const projectId = Number(id);
 
     if (isNaN(projectId)) {
-      return NextResponse.json({ error: 'Invalid project ID' }, { status: 400 });
+      return ApiErrorHandler.invalidProjectId();
     }
 
     // Get the project
     const [project] = await db.select().from(projects).where(eq(projects.id, projectId));
     if (!project) {
-      return ApiErrorHandler.notFound('Project not found');
+      return ApiErrorHandler.projectNotFound();
     }
 
     // Check if the user has access to the project
     if (project.createdBy !== userId) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      return ApiErrorHandler.forbidden();
     }
 
     // Read delete options from request body (optional)
@@ -148,31 +150,42 @@ export async function DELETE(
       // No body provided; keep defaults
     }
 
-    // First, try to stop the project preview if it's running
+    // Step 1: Stop all preview containers for this project before file deletion
     try {
-      console.log(`Stopping preview for project ${projectId} before archiving`);
+      console.log(`Stopping all preview containers for project ${projectId} before deletion`);
+      const dockerService = getDockerService();
+      const cleanupResult = await dockerService.stopAllProjectPreviews(projectId);
 
-      // Proxy stop request to Python agent
-      const agentUrl = process.env.AGENT_SERVICE_URL || 'http://localhost:8000';
-      const response = await fetch(`${agentUrl}/api/preview/stop`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ project_id: projectId }),
-      });
+      console.log(
+        `Preview cleanup completed for project ${projectId}: ` +
+        `${cleanupResult.stopped} stopped, ${cleanupResult.failed} failed`
+      );
 
-      if (response.ok) {
-        console.log(`Preview for project ${projectId} stopped successfully`);
-      } else {
-        console.log(`Preview stop request failed, but continuing with archive`);
+      if (cleanupResult.failed > 0) {
+        console.warn(
+          `Some containers failed to stop for project ${projectId}. ` +
+          `Manual cleanup may be required.`
+        );
       }
     } catch (previewError) {
-      // Log but continue - we still want to archive the project even if stopping the preview fails
-      console.error(`Error stopping preview for project ${projectId}:`, previewError);
+      // Log but continue - we still want to proceed even if stopping previews fails
+      console.error(`Error stopping preview containers for project ${projectId}:`, previewError);
+      console.log(`Continuing with project deletion despite preview cleanup failure`);
     }
 
-    // Optionally delete the associated GitHub repository
+    // Step 2: Delete project files after containers are stopped
+    const projectDir = getProjectPath(projectId);
+    let filesWarning = null;
+
+    try {
+      await deleteDir(projectDir);
+      console.log(`Successfully deleted project directory: ${projectDir}`);
+    } catch (dirError) {
+      console.error(`Error deleting project directory: ${projectDir}`, dirError);
+      filesWarning = "Project deleted but some files could not be removed";
+    }
+
+    // Step 3: Optionally delete the associated GitHub repository
     if (deleteRepo && project.githubOwner && project.githubRepoName) {
       try {
         const githubToken = await getGitHubToken(userId);
@@ -199,10 +212,13 @@ export async function DELETE(
       }
     }
 
-    // Archive the project
+    // Step 4: Archive the project
     const [archivedProject] = await db.update(projects).set({ isArchived: true, updatedAt: new Date() }).where(eq(projects.id, projectId)).returning();
 
-    return ApiResponseHandler.success(archivedProject);
+    return ApiResponseHandler.success({
+      ...archivedProject,
+      ...(filesWarning && { warning: filesWarning }),
+    });
   } catch (error) {
     return ApiErrorHandler.handle(error);
   }

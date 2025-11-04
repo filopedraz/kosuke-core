@@ -25,7 +25,7 @@ export function getProjectPath(projectId: number): string {
 /**
  * Check if a file or directory exists
  */
-export async function fileExists(filePath: string): Promise<boolean> {
+async function fileExists(filePath: string): Promise<boolean> {
   try {
     await fs.access(filePath);
     return true;

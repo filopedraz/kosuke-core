@@ -1,5 +1,5 @@
 import { ApiErrorHandler, ApiResponseHandler } from '@/lib/api';
-import { auth } from '@/lib/auth/server';
+import { auth } from '@/lib/auth';
 import { db } from '@/lib/db/drizzle';
 import { projectEnvironmentVariables, projects } from '@/lib/db/schema';
 import { and, eq } from 'drizzle-orm';
@@ -39,7 +39,7 @@ export async function GET(
       .limit(1);
 
     if (project.length === 0) {
-      return ApiErrorHandler.notFound('Project not found');
+      return ApiErrorHandler.projectNotFound();
     }
 
     // Fetch environment variables
@@ -85,7 +85,7 @@ export async function POST(
       .limit(1);
 
     if (project.length === 0) {
-      return ApiErrorHandler.notFound('Project not found');
+      return ApiErrorHandler.projectNotFound();
     }
 
     // Check if key already exists

@@ -1,56 +1,80 @@
+version: '3.8'
+
 services:
+  traefik:
+    image: traefik:v3.0
+    container_name: kosuke_traefik
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+      - '8080:8080'
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro
+      - traefik_certs:/certs
+    networks:
+      - kosuke_network
+    labels:
+      - 'traefik.enable=true'
+      - 'traefik.http.routers.traefik.rule=Host(`traefik.kosuke.ai`)'
+      - 'traefik.http.routers.traefik.tls.certresolver=letsencrypt'
+      - 'traefik.http.services.traefik.loadbalancer.server.port=8080'
+    environment:
+      - CLOUDFLARE_EMAIL=${CLOUDFLARE_EMAIL}
+      - CLOUDFLARE_API_KEY=${CLOUDFLARE_API_KEY}
+      - MAIN_DOMAIN=kosuke.ai
+      - PREVIEW_DOMAIN=kosuke.app
+
   postgres:
     image: postgres:16.4-alpine
     container_name: kosuke_postgres
     env_file:
       - .env
     ports:
-      - '54323:5432'
+      - '5432:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - kosuke_network
 
-  agent:
+  nextjs:
     build:
-      context: ./agent
+      context: .
       dockerfile: Dockerfile
-    container_name: kosuke_agent
-    ports:
-      - '8001:8000'
-    volumes:
-      - ./agent:/app:cached
-      - ./projects:/projects:cached
-      - /var/run/docker.sock:/var/run/docker.sock
+    container_name: kosuke_nextjs
     env_file:
-      - ./agent/.env
-    environment:
-      - PYTHONPATH=/app
-      - PYTHONUNBUFFERED=1
-      - NEXTJS_URL=http://host.docker.internal:3000
-      - WEBHOOK_SECRET=dev-secret-change-in-production
-      - HOST_WORKSPACE_DIR=${PWD}
-    depends_on:
-      - postgres
+      - .env
     networks:
       - kosuke_network
+    labels:
+      - 'traefik.enable=true'
+      - 'traefik.http.routers.main.rule=Host(`kosuke.ai`) || Host(`www.kosuke.ai`)'
+      - 'traefik.http.routers.main.tls.certresolver=letsencrypt'
+      - 'traefik.http.services.main.loadbalancer.server.port=3000'
+    depends_on:
+      - postgres
+
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: kosuke_portainer
     restart: unless-stopped
-    healthcheck:
-      test:
-        [
-          'CMD',
-          'python',
-          '-c',
-          "import requests; requests.get('http://localhost:8000/api/health/simple')",
-        ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+    networks:
+      - kosuke_network
+    labels:
+      - 'traefik.enable=true'
+      - 'traefik.http.routers.portainer.rule=Host(`portainer.kosuke.ai`)'
+      - 'traefik.http.routers.portainer.tls.certresolver=letsencrypt'
+      - 'traefik.http.services.portainer.loadbalancer.server.port=9000'
 
 volumes:
   postgres_data:
-  next_build_cache:
+  traefik_certs:
+  portainer_data:
 
 networks:
   kosuke_network:

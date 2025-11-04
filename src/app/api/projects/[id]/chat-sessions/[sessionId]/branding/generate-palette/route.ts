@@ -1,10 +1,13 @@
-import { auth } from '@/lib/auth/server';
+import { ApiErrorHandler } from '@/lib/api/errors';
+import { auth } from '@/lib/auth';
+import { ColorPaletteService } from '@/lib/branding';
+import { db } from '@/lib/db';
+import { projects } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * Generate a color palette for a session-specific project
- * ?apply=true - Generate and apply the palette
- * ?apply=false - Only generate the palette without applying (default)
+ * Generate a color palette for a session-specific project using AI
  */
 export async function POST(
   request: NextRequest,
@@ -13,80 +16,43 @@ export async function POST(
   try {
     const { userId } = await auth();
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return ApiErrorHandler.unauthorized();
     }
 
     const { id, sessionId } = await params;
     const projectId = parseInt(id);
     if (isNaN(projectId)) {
-      return NextResponse.json({ error: 'Invalid project ID' }, { status: 400 });
+      return ApiErrorHandler.invalidProjectId();
     }
 
     if (!sessionId) {
-      return NextResponse.json({ error: 'Session ID is required' }, { status: 400 });
+      return ApiErrorHandler.badRequest('Session ID is required');
     }
 
-    // Check if we should apply the palette or just generate it
-    const url = new URL(request.url);
-    const shouldApply = url.searchParams.get('apply') === 'true';
-
-    // Extract request body
-    let requestBody;
-    try {
-      requestBody = await request.json();
-    } catch {
-      requestBody = {};
-    }
-
-    // Determine the endpoint based on whether we're applying or just generating
-    const agentUrl = process.env.AGENT_SERVICE_URL || 'http://localhost:8000';
-    let endpoint: string;
-
-    if (shouldApply && requestBody.colors && Array.isArray(requestBody.colors)) {
-      // Apply provided colors
-      endpoint = `${agentUrl}/api/projects/${projectId}/sessions/${sessionId}/branding/apply-palette`;
-    } else {
-      // Generate new palette
-      endpoint = `${agentUrl}/api/projects/${projectId}/sessions/${sessionId}/branding/generate-palette`;
-    }
-
-    // Proxy to Python agent service for session-specific palette operations
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(requestBody),
+    // Verify project ownership
+    const project = await db.query.projects.findFirst({
+      where: eq(projects.id, projectId),
     });
 
-    if (!response.ok) {
-      const error = await response.text();
-      return NextResponse.json(
-        { error: 'Failed to process color palette', details: error },
-        { status: response.status }
-      );
+    if (!project || project.userId !== userId) {
+      return ApiErrorHandler.projectNotFound();
     }
 
-    const result = await response.json();
+    const requestBody = await request.json();
+    const keywords = requestBody.keywords || '';
 
-    // If we're applying and it succeeded, also apply locally if needed
-    if (shouldApply && result.success) {
-      return NextResponse.json({
-        success: true,
-        message: 'Successfully generated and applied color palette',
-        colors: result.colors || requestBody.colors
-      });
-    }
+    console.log(`🎨 Color palette generation request for project ${projectId}, session ${sessionId}`);
+    console.log(`📋 Keywords: '${keywords}'`);
+
+    // Generate color palette using the service
+    const colorPaletteService = new ColorPaletteService();
+    const result = await colorPaletteService.generateColorPalette(projectId, sessionId, keywords);
+
+    console.log(`✅ Color palette generation ${result.success ? 'successful' : 'failed'}`);
 
     return NextResponse.json(result);
   } catch (error) {
-    console.error('Error in session generate-palette API:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        message: error instanceof Error ? error.message : 'Unknown error occurred'
-      },
-      { status: 500 }
-    );
+    console.error('Error in generate-palette API:', error);
+    return ApiErrorHandler.handle(error);
   }
 }

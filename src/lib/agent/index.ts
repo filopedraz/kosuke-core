@@ -4,6 +4,3 @@
  */
 
 export { Agent } from './agent';
-export { ClaudeService } from './claude-service';
-export { EventProcessor } from './event-processor';
-

@@ -2,9 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { Agent } from '@/lib/agent';
-import { auth } from '@/lib/auth/server';
+import { ApiErrorHandler } from '@/lib/api/errors';
+import { auth } from '@/lib/auth';
 import { db } from '@/lib/db/drizzle';
 import { chatMessages, chatSessions, projects } from '@/lib/db/schema';
+import { getDockerService } from '@/lib/docker';
+import { deleteDir } from '@/lib/fs/operations';
 import { getGitHubToken } from '@/lib/github/auth';
 import { sessionManager } from '@/lib/sessions';
 import { uploadFile } from '@/lib/storage';
@@ -92,19 +95,13 @@ export async function PUT(
   try {
     const { userId } = await auth();
     if (!userId) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return ApiErrorHandler.unauthorized();
     }
 
     const { id, sessionId } = await params;
     const projectId = Number(id);
     if (isNaN(projectId)) {
-      return NextResponse.json(
-        { error: 'Invalid project ID' },
-        { status: 400 }
-      );
+      return ApiErrorHandler.invalidProjectId();
     }
 
     // Verify project access
@@ -114,17 +111,11 @@ export async function PUT(
       .where(eq(projects.id, projectId));
 
     if (!project) {
-      return NextResponse.json(
-        { error: 'Project not found' },
-        { status: 404 }
-      );
+      return ApiErrorHandler.projectNotFound();
     }
 
     if (project.createdBy !== userId) {
-      return NextResponse.json(
-        { error: 'Forbidden' },
-        { status: 403 }
-      );
+      return ApiErrorHandler.forbidden();
     }
 
     // Verify chat session exists and belongs to project
@@ -139,10 +130,7 @@ export async function PUT(
       );
 
     if (!session) {
-      return NextResponse.json(
-        { error: 'Chat session not found' },
-        { status: 404 }
-      );
+      return ApiErrorHandler.chatSessionNotFound();
     }
 
     // Parse request body
@@ -150,10 +138,7 @@ export async function PUT(
     const parseResult = updateChatSessionSchema.safeParse(body);
 
     if (!parseResult.success) {
-      return NextResponse.json(
-        { error: 'Invalid request format', details: z.treeifyError(parseResult.error) },
-        { status: 400 }
-      );
+      return ApiErrorHandler.validationError(parseResult.error);
     }
 
     const updateData = parseResult.data;
@@ -174,10 +159,7 @@ export async function PUT(
     });
   } catch (error) {
     console.error('Error updating chat session:', error);
-    return NextResponse.json(
-      { error: 'Failed to update chat session' },
-      { status: 500 }
-    );
+    return ApiErrorHandler.handle(error);
   }
 }
 
@@ -192,19 +174,13 @@ export async function DELETE(
   try {
     const { userId } = await auth();
     if (!userId) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return ApiErrorHandler.unauthorized();
     }
 
     const { id, sessionId } = await params;
     const projectId = Number(id);
     if (isNaN(projectId)) {
-      return NextResponse.json(
-        { error: 'Invalid project ID' },
-        { status: 400 }
-      );
+      return ApiErrorHandler.invalidProjectId();
     }
 
     // Verify project access
@@ -214,17 +190,11 @@ export async function DELETE(
       .where(eq(projects.id, projectId));
 
     if (!project) {
-      return NextResponse.json(
-        { error: 'Project not found' },
-        { status: 404 }
-      );
+      return ApiErrorHandler.projectNotFound();
     }
 
     if (project.createdBy !== userId) {
-      return NextResponse.json(
-        { error: 'Forbidden' },
-        { status: 403 }
-      );
+      return ApiErrorHandler.forbidden();
     }
 
     // Verify chat session exists and belongs to project
@@ -239,21 +209,39 @@ export async function DELETE(
       );
 
     if (!session) {
-      return NextResponse.json(
-        { error: 'Chat session not found' },
-        { status: 404 }
-      );
+      return ApiErrorHandler.chatSessionNotFound();
     }
 
     // Prevent deletion of default chat session
     if (session.isDefault) {
-      return NextResponse.json(
-        { error: 'Cannot delete default chat session' },
-        { status: 400 }
-      );
+      return ApiErrorHandler.badRequest('Cannot delete default chat session');
     }
 
-    // Delete chat session (cascade will delete associated messages)
+    // Step 1: Stop the preview container for this session
+    try {
+      console.log(`Stopping preview container for session ${sessionId} in project ${projectId}`);
+      const dockerService = getDockerService();
+      await dockerService.stopPreview(projectId, sessionId);
+      console.log(`Preview container stopped successfully for session ${sessionId}`);
+    } catch (containerError) {
+      // Log but continue - we still want to delete the session even if container cleanup fails
+      console.error(`Error stopping preview container for session ${sessionId}:`, containerError);
+      console.log(`Continuing with session deletion despite container cleanup failure`);
+    }
+
+    // Step 2: Delete session files after container is stopped
+    const sessionPath = sessionManager.getSessionPath(projectId, sessionId);
+    let filesWarning = null;
+
+    try {
+      await deleteDir(sessionPath);
+      console.log(`Successfully deleted session directory: ${sessionPath}`);
+    } catch (dirError) {
+      console.error(`Error deleting session directory: ${sessionPath}`, dirError);
+      filesWarning = "Session deleted but some files could not be removed";
+    }
+
+    // Step 3: Delete chat session from database (cascade will delete associated messages)
     await db
       .delete(chatSessions)
       .where(eq(chatSessions.id, session.id));
@@ -261,13 +249,11 @@ export async function DELETE(
     return NextResponse.json({
       success: true,
       message: 'Chat session deleted successfully',
+      ...(filesWarning && { warning: filesWarning }),
     });
   } catch (error) {
     console.error('Error deleting chat session:', error);
-    return NextResponse.json(
-      { error: 'Failed to delete chat session' },
-      { status: 500 }
-    );
+    return ApiErrorHandler.handle(error);
   }
 }
 
@@ -283,7 +269,7 @@ export async function POST(
     // Get the session
     const { userId } = await auth();
     if (!userId) {
-      return new Response('Unauthorized', { status: 401 });
+      return ApiErrorHandler.unauthorized();
     }
 
     // Await params to get the id and sessionId
@@ -291,17 +277,17 @@ export async function POST(
     const projectId = parseInt(id);
 
     if (isNaN(projectId)) {
-      return new Response('Invalid project ID', { status: 400 });
+      return ApiErrorHandler.invalidProjectId();
     }
 
     // Get the project and verify access
     const [project] = await db.select().from(projects).where(eq(projects.id, projectId));
     if (!project) {
-      return new Response('Project not found', { status: 404 });
+      return ApiErrorHandler.projectNotFound();
     }
 
     if (project.createdBy !== userId) {
-      return new Response('Forbidden', { status: 403 });
+      return ApiErrorHandler.forbidden();
     }
 
     // Get the chat session and verify it belongs to this project
@@ -316,7 +302,7 @@ export async function POST(
       );
 
     if (!chatSession) {
-      return new Response('Chat session not found', { status: 404 });
+      return ApiErrorHandler.chatSessionNotFound();
     }
 
     // Parse request body - support both JSON and FormData
@@ -368,13 +354,7 @@ export async function POST(
 
       if (!parseResult.success) {
         console.error('Invalid request format:', parseResult.error);
-        return new Response(
-          JSON.stringify({ error: 'Invalid request format', details: z.treeifyError(parseResult.error) }),
-          {
-            status: 400,
-            headers: { 'Content-Type': 'application/json' }
-          }
-        );
+        return ApiErrorHandler.validationError(parseResult.error);
       }
 
       // Extract content based on the format received

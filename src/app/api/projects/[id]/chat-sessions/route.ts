@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
-import { auth } from '@/lib/auth/server';
+import { ApiErrorHandler } from '@/lib/api/errors';
+import { auth } from '@/lib/auth';
 import { db } from '@/lib/db/drizzle';
 import { chatSessions, projects } from '@/lib/db/schema';
 import { getGitHubToken } from '@/lib/github/auth';
@@ -101,19 +102,13 @@ export async function GET(
   try {
     const { userId } = await auth();
     if (!userId) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return ApiErrorHandler.unauthorized();
     }
 
     const { id } = await params;
     const projectId = Number(id);
     if (isNaN(projectId)) {
-      return NextResponse.json(
-        { error: 'Invalid project ID' },
-        { status: 400 }
-      );
+      return ApiErrorHandler.invalidProjectId();
     }
 
     // Verify project access
@@ -123,17 +118,11 @@ export async function GET(
       .where(eq(projects.id, projectId));
 
     if (!project) {
-      return NextResponse.json(
-        { error: 'Project not found' },
-        { status: 404 }
-      );
+      return ApiErrorHandler.projectNotFound();
     }
 
     if (project.createdBy !== userId) {
-      return NextResponse.json(
-        { error: 'Forbidden' },
-        { status: 403 }
-      );
+      return ApiErrorHandler.forbidden();
     }
 
     // Get all chat sessions for the project
@@ -213,10 +202,7 @@ export async function GET(
     });
   } catch (error) {
     console.error('Error getting chat sessions:', error);
-    return NextResponse.json(
-      { error: 'Failed to get chat sessions' },
-      { status: 500 }
-    );
+    return ApiErrorHandler.handle(error);
   }
 }
 
@@ -231,19 +217,13 @@ export async function POST(
   try {
     const { userId } = await auth();
     if (!userId) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return ApiErrorHandler.unauthorized();
     }
 
     const { id } = await params;
     const projectId = Number(id);
     if (isNaN(projectId)) {
-      return NextResponse.json(
-        { error: 'Invalid project ID' },
-        { status: 400 }
-      );
+      return ApiErrorHandler.invalidProjectId();
     }
 
     // Verify project access
@@ -253,17 +233,11 @@ export async function POST(
       .where(eq(projects.id, projectId));
 
     if (!project) {
-      return NextResponse.json(
-        { error: 'Project not found' },
-        { status: 404 }
-      );
+      return ApiErrorHandler.projectNotFound();
     }
 
     if (project.createdBy !== userId) {
-      return NextResponse.json(
-        { error: 'Forbidden' },
-        { status: 403 }
-      );
+      return ApiErrorHandler.forbidden();
     }
 
     // Parse request body
@@ -271,10 +245,7 @@ export async function POST(
     const parseResult = createChatSessionSchema.safeParse(body);
 
     if (!parseResult.success) {
-      return NextResponse.json(
-        { error: 'Invalid request format', details: z.treeifyError(parseResult.error) },
-        { status: 400 }
-      );
+      return ApiErrorHandler.validationError(parseResult.error);
     }
 
     const { title, description } = parseResult.data;
@@ -304,9 +275,6 @@ export async function POST(
     });
   } catch (error) {
     console.error('Error creating chat session:', error);
-    return NextResponse.json(
-      { error: 'Failed to create chat session' },
-      { status: 500 }
-    );
+    return ApiErrorHandler.handle(error);
   }
 }

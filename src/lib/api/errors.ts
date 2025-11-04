@@ -1,6 +1,6 @@
+import type { ApiError, ErrorDetailObject, HandleableError } from '@/lib/types';
 import { NextResponse } from 'next/server';
 import { ZodError } from 'zod';
-import type { ErrorDetailObject, ApiError, HandleableError } from '@/lib/types';
 
 /**
  * Error handler for API routes
@@ -75,5 +75,29 @@ export class ApiErrorHandler {
     }
 
     return this.serverError(error);
+  }
+
+  /**
+   * Handle invalid project ID errors (400)
+   */
+  static invalidProjectId(): NextResponse<ApiError> {
+    return NextResponse.json({ error: 'Invalid project ID', code: 'BAD_REQUEST' }, { status: 400 });
+  }
+
+  /**
+   * Handle project not found errors (404)
+   */
+  static projectNotFound(): NextResponse<ApiError> {
+    return NextResponse.json({ error: 'Project not found', code: 'NOT_FOUND' }, { status: 404 });
+  }
+
+  /**
+   * Handle chat session not found errors (404)
+   */
+  static chatSessionNotFound(): NextResponse<ApiError> {
+    return NextResponse.json(
+      { error: 'Chat session not found', code: 'NOT_FOUND' },
+      { status: 404 }
+    );
   }
 }

@@ -57,14 +57,14 @@ export function useApplyColorPalette(projectId: number, sessionId: string) {
     mutationFn: async (
       colors: Array<{
         name: string;
-        value: string;
-        lightValue?: string;
+        value?: string;
+        lightValue: string;
         darkValue?: string;
         description?: string;
       }>
     ) => {
       const response = await fetch(
-        `/api/projects/${projectId}/chat-sessions/${effectiveSessionId}/branding/generate-palette?apply=true`,
+        `/api/projects/${projectId}/chat-sessions/${effectiveSessionId}/branding/apply-palette`,
         {
           method: 'POST',
           headers: {

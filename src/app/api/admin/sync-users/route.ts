@@ -1,3 +1,4 @@
+import { ApiErrorHandler } from '@/lib/api/errors';
 import { db } from '@/lib/db/drizzle';
 import { users } from '@/lib/db/schema';
 import { createClerkClient } from '@clerk/nextjs/server';
@@ -25,7 +26,7 @@ export async function POST(request: NextRequest) {
     const isDev = process.env.NODE_ENV === 'development';
 
     if (!isDev && (!authHeader || authHeader !== `Bearer ${ADMIN_API_KEY}`)) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return ApiErrorHandler.unauthorized();
     }
 
     const searchParams = request.nextUrl.searchParams;
@@ -37,7 +38,7 @@ export async function POST(request: NextRequest) {
     const clerk = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY });
 
     if (!process.env.CLERK_SECRET_KEY) {
-      return NextResponse.json({ error: 'Clerk secret key not configured' }, { status: 500 });
+      return ApiErrorHandler.serverError(new Error('Clerk secret key not configured'));
     }
 
     // Get all users from Clerk (paginated)
@@ -251,12 +252,6 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('❌ User sync failed:', error);
-    return NextResponse.json(
-      {
-        error: 'User sync failed',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
-      { status: 500 }
-    );
+    return ApiErrorHandler.handle(error);
   }
 }
