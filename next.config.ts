@@ -6,6 +6,8 @@ const nextConfig: NextConfig = {
   output: 'standalone',
   experimental: {
     externalDir: true,
+    webpackMemoryOptimizations: true,
+    webpackBuildWorker: true,
   },
   typescript: {
     ignoreBuildErrors: true,
