@@ -37,6 +37,10 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           chmod 700 ~/.ssh
 
+      - name: Pull latest code from main branch
+        run: |
+          ssh ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_IP }} "cd /home/filippo/kosuke-core && git checkout main && git pull"
+
       - name: Generate .env on server
         run: |
           echo "🔧 Generating .env file on production server..."
@@ -49,8 +53,6 @@ jobs:
       - name: Deploy to Production Server
         id: deploy
         run: |
-          echo "🚀 Starting deployment..."
-          ssh ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_IP }} "cd /home/filippo/kosuke-core/ && git pull"
           echo "🐳 Building and starting containers..."
           ssh ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_IP }} "cd /home/filippo/kosuke-core/ && docker compose -f docker-compose.yml up --build -d"
           echo "📊 Running database migrations..."
