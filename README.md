@@ -7,6 +7,7 @@
 ### Prerequisites
 
 Create environment file and update it with the required secret variables.
+
 ```bash
 # Setup environment files
 cp .env.example .env
@@ -102,7 +103,7 @@ just migrate
 
 ## 🛡️ License
 
-Kosuke is licensed under the [MIT License](https://github.com/filopedraz/kosuke/blob/main/LICENSE).
+Kosuke is licensed under the [MIT License](https://github.com/Kosuke-Org/kosuke-core/blob/main/LICENSE).
 
 ## 📬 Contact
 

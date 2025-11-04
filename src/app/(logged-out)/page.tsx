@@ -20,7 +20,7 @@ export const HomepageStructuredData = () => {
     description:
       'Build your next web project with AI. Describe what you want to build, and our AI will help you create it.',
     url: baseUrl,
-    sameAs: ['https://github.com/filopedraz/kosuke-core'],
+    sameAs: ['https://github.com/Kosuke-Org/kosuke-core'],
   };
 
   const softwareData = {
@@ -37,7 +37,7 @@ export const HomepageStructuredData = () => {
     },
     programmingLanguage: ['TypeScript', 'React', 'Next.js'],
     runtimePlatform: 'Node.js',
-    codeRepository: 'https://github.com/filopedraz/kosuke-core',
+    codeRepository: 'https://github.com/Kosuke-Org/kosuke-core',
   };
 
   return (
