@@ -33,38 +33,28 @@ export async function PUT(request: NextRequest) {
       return ApiErrorHandler.badRequest('File size must be less than 5MB');
     }
 
-    const isProduction = process.env.NODE_ENV === 'production';
     let imageUrl: string;
 
     try {
-      if (isProduction && process.env.BLOB_READ_WRITE_TOKEN) {
-        // Production: Use Vercel Blob
-        const { put } = await import('@vercel/blob');
-        const blob = await put(`profile-images/${userId}-${Date.now()}-${file.name}`, file, {
-          access: 'public',
-        });
-        imageUrl = blob.url;
-      } else {
-        // Development: Use local file system
-        const fileName = `${userId}-${Date.now()}-${file.name}`;
-        const uploadsDir = join(process.cwd(), 'public', 'uploads');
+      // Use local file system for the moment
+      const fileName = `${userId}-${Date.now()}-${file.name}`;
+      const uploadsDir = join(process.cwd(), 'public', 'uploads');
 
-        // Ensure uploads directory exists
-        if (!existsSync(uploadsDir)) {
-          await mkdir(uploadsDir, { recursive: true });
-        }
-
-        // Convert file to buffer
-        const bytes = await file.arrayBuffer();
-        const buffer = Buffer.from(bytes);
-
-        // Write file to public/uploads
-        const filePath = join(uploadsDir, fileName);
-        await writeFile(filePath, buffer);
-
-        // Set URL for local development
-        imageUrl = `/uploads/${fileName}`;
+      // Ensure uploads directory exists
+      if (!existsSync(uploadsDir)) {
+        await mkdir(uploadsDir, { recursive: true });
       }
+
+      // Convert file to buffer
+      const bytes = await file.arrayBuffer();
+      const buffer = Buffer.from(bytes);
+
+      // Write file to public/uploads
+      const filePath = join(uploadsDir, fileName);
+      await writeFile(filePath, buffer);
+
+      // Set URL for local development
+      imageUrl = `/uploads/${fileName}`;
 
       // Update user's image URL in database
       await db
