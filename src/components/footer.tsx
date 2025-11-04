@@ -52,7 +52,7 @@ export default function Footer() {
             {/* Social Icons */}
             <div className="flex items-center gap-5 sm:gap-4">
               <Link
-                href="https://github.com/filopedraz/kosuke-core"
+                href="https://github.com/Kosuke-Org/kosuke-core"
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="GitHub"
