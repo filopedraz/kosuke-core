@@ -19,12 +19,12 @@ export function ProductionSettings() {
           Do not use review apps in production. See the production deployment guide at: {' '}
           <span className="inline-flex items-center gap-1 whitespace-nowrap">
             <a
-              href="https://github.com/filopedraz/kosuke-template#-deployment--production"
+              href="https://github.com/Kosuke-Org/kosuke-template#-deployment--production"
               target="_blank"
               rel="noopener noreferrer"
               className="underline hover:no-underline"
             >
-            https://github.com/filopedraz/kosuke-template#-deployment--production
+            https://github.com/Kosuke-Org/kosuke-template#-deployment--production
             </a>
           </span>
         </AlertDescription>
