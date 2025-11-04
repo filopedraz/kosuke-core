@@ -71,7 +71,7 @@
     "@types/node": "^24.9.1",
     "@types/react": "19.2.2",
     "@types/react-dom": "19.2.2",
-    "@vercel/blob": "^1.1.1",
+    "@vercel/blob": "^2.0.0",
     "autoprefixer": "^10.4.21",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
