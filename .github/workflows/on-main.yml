@@ -41,7 +41,7 @@ jobs:
         with:
           context: .
           push: true
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
           tags: ghcr.io/kosuke-org/kosuke-core:${{ github.sha }},ghcr.io/kosuke-org/kosuke-core:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
