@@ -6,7 +6,13 @@
 
 ### Prerequisites
 
-Before you begin, ensure you have the following tools installed and configured:
+Create environment file and update it with the required secret variables.
+```bash
+# Setup environment files
+cp .env.example .env
+```
+
+Ensure you have the following tools installed and configured:
 
 - **bun** - Package manager
   - Install via curl: `curl -fsSL https://bun.com/install | bash`
@@ -72,9 +78,6 @@ Before you begin, ensure you have the following tools installed and configured:
 ### Running Locally
 
 ```bash
-# Setup environment files
-cp .env.example .env
-
 # Start all services (Postgres + Next.js)
 just run
 ```
