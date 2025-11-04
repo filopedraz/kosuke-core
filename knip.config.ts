@@ -25,7 +25,6 @@ const knipConfig = {
     'ts-node',
     // Dependencies used in configuration files or by frameworks
     '@clerk/themes',
-    'dockerode',
     'react-day-picker',
     'recharts',
     'server-only',
