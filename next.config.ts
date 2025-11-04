@@ -7,7 +7,6 @@ const nextConfig: NextConfig = {
   experimental: {
     externalDir: true,
     webpackMemoryOptimizations: true,
-    webpackBuildWorker: true,
   },
   typescript: {
     ignoreBuildErrors: true,
