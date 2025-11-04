@@ -39,7 +39,7 @@ jobs:
 
       - name: Pull latest code from main branch
         run: |
-          ssh ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_IP }} "cd /home/filippo/kosuke-core && git pull"
+          ssh ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_IP }} "cd /home/filippo/kosuke-core && git checkout main && git pull"
 
       - name: Generate .env on server
         run: |
