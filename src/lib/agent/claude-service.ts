@@ -54,7 +54,9 @@ export class ClaudeService {
       console.log(`✅ Processed ${messageCount} messages from Claude Agent SDK`);
     } catch (error) {
       console.error('❌ Error in Claude Agent SDK query:', error);
-      throw new Error(`Claude Agent SDK error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Claude Agent SDK error: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 
@@ -68,7 +70,7 @@ export class ClaudeService {
       cwd: this.projectPath,
 
       // Model configuration (from environment)
-      model: process.env.ANTHROPIC_MODEL,
+      model: process.env.NEXT_PUBLIC_DEFAULT_MODEL,
 
       // Tool settings
       allowedTools: this.options.allowedTools,
@@ -97,21 +99,21 @@ export class ClaudeService {
    */
   private getDefaultTools(): string[] {
     return [
-      'Task',           // Plan and execute tasks
-      'Bash',           // Execute shell commands
-      'Glob',           // Find files by pattern
-      'Grep',           // Search file contents
-      'LS',             // List directory contents
-      'Read',           // Read file contents
-      'Edit',           // Edit files with search/replace
-      'MultiEdit',      // Edit multiple files
-      'Write',          // Write new files
-      'NotebookRead',   // Read Jupyter notebooks
-      'NotebookEdit',   // Edit Jupyter notebooks
-      'WebFetch',       // Fetch web content
-      'WebSearch',      // Search the web
-      'TodoWrite',      // Manage todo lists
-      'ExitPlanMode',   // Exit planning mode
+      'Task', // Plan and execute tasks
+      'Bash', // Execute shell commands
+      'Glob', // Find files by pattern
+      'Grep', // Search file contents
+      'LS', // List directory contents
+      'Read', // Read file contents
+      'Edit', // Edit files with search/replace
+      'MultiEdit', // Edit multiple files
+      'Write', // Write new files
+      'NotebookRead', // Read Jupyter notebooks
+      'NotebookEdit', // Edit Jupyter notebooks
+      'WebFetch', // Fetch web content
+      'WebSearch', // Search the web
+      'TodoWrite', // Manage todo lists
+      'ExitPlanMode', // Exit planning mode
     ];
   }
 
@@ -150,4 +152,3 @@ export class ClaudeService {
     return 'unknown';
   }
 }
-

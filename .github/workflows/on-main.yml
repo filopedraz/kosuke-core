@@ -71,14 +71,29 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           chmod 700 ~/.ssh
 
+      - name: Generate .env on server
+        run: |
+          echo "🔧 Generating .env file on production server..."
+
+          # Run the generate-env.sh script on the server
+          ssh ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_IP }} "cd /home/filippo/kosuke-core && ./.github/scripts/generate-env.sh"
+
+          echo "✅ Generated .env file on server"
+
       - name: Deploy to Production Server
         id: deploy
         run: |
+          echo "🚀 Starting deployment..."
           ssh ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_IP }} "cd /home/filippo/kosuke-core/ && git pull"
+          echo "🐳 Pulling latest Docker image..."
           ssh ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_IP }} "cd /home/filippo/kosuke-core/ && docker compose pull nextjs"
+          echo "🚢 Starting containers..."
           ssh ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_IP }} "cd /home/filippo/kosuke-core/ && docker compose -f docker-compose.yml up -d"
+          echo "📊 Running database migrations..."
           ssh ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_IP }} "cd /home/filippo/kosuke-core/ && docker compose -f docker-compose.yml exec nextjs npm run db:migrate"
+          echo "🧹 Cleaning up Docker resources..."
           ssh ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_IP }} "docker system prune -af --volumes"
+          echo "✅ Deployment completed successfully"
 
       - name: Notify Slack - Success
         if: success()
