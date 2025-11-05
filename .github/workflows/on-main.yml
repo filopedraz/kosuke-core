@@ -55,6 +55,9 @@ jobs:
     name: Deploy to Production
     needs: build-and-push
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -92,6 +95,8 @@ jobs:
       - name: Deploy to Production Server
         id: deploy
         run: |
+          echo "🔐 Logging into GitHub Container Registry..."
+          ssh ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_IP }} "echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin"
           echo "🐳 Pulling latest Docker image..."
           ssh ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_IP }} "cd /home/filippo/kosuke-core/ && docker compose pull nextjs"
           echo "🚢 Starting containers..."
