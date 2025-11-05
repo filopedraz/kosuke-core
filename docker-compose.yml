@@ -39,6 +39,9 @@ services:
     container_name: kosuke_nextjs
     env_file:
       - .env
+    volumes:
+      - ./projects:/app/projects:cached
+      - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - kosuke_network
     labels:
