@@ -7,12 +7,6 @@ import { db } from '@/lib/db/drizzle';
 import { users } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 
-const WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SECRET;
-
-if (!WEBHOOK_SECRET) {
-  throw new Error('Please add CLERK_WEBHOOK_SECRET to your environment variables');
-}
-
 type ClerkEventType = 'user.created' | 'user.updated' | 'user.deleted';
 
 interface DatabaseError {
@@ -55,7 +49,7 @@ export async function POST(request: Request) {
   const payload = await request.text();
 
   // Create a new Svix instance with your secret.
-  const wh = new Webhook(WEBHOOK_SECRET!);
+  const wh = new Webhook(process.env.CLERK_WEBHOOK_SECRET!);
 
   let evt: ClerkEvent;
 

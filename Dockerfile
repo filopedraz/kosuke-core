@@ -34,10 +34,7 @@ COPY jest.config.* .
 COPY components.json .
 COPY public ./public
 COPY src ./src
-COPY .env* ./
-
-# Copy .env.example as .env for build-time (will be overridden at runtime)
-COPY .env.example .env
+COPY .env.build .env
 
 # Enable build optimizations
 ENV NEXT_TELEMETRY_DISABLED=1
