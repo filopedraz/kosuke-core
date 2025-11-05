@@ -34,8 +34,7 @@ COPY jest.config.* .
 COPY components.json .
 COPY public ./public
 COPY src ./src
-COPY .env* ./
-
+COPY .env.build .env
 
 # Enable build optimizations
 ENV NEXT_TELEMETRY_DISABLED=1

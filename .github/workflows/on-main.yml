@@ -14,7 +14,46 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  build-and-push:
+    name: Build and Push Docker Image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Create .env.build file
+        run: |
+          echo "📝 Creating .env.build file from .env.prod..."
+          cp .env.prod.public .env.build
+          echo "✅ .env.build file created"
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64
+          tags: ghcr.io/kosuke-org/kosuke-core:${{ github.sha }},ghcr.io/kosuke-org/kosuke-core:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
   deploy-production:
+    name: Deploy to Production
+    needs: build-and-push
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -53,8 +92,10 @@ jobs:
       - name: Deploy to Production Server
         id: deploy
         run: |
-          echo "🐳 Building and starting containers..."
-          ssh ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_IP }} "cd /home/filippo/kosuke-core/ && docker compose -f docker-compose.yml up --build -d"
+          echo "🐳 Pulling latest Docker image..."
+          ssh ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_IP }} "cd /home/filippo/kosuke-core/ && docker compose pull nextjs"
+          echo "🚢 Starting containers..."
+          ssh ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_IP }} "cd /home/filippo/kosuke-core/ && docker compose -f docker-compose.yml up -d"
           echo "📊 Running database migrations..."
           ssh ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_IP }} "cd /home/filippo/kosuke-core/ && docker compose -f docker-compose.yml exec nextjs npm run db:migrate"
           echo "🧹 Cleaning up Docker resources..."

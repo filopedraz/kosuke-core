@@ -101,6 +101,13 @@ just install
 just migrate
 ```
 
+## Adding envionrment variables
+
+- Add the variable in `.env.example`
+- If it is a `NEXT_PUBLIC` variable add it in `.env.prod.public`
+- If it is a server side variable with non-secret value add it in `.env.prod`
+- If it is a server side variable with secret value add it in `.env.prod` with the syntax `VARIABLE=${VARIABLE}` and add the `VARIABLE=value` directly in the `.secrets` file on the production server
+
 ## 🛡️ License
 
 Kosuke is licensed under the [MIT License](https://github.com/Kosuke-Org/kosuke-core/blob/main/LICENSE).
