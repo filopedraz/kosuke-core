@@ -58,10 +58,8 @@ RUN apt-get update && \
 
 RUN \
     groupadd --system --gid 1001 nodejs && \
-    # Create docker group with GID 999 (standard Docker GID on most Linux systems)
-    groupadd --gid 999 docker && \
+    groupadd --gid 988 docker && \
     useradd --system --uid 1001 --gid nodejs nextjs && \
-    # Add nextjs user to docker group for Docker socket access
     usermod -aG docker nextjs && \
     mkdir .next && \
     chown nextjs:nodejs .next && \
