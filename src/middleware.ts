@@ -21,6 +21,9 @@ const isPublicRoute = createRouteMatcher([
   '/solutions/enabling-collaboration',
   '/solutions/on-premise',
   '/solutions/startup-program',
+  // Sentry monitoring tunnel (must be public for error reporting)
+  '/monitoring',
+  '/monitoring(.*)',
   // SEO and metadata routes
   '/robots.txt',
   '/sitemap.xml',
