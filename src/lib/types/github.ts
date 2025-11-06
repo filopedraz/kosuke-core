@@ -1,27 +1,5 @@
 // GitHub Integration Types
 
-export interface GitHubInfo {
-  githubUsername: string;
-  githubId: string;
-  connectedAt: string;
-}
-
-export interface GitHubScope {
-  name: string;
-  description: string;
-  icon?: string;
-}
-
-// API Response Types
-export interface GitHubStatusResponse {
-  connected: boolean;
-  hasValidScopes: boolean;
-  apiConnected?: boolean;
-  githubUsername?: string;
-  githubId?: string;
-  connectedAt?: string;
-}
-
 export interface GitHubRepository {
   id: number;
   name: string;
