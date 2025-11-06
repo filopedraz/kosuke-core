@@ -56,6 +56,9 @@ RUN apt-get update && \
         ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
+# Install Claude Code CLI globally (required by @anthropic-ai/claude-agent-sdk)
+RUN npm install -g @anthropic-ai/claude-code
+
 RUN \
     groupadd --system --gid 1001 nodejs && \
     groupadd --gid 988 docker && \
