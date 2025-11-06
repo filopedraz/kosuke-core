@@ -1,9 +1,10 @@
 'use client';
 
 import { useUser } from '@clerk/nextjs';
-import { ArrowRight, FolderPlus, Github, Loader2 } from 'lucide-react';
+import { AlertCircle, ArrowRight, FolderPlus, Github, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
@@ -37,6 +38,12 @@ export default function ProjectCreationModal({
   const [selectedRepository, setSelectedRepository] = useState<GitHubRepository>();
 
   const { currentStep, createProject, isCreating, resetCreation } = useProjectCreation();
+
+  // Check GitHub connection using Clerk's user data
+  const githubAccount = user?.externalAccounts?.find(
+    account => account.verification?.strategy === 'oauth_github'
+  );
+  const isGitHubConnected = !!githubAccount;
 
   // Auto-set project name from repository name (import mode)
   useEffect(() => {
@@ -176,29 +183,51 @@ export default function ProjectCreationModal({
                 </div>
               )}
 
-              <TabsContent value="import" className="space-y-6 mt-0">
-                <Card>
-                  <CardHeader className="pb-4">
-                    <CardTitle className="flex items-center gap-2 text-base">
-                      <Github className="h-4 w-4" />
-                      Select Repository
-                    </CardTitle>
-                    <CardDescription>
-                      Choose an existing GitHub repository to import into your project.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium">GitHub Repository</Label>
-                      <RepositorySelector
-                        userId={user?.id || ''}
-                        selectedRepository={selectedRepository}
-                        onRepositorySelect={setSelectedRepository}
-                        placeholder="Search and select a repository..."
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
+              <TabsContent value="import" className="space-y-4 mt-0">
+                {!isGitHubConnected && (
+                  <Alert>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>GitHub Connection Required</AlertTitle>
+                    <AlertDescription className="space-y-3">
+                      <p>Connect your GitHub account to import your existing repositories.</p>
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={() => {
+                          window.location.href = '/settings';
+                        }}
+                      >
+                        <Github className="h-4 w-4 mr-2" />
+                        Connect GitHub in Settings
+                      </Button>
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {isGitHubConnected && (
+                  <Card>
+                    <CardHeader className="pb-4">
+                      <CardTitle className="flex items-center gap-2 text-base">
+                        <Github className="h-4 w-4" />
+                        Select Repository
+                      </CardTitle>
+                      <CardDescription>
+                        Choose an existing GitHub repository to import into your project.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">GitHub Repository</Label>
+                        <RepositorySelector
+                          userId={user?.id || ''}
+                          selectedRepository={selectedRepository}
+                          onRepositorySelect={setSelectedRepository}
+                          placeholder="Search and select a repository..."
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
               </TabsContent>
 
               {/* Actions */}
