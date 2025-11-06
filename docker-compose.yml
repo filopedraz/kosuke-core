@@ -21,6 +21,12 @@ services:
       - 'traefik.http.routers.traefik.rule=Host(`traefik.kosuke.ai`)'
       - 'traefik.http.routers.traefik.tls.certresolver=letsencrypt'
       - 'traefik.http.services.traefik.loadbalancer.server.port=8080'
+    environment:
+      - CLOUDFLARE_EMAIL=${CLOUDFLARE_EMAIL}
+      - CLOUDFLARE_API_KEY=${CLOUDFLARE_API_KEY}
+      - MAIN_DOMAIN=${MAIN_DOMAIN}
+      - PREVIEW_DOMAIN=${PREVIEW_BASE_DOMAIN}
+
 
   postgres:
     image: postgres:16.4-alpine
