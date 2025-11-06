@@ -14,13 +14,6 @@ export interface GitHubRepository {
   updated_at: string;
 }
 
-export interface ProjectGitHubSettings {
-  repositoryName?: string;
-  description?: string;
-  isPrivate?: boolean;
-  autoInit: boolean;
-}
-
 // Repository creation from template
 export interface CreateRepositoryFromTemplateRequest {
   name: string;

@@ -13,7 +13,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useProjectCreation } from '@/hooks/use-project-creation';
 import type { GitHubRepository } from '@/lib/types/github';
 import type { CreateProjectData } from '@/lib/types/project';
-import { RepositoryPreview } from './repository-preview';
 import { RepositorySelector } from './repository-selector';
 
 interface ProjectCreationModalProps {
@@ -177,10 +176,6 @@ export default function ProjectCreationModal({
                 </div>
               )}
 
-              <TabsContent value="create" className="space-y-6 mt-0">
-                {/* No preview needed - repository is auto-generated */}
-              </TabsContent>
-
               <TabsContent value="import" className="space-y-6 mt-0">
                 <Card>
                   <CardHeader className="pb-4">
@@ -204,19 +199,6 @@ export default function ProjectCreationModal({
                     </div>
                   </CardContent>
                 </Card>
-
-                {selectedRepository && (
-                  <RepositoryPreview
-                    settings={{
-                      repositoryName: selectedRepository.name,
-                      description: selectedRepository.description || '',
-                      isPrivate: selectedRepository.private,
-                      autoInit: false,
-                    }}
-                    mode="import"
-                    repositoryUrl={selectedRepository.html_url}
-                  />
-                )}
               </TabsContent>
 
               {/* Actions */}
