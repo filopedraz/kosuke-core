@@ -144,7 +144,14 @@ export async function hasRequiredGitHubScopes(userId: string): Promise<boolean> 
     if (response.ok) {
       // Check the OAuth scopes in the response headers
       const scopes = response.headers.get('x-oauth-scopes') || '';
-      const requiredScopes = ['repo', 'workflow', 'admin:repo_hook', 'user:email', 'read:user'];
+      const requiredScopes = [
+        'repo',
+        'workflow',
+        'admin:repo_hook',
+        'user:email',
+        'read:user',
+        'read:org',
+      ];
 
       // Check if all required scopes are present
       const hasAllScopes = requiredScopes.every(

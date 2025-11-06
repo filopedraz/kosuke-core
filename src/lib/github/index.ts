@@ -3,21 +3,53 @@ import type {
   GitHubRepoResponse,
   GitHubRepository,
 } from '@/lib/types/github';
-import type { RestEndpointMethodTypes } from '@octokit/rest';
 import crypto from 'crypto';
 import { createKosukeOctokit, createOctokit, KOSUKE_ORG } from './client';
 
-export async function listUserRepositories(userId: string): Promise<GitHubRepository[]> {
+export async function listUserRepositories(
+  userId: string,
+  page: number = 1,
+  perPage: number = 10,
+  search: string = ''
+): Promise<{ repositories: GitHubRepository[]; hasMore: boolean }> {
   const octokit = await createOctokit(userId);
-  const repos = await octokit.paginate(octokit.rest.repos.listForAuthenticatedUser, {
-    per_page: 100,
-    sort: 'updated',
-  });
-  // Octokit returns slightly different shapes; normalize to our type
-  return repos.map(
-    (
-      repo: RestEndpointMethodTypes['repos']['listForAuthenticatedUser']['response']['data'][0]
-    ) => ({
+
+  let repositories: GitHubRepository[];
+  let hasMore: boolean;
+
+  if (search) {
+    // Use search API when search term is provided
+    const searchResponse = await octokit.rest.search.repos({
+      q: `${search} in:name user:@me`,
+      per_page: perPage,
+      page,
+      sort: 'updated',
+    });
+
+    repositories = searchResponse.data.items.map(repo => ({
+      id: repo.id,
+      name: repo.name,
+      full_name: repo.full_name,
+      description: repo.description,
+      private: repo.private ?? false,
+      html_url: repo.html_url,
+      clone_url: repo.clone_url ?? '',
+      default_branch: repo.default_branch ?? 'main',
+      language: repo.language as string | null,
+      created_at: repo.created_at as unknown as string,
+      updated_at: repo.updated_at as unknown as string,
+    }));
+
+    hasMore = searchResponse.data.items.length === perPage;
+  } else {
+    // Use regular list when no search
+    const response = await octokit.rest.repos.listForAuthenticatedUser({
+      per_page: perPage,
+      page,
+      sort: 'updated',
+    });
+
+    repositories = response.data.map(repo => ({
       id: repo.id,
       name: repo.name,
       full_name: repo.full_name,
@@ -29,8 +61,12 @@ export async function listUserRepositories(userId: string): Promise<GitHubReposi
       language: repo.language as string | null,
       created_at: repo.created_at as unknown as string,
       updated_at: repo.updated_at as unknown as string,
-    })
-  );
+    }));
+
+    hasMore = response.data.length === perPage;
+  }
+
+  return { repositories, hasMore };
 }
 
 /**
