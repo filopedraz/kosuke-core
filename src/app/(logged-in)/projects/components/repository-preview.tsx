@@ -31,19 +31,29 @@ export function RepositoryPreview({ settings, mode, repositoryUrl }: RepositoryP
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <span className="font-medium">{settings.repositoryName}</span>
-              <Badge variant={settings.isPrivate ? 'secondary' : 'outline'} className="text-xs">
-                {settings.isPrivate ? (
-                  <>
-                    <Lock className="h-3 w-3 mr-1" />
-                    Private
-                  </>
-                ) : (
-                  <>
-                    <Globe className="h-3 w-3 mr-1" />
-                    Public
-                  </>
-                )}
-              </Badge>
+              {mode === 'create' && (
+                <span className="text-xs text-muted-foreground">(auto-generated)</span>
+              )}
+              {mode === 'create' ? (
+                <Badge variant="secondary" className="text-xs">
+                  <Lock className="h-3 w-3 mr-1" />
+                  Private
+                </Badge>
+              ) : (
+                <Badge variant={settings.isPrivate ? 'secondary' : 'outline'} className="text-xs">
+                  {settings.isPrivate ? (
+                    <>
+                      <Lock className="h-3 w-3 mr-1" />
+                      Private
+                    </>
+                  ) : (
+                    <>
+                      <Globe className="h-3 w-3 mr-1" />
+                      Public
+                    </>
+                  )}
+                </Badge>
+              )}
             </div>
             {settings.description && (
               <p className="text-sm text-muted-foreground">{settings.description}</p>

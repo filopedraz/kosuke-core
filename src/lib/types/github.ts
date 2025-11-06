@@ -37,9 +37,9 @@ export interface GitHubRepository {
 }
 
 export interface ProjectGitHubSettings {
-  repositoryName: string;
-  description: string;
-  isPrivate: boolean;
+  repositoryName?: string;
+  description?: string;
+  isPrivate?: boolean;
   autoInit: boolean;
 }
 

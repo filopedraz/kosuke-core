@@ -1,21 +1,18 @@
 'use client';
 
 import { useUser } from '@clerk/nextjs';
-import { ArrowRight, FolderPlus, Github, Loader2, Settings } from 'lucide-react';
+import { ArrowRight, FolderPlus, Github, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Textarea } from '@/components/ui/textarea';
 import { useProjectCreation } from '@/hooks/use-project-creation';
-import type { GitHubRepository, ProjectGitHubSettings } from '@/lib/types/github';
+import type { GitHubRepository } from '@/lib/types/github';
 import type { CreateProjectData } from '@/lib/types/project';
-import { isValidRepoName, toDashCase } from '@/lib/utils/string-helpers';
 import { RepositoryPreview } from './repository-preview';
 import { RepositorySelector } from './repository-selector';
 
@@ -37,26 +34,10 @@ export default function ProjectCreationModal({
   const [projectName, setProjectName] = useState(initialProjectName);
   const [projectPrompt, setProjectPrompt] = useState(prompt);
 
-  // Create mode state
-  const [githubSettings, setGithubSettings] = useState<ProjectGitHubSettings>({
-    repositoryName: '',
-    description: '',
-    isPrivate: false,
-    autoInit: true,
-  });
-
   // Import mode state
   const [selectedRepository, setSelectedRepository] = useState<GitHubRepository>();
 
   const { currentStep, createProject, isCreating, resetCreation } = useProjectCreation();
-
-  // Auto-generate repository name from project name (create mode)
-  useEffect(() => {
-    if (activeTab === 'create' && projectName) {
-      const repoName = toDashCase(projectName);
-      setGithubSettings(prev => ({ ...prev, repositoryName: repoName }));
-    }
-  }, [projectName, activeTab]);
 
   // Auto-set project name from repository name (import mode)
   useEffect(() => {
@@ -94,11 +75,7 @@ export default function ProjectCreationModal({
       github: {
         type: activeTab,
         ...(activeTab === 'create'
-          ? {
-              repositoryName: githubSettings.repositoryName,
-              description: githubSettings.description,
-              isPrivate: githubSettings.isPrivate,
-            }
+          ? {}
           : {
               repositoryUrl: selectedRepository?.html_url,
             }),
@@ -112,7 +89,7 @@ export default function ProjectCreationModal({
     if (!projectName.trim()) return false;
 
     if (activeTab === 'create') {
-      return isValidRepoName(githubSettings.repositoryName);
+      return true; // Project name is all we need
     } else {
       return !!selectedRepository;
     }
@@ -148,7 +125,7 @@ export default function ProjectCreationModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className="p-0 overflow-hidden border border-border bg-card shadow-lg rounded-md"
-        style={{ maxWidth: '512px' }}
+        style={{ maxWidth: '600px' }}
         onKeyDown={handleKeyDown}
       >
         <DialogTitle className="sr-only">
@@ -160,8 +137,8 @@ export default function ProjectCreationModal({
             : 'Import an existing GitHub repository as a project'}
         </DialogDescription>
 
-        <div className="p-4">
-          <div className="flex items-center space-x-3 mb-4">
+        <div className="p-6">
+          <div className="flex items-center space-x-3 mb-6">
             <FolderPlus className="h-5 w-5 text-primary" />
             <h3 className="text-lg font-semibold">New Project</h3>
           </div>
@@ -171,7 +148,7 @@ export default function ProjectCreationModal({
             onValueChange={value => setActiveTab(value as 'create' | 'import')}
             className="w-full"
           >
-            <TabsList className="w-full mb-4">
+            <TabsList className="w-full mb-6">
               <TabsTrigger value="create" className="flex items-center gap-2 flex-1">
                 <FolderPlus className="h-4 w-4" />
                 <span>Create New</span>
@@ -182,7 +159,7 @@ export default function ProjectCreationModal({
               </TabsTrigger>
             </TabsList>
 
-            <div className="space-y-4">
+            <div className="space-y-6">
               {/* Project Name - Only for create tab */}
               {activeTab === 'create' && (
                 <div className="space-y-2">
@@ -200,84 +177,11 @@ export default function ProjectCreationModal({
                 </div>
               )}
 
-              <TabsContent value="create" className="space-y-4 mt-0">
-                <Card>
-                  <CardHeader className="pb-4">
-                    <CardTitle className="flex items-center gap-2 text-base">
-                      <Settings className="h-4 w-4" />
-                      GitHub Repository Settings
-                    </CardTitle>
-                    <CardDescription>
-                      Configure the GitHub repository that will be created for your project.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="repoName" className="text-sm font-medium">
-                        Repository Name
-                      </Label>
-                      <Input
-                        id="repoName"
-                        value={githubSettings.repositoryName}
-                        onChange={e =>
-                          setGithubSettings(prev => ({
-                            ...prev,
-                            repositoryName: e.target.value,
-                          }))
-                        }
-                        className="h-10 font-mono text-sm"
-                        placeholder="my-awesome-project"
-                        disabled={isCreating}
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Repository name will be used in the GitHub URL
-                      </p>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="repoDescription" className="text-sm font-medium">
-                        Description (Optional)
-                      </Label>
-                      <Textarea
-                        id="repoDescription"
-                        value={githubSettings.description}
-                        onChange={e =>
-                          setGithubSettings(prev => ({
-                            ...prev,
-                            description: e.target.value,
-                          }))
-                        }
-                        className="min-h-[80px] resize-none"
-                        placeholder="A brief description of your project..."
-                        disabled={isCreating}
-                      />
-                    </div>
-
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="private-repo"
-                        checked={githubSettings.isPrivate}
-                        onCheckedChange={checked =>
-                          setGithubSettings(prev => ({
-                            ...prev,
-                            isPrivate: !!checked,
-                          }))
-                        }
-                        disabled={isCreating}
-                      />
-                      <Label htmlFor="private-repo" className="text-sm">
-                        Make repository private
-                      </Label>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {projectName && githubSettings.repositoryName && (
-                  <RepositoryPreview settings={githubSettings} mode="create" />
-                )}
+              <TabsContent value="create" className="space-y-6 mt-0">
+                {/* No preview needed - repository is auto-generated */}
               </TabsContent>
 
-              <TabsContent value="import" className="space-y-4 mt-0">
+              <TabsContent value="import" className="space-y-6 mt-0">
                 <Card>
                   <CardHeader className="pb-4">
                     <CardTitle className="flex items-center gap-2 text-base">
@@ -316,7 +220,7 @@ export default function ProjectCreationModal({
               </TabsContent>
 
               {/* Actions */}
-              <div className="flex justify-end items-center gap-3 pt-3">
+              <div className="flex justify-end items-center gap-3 pt-6">
                 <Button
                   variant="ghost"
                   onClick={() => onOpenChange(false)}

@@ -4,7 +4,8 @@ import type {
   GitHubRepository,
 } from '@/lib/types/github';
 import type { RestEndpointMethodTypes } from '@octokit/rest';
-import { createOctokit } from './client';
+import crypto from 'crypto';
+import { createKosukeOctokit, createOctokit, KOSUKE_ORG } from './client';
 
 export async function listUserRepositories(userId: string): Promise<GitHubRepository[]> {
   const octokit = await createOctokit(userId);
@@ -32,11 +33,13 @@ export async function listUserRepositories(userId: string): Promise<GitHubReposi
   );
 }
 
+/**
+ * Create repository in Kosuke organization from template
+ */
 export async function createRepositoryFromTemplate(
-  userId: string,
   request: CreateRepositoryFromTemplateRequest
 ): Promise<GitHubRepoResponse> {
-  const octokit = await createOctokit(userId);
+  const octokit = createKosukeOctokit();
 
   // Parse template repository
   const templateRepo = request.templateRepo;
@@ -45,6 +48,19 @@ export async function createRepositoryFromTemplate(
     throw new Error(`Invalid template repository format: ${templateRepo}. Expected 'owner/repo'`);
   }
   const [templateOwner, templateName] = templateRepo.split('/', 2);
+
+  // Sanitize and auto-generate unique repo name
+  const sanitizedName = request.name
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, '-')
+    .replace(/-+/g, '-')
+    .substring(0, 50);
+
+  // Generate 8-char hex ID (4 bytes = 8 hex chars)
+  const shortId = crypto.randomBytes(4).toString('hex');
+  const repoName = `${sanitizedName}-${shortId}`;
+
+  console.log(`Creating repo in ${KOSUKE_ORG}: ${repoName}`);
 
   // Validate template repository exists and is a template
   try {
@@ -65,17 +81,14 @@ export async function createRepositoryFromTemplate(
     throw error;
   }
 
-  // Get authenticated user info
-  const { data: user } = await octokit.rest.users.getAuthenticated();
-
-  // Check if repository name is already taken
+  // Check if repository name is already taken in org
   try {
     const { data: existingRepo } = await octokit.rest.repos.get({
-      owner: user.login,
-      repo: request.name,
+      owner: KOSUKE_ORG,
+      repo: repoName,
     });
     if (existingRepo) {
-      throw new Error(`Repository name is already taken`);
+      throw new Error(`Repository ${repoName} already exists in ${KOSUKE_ORG}`);
     }
   } catch (error) {
     // If we get a 404, the repo doesn't exist (which is what we want)
@@ -84,23 +97,23 @@ export async function createRepositoryFromTemplate(
     }
   }
 
-  // Create repository from template using GitHub API
+  // Create repository from template in Kosuke org
   try {
     const { data: repo } = await octokit.rest.repos.createUsingTemplate({
       template_owner: templateOwner,
       template_repo: templateName,
-      owner: user.login,
-      name: request.name,
-      description: request.description || '',
+      owner: KOSUKE_ORG,
+      name: repoName,
+      description: request.description || `Kosuke project: ${request.name}`,
       private: request.private,
       include_all_branches: false,
     });
 
-    console.log(`Successfully created repository: ${repo.full_name}`);
+    console.log(`✅ Successfully created repository: ${repo.full_name}`);
 
     return {
       name: repo.name,
-      owner: repo.owner?.login || user.login,
+      owner: KOSUKE_ORG,
       url: repo.clone_url || '',
       private: repo.private,
       description: repo.description || undefined,
@@ -110,11 +123,11 @@ export async function createRepositoryFromTemplate(
       const errorMessage = error.message.toLowerCase();
 
       if (errorMessage.includes('already exists') || errorMessage.includes('name already exists')) {
-        throw new Error('Repository name is already taken');
+        throw new Error('Repository name already exists in Kosuke organization');
       }
 
       if (errorMessage.includes('403') || errorMessage.includes('forbidden')) {
-        throw new Error("Insufficient GitHub permissions. Ensure your token has 'repo' scope.");
+        throw new Error('Kosuke service token lacks permissions. Check token scopes.');
       }
 
       if (errorMessage.includes('404') || errorMessage.includes('not found')) {
