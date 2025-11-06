@@ -2,7 +2,7 @@ import { SignIn } from '@clerk/nextjs';
 
 export default function SignInPage() {
   return (
-    <div className="absolute inset-0 top-14 flex items-center justify-center px-4">
+    <div className="flex items-center justify-center px-4 py-16 min-h-[600px]">
       <SignIn />
     </div>
   );
