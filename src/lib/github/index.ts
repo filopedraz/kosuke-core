@@ -4,7 +4,7 @@ import type {
   GitHubRepository,
 } from '@/lib/types/github';
 import crypto from 'crypto';
-import { createKosukeOctokit, createOctokit, KOSUKE_ORG } from './client';
+import { createKosukeOctokit, createOctokit, getKosukeOrg } from './client';
 
 export async function listUserRepositories(
   userId: string,
@@ -76,6 +76,7 @@ export async function createRepositoryFromTemplate(
   request: CreateRepositoryFromTemplateRequest
 ): Promise<GitHubRepoResponse> {
   const octokit = createKosukeOctokit();
+  const kosukeOrg = getKosukeOrg();
 
   // Parse template repository
   const templateRepo = request.templateRepo;
@@ -96,7 +97,7 @@ export async function createRepositoryFromTemplate(
   const shortId = crypto.randomBytes(4).toString('hex');
   const repoName = `${sanitizedName}-${shortId}`;
 
-  console.log(`Creating repo in ${KOSUKE_ORG}: ${repoName}`);
+  console.log(`Creating repo in ${kosukeOrg}: ${repoName}`);
 
   // Validate template repository exists and is a template
   try {
@@ -120,11 +121,11 @@ export async function createRepositoryFromTemplate(
   // Check if repository name is already taken in org
   try {
     const { data: existingRepo } = await octokit.rest.repos.get({
-      owner: KOSUKE_ORG,
+      owner: kosukeOrg,
       repo: repoName,
     });
     if (existingRepo) {
-      throw new Error(`Repository ${repoName} already exists in ${KOSUKE_ORG}`);
+      throw new Error(`Repository ${repoName} already exists in ${kosukeOrg}`);
     }
   } catch (error) {
     // If we get a 404, the repo doesn't exist (which is what we want)
@@ -138,7 +139,7 @@ export async function createRepositoryFromTemplate(
     const { data: repo } = await octokit.rest.repos.createUsingTemplate({
       template_owner: templateOwner,
       template_repo: templateName,
-      owner: KOSUKE_ORG,
+      owner: kosukeOrg,
       name: repoName,
       description: request.description || `Kosuke project: ${request.name}`,
       private: request.private,
@@ -149,7 +150,7 @@ export async function createRepositoryFromTemplate(
 
     return {
       name: repo.name,
-      owner: KOSUKE_ORG,
+      owner: kosukeOrg,
       url: repo.clone_url || '',
       private: repo.private,
       description: repo.description || undefined,

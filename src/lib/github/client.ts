@@ -2,9 +2,15 @@ import { getGitHubToken } from '@/lib/github/auth';
 import { Octokit } from '@octokit/rest';
 
 /**
- * Kosuke organization name
+ * Get Kosuke organization name
  */
-export const KOSUKE_ORG = 'Kosuke-Org';
+export function getKosukeOrg(): string {
+  const org = process.env.KOSUKE_ORG;
+  if (!org) {
+    throw new Error('KOSUKE_ORG not configured. Set it in environment variables.');
+  }
+  return org;
+}
 
 /**
  * Create an authenticated Octokit client for a given Clerk user

@@ -3,6 +3,7 @@
 import { Github, Loader2, Unlink, Upload } from 'lucide-react';
 import { useRef, useState } from 'react';
 
+import { useToast } from '@/hooks/use-toast';
 import { useUser } from '@/hooks/use-user';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -32,6 +33,7 @@ export default function SettingsPage() {
     updateProfile,
     updateProfileImage,
   } = useUser();
+  const { toast } = useToast();
 
   const clerk = (clerkUser || null) as {
     firstName?: string;
@@ -143,7 +145,9 @@ export default function SettingsPage() {
       if (verification?.externalVerificationRedirectURL) {
         window.location.href = verification.externalVerificationRedirectURL.toString();
       } else {
-        window.location.reload();
+        // Just reload Clerk user data, UI will update automatically
+        await clerkUserFull.reload();
+        setConnecting(false);
       }
     } catch (error) {
       console.error(`Failed to connect ${provider}:`, error);
@@ -156,6 +160,24 @@ export default function SettingsPage() {
     account: typeof githubAccount | typeof googleAccount
   ) => {
     if (!account?.id) return;
+
+    // Check if user has other authentication methods
+    const otherExternalAccounts =
+      clerkUserFull?.externalAccounts?.filter(acc => acc.id !== account.id) || [];
+    const hasPassword = clerkUserFull?.passwordEnabled;
+    const hasOtherAuth = otherExternalAccounts.length > 0 || hasPassword;
+
+    if (!hasOtherAuth) {
+      // Show error - can't disconnect last auth method
+      toast({
+        title: 'Cannot disconnect',
+        description:
+          'You cannot disconnect your last authentication method. Please add another sign-in method first.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setProviderToDisconnect({ provider, account });
     setDisconnectDialogOpen(true);
   };
@@ -173,17 +195,24 @@ export default function SettingsPage() {
       const externalAccount = clerkUserFull?.externalAccounts.find(acc => acc.id === account.id);
       if (externalAccount) {
         await externalAccount.destroy();
-        // Reload Clerk user to clear cache and update UI
         await clerkUserFull?.reload();
-        // Close dialog and reset state - React will re-render with updated Clerk data
-        setIsDisconnecting(null);
-        setDisconnectDialogOpen(false);
-        setProviderToDisconnect(null);
+
+        toast({
+          title: 'Disconnected',
+          description: `${providerName} has been disconnected from your account.`,
+        });
       }
     } catch (error) {
       console.error(`Failed to disconnect ${providerName}:`, error);
+      toast({
+        title: 'Disconnection Failed',
+        description: `Failed to disconnect ${providerName}. Please try again.`,
+        variant: 'destructive',
+      });
+    } finally {
       setIsDisconnecting(null);
       setDisconnectDialogOpen(false);
+      setProviderToDisconnect(null);
     }
   };
 
