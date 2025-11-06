@@ -26,6 +26,9 @@ RUN apt-get update && \
         ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
+# Install Claude Code CLI globally (required by @anthropic-ai/claude-agent-sdk)
+RUN npm install -g @anthropic-ai/claude-code
+
 # Create projects directory
 RUN mkdir projects
 

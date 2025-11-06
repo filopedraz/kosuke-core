@@ -56,13 +56,16 @@ RUN apt-get update && \
         ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
+# Install Claude Code CLI globally (required by @anthropic-ai/claude-agent-sdk)
+RUN npm install -g @anthropic-ai/claude-code
+
 RUN \
     groupadd --system --gid 1001 nodejs && \
-    useradd --system --uid 1001 --gid nodejs nextjs && \
-    mkdir .next && \
-    chown nextjs:nodejs .next && \
-    mkdir projects && \
-    chown nextjs:nodejs projects
+    groupadd --gid 988 docker && \
+    useradd --system --uid 1001 --gid nodejs --create-home nextjs && \
+    usermod -aG docker nextjs && \
+    mkdir -p .next projects /home/nextjs/.claude && \
+    chown -R nextjs:nodejs .next projects /home/nextjs
 
 # Copy only the necessary files
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
@@ -83,6 +86,7 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
+ENV HOME=/home/nextjs
 
 EXPOSE 3000
 
