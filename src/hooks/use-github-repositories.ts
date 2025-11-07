@@ -1,13 +1,14 @@
 import type { ApiResponse } from '@/lib/api';
 import type { GitHubRepository } from '@/lib/types/github';
 import { useInfiniteQuery } from '@tanstack/react-query';
+import { useMemo } from 'react';
 
 export function useGitHubRepositories(
   userId: string,
   enabled: boolean = true,
   search: string = ''
 ) {
-  return useInfiniteQuery({
+  const query = useInfiniteQuery({
     queryKey: ['github-repositories', userId, search],
     queryFn: async ({
       pageParam,
@@ -35,4 +36,15 @@ export function useGitHubRepositories(
     retry: 2,
     enabled: !!userId && enabled, // Only fetch when explicitly enabled
   });
+
+  // Flatten all pages into single array
+  const repositories = useMemo(
+    () => query.data?.pages.flatMap(page => page.repositories) ?? [],
+    [query.data?.pages]
+  );
+
+  return {
+    ...query,
+    repositories,
+  };
 }

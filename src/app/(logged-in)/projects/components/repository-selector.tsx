@@ -26,10 +26,7 @@ export function RepositorySelector({
   const triggerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = useGitHubRepositories(userId, open, search);
-
-  // Flatten all pages into single array
-  const repositories = data?.pages.flatMap(page => page.repositories) ?? [];
+  const { repositories, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = useGitHubRepositories(userId, open, search);
 
   useEffect(() => {
     if (triggerRef.current) {
