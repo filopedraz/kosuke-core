@@ -82,8 +82,7 @@ class DockerService {
   private prepareContainerEnvironment(
     projectId: number,
     sessionId: string,
-    envVars: Record<string, string> = {},
-    isSessionDefaultBranch: boolean = false
+    envVars: Record<string, string> = {}
   ): string[] {
     const postgresUrl =
       `postgres://${this.config.postgresUser}:${this.config.postgresPassword}` +
@@ -96,11 +95,6 @@ class DockerService {
       POSTGRES_URL: postgresUrl,
       ...envVars,
     };
-
-    // Skip install for non-default branches (they mount node_modules from project)
-    if (!isSessionDefaultBranch) {
-      environment.SKIP_INSTALL = 'true';
-    }
 
     // Convert to Docker format: ["KEY=value", ...]
     return Object.entries(environment).map(([key, value]) => `${key}=${value}`);
@@ -406,12 +400,7 @@ class DockerService {
     );
 
     // Prepare environment and create container
-    const environment = this.prepareContainerEnvironment(
-      projectId,
-      sessionId,
-      envVars,
-      isSessionDefaultBranch
-    );
+    const environment = this.prepareContainerEnvironment(projectId, sessionId, envVars);
 
     const containerCreateStart = performance.now();
     const url = await this.runContainerWithRetries(
