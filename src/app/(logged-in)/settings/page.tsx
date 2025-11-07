@@ -1,8 +1,10 @@
 'use client';
 
 import { Github, Loader2, Unlink, Upload } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
 
+import { useGitHubOAuth } from '@/hooks/use-github-oauth';
 import { useToast } from '@/hooks/use-toast';
 import { useUser } from '@/hooks/use-user';
 
@@ -34,6 +36,8 @@ export default function SettingsPage() {
     updateProfileImage,
   } = useUser();
   const { toast } = useToast();
+  const searchParams = useSearchParams();
+  const router = useRouter();
 
   const clerk = (clerkUser || null) as {
     firstName?: string;
@@ -48,14 +52,43 @@ export default function SettingsPage() {
   const [isImageUploading, setIsImageUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
-  const [isConnectingGithub, setIsConnectingGithub] = useState(false);
-  const [isConnectingGoogle, setIsConnectingGoogle] = useState(false);
-  const [isDisconnecting, setIsDisconnecting] = useState<'github' | 'google' | null>(null);
   const [disconnectDialogOpen, setDisconnectDialogOpen] = useState(false);
-  const [providerToDisconnect, setProviderToDisconnect] = useState<{
-    provider: 'github' | 'google';
-    account: typeof githubAccount | typeof googleAccount;
-  } | null>(null);
+
+  const {
+    isConnected: isGitHubConnected,
+    isConnecting: isConnectingGitHub,
+    isDisconnecting,
+    connectGitHub,
+    disconnectGitHub,
+    clearConnectingState,
+    githubAccount,
+  } = useGitHubOAuth();
+
+  // Show success toast when redirected back from GitHub OAuth
+  const hasShownToastRef = useRef(false);
+
+  useEffect(() => {
+    if (
+      searchParams.get('githubConnected') === 'true' &&
+      isGitHubConnected &&
+      !hasShownToastRef.current
+    ) {
+      hasShownToastRef.current = true;
+
+      // Clear the connecting state now that we're back from OAuth
+      clearConnectingState();
+
+      toast({
+        title: 'GitHub Connected',
+        description: 'Your GitHub account has been successfully connected.',
+      });
+
+      // Clean up URL without reloading the page
+      const url = new URL(window.location.href);
+      url.searchParams.delete('githubConnected');
+      router.replace(url.pathname, { scroll: false });
+    }
+  }, [searchParams, isGitHubConnected, router, toast, clearConnectingState]);
 
   // Track name changes
   const [hasNameChanged, setHasNameChanged] = useState(false);
@@ -64,14 +97,6 @@ export default function SettingsPage() {
 
   // Get Clerk user for external accounts
   const { user: clerkUserFull } = useClerkUser();
-
-  // Get connected accounts
-  const githubAccount = clerkUserFull?.externalAccounts?.find(
-    account => account.verification?.strategy === 'oauth_github'
-  );
-  const googleAccount = clerkUserFull?.externalAccounts?.find(
-    account => account.verification?.strategy === 'oauth_google'
-  );
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -125,45 +150,12 @@ export default function SettingsPage() {
     setHasNameChanged(hasChanged);
   };
 
-  const handleConnectOAuth = async (
-    strategy: 'oauth_github' | 'oauth_google',
-    provider: string
-  ) => {
-    if (!clerkUserFull) return;
-
-    const isGithub = strategy === 'oauth_github';
-    const setConnecting = isGithub ? setIsConnectingGithub : setIsConnectingGoogle;
-
-    setConnecting(true);
-    try {
-      const externalAccount = await clerkUserFull.createExternalAccount({
-        strategy,
-        redirectUrl: `${window.location.origin}/settings`,
-      });
-
-      const verification = externalAccount.verification;
-      if (verification?.externalVerificationRedirectURL) {
-        window.location.href = verification.externalVerificationRedirectURL.toString();
-      } else {
-        // Just reload Clerk user data, UI will update automatically
-        await clerkUserFull.reload();
-        setConnecting(false);
-      }
-    } catch (error) {
-      console.error(`Failed to connect ${provider}:`, error);
-      setConnecting(false);
-    }
-  };
-
-  const openDisconnectDialog = (
-    provider: 'github' | 'google',
-    account: typeof githubAccount | typeof googleAccount
-  ) => {
-    if (!account?.id) return;
+  const openDisconnectDialog = () => {
+    if (!githubAccount?.id) return;
 
     // Check if user has other authentication methods
     const otherExternalAccounts =
-      clerkUserFull?.externalAccounts?.filter(acc => acc.id !== account.id) || [];
+      clerkUserFull?.externalAccounts?.filter(acc => acc.id !== githubAccount.id) || [];
     const hasPassword = clerkUserFull?.passwordEnabled;
     const hasOtherAuth = otherExternalAccounts.length > 0 || hasPassword;
 
@@ -178,41 +170,24 @@ export default function SettingsPage() {
       return;
     }
 
-    setProviderToDisconnect({ provider, account });
     setDisconnectDialogOpen(true);
   };
 
   const handleDisconnect = async () => {
-    if (!providerToDisconnect) return;
-
-    const { provider, account } = providerToDisconnect;
-    if (!account?.id) return;
-
-    const providerName = provider === 'github' ? 'GitHub' : 'Google';
-
-    setIsDisconnecting(provider);
     try {
-      const externalAccount = clerkUserFull?.externalAccounts.find(acc => acc.id === account.id);
-      if (externalAccount) {
-        await externalAccount.destroy();
-        await clerkUserFull?.reload();
-
-        toast({
-          title: 'Disconnected',
-          description: `${providerName} has been disconnected from your account.`,
-        });
-      }
-    } catch (error) {
-      console.error(`Failed to disconnect ${providerName}:`, error);
+      await disconnectGitHub();
+      toast({
+        title: 'Disconnected',
+        description: 'GitHub has been disconnected from your account.',
+      });
+    } catch {
       toast({
         title: 'Disconnection Failed',
-        description: `Failed to disconnect ${providerName}. Please try again.`,
+        description: 'Failed to disconnect GitHub. Please try again.',
         variant: 'destructive',
       });
     } finally {
-      setIsDisconnecting(null);
       setDisconnectDialogOpen(false);
-      setProviderToDisconnect(null);
     }
   };
 
@@ -385,12 +360,12 @@ export default function SettingsPage() {
                 <div className="flex items-center justify-between px-3 py-2 rounded-md border border-input bg-transparent dark:bg-input/30 shadow-xs transition-colors hover:bg-accent/50">
                   <div className="flex items-center gap-3">
                     <Github
-                      className={`h-4 w-4 ${githubAccount ? 'text-foreground' : 'text-muted-foreground'}`}
+                      className={`h-4 w-4 ${isGitHubConnected ? 'text-foreground' : 'text-muted-foreground'}`}
                     />
                     <div>
-                      {githubAccount ? (
+                      {isGitHubConnected ? (
                         <span className="text-sm font-medium text-foreground">
-                          @{githubAccount.username || 'Connected'}
+                          @{githubAccount?.username || 'Connected'}
                         </span>
                       ) : (
                         <span className="text-sm text-muted-foreground">
@@ -400,7 +375,7 @@ export default function SettingsPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    {githubAccount ? (
+                    {isGitHubConnected ? (
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -408,8 +383,8 @@ export default function SettingsPage() {
                               type="button"
                               size="icon"
                               variant="ghost"
-                              onClick={() => openDisconnectDialog('github', githubAccount)}
-                              disabled={isDisconnecting === 'github'}
+                              onClick={openDisconnectDialog}
+                              disabled={isDisconnecting}
                               className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                             >
                               <Unlink className="h-4 w-4" />
@@ -425,84 +400,18 @@ export default function SettingsPage() {
                         type="button"
                         size="sm"
                         variant="outline"
-                        onClick={() => handleConnectOAuth('oauth_github', 'GitHub')}
-                        disabled={isConnectingGithub}
+                        onClick={() => connectGitHub('/settings?githubConnected=true')}
+                        disabled={isConnectingGitHub}
+                        className={isConnectingGitHub ? 'animate-pulse' : ''}
                       >
-                        {isConnectingGithub ? 'Connecting...' : 'Connect'}
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Google Account */}
-              <div className="space-y-2">
-                <Label>Google</Label>
-                <div className="flex items-center justify-between px-3 py-2 rounded-md border border-input bg-transparent dark:bg-input/30 shadow-xs transition-colors hover:bg-accent/50">
-                  <div className="flex items-center gap-3">
-                    <svg
-                      className={`h-4 w-4 ${googleAccount ? 'text-foreground' : 'text-muted-foreground'}`}
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        fill="currentColor"
-                        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                      />
-                      <path
-                        fill="currentColor"
-                        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                      />
-                      <path
-                        fill="currentColor"
-                        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                      />
-                      <path
-                        fill="currentColor"
-                        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                      />
-                    </svg>
-                    <div>
-                      {googleAccount ? (
-                        <span className="text-sm font-medium text-foreground">
-                          {googleAccount.emailAddress || 'Connected'}
-                        </span>
-                      ) : (
-                        <span className="text-sm text-muted-foreground">
-                          Connect your Google account
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {googleAccount ? (
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              type="button"
-                              size="icon"
-                              variant="ghost"
-                              onClick={() => openDisconnectDialog('google', googleAccount)}
-                              disabled={isDisconnecting === 'google'}
-                              className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                            >
-                              <Unlink className="h-4 w-4" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Disconnect Google</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    ) : (
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleConnectOAuth('oauth_google', 'Google')}
-                        disabled={isConnectingGoogle}
-                      >
-                        {isConnectingGoogle ? 'Connecting...' : 'Connect'}
+                        {isConnectingGitHub ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Connecting...
+                          </>
+                        ) : (
+                          'Connect'
+                        )}
                       </Button>
                     )}
                   </div>
@@ -533,24 +442,20 @@ export default function SettingsPage() {
         <Dialog open={disconnectDialogOpen} onOpenChange={setDisconnectDialogOpen}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>
-                Disconnect {providerToDisconnect?.provider === 'github' ? 'GitHub' : 'Google'}?
-              </DialogTitle>
+              <DialogTitle>Disconnect GitHub?</DialogTitle>
               <DialogDescription>
-                {providerToDisconnect?.provider === 'github'
-                  ? 'You will no longer be able to import repositories from your GitHub account.'
-                  : 'This will remove your Google account connection.'}
+                You will no longer be able to import repositories from your GitHub account.
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
               <Button
                 variant="outline"
                 onClick={() => setDisconnectDialogOpen(false)}
-                disabled={!!isDisconnecting}
+                disabled={isDisconnecting}
               >
                 Cancel
               </Button>
-              <Button variant="destructive" onClick={handleDisconnect} disabled={!!isDisconnecting}>
+              <Button variant="destructive" onClick={handleDisconnect} disabled={isDisconnecting}>
                 {isDisconnecting ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />

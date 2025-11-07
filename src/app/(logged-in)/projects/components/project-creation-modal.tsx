@@ -1,8 +1,7 @@
 'use client';
 
 import { useUser } from '@clerk/nextjs';
-import { AlertCircle, ArrowRight, FolderPlus, Github, Loader2 } from 'lucide-react';
-import Link from 'next/link';
+import { AlertCircle, ArrowRight, CheckCircle2, FolderPlus, Github, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -12,6 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/compone
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useGitHubOAuth } from '@/hooks/use-github-oauth';
 import { useProjectCreation } from '@/hooks/use-project-creation';
 import type { GitHubRepository } from '@/lib/types/github';
 import type { CreateProjectData } from '@/lib/types/project';
@@ -22,6 +22,8 @@ interface ProjectCreationModalProps {
   onOpenChange: (open: boolean) => void;
   initialProjectName?: string;
   prompt?: string;
+  initialTab?: 'create' | 'import';
+  showGitHubConnected?: boolean;
 }
 
 export default function ProjectCreationModal({
@@ -29,22 +31,20 @@ export default function ProjectCreationModal({
   onOpenChange,
   initialProjectName = '',
   prompt = '',
+  initialTab = 'create',
+  showGitHubConnected = false,
 }: ProjectCreationModalProps) {
   const { user } = useUser();
-  const [activeTab, setActiveTab] = useState<'create' | 'import'>('create');
+  const [activeTab, setActiveTab] = useState<'create' | 'import'>(initialTab);
   const [projectName, setProjectName] = useState(initialProjectName);
   const [projectPrompt, setProjectPrompt] = useState(prompt);
+  const [showConnectedMessage, setShowConnectedMessage] = useState(false);
 
   // Import mode state
   const [selectedRepository, setSelectedRepository] = useState<GitHubRepository>();
 
   const { currentStep, createProject, isCreating, resetCreation } = useProjectCreation();
-
-  // Check GitHub connection using Clerk's user data
-  const githubAccount = user?.externalAccounts?.find(
-    account => account.verification?.strategy === 'oauth_github'
-  );
-  const isGitHubConnected = !!githubAccount;
+  const { isConnected: isGitHubConnected, isConnecting: isConnectingGitHub, connectGitHub, clearConnectingState } = useGitHubOAuth();
 
   // Auto-set project name from repository name (import mode)
   useEffect(() => {
@@ -60,9 +60,24 @@ export default function ProjectCreationModal({
       setProjectName(initialProjectName);
       setProjectPrompt(prompt);
       setSelectedRepository(undefined);
-      setActiveTab('create');
+      setActiveTab(initialTab);
+
+      // Show success message only when coming from OAuth redirect
+      if (showGitHubConnected && initialTab === 'import') {
+        // Clear the connecting state now that we're back from OAuth
+        clearConnectingState();
+
+        setShowConnectedMessage(true);
+        // Auto-hide message after 5 seconds
+        const timer = setTimeout(() => {
+          setShowConnectedMessage(false);
+        }, 5000);
+        return () => clearTimeout(timer);
+      }
+    } else {
+      setShowConnectedMessage(false);
     }
-  }, [open, initialProjectName, prompt, resetCreation]);
+  }, [open, initialProjectName, prompt, initialTab, showGitHubConnected, resetCreation, clearConnectingState]);
 
   // Close modal on successful creation
   useEffect(() => {
@@ -185,23 +200,48 @@ export default function ProjectCreationModal({
               )}
 
               <TabsContent value="import" className="space-y-4 mt-0">
-                {!isGitHubConnected && (
+                {(!isGitHubConnected || isConnectingGitHub) && (
                   <Alert>
                     <AlertCircle className="h-4 w-4" />
                     <AlertTitle>GitHub Connection Required</AlertTitle>
-                    <AlertDescription className="space-y-3">
-                      <p>Connect your GitHub account to import your existing repositories.</p>
-                      <Button variant="default" size="sm" asChild>
-                        <Link href="/settings">
-                          <Github className="h-4 w-4 mr-2" />
-                          Connect GitHub in Settings
-                        </Link>
+                    <AlertDescription className="justify-items-center">
+                      <p className="mb-3 justify-self-start">Connect your GitHub account to import your existing repositories.</p>
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={() => connectGitHub('/projects?openImport=true&githubConnected=true')}
+                        disabled={isConnectingGitHub}
+                        className={isConnectingGitHub ? 'animate-pulse' : ''}
+                      >
+                        {isConnectingGitHub ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Connecting...
+                          </>
+                        ) : (
+                          <>
+                            <Github className="h-4 w-4 mr-2" />
+                            Connect GitHub
+                          </>
+                        )}
                       </Button>
                     </AlertDescription>
                   </Alert>
                 )}
 
-                {isGitHubConnected && (
+                {isGitHubConnected && !isConnectingGitHub && showConnectedMessage && (
+                  <Alert className="bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-900">
+                    <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+                    <AlertTitle className="text-green-900 dark:text-green-100">
+                      GitHub Connected Successfully
+                    </AlertTitle>
+                    <AlertDescription className="text-green-700 dark:text-green-300">
+                      You can now select a repository to import.
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {isGitHubConnected && !isConnectingGitHub && (
                   <Card>
                     <CardHeader className="pb-4">
                       <CardTitle className="flex items-center gap-2 text-base">
