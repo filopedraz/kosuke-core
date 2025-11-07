@@ -219,7 +219,7 @@ export default function ProjectCreationModal({
                           userId={user?.id || ''}
                           selectedRepository={selectedRepository}
                           onRepositorySelect={setSelectedRepository}
-                          placeholder="Search and select a repository..."
+                          placeholder="Select a repository..."
                         />
                       </div>
                     </CardContent>
