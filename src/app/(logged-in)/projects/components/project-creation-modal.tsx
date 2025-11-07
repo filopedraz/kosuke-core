@@ -2,6 +2,7 @@
 
 import { useUser } from '@clerk/nextjs';
 import { AlertCircle, ArrowRight, FolderPlus, Github, Loader2 } from 'lucide-react';
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -190,15 +191,11 @@ export default function ProjectCreationModal({
                     <AlertTitle>GitHub Connection Required</AlertTitle>
                     <AlertDescription className="space-y-3">
                       <p>Connect your GitHub account to import your existing repositories.</p>
-                      <Button
-                        variant="default"
-                        size="sm"
-                        onClick={() => {
-                          window.location.href = '/settings';
-                        }}
-                      >
-                        <Github className="h-4 w-4 mr-2" />
-                        Connect GitHub in Settings
+                      <Button variant="default" size="sm" asChild>
+                        <Link href="/settings">
+                          <Github className="h-4 w-4 mr-2" />
+                          Connect GitHub in Settings
+                        </Link>
                       </Button>
                     </AlertDescription>
                   </Alert>
