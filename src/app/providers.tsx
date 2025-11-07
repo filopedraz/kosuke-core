@@ -24,10 +24,12 @@ export default function Providers({ children }: ProvidersProps) {
       })
   );
 
+  const enablePostHog = process.env.NODE_ENV === 'production';
+
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
-        <PostHogProvider>{children}</PostHogProvider>
+        {enablePostHog ? <PostHogProvider>{children}</PostHogProvider> : children}
       </ThemeProvider>
     </QueryClientProvider>
   );

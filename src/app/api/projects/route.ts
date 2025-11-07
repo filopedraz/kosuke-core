@@ -51,40 +51,37 @@ export async function GET() {
 }
 
 /**
- * Helper function to create a GitHub repository from template
+ * Helper function to create a GitHub repository in Kosuke org
+ * Uses service token - no user GitHub connection required
  */
 async function createGitHubRepository(
-  userId: string,
-  repositoryName: string,
-  description: string,
-  isPrivate: boolean,
+  projectName: string,
   projectId: number
 ) {
   const templateRepo = process.env.TEMPLATE_REPOSITORY;
   if (!templateRepo) {
-    throw new Error('TEMPLATE_REPOSITORY is not set');
+    throw new Error('TEMPLATE_REPOSITORY not configured');
   }
 
-  // Create repository from template using Octokit
-  const repoData = await createRepositoryFromTemplate(userId, {
-    name: repositoryName,
-    description,
-    private: isPrivate,
+  // Create repository in Kosuke-Org using updated function
+  const repoData = await createRepositoryFromTemplate({
+    name: projectName,
+    private: true,
     templateRepo,
   });
 
   // Wait for GitHub to initialize the repository
   await new Promise(resolve => setTimeout(resolve, 10000));
 
-  // Clone the repository locally if project_id is provided
+  // Clone the repository locally using Kosuke service token
   try {
-    // Get GitHub token for clone operation
-    const githubToken = await getGitHubToken(userId);
-    if (githubToken) {
-      const gitOps = new GitOperations();
-      await gitOps.cloneRepository(repoData.url, projectId, githubToken);
-      console.log(`✅ Repository cloned successfully to project ${projectId}`);
+    const kosukeToken = process.env.GITHUB_TOKEN;
+    if (!kosukeToken) {
+      throw new Error('GITHUB_TOKEN not configured');
     }
+    const gitOps = new GitOperations();
+    await gitOps.cloneRepository(repoData.url, projectId, kosukeToken);
+    console.log(`✅ Repository cloned successfully to project ${projectId}`);
   } catch (cloneError) {
     console.error('Repository created but failed to clone locally:', cloneError);
     // Don't throw - repository was created successfully
@@ -175,12 +172,20 @@ export async function POST(request: NextRequest) {
     const { name, github } = result.data;
 
     // Validate GitHub configuration based on type
-    if (github.type === 'create' && !github.repositoryName) {
-      return ApiErrorHandler.badRequest('Repository name is required for creating new repositories');
-    }
-
     if (github.type === 'import' && !github.repositoryUrl) {
       return ApiErrorHandler.badRequest('Repository URL is required for importing repositories');
+    }
+
+    // Check GitHub connection for import
+    if (github.type === 'import') {
+      const { getUserGitHubInfo } = await import('@/lib/github/auth');
+      const githubInfo = await getUserGitHubInfo(userId);
+
+      if (!githubInfo) {
+        return ApiErrorHandler.unauthorized(
+          'GitHub connection required to import repositories. Please connect your GitHub account in settings.'
+        );
+      }
     }
 
     // Use a transaction to ensure atomicity
@@ -201,11 +206,9 @@ export async function POST(request: NextRequest) {
       try {
         // Handle GitHub operations based on type
         if (github.type === 'create') {
+          // Create in Kosuke org (no user GitHub required)
           const repoData = await createGitHubRepository(
-            userId,
-            github.repositoryName!,
-            github.description || '',
-            github.isPrivate || false,
+            name, // Use project name
             project.id
           );
 
@@ -214,7 +217,7 @@ export async function POST(request: NextRequest) {
             .update(projects)
             .set({
               githubRepoUrl: repoData.url,
-              githubOwner: repoData.owner,
+              githubOwner: repoData.owner, // 'Kosuke-Org'
               githubRepoName: repoData.name,
               lastGithubSync: new Date(),
             })
@@ -223,7 +226,7 @@ export async function POST(request: NextRequest) {
 
           return updatedProject;
         } else {
-          // Import mode
+          // Import mode - requires user GitHub connection
           const { repoInfo } = await importGitHubRepository(
             userId,
             github.repositoryUrl!,
@@ -235,7 +238,7 @@ export async function POST(request: NextRequest) {
             .update(projects)
             .set({
               githubRepoUrl: github.repositoryUrl,
-              githubOwner: repoInfo.owner,
+              githubOwner: repoInfo.owner, // User's GitHub username
               githubRepoName: repoInfo.name,
               lastGithubSync: new Date(),
             })

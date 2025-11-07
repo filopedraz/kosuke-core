@@ -4,12 +4,16 @@ import { NewsletterSection } from '@/components/newsletter-section';
 import { motion } from 'framer-motion';
 import { Github, Linkedin, Twitter } from 'lucide-react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
 export default function Footer() {
+  const pathname = usePathname();
+  const hideNewsletter = pathname?.includes('/sign-in') || pathname?.includes('/sign-up');
+
   return (
     <footer className="w-full mt-auto">
       {/* Newsletter Section */}
-      <NewsletterSection />
+      {!hideNewsletter && <NewsletterSection />}
 
       {/* Footer Links */}
       <motion.div

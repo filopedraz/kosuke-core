@@ -9,7 +9,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useProjects } from '@/hooks/use-projects';
 import { useUser } from '@/hooks/use-user';
 import { useQueryClient } from '@tanstack/react-query';
-import { Suspense, useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense, useEffect, useRef, useState } from 'react';
 
 function ProjectsLoadingSkeleton() {
   return (
@@ -27,15 +28,49 @@ function ProjectsLoadingSkeleton() {
   );
 }
 
-export default function ProjectsPage() {
+// Component that handles search params - must be wrapped in Suspense
+function ProjectsSearchParamsHandler({
+  setInitialTab,
+  setIsModalOpen,
+  setShowGitHubConnected,
+}: {
+  setInitialTab: (tab: 'create' | 'import') => void;
+  setIsModalOpen: (open: boolean) => void;
+  setShowGitHubConnected: (show: boolean) => void;
+}) {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const hasProcessedRedirectRef = useRef(false);
+
+  useEffect(() => {
+    if (searchParams.get('openImport') === 'true' && !hasProcessedRedirectRef.current) {
+      hasProcessedRedirectRef.current = true;
+
+      setInitialTab('import');
+      setIsModalOpen(true);
+      setShowGitHubConnected(searchParams.get('githubConnected') === 'true');
+
+      // Clean up URL without reloading the page
+      const url = new URL(window.location.href);
+      url.searchParams.delete('openImport');
+      url.searchParams.delete('githubConnected');
+      router.replace(url.pathname, { scroll: false });
+    }
+  }, [searchParams, router, setInitialTab, setIsModalOpen, setShowGitHubConnected]);
+
+  return null;
+}
+
+function ProjectsContent() {
   const { clerkUser, dbUser, isLoading } = useUser();
   const { data: projects, isLoading: isProjectsLoading } = useProjects({
     userId: dbUser?.clerkUserId ?? '',
     initialData: []
   });
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [initialTab, setInitialTab] = useState<'create' | 'import'>('create');
+  const [showGitHubConnected, setShowGitHubConnected] = useState(false);
   const queryClient = useQueryClient();
-
 
   // Only refetch projects if data is stale (don't force refetch on every mount)
   useEffect(() => {
@@ -59,17 +94,40 @@ export default function ProjectsPage() {
     return <ProjectsLoadingSkeleton />;
   }
 
+  const handleOpenModal = () => {
+    setInitialTab('create'); // Reset to create tab when manually opening
+    setShowGitHubConnected(false); // Reset success message flag
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = (open: boolean) => {
+    setIsModalOpen(open);
+    if (!open) {
+      // Reset to create tab when closing
+      setInitialTab('create');
+      setShowGitHubConnected(false);
+    }
+  };
+
   return (
     <>
+      <Suspense fallback={null}>
+        <ProjectsSearchParamsHandler
+          setInitialTab={setInitialTab}
+          setIsModalOpen={setIsModalOpen}
+          setShowGitHubConnected={setShowGitHubConnected}
+        />
+      </Suspense>
+
       <div className="container mx-auto py-8">
         <ProjectsHeader
           hasProjects={(projects?.length ?? 0) > 0}
-          onCreateClick={() => setIsModalOpen(true)}
+          onCreateClick={handleOpenModal}
         />
 
         <Suspense fallback={<ProjectsLoadingSkeleton />}>
           {!projects?.length ? (
-            <EmptyState onCreateClick={() => setIsModalOpen(true)} />
+            <EmptyState onCreateClick={handleOpenModal} />
           ) : (
             <ProjectGrid userId={dbUser.clerkUserId} initialProjects={projects} />
           )}
@@ -79,9 +137,19 @@ export default function ProjectsPage() {
       <Suspense fallback={<ProjectModalSkeleton />}>
         <ProjectCreationModal
           open={isModalOpen}
-          onOpenChange={setIsModalOpen}
+          onOpenChange={handleCloseModal}
+          initialTab={initialTab}
+          showGitHubConnected={showGitHubConnected}
         />
       </Suspense>
     </>
+  );
+}
+
+export default function ProjectsPage() {
+  return (
+    <Suspense fallback={<ProjectsLoadingSkeleton />}>
+      <ProjectsContent />
+    </Suspense>
   );
 }

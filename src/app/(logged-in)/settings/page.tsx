@@ -1,16 +1,29 @@
 'use client';
 
-import { Check, Loader2, Upload } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { Github, Loader2, Unlink, Upload } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
 
+import { useGitHubOAuth } from '@/hooks/use-github-oauth';
+import { useToast } from '@/hooks/use-toast';
 import { useUser } from '@/hooks/use-user';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useUser as useClerkUser } from '@clerk/nextjs';
 
 export default function SettingsPage() {
   const {
@@ -22,6 +35,9 @@ export default function SettingsPage() {
     updateProfile,
     updateProfileImage,
   } = useUser();
+  const { toast } = useToast();
+  const searchParams = useSearchParams();
+  const router = useRouter();
 
   const clerk = (clerkUser || null) as {
     firstName?: string;
@@ -34,10 +50,53 @@ export default function SettingsPage() {
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isImageUploading, setIsImageUploading] = useState(false);
-  const [formSuccess, setFormSuccess] = useState<string | null>(null);
-  const [formError, setFormError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
+  const [disconnectDialogOpen, setDisconnectDialogOpen] = useState(false);
+
+  const {
+    isConnected: isGitHubConnected,
+    isConnecting: isConnectingGitHub,
+    isDisconnecting,
+    connectGitHub,
+    disconnectGitHub,
+    clearConnectingState,
+    githubAccount,
+  } = useGitHubOAuth();
+
+  // Show success toast when redirected back from GitHub OAuth
+  const hasShownToastRef = useRef(false);
+
+  useEffect(() => {
+    if (
+      searchParams.get('githubConnected') === 'true' &&
+      isGitHubConnected &&
+      !hasShownToastRef.current
+    ) {
+      hasShownToastRef.current = true;
+
+      // Clear the connecting state now that we're back from OAuth
+      clearConnectingState();
+
+      toast({
+        title: 'GitHub Connected',
+        description: 'Your GitHub account has been successfully connected.',
+      });
+
+      // Clean up URL without reloading the page
+      const url = new URL(window.location.href);
+      url.searchParams.delete('githubConnected');
+      router.replace(url.pathname, { scroll: false });
+    }
+  }, [searchParams, isGitHubConnected, router, toast, clearConnectingState]);
+
+  // Track name changes
+  const [hasNameChanged, setHasNameChanged] = useState(false);
+  const initialFirstName = clerk?.firstName || '';
+  const initialLastName = clerk?.lastName || '';
+
+  // Get Clerk user for external accounts
+  const { user: clerkUserFull } = useClerkUser();
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -51,14 +110,11 @@ export default function SettingsPage() {
 
       // Auto-submit the image
       setIsImageUploading(true);
-      setFormError(null);
-      setFormSuccess(null);
 
       try {
         await updateProfileImage(file);
-        setFormSuccess('Profile image updated successfully!');
       } catch (error) {
-        setFormError(error instanceof Error ? error.message : 'Failed to update profile image');
+        console.error('Failed to update profile image:', error);
       } finally {
         setIsImageUploading(false);
       }
@@ -72,23 +128,72 @@ export default function SettingsPage() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
-    setFormError(null);
-    setFormSuccess(null);
 
     try {
       const formData = new FormData(e.currentTarget);
       await updateProfile(formData);
-      setFormSuccess('Profile updated successfully!');
+      setHasNameChanged(false); // Reset change tracking after successful save
     } catch (error) {
-      setFormError(error instanceof Error ? error.message : 'Failed to update profile');
+      console.error('Failed to update profile:', error);
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    const currentFirstName = name === 'firstName' ? value : formRef.current?.firstName?.value || '';
+    const currentLastName = name === 'lastName' ? value : formRef.current?.lastName?.value || '';
+
+    const hasChanged = currentFirstName !== initialFirstName || currentLastName !== initialLastName;
+
+    setHasNameChanged(hasChanged);
+  };
+
+  const openDisconnectDialog = () => {
+    if (!githubAccount?.id) return;
+
+    // Check if user has other authentication methods
+    const otherExternalAccounts =
+      clerkUserFull?.externalAccounts?.filter(acc => acc.id !== githubAccount.id) || [];
+    const hasPassword = clerkUserFull?.passwordEnabled;
+    const hasOtherAuth = otherExternalAccounts.length > 0 || hasPassword;
+
+    if (!hasOtherAuth) {
+      // Show error - can't disconnect last auth method
+      toast({
+        title: 'Cannot disconnect',
+        description:
+          'You cannot disconnect your last authentication method. Please add another sign-in method first.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setDisconnectDialogOpen(true);
+  };
+
+  const handleDisconnect = async () => {
+    try {
+      await disconnectGitHub();
+      toast({
+        title: 'Disconnected',
+        description: 'GitHub has been disconnected from your account.',
+      });
+    } catch {
+      toast({
+        title: 'Disconnection Failed',
+        description: 'Failed to disconnect GitHub. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setDisconnectDialogOpen(false);
+    }
+  };
+
   if (isLoading) {
     return (
-      <div className="max-w-2xl">
+      <div className="max-w-3xl">
         <div className="space-y-6">
           <div>
             <Skeleton className="h-8 w-64 mb-2" />
@@ -140,7 +245,7 @@ export default function SettingsPage() {
 
   if (!clerkUser) {
     return (
-      <div className="max-w-2xl">
+      <div className="max-w-3xl">
         <div className="space-y-6">
           <div>
             <h1 className="text-2xl font-semibold">Profile Settings</h1>
@@ -157,22 +262,8 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="max-w-2xl">
+    <div className="max-w-3xl">
       <div className="space-y-6">
-        {/* Success/Error Messages */}
-        {formSuccess && (
-          <div className="p-4 bg-green-50 border border-green-200 text-green-700 rounded-md flex items-center gap-2">
-            <Check className="h-4 w-4" />
-            {formSuccess}
-          </div>
-        )}
-
-        {formError && (
-          <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-md">
-            {formError}
-          </div>
-        )}
-
         <form ref={formRef} onSubmit={handleSubmit} className="space-y-6">
           <Card>
             <CardHeader>
@@ -232,6 +323,7 @@ export default function SettingsPage() {
                     name="firstName"
                     defaultValue={clerk?.firstName || ''}
                     placeholder="Enter your first name"
+                    onChange={handleNameChange}
                   />
                 </div>
                 <div className="space-y-2">
@@ -241,6 +333,7 @@ export default function SettingsPage() {
                     name="lastName"
                     defaultValue={clerk?.lastName || ''}
                     placeholder="Enter your last name"
+                    onChange={handleNameChange}
                   />
                 </div>
               </div>
@@ -251,15 +344,88 @@ export default function SettingsPage() {
                   id="email"
                   name="email"
                   type="email"
-                  defaultValue={clerk?.emailAddresses?.[0]?.emailAddress || ''}
+                  defaultValue={
+                    clerkUserFull?.primaryEmailAddress?.emailAddress ||
+                    clerk?.emailAddresses?.[0]?.emailAddress ||
+                    ''
+                  }
                   placeholder="Enter your email address"
+                  readOnly
                 />
+              </div>
+
+              {/* GitHub Account */}
+              <div className="space-y-2">
+                <Label>GitHub</Label>
+                <div className="flex items-center justify-between px-3 py-2 rounded-md border border-input bg-transparent dark:bg-input/30 shadow-xs transition-colors hover:bg-accent/50">
+                  <div className="flex items-center gap-3">
+                    <Github
+                      className={`h-4 w-4 ${isGitHubConnected ? 'text-foreground' : 'text-muted-foreground'}`}
+                    />
+                    <div>
+                      {isGitHubConnected ? (
+                        <span className="text-sm font-medium text-foreground">
+                          @{githubAccount?.username || 'Connected'}
+                        </span>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">
+                          Connect your GitHub account
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {isGitHubConnected ? (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="ghost"
+                              onClick={openDisconnectDialog}
+                              disabled={isDisconnecting}
+                              className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                            >
+                              <Unlink className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Disconnect GitHub</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    ) : (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => connectGitHub('/settings?githubConnected=true')}
+                        disabled={isConnectingGitHub}
+                        className={isConnectingGitHub ? 'animate-pulse' : ''}
+                      >
+                        {isConnectingGitHub ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Connecting...
+                          </>
+                        ) : (
+                          'Connect'
+                        )}
+                      </Button>
+                    )}
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
 
           <div className="flex justify-end">
-            <Button type="submit" disabled={isSubmitting} className="min-w-[120px]">
+            <Button
+              type="submit"
+              disabled={isSubmitting || !hasNameChanged}
+              className="min-w-[120px]"
+            >
               {isSubmitting ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -271,6 +437,37 @@ export default function SettingsPage() {
             </Button>
           </div>
         </form>
+
+        {/* Disconnect Confirmation Dialog */}
+        <Dialog open={disconnectDialogOpen} onOpenChange={setDisconnectDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Disconnect GitHub?</DialogTitle>
+              <DialogDescription>
+                You will no longer be able to import repositories from your GitHub account.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setDisconnectDialogOpen(false)}
+                disabled={isDisconnecting}
+              >
+                Cancel
+              </Button>
+              <Button variant="destructive" onClick={handleDisconnect} disabled={isDisconnecting}>
+                {isDisconnecting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Disconnecting...
+                  </>
+                ) : (
+                  'Disconnect'
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

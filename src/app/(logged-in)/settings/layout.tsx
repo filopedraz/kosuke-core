@@ -1,6 +1,6 @@
 'use client';
 
-import { Bell, Bot, Github, Palette, Shield, User } from 'lucide-react';
+import { Bell, Bot, Palette, Shield, User } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Suspense } from 'react';
 
@@ -39,10 +39,6 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
               <Shield className="h-4 w-4" />
               <span>Security</span>
             </TabsTrigger>
-            <TabsTrigger value="github" className="flex items-center gap-2">
-              <Github className="h-4 w-4" />
-              <span>GitHub</span>
-            </TabsTrigger>
             <TabsTrigger value="pipeline" className="flex items-center gap-2">
               <Bot className="h-4 w-4" />
               <span>Pipeline</span>
@@ -55,7 +51,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
         </Tabs>
 
         <Suspense fallback={<SettingsLayoutSkeleton />}>
-          <div className="max-w-2xl">{children}</div>
+          <div className="max-w-3xl">{children}</div>
         </Suspense>
       </div>
     </div>
@@ -64,7 +60,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
 
 function SettingsLayoutSkeleton() {
   return (
-    <div className="max-w-2xl">
+    <div className="max-w-3xl">
       <div className="h-[400px] w-full space-y-6">
         <div className="rounded-lg border p-6 space-y-4">
           <div className="space-y-2">
