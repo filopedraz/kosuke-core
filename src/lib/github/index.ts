@@ -86,18 +86,12 @@ export async function createRepositoryFromTemplate(
   }
   const [templateOwner, templateName] = templateRepo.split('/', 2);
 
-  // Sanitize and auto-generate unique repo name
+  // Sanitize repo name
   const sanitizedName = request.name
     .toLowerCase()
     .replace(/[^a-z0-9-]/g, '-')
     .replace(/-+/g, '-')
     .substring(0, 50);
-
-  // Generate 8-char hex ID (4 bytes = 8 hex chars)
-  const shortId = crypto.randomBytes(4).toString('hex');
-  const repoName = `${sanitizedName}-${shortId}`;
-
-  console.log(`Creating repo in ${kosukeOrg}: ${repoName}`);
 
   // Validate template repository exists and is a template
   try {
@@ -118,14 +112,18 @@ export async function createRepositoryFromTemplate(
     throw error;
   }
 
-  // Check if repository name is already taken in org
+  // Try with clean name first, add random suffix only if taken
+  let repoName = sanitizedName;
   try {
     const { data: existingRepo } = await octokit.rest.repos.get({
       owner: kosukeOrg,
       repo: repoName,
     });
     if (existingRepo) {
-      throw new Error(`Repository ${repoName} already exists in ${kosukeOrg}`);
+      // Repo exists, generate unique name with random suffix
+      const shortId = crypto.randomBytes(4).toString('hex');
+      repoName = `${sanitizedName}-${shortId}`;
+      console.log(`Name taken, using unique name: ${repoName}`);
     }
   } catch (error) {
     // If we get a 404, the repo doesn't exist (which is what we want)
@@ -133,6 +131,8 @@ export async function createRepositoryFromTemplate(
       throw error;
     }
   }
+
+  console.log(`Creating repo in ${kosukeOrg}: ${repoName}`);
 
   // Create repository from template in Kosuke org
   try {
