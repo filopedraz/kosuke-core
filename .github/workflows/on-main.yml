@@ -8,6 +8,7 @@ on:
   push:
     branches:
       - main
+      - improve-preview-performances
 
 concurrency:
   group: 'main-production-${{ github.workflow }}'
@@ -113,7 +114,7 @@ jobs:
 
       - name: Pull latest code from main branch
         run: |
-          ssh ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_IP }} "cd /home/filippo/kosuke-core && git checkout main && git pull"
+          ssh ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_IP }} "cd /home/filippo/kosuke-core && git pull && git checkout improve-preview-performances && git pull"
 
       - name: Generate .env on server
         run: |
