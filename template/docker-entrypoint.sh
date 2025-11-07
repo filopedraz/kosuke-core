@@ -93,3 +93,4 @@ echo "⏱️  [Entrypoint] Total startup preparation took ${STARTUP_TIME}s"
 # Execute the command passed to docker run
 echo "🚀 Starting application..."
 exec "$@"
+
