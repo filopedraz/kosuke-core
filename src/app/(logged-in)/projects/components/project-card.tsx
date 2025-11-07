@@ -14,7 +14,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { useToast } from '@/hooks/use-toast';
 import type { Project } from '@/lib/db/schema';
 import { useUser } from '@clerk/nextjs';
 import DeleteProjectDialog from './delete-project-dialog';
@@ -26,7 +25,6 @@ interface ProjectCardProps {
 export default function ProjectCard({ project }: ProjectCardProps) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const { toast } = useToast();
   const { user } = useUser();
 
   const handleOpenDeleteDialog = (e: React.MouseEvent) => {
@@ -45,23 +43,11 @@ export default function ProjectCard({ project }: ProjectCardProps) {
   const isImportedProject = !!project.githubOwner && project.githubOwner !== kosukeOrg;
   const needsReconnection = isImportedProject && !githubAccount;
 
-  const handleCardClick = (e: React.MouseEvent) => {
-    if (needsReconnection) {
-      e.preventDefault();
-      toast({
-        title: 'GitHub Required',
-        description: 'Please connect your GitHub account in Settings to access this imported project.',
-        variant: 'destructive',
-      });
-    }
-  };
-
   return (
     <>
       <Link
         href={needsReconnection ? '#' : `/projects/${project.id}`}
-        className="block group"
-        onClick={handleCardClick}
+        className={`block group ${needsReconnection ? 'pointer-events-none' : ''}`}
       >
         <Card className={`overflow-hidden h-full transition-all duration-300 border border-border relative bg-card pb-0 ${
           needsReconnection
@@ -79,12 +65,12 @@ export default function ProjectCard({ project }: ProjectCardProps) {
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <div className="flex items-center">
+                          <div className="flex items-center pointer-events-auto">
                             <AlertCircle className="h-4 w-4 text-destructive" />
                           </div>
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p>GitHub Disconnected</p>
+                          <p>Reconnect Github</p>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
