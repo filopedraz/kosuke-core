@@ -63,7 +63,13 @@ Ensure you have the following tools installed and configured:
      - Copy the following keys to your `.env` file:
        - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` - Found under "Publishable key"
        - `CLERK_SECRET_KEY` - Found under "Secret keys"
-  6. Configure **Webhook** endpoint (requires ngrok for local development):
+  6. **Enable Organizations** in Clerk:
+     - Go to **Configure** → **Organizations** in the Clerk dashboard
+     - Toggle **Enable organizations**
+     - Enable **Personal accounts** (creates a default organization for each user)
+     - Set max organizations per user (recommended: 10)
+     - Keep default roles: `org:admin` (owner) and `org:member` (member)
+  7. Configure **Webhook** endpoint (requires ngrok for local development):
      - Install ngrok: `brew install ngrok` or download from [ngrok.com](https://ngrok.com)
      - Sign up for a free ngrok account and get your auth token
      - Authenticate ngrok: `ngrok config add-authtoken YOUR_TOKEN`
@@ -72,7 +78,11 @@ Ensure you have the following tools installed and configured:
      - Copy your static domain URL (e.g., `https://your-domain.ngrok-free.app`)
      - Go to **Webhooks** in the Clerk dashboard
      - Add endpoint: `https://YOUR_STATIC_DOMAIN.ngrok-free.app/api/webhooks/clerk`
-     - Subscribe to events: `user.created`, `user.updated`, `user.deleted`
+     - Subscribe to **user events**: `user.created`, `user.updated`, `user.deleted`
+     - Subscribe to **organization events**:
+       - `organization.created`, `organization.updated`, `organization.deleted`
+       - `organizationMembership.created`, `organizationMembership.deleted`
+       - `organizationInvitation.created`, `organizationInvitation.accepted`, `organizationInvitation.revoked`
      - Copy the **Signing Secret** to `CLERK_WEBHOOK_SECRET` in your `.env` file
      - **Note**: Keep ngrok running while developing to receive webhook events
 

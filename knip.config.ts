@@ -24,7 +24,6 @@ const knipConfig = {
     'vaul',
     'ts-node',
     // Dependencies used in configuration files or by frameworks
-    '@clerk/themes',
     'react-day-picker',
     'recharts',
     'server-only',

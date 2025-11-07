@@ -48,6 +48,7 @@ const mockProject: Project = {
   name: 'Test Project',
   description: 'A test project',
   userId: 'user_123',
+  clerkOrgId: 'org_123',
   createdBy: 'user_123',
   createdAt: new Date('2024-01-01'),
   updatedAt: new Date('2024-01-01'),

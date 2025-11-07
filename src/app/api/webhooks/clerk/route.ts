@@ -1,13 +1,31 @@
 import { ApiErrorHandler } from '@/lib/api/errors';
+import { clerkClient } from '@clerk/nextjs/server';
 import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { Webhook } from 'svix';
 
 import { db } from '@/lib/db/drizzle';
-import { users } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import {
+  organizationInvitations,
+  organizationMemberships,
+  organizations,
+  users,
+} from '@/lib/db/schema';
+import { and, eq } from 'drizzle-orm';
 
-type ClerkEventType = 'user.created' | 'user.updated' | 'user.deleted';
+type ClerkEventType =
+  | 'user.created'
+  | 'user.updated'
+  | 'user.deleted'
+  | 'organization.created'
+  | 'organization.updated'
+  | 'organization.deleted'
+  | 'organizationMembership.created'
+  | 'organizationMembership.updated'
+  | 'organizationMembership.deleted'
+  | 'organizationInvitation.created'
+  | 'organizationInvitation.accepted'
+  | 'organizationInvitation.revoked';
 
 interface DatabaseError {
   code?: string;
@@ -28,9 +46,39 @@ interface ClerkUser {
   updated_at: number;
 }
 
+interface ClerkOrganization {
+  id: string;
+  name: string;
+  slug: string;
+  image_url?: string;
+  created_by: string;
+  public_metadata?: Record<string, unknown>;
+  created_at: number;
+  updated_at: number;
+}
+
+interface ClerkOrganizationMembership {
+  id: string;
+  organization: { id: string };
+  public_user_data: { user_id: string };
+  role: string;
+  created_at: number;
+  updated_at: number;
+}
+
+interface ClerkOrganizationInvitation {
+  id: string;
+  organization_id: string;
+  email_address: string;
+  role: string;
+  public_metadata?: Record<string, unknown>;
+  created_at: number;
+  status: string;
+}
+
 interface ClerkEvent {
   type: ClerkEventType;
-  data: ClerkUser;
+  data: ClerkUser | ClerkOrganization | ClerkOrganizationMembership | ClerkOrganizationInvitation;
 }
 
 export async function POST(request: Request) {
@@ -67,18 +115,42 @@ export async function POST(request: Request) {
 
   // Handle the webhook
   const { type, data } = evt;
-  console.log(`📨 Clerk webhook: ${type} for user ${data.id}`);
+  console.log(`📨 Clerk webhook: ${type}`);
 
   try {
     switch (type) {
       case 'user.created':
-        await handleUserCreated(data);
+        await handleUserCreated(data as ClerkUser);
         break;
       case 'user.updated':
-        await handleUserUpdated(data);
+        await handleUserUpdated(data as ClerkUser);
         break;
       case 'user.deleted':
-        await handleUserDeleted(data);
+        await handleUserDeleted(data as ClerkUser);
+        break;
+      case 'organization.created':
+        await handleOrganizationCreated(data as ClerkOrganization);
+        break;
+      case 'organization.updated':
+        await handleOrganizationUpdated(data as ClerkOrganization);
+        break;
+      case 'organization.deleted':
+        await handleOrganizationDeleted(data as ClerkOrganization);
+        break;
+      case 'organizationMembership.created':
+        await handleMembershipCreated(data as ClerkOrganizationMembership);
+        break;
+      case 'organizationMembership.deleted':
+        await handleMembershipDeleted(data as ClerkOrganizationMembership);
+        break;
+      case 'organizationInvitation.created':
+        await handleInvitationCreated(data as ClerkOrganizationInvitation);
+        break;
+      case 'organizationInvitation.accepted':
+        await handleInvitationAccepted(data as ClerkOrganizationInvitation);
+        break;
+      case 'organizationInvitation.revoked':
+        await handleInvitationRevoked(data as ClerkOrganizationInvitation);
         break;
       default:
         console.log(`Unhandled webhook type: ${type}`);
@@ -128,6 +200,9 @@ async function handleUserCreated(clerkUser: ClerkUser) {
       });
 
       console.log(`✅ Created user in database: ${clerkUser.id} (${primaryEmail})`);
+
+      // Create personal organization for the user
+      await createPersonalOrganization(clerkUser);
     } catch (insertError: unknown) {
       // Handle duplicate email constraint specifically
       const dbError = insertError as DatabaseError;
@@ -162,6 +237,9 @@ async function handleUserCreated(clerkUser: ClerkUser) {
             console.log(
               `✅ Restored soft-deleted user and updated Clerk ID: ${clerkUser.id} (${primaryEmail})`
             );
+
+            // Create personal organization for restored user
+            await createPersonalOrganization(clerkUser);
           } else {
             console.log(
               `ℹ️ Active user with email ${primaryEmail} already exists with different Clerk ID. Skipping creation.`
@@ -224,6 +302,187 @@ async function handleUserDeleted(clerkUser: ClerkUser) {
     console.log(`✅ Soft deleted user in database: ${clerkUser.id}`);
   } catch (error) {
     console.error('Error soft deleting user in database:', error);
+    throw error;
+  }
+}
+
+// Helper function to create personal organization
+
+async function createPersonalOrganization(clerkUser: ClerkUser) {
+  try {
+    const primaryEmail = clerkUser.email_addresses?.[0]?.email_address;
+    const firstName = clerkUser.first_name || primaryEmail?.split('@')[0] || 'User';
+
+    const clerk = await clerkClient();
+    const personalOrg = await clerk.organizations.createOrganization({
+      name: `${firstName}'s Workspace`,
+      slug: `${clerkUser.id}-personal`,
+      createdBy: clerkUser.id,
+      publicMetadata: {
+        isPersonal: true,
+      },
+    });
+
+    console.log(
+      `✅ Created personal organization for user: ${personalOrg.id} (${personalOrg.name})`
+    );
+  } catch (error) {
+    console.error(`⚠️ Failed to create personal organization for user ${clerkUser.id}:`, error);
+    // Don't throw - we don't want to fail user creation if org creation fails
+  }
+}
+
+// Organization webhook handlers
+
+async function handleOrganizationCreated(data: ClerkOrganization) {
+  try {
+    const isPersonal = data.public_metadata?.isPersonal === true;
+
+    await db.insert(organizations).values({
+      clerkOrgId: data.id,
+      name: data.name,
+      slug: data.slug,
+      imageUrl: data.image_url,
+      createdBy: data.created_by,
+      isPersonal,
+      createdAt: new Date(data.created_at),
+      updatedAt: new Date(data.updated_at),
+    });
+
+    console.log(`✅ Created organization in database: ${data.id} (${data.name})`);
+  } catch (error) {
+    console.error('Error creating organization in database:', error);
+    throw error;
+  }
+}
+
+async function handleOrganizationUpdated(data: ClerkOrganization) {
+  try {
+    await db
+      .update(organizations)
+      .set({
+        name: data.name,
+        slug: data.slug,
+        imageUrl: data.image_url,
+        updatedAt: new Date(data.updated_at),
+      })
+      .where(eq(organizations.clerkOrgId, data.id));
+
+    console.log(`✅ Updated organization in database: ${data.id} (${data.name})`);
+  } catch (error) {
+    console.error('Error updating organization in database:', error);
+    throw error;
+  }
+}
+
+async function handleOrganizationDeleted(data: ClerkOrganization) {
+  try {
+    // Soft delete
+    await db
+      .update(organizations)
+      .set({
+        deletedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(organizations.clerkOrgId, data.id));
+
+    console.log(`✅ Soft deleted organization in database: ${data.id}`);
+  } catch (error) {
+    console.error('Error soft deleting organization in database:', error);
+    throw error;
+  }
+}
+
+async function handleMembershipCreated(data: ClerkOrganizationMembership) {
+  try {
+    await db.insert(organizationMemberships).values({
+      clerkOrgId: data.organization.id,
+      clerkUserId: data.public_user_data.user_id,
+      role: data.role,
+      createdAt: new Date(data.created_at),
+      updatedAt: new Date(data.updated_at),
+    });
+
+    console.log(
+      `✅ Created organization membership: ${data.public_user_data.user_id} → ${data.organization.id}`
+    );
+  } catch (error) {
+    console.error('Error creating organization membership in database:', error);
+    throw error;
+  }
+}
+
+async function handleMembershipDeleted(data: ClerkOrganizationMembership) {
+  try {
+    await db
+      .delete(organizationMemberships)
+      .where(
+        and(
+          eq(organizationMemberships.clerkOrgId, data.organization.id),
+          eq(organizationMemberships.clerkUserId, data.public_user_data.user_id)
+        )
+      );
+
+    console.log(
+      `✅ Deleted organization membership: ${data.public_user_data.user_id} → ${data.organization.id}`
+    );
+  } catch (error) {
+    console.error('Error deleting organization membership in database:', error);
+    throw error;
+  }
+}
+
+async function handleInvitationCreated(data: ClerkOrganizationInvitation) {
+  try {
+    await db.insert(organizationInvitations).values({
+      clerkInvitationId: data.id,
+      clerkOrgId: data.organization_id,
+      email: data.email_address,
+      role: data.role,
+      status: 'pending',
+      createdAt: new Date(data.created_at),
+      updatedAt: new Date(data.created_at),
+    });
+
+    console.log(
+      `✅ Created organization invitation: ${data.email_address} → ${data.organization_id}`
+    );
+  } catch (error) {
+    console.error('Error creating organization invitation in database:', error);
+    throw error;
+  }
+}
+
+async function handleInvitationAccepted(data: ClerkOrganizationInvitation) {
+  try {
+    await db
+      .update(organizationInvitations)
+      .set({
+        status: 'accepted',
+        updatedAt: new Date(),
+      })
+      .where(eq(organizationInvitations.clerkInvitationId, data.id));
+
+    console.log(`✅ Accepted organization invitation: ${data.id}`);
+  } catch (error) {
+    console.error('Error updating organization invitation in database:', error);
+    throw error;
+  }
+}
+
+async function handleInvitationRevoked(data: ClerkOrganizationInvitation) {
+  try {
+    await db
+      .update(organizationInvitations)
+      .set({
+        status: 'revoked',
+        updatedAt: new Date(),
+      })
+      .where(eq(organizationInvitations.clerkInvitationId, data.id));
+
+    console.log(`✅ Revoked organization invitation: ${data.id}`);
+  } catch (error) {
+    console.error('Error updating organization invitation in database:', error);
     throw error;
   }
 }

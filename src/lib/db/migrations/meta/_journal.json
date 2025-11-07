@@ -15,6 +15,13 @@
       "when": 1754847287708,
       "tag": "0001_fancy_richard_fisk",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1762529093199,
+      "tag": "0002_striped_hemingway",
+      "breakpoints": true
     }
   ]
 }
