@@ -28,21 +28,20 @@ function ProjectsLoadingSkeleton() {
   );
 }
 
-export default function ProjectsPage() {
-  const { clerkUser, dbUser, isLoading } = useUser();
-  const { data: projects, isLoading: isProjectsLoading } = useProjects({
-    userId: dbUser?.clerkUserId ?? '',
-    initialData: []
-  });
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [initialTab, setInitialTab] = useState<'create' | 'import'>('create');
-  const [showGitHubConnected, setShowGitHubConnected] = useState(false);
-  const queryClient = useQueryClient();
+// Component that handles search params - must be wrapped in Suspense
+function ProjectsSearchParamsHandler({
+  setInitialTab,
+  setIsModalOpen,
+  setShowGitHubConnected,
+}: {
+  setInitialTab: (tab: 'create' | 'import') => void;
+  setIsModalOpen: (open: boolean) => void;
+  setShowGitHubConnected: (show: boolean) => void;
+}) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const hasProcessedRedirectRef = useRef(false);
 
-  // Check for openImport parameter after GitHub OAuth redirect
   useEffect(() => {
     if (searchParams.get('openImport') === 'true' && !hasProcessedRedirectRef.current) {
       hasProcessedRedirectRef.current = true;
@@ -57,7 +56,21 @@ export default function ProjectsPage() {
       url.searchParams.delete('githubConnected');
       router.replace(url.pathname, { scroll: false });
     }
-  }, [searchParams, router]);
+  }, [searchParams, router, setInitialTab, setIsModalOpen, setShowGitHubConnected]);
+
+  return null;
+}
+
+function ProjectsContent() {
+  const { clerkUser, dbUser, isLoading } = useUser();
+  const { data: projects, isLoading: isProjectsLoading } = useProjects({
+    userId: dbUser?.clerkUserId ?? '',
+    initialData: []
+  });
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [initialTab, setInitialTab] = useState<'create' | 'import'>('create');
+  const [showGitHubConnected, setShowGitHubConnected] = useState(false);
+  const queryClient = useQueryClient();
 
   // Only refetch projects if data is stale (don't force refetch on every mount)
   useEffect(() => {
@@ -98,6 +111,14 @@ export default function ProjectsPage() {
 
   return (
     <>
+      <Suspense fallback={null}>
+        <ProjectsSearchParamsHandler
+          setInitialTab={setInitialTab}
+          setIsModalOpen={setIsModalOpen}
+          setShowGitHubConnected={setShowGitHubConnected}
+        />
+      </Suspense>
+
       <div className="container mx-auto py-8">
         <ProjectsHeader
           hasProjects={(projects?.length ?? 0) > 0}
@@ -122,5 +143,13 @@ export default function ProjectsPage() {
         />
       </Suspense>
     </>
+  );
+}
+
+export default function ProjectsPage() {
+  return (
+    <Suspense fallback={<ProjectsLoadingSkeleton />}>
+      <ProjectsContent />
+    </Suspense>
   );
 }
