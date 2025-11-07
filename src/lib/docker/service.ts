@@ -70,24 +70,37 @@ class DockerService {
   }
 
   /**
+   * Get host project path (absolute path on host machine for Docker-in-Docker)
+   */
+  private getHostProjectPath(projectId: number): string {
+    return join(this.hostProjectsDir, String(projectId));
+  }
+
+  /**
    * Prepare container environment variables
    */
   private prepareContainerEnvironment(
     projectId: number,
     sessionId: string,
-    envVars: Record<string, string> = {}
+    envVars: Record<string, string> = {},
+    isSessionDefaultBranch: boolean = false
   ): string[] {
     const postgresUrl =
       `postgres://${this.config.postgresUser}:${this.config.postgresPassword}` +
       `@${this.config.postgresHost}:${this.config.postgresPort}` +
       `/kosuke_project_${projectId}_session_${sessionId}`;
 
-    const environment = {
+    const environment: Record<string, string> = {
       NODE_ENV: 'development',
       PORT: '3000',
       POSTGRES_URL: postgresUrl,
       ...envVars,
     };
+
+    // Skip install for non-default branches (they mount node_modules from project)
+    if (!isSessionDefaultBranch) {
+      environment.SKIP_INSTALL = 'true';
+    }
 
     // Convert to Docker format: ["KEY=value", ...]
     return Object.entries(environment).map(([key, value]) => `${key}=${value}`);
@@ -192,11 +205,22 @@ class DockerService {
    */
   private createContainerConfig(
     environment: string[],
-    hostSessionPath: string,
-    routeInfo: RouteInfo
+    hostPath: string,
+    routeInfo: RouteInfo,
+    isSessionDefaultBranch: boolean = false,
+    projectId?: number
   ): ContainerCreateRequest {
+    // Build binds array starting with the main path mount
+    const binds = [`${hostPath}:/app:rw`];
+
+    // For non-default branches, mount project's node_modules as read-only
+    if (!isSessionDefaultBranch && projectId) {
+      const projectNodeModulesPath = join(this.getHostProjectPath(projectId), 'node_modules');
+      binds.push(`${projectNodeModulesPath}:/app/node_modules:ro`);
+    }
+
     const baseHostConfig = {
-      Binds: [`${hostSessionPath}:/app:rw`],
+      Binds: binds,
       NetworkMode: this.config.previewNetwork,
       AutoRemove: false,
     };
@@ -229,8 +253,9 @@ class DockerService {
     projectId: number,
     sessionId: string,
     environment: string[],
-    hostSessionPath: string,
-    containerName: string
+    hostPath: string,
+    containerName: string,
+    isSessionDefaultBranch: boolean = false
   ): Promise<string> {
     await this.ensurePreviewImage();
 
@@ -245,7 +270,13 @@ class DockerService {
       );
 
       try {
-        const config = this.createContainerConfig(environment, hostSessionPath, routeInfo);
+        const config = this.createContainerConfig(
+          environment,
+          hostPath,
+          routeInfo,
+          isSessionDefaultBranch,
+          projectId
+        );
 
         // Create and start container - pass name as option, not in body
         const createResponse = await client.containerCreate(config, { name: containerName });
@@ -327,24 +358,36 @@ class DockerService {
     projectId: number,
     sessionId: string,
     envVars: Record<string, string> = {},
-    userId: string
+    userId: string,
+    defaultBranch: string = 'main'
   ): Promise<string> {
     const containerName = this.getContainerName(projectId, sessionId);
+    const isSessionDefaultBranch = sessionId === defaultBranch;
+
     console.log(
-      `Starting preview for project ${projectId} session ${sessionId} as ${containerName}`
+      `Starting preview for project ${projectId} session ${sessionId} as ${containerName}` +
+        ` (${isSessionDefaultBranch ? 'default branch' : 'feature branch'})`
     );
 
     // Check Docker availability
+    const dockerCheckStart = performance.now();
     try {
       const client = await this.ensureClient();
       await client.systemPing();
+      const dockerCheckTime = performance.now() - dockerCheckStart;
+      console.log(
+        `⏱️  [DockerService] Docker availability check took ${dockerCheckTime.toFixed(2)}ms`
+      );
     } catch (error) {
       console.error('Docker is not available:', error);
       throw new Error('Docker is not available');
     }
 
     // Ensure session directory exists (create if needed)
+    const sessionEnvStart = performance.now();
     await sessionManager.ensureSessionEnvironment(projectId, sessionId, userId);
+    const sessionEnvTime = performance.now() - sessionEnvStart;
+    console.log(`⏱️  [DockerService] ensureSessionEnvironment took ${sessionEnvTime.toFixed(2)}ms`);
 
     // Reuse existing running container if possible
     const existingUrl = await this.getExistingContainerUrlOrRemove(containerName);
@@ -352,16 +395,36 @@ class DockerService {
       return existingUrl;
     }
 
-    // Create new container
-    const hostSessionPath = this.getHostSessionPath(projectId, sessionId);
-    const environment = this.prepareContainerEnvironment(projectId, sessionId, envVars);
+    // Determine which path to use for container mount
+    const hostPath = isSessionDefaultBranch
+      ? this.getHostProjectPath(projectId)
+      : this.getHostSessionPath(projectId, sessionId);
 
+    console.log(
+      `Mounting ${isSessionDefaultBranch ? 'project' : 'session'} path: ${hostPath}` +
+        (!isSessionDefaultBranch ? ' (with node_modules from project)' : '')
+    );
+
+    // Prepare environment and create container
+    const environment = this.prepareContainerEnvironment(
+      projectId,
+      sessionId,
+      envVars,
+      isSessionDefaultBranch
+    );
+
+    const containerCreateStart = performance.now();
     const url = await this.runContainerWithRetries(
       projectId,
       sessionId,
       environment,
-      hostSessionPath,
-      containerName
+      hostPath,
+      containerName,
+      isSessionDefaultBranch
+    );
+    const containerCreateTime = performance.now() - containerCreateStart;
+    console.log(
+      `⏱️  [DockerService] runContainerWithRetries took ${containerCreateTime.toFixed(2)}ms`
     );
 
     console.log(`Preview started successfully at ${url}`);
