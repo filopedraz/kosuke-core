@@ -2,8 +2,21 @@ import { useUser } from '@clerk/nextjs';
 import { useCallback, useEffect, useState } from 'react';
 
 const GITHUB_CONNECTING_KEY = 'github_oauth_connecting';
-const GITHUB_CONNECTING_TIMESTAMP_KEY = 'github_oauth_connecting_timestamp';
-const CONNECTION_TIMEOUT = 5 * 60 * 1000; // 5 minutes
+const CONNECTION_TIMEOUT = 2 * 60 * 1000;
+
+// Helper functions for storage
+const setConnectingStorage = () => {
+  sessionStorage.setItem(GITHUB_CONNECTING_KEY, Date.now().toString());
+};
+
+const getConnectingStorage = (): number | null => {
+  const timestamp = sessionStorage.getItem(GITHUB_CONNECTING_KEY);
+  return timestamp ? parseInt(timestamp, 10) : null;
+};
+
+const clearConnectingStorage = () => {
+  sessionStorage.removeItem(GITHUB_CONNECTING_KEY);
+};
 
 export function useGitHubOAuth() {
   const { user } = useUser();
@@ -16,19 +29,17 @@ export function useGitHubOAuth() {
 
   const isConnected = !!githubAccount;
 
-  // Check localStorage on mount for persisted connecting state
+  // Check sessionStorage on mount for persisted connecting state
   useEffect(() => {
-    const storedConnecting = localStorage.getItem(GITHUB_CONNECTING_KEY);
-    const timestamp = localStorage.getItem(GITHUB_CONNECTING_TIMESTAMP_KEY);
+    const timestamp = getConnectingStorage();
 
-    if (storedConnecting === 'true' && timestamp) {
-      const elapsed = Date.now() - parseInt(timestamp, 10);
+    if (timestamp) {
+      const elapsed = Date.now() - timestamp;
 
       // Only clean up if timeout exceeded (NOT if connection completed)
       // We need to keep the connecting state until we manually clear it
       if (elapsed > CONNECTION_TIMEOUT) {
-        localStorage.removeItem(GITHUB_CONNECTING_KEY);
-        localStorage.removeItem(GITHUB_CONNECTING_TIMESTAMP_KEY);
+        clearConnectingStorage();
         setIsConnecting(false);
       } else {
         // Restore connecting state
@@ -43,9 +54,8 @@ export function useGitHubOAuth() {
 
       setIsConnecting(true);
 
-      // Persist connecting state
-      localStorage.setItem(GITHUB_CONNECTING_KEY, 'true');
-      localStorage.setItem(GITHUB_CONNECTING_TIMESTAMP_KEY, Date.now().toString());
+      // Persist connecting state with timestamp
+      setConnectingStorage();
 
       try {
         const externalAccount = await user.createExternalAccount({
@@ -59,14 +69,12 @@ export function useGitHubOAuth() {
         } else {
           // Just reload Clerk user data, UI will update automatically
           await user.reload();
-          localStorage.removeItem(GITHUB_CONNECTING_KEY);
-          localStorage.removeItem(GITHUB_CONNECTING_TIMESTAMP_KEY);
+          clearConnectingStorage();
           setIsConnecting(false);
         }
       } catch (error) {
         console.error('Failed to connect GitHub:', error);
-        localStorage.removeItem(GITHUB_CONNECTING_KEY);
-        localStorage.removeItem(GITHUB_CONNECTING_TIMESTAMP_KEY);
+        clearConnectingStorage();
         setIsConnecting(false);
         throw error;
       }
@@ -93,8 +101,7 @@ export function useGitHubOAuth() {
   }, [user, githubAccount]);
 
   const clearConnectingState = useCallback(() => {
-    localStorage.removeItem(GITHUB_CONNECTING_KEY);
-    localStorage.removeItem(GITHUB_CONNECTING_TIMESTAMP_KEY);
+    clearConnectingStorage();
     setIsConnecting(false);
   }, []);
 
