@@ -39,6 +39,7 @@ const isProtectedRoute = createRouteMatcher([
   '/projects(.*)',
   '/settings(.*)',
   '/organizations(.*)',
+  '/onboarding',
 ]);
 const isRootRoute = createRouteMatcher(['/']);
 const isApiRoute = createRouteMatcher(['/api(.*)']);

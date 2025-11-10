@@ -1,5 +1,4 @@
 import { ApiErrorHandler } from '@/lib/api/errors';
-import { clerkClient } from '@clerk/nextjs/server';
 import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { Webhook } from 'svix';
@@ -155,9 +154,6 @@ async function handleUserCreated(clerkUser: ClerkUser) {
       });
 
       console.log(`✅ Created user in database: ${clerkUser.id} (${primaryEmail})`);
-
-      // Create personal organization for the user
-      await createPersonalOrganization(clerkUser);
     } catch (insertError: unknown) {
       // Handle duplicate email constraint specifically
       const dbError = insertError as DatabaseError;
@@ -192,9 +188,6 @@ async function handleUserCreated(clerkUser: ClerkUser) {
             console.log(
               `✅ Restored soft-deleted user and updated Clerk ID: ${clerkUser.id} (${primaryEmail})`
             );
-
-            // Create personal organization for restored user
-            await createPersonalOrganization(clerkUser);
           } else {
             console.log(
               `ℹ️ Active user with email ${primaryEmail} already exists with different Clerk ID. Skipping creation.`
@@ -263,30 +256,6 @@ async function handleUserDeleted(clerkUser: ClerkUser) {
   } catch (error) {
     console.error('Error soft deleting user in database:', error);
     throw error;
-  }
-}
-
-// Helper function to create personal organization
-
-async function createPersonalOrganization(clerkUser: ClerkUser) {
-  try {
-    const primaryEmail = clerkUser.email_addresses?.[0]?.email_address;
-    const firstName = clerkUser.first_name || primaryEmail?.split('@')[0] || 'User';
-
-    const clerk = await clerkClient();
-    const personalOrg = await clerk.organizations.createOrganization({
-      name: `${firstName}'s Workspace`,
-      createdBy: clerkUser.id,
-      maxAllowedMemberships: 1,
-      publicMetadata: {
-        isPersonal: true,
-      },
-    });
-
-    console.log(`✅ Created personal workspace for user: ${personalOrg.id} (${personalOrg.name})`);
-  } catch (error) {
-    console.error(`⚠️ Failed to create personal workspace for user ${clerkUser.id}:`, error);
-    // Don't throw - we don't want to fail user creation if org creation fails
   }
 }
 
