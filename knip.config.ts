@@ -14,6 +14,7 @@ const knipConfig = {
     // Template/infrastructure files - ready for future use
     'src/hooks/use-posthog.ts',
     'src/hooks/use-mobile.ts',
+    'template/next.config.ts',
   ],
   ignoreDependencies: [
     // Shadcn/UI dependencies (only used in components/ui/** which is ignored)

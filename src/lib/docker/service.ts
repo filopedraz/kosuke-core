@@ -210,7 +210,7 @@ class DockerService {
     // For non-default branches, mount project's node_modules as read-only
     if (!isSessionDefaultBranch && projectId) {
       const projectNodeModulesPath = join(this.getHostProjectPath(projectId), 'node_modules');
-      binds.push(`${projectNodeModulesPath}:/app/node_modules:ro`);
+      binds.push(`${projectNodeModulesPath}:/app/node_modules:rw`);
     }
 
     const baseHostConfig = {
