@@ -245,7 +245,12 @@ async function handleUserUpdated(clerkUser: ClerkUser) {
 
 async function handleUserDeleted(clerkUser: ClerkUser) {
   try {
-    // Soft delete - set deletedAt timestamp
+    // Note: Organization cleanup should happen BEFORE user deletion
+    // (in the delete-account endpoint), not here, because by the time
+    // this webhook fires, the user is already deleted from Clerk and
+    // we can't query their memberships anymore.
+
+    // Soft delete user in database
     await db
       .update(users)
       .set({

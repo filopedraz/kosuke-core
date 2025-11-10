@@ -2,6 +2,7 @@ import { ApiErrorHandler } from '@/lib/api/errors';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db/drizzle';
 import { users } from '@/lib/db/schema';
+import { cleanupCachedOrganizations, getUserOrganizationMemberships } from '@/lib/organizations';
 import { createClerkClient } from '@clerk/nextjs/server';
 import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
@@ -21,7 +22,11 @@ export async function DELETE() {
         return ApiErrorHandler.notFound('User not found');
       }
 
-      // First, soft delete the user in our database
+      // Cache organization memberships BEFORE deleting user
+      // (we need this list to clean up after deletion)
+      const orgMemberships = await getUserOrganizationMemberships(userId);
+
+      // Soft delete the user in our database first
       await db
         .update(users)
         .set({
@@ -32,6 +37,15 @@ export async function DELETE() {
 
       // Then delete the user from Clerk
       await client.users.deleteUser(userId);
+
+      // User is now deleted from Clerk - do best-effort org cleanup
+      try {
+        // Clean up organizations using the cached membership list
+        await cleanupCachedOrganizations(userId, orgMemberships);
+      } catch (cleanupError) {
+        // Log but don't fail - user is already deleted, this is best-effort
+        console.error('Error cleaning up organizations after user deletion:', cleanupError);
+      }
 
       return NextResponse.json({
         success: 'Account deleted successfully',

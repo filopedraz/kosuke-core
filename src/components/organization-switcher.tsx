@@ -28,6 +28,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useOrganizationOperations } from '@/hooks/use-organization-operations';
+import { getOrganizationDisplayName } from '@/lib/organizations/utils';
 
 interface OrganizationSwitcherComponentProps {
   onClose?: () => void;
@@ -158,7 +159,12 @@ export function OrganizationSwitcherComponent({ onClose }: OrganizationSwitcherC
     );
   }
 
-  const currentOrgName = organization?.name || 'No organization';
+  const currentOrgName = organization
+    ? getOrganizationDisplayName(
+        organization.name,
+        organization.publicMetadata?.isPersonal as boolean | undefined
+      )
+    : 'No organization';
   const currentOrgImage = organization?.imageUrl;
   const hasOrganizations = userMemberships.data && userMemberships.data.length > 0;
 
@@ -186,13 +192,13 @@ export function OrganizationSwitcherComponent({ onClose }: OrganizationSwitcherC
                 <div className="relative">
                   <div className="w-full flex items-center gap-2 px-2 py-1.5 rounded-sm bg-accent/50">
                     <Avatar className="h-6 w-6">
-                      <AvatarImage src={organization.imageUrl} alt={organization.name} />
+                      <AvatarImage src={organization.imageUrl} alt={currentOrgName} />
                       <AvatarFallback className="text-xs">
-                        {organization.name.slice(0, 2).toUpperCase()}
+                        {currentOrgName.slice(0, 2).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm truncate">{organization.name}</p>
+                      <p className="text-sm truncate">{currentOrgName}</p>
                     </div>
                     <Link
                       href={`/organizations/${organization.slug}`}
@@ -212,28 +218,31 @@ export function OrganizationSwitcherComponent({ onClose }: OrganizationSwitcherC
             {/* Other Organizations */}
             {userMemberships.data
               ?.filter(membership => membership.organization.id !== organization?.id)
-              .map(membership => (
-                <div key={membership.organization.id} className="relative">
-                  <button
-                    onClick={() => handleSwitch(membership.organization.id)}
-                    disabled={isSwitching}
-                    className="w-full flex items-center gap-2 px-2 py-1.5 rounded-sm hover:bg-accent transition-colors text-left"
-                  >
-                    <Avatar className="h-6 w-6">
-                      <AvatarImage
-                        src={membership.organization.imageUrl}
-                        alt={membership.organization.name}
-                      />
-                      <AvatarFallback className="text-xs">
-                        {membership.organization.name.slice(0, 2).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm truncate">{membership.organization.name}</p>
-                    </div>
-                  </button>
-                </div>
-              ))}
+              .map(membership => {
+                const displayName = getOrganizationDisplayName(
+                  membership.organization.name,
+                  membership.organization.publicMetadata?.isPersonal as boolean | undefined
+                );
+                return (
+                  <div key={membership.organization.id} className="relative">
+                    <button
+                      onClick={() => handleSwitch(membership.organization.id)}
+                      disabled={isSwitching}
+                      className="w-full flex items-center gap-2 px-2 py-1.5 rounded-sm hover:bg-accent transition-colors text-left"
+                    >
+                      <Avatar className="h-6 w-6">
+                        <AvatarImage src={membership.organization.imageUrl} alt={displayName} />
+                        <AvatarFallback className="text-xs">
+                          {displayName.slice(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm truncate">{displayName}</p>
+                      </div>
+                    </button>
+                  </div>
+                );
+              })}
             {userMemberships.data?.some(m => m.organization.id !== organization?.id) && (
               <DropdownMenuSeparator className="my-1" />
             )}
@@ -241,33 +250,39 @@ export function OrganizationSwitcherComponent({ onClose }: OrganizationSwitcherC
             {/* Pending Invitations */}
             {invitations.length > 0 && (
               <>
-                {invitations.map(invitation => (
-                  <div key={invitation.id} className="relative">
-                    <button
-                      onClick={() => handleAcceptInvitation(invitation.id)}
-                      disabled={acceptingInvitationId === invitation.id}
-                      className="w-full flex items-center gap-2 px-2 py-1.5 rounded-sm hover:bg-accent transition-colors text-left"
-                    >
-                      <Avatar className="h-6 w-6">
-                        <AvatarImage
-                          src={invitation.organizationImageUrl}
-                          alt={invitation.organizationName}
-                        />
-                        <AvatarFallback className="text-xs">
-                          {invitation.organizationName?.slice(0, 2).toUpperCase() || 'IN'}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm truncate">{invitation.organizationName}</p>
-                      </div>
-                      {acceptingInvitationId === invitation.id ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
-                      ) : (
-                        <span className="text-xs text-primary">Join</span>
-                      )}
-                    </button>
-                  </div>
-                ))}
+                {invitations.map(invitation => {
+                  const invitationDisplayName = getOrganizationDisplayName(
+                    invitation.organizationName || 'Organization',
+                    invitation.organizationIsPersonal
+                  );
+                  return (
+                    <div key={invitation.id} className="relative">
+                      <button
+                        onClick={() => handleAcceptInvitation(invitation.id)}
+                        disabled={acceptingInvitationId === invitation.id}
+                        className="w-full flex items-center gap-2 px-2 py-1.5 rounded-sm hover:bg-accent transition-colors text-left"
+                      >
+                        <Avatar className="h-6 w-6">
+                          <AvatarImage
+                            src={invitation.organizationImageUrl}
+                            alt={invitationDisplayName}
+                          />
+                          <AvatarFallback className="text-xs">
+                            {invitationDisplayName.slice(0, 2).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm truncate">{invitationDisplayName}</p>
+                        </div>
+                        {acceptingInvitationId === invitation.id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+                        ) : (
+                          <span className="text-xs text-primary">Join</span>
+                        )}
+                      </button>
+                    </div>
+                  );
+                })}
                 <DropdownMenuSeparator className="my-1" />
               </>
             )}

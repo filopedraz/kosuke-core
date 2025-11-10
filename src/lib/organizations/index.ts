@@ -3,6 +3,8 @@ import { organizations, projects } from '@/lib/db/schema';
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import { eq, isNull } from 'drizzle-orm';
 
+export * from './utils';
+
 /**
  * Get all organizations a user belongs to via Clerk API
  */
@@ -89,4 +91,81 @@ export async function getOrganizationMembers(orgId: string) {
       name: `${m.publicUserData!.firstName || ''} ${m.publicUserData!.lastName || ''}`.trim(),
       imageUrl: m.publicUserData!.imageUrl,
     }));
+}
+
+interface CachedMembership {
+  organization: {
+    id: string;
+    name: string;
+  };
+}
+
+/**
+ * Get all organization memberships for a user (cached for safe deletion)
+ */
+export async function getUserOrganizationMemberships(userId: string): Promise<CachedMembership[]> {
+  const clerk = await clerkClient();
+
+  // Get all organizations the user is a member of (with pagination)
+  let allMemberships: CachedMembership[] = [];
+  let offset = 0;
+  const limit = 100;
+  let hasMore = true;
+
+  while (hasMore) {
+    const memberships = await clerk.users.getOrganizationMembershipList({
+      userId,
+      limit,
+      offset,
+    });
+
+    allMemberships = allMemberships.concat(memberships.data);
+    hasMore = memberships.data.length === limit;
+    offset += limit;
+  }
+
+  return allMemberships;
+}
+
+/**
+ * Clean up organization memberships using cached membership data
+ * - Deletes personal workspaces
+ * - Leaves non-personal organizations
+ * Note: userId may be deleted from Clerk at this point
+ */
+export async function cleanupCachedOrganizations(userId: string, memberships: CachedMembership[]) {
+  const clerk = await clerkClient();
+
+  console.log(`📋 Processing ${memberships.length} organization(s) for user ${userId}`);
+
+  // Process each organization membership
+  for (const membership of memberships) {
+    const orgId = membership.organization.id;
+
+    try {
+      // Check if it's a personal organization
+      const org = await clerk.organizations.getOrganization({ organizationId: orgId });
+
+      if (org.publicMetadata?.isPersonal === true) {
+        // Delete personal organizations
+        await clerk.organizations.deleteOrganization(orgId);
+        console.log(`🗑️ Deleted personal workspace: ${orgId} (${org.name})`);
+      } else {
+        // Leave non-personal organizations
+        // Note: This might fail if user is already deleted from Clerk
+        try {
+          await clerk.organizations.deleteOrganizationMembership({
+            organizationId: orgId,
+            userId,
+          });
+          console.log(`👋 Left organization: ${orgId} (${org.name})`);
+        } catch (_membershipError) {
+          // If user is already deleted, this will fail - that's ok, user is already removed
+          console.log(`ℹ️ Could not remove membership for ${orgId} (user likely already deleted)`);
+        }
+      }
+    } catch (orgError) {
+      console.error(`⚠️ Failed to process organization ${orgId}:`, orgError);
+    }
+  }
 }

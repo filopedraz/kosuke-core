@@ -20,6 +20,7 @@ interface UserInvitation {
   organizationName?: string;
   organizationImageUrl?: string;
   organizationSlug?: string | null;
+  organizationIsPersonal?: boolean;
   role: string;
   createdAt: Date;
   status: string;
@@ -101,17 +102,27 @@ export function useOrganizationOperations(): UseOrganizationOperationsReturn {
   // Process invitations from Clerk
   useEffect(() => {
     if (userInvitations?.data) {
-      const processedInvitations: UserInvitation[] = userInvitations.data.map(inv => ({
-        id: inv.id,
-        emailAddress: inv.emailAddress,
-        organizationId: inv.publicOrganizationData.id,
-        organizationName: inv.publicOrganizationData.name,
-        organizationImageUrl: inv.publicOrganizationData.imageUrl,
-        organizationSlug: inv.publicOrganizationData.slug,
-        role: inv.role,
-        createdAt: inv.createdAt,
-        status: inv.status,
-      }));
+      const processedInvitations: UserInvitation[] = userInvitations.data.map(inv => {
+        const orgData = inv.publicOrganizationData as {
+          id: string;
+          name: string;
+          imageUrl: string;
+          slug: string | null;
+          publicMetadata?: { isPersonal?: boolean };
+        };
+        return {
+          id: inv.id,
+          emailAddress: inv.emailAddress,
+          organizationId: orgData.id,
+          organizationName: orgData.name,
+          organizationImageUrl: orgData.imageUrl,
+          organizationSlug: orgData.slug,
+          organizationIsPersonal: orgData.publicMetadata?.isPersonal,
+          role: inv.role,
+          createdAt: inv.createdAt,
+          status: inv.status,
+        };
+      });
       setInvitations(processedInvitations);
     }
   }, [userInvitations?.data]);
@@ -351,15 +362,23 @@ export function useOrganizationOperations(): UseOrganizationOperationsReturn {
       if (userInvitations?.data) {
         const invitation = userInvitations.data.find(inv => inv.id === invitationId);
         if (invitation) {
+          const orgData = invitation.publicOrganizationData as {
+            id: string;
+            name: string;
+            imageUrl: string;
+            slug: string | null;
+            publicMetadata?: { isPersonal?: boolean };
+          };
           setInvitations(prev => [
             ...prev,
             {
               id: invitation.id,
               emailAddress: invitation.emailAddress,
-              organizationId: invitation.publicOrganizationData.id,
-              organizationName: invitation.publicOrganizationData.name,
-              organizationImageUrl: invitation.publicOrganizationData.imageUrl,
-              organizationSlug: invitation.publicOrganizationData.slug,
+              organizationId: orgData.id,
+              organizationName: orgData.name,
+              organizationImageUrl: orgData.imageUrl,
+              organizationSlug: orgData.slug,
+              organizationIsPersonal: orgData.publicMetadata?.isPersonal,
               role: invitation.role,
               createdAt: invitation.createdAt,
               status: invitation.status,

@@ -22,6 +22,7 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useOrganizationOperations } from '@/hooks/use-organization-operations';
+import { getOrganizationDisplayName } from '@/lib/organizations/utils';
 
 export default function OrganizationGeneralPage() {
   const {
@@ -58,6 +59,7 @@ export default function OrganizationGeneralPage() {
 
   const isPersonal = organization.publicMetadata?.isPersonal === true;
   const isAdmin = membership?.role === 'org:admin';
+  const displayName = getOrganizationDisplayName(organization.name, isPersonal);
 
   const copyToClipboard = async (text: string, field: 'name' | 'id') => {
     try {
@@ -98,9 +100,9 @@ export default function OrganizationGeneralPage() {
         <CardContent className="space-y-6">
           <div className="flex items-center gap-6">
             <Avatar className="h-20 w-20 shrink-0">
-              <AvatarImage src={organization.imageUrl} alt={organization.name} />
+              <AvatarImage src={organization.imageUrl} alt={displayName} />
               <AvatarFallback className="text-2xl">
-                {organization.name.slice(0, 2).toUpperCase()}
+                {displayName.slice(0, 2).toUpperCase()}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1">
@@ -160,12 +162,12 @@ export default function OrganizationGeneralPage() {
             <div className="space-y-2">
               <Label>Organization Name</Label>
               <div className="relative">
-                <Input value={organization.name} disabled className="pr-10" />
+                <Input value={displayName} disabled className="pr-10" />
                 <Button
                   variant="ghost"
                   size="icon"
                   className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
-                  onClick={() => copyToClipboard(organization.name, 'name')}
+                  onClick={() => copyToClipboard(displayName, 'name')}
                 >
                   <Copy
                     className={`h-4 w-4 transition-colors ${
@@ -271,8 +273,8 @@ export default function OrganizationGeneralPage() {
                       <AlertDialogHeader>
                         <AlertDialogTitle>Delete Organization?</AlertDialogTitle>
                         <AlertDialogDescription>
-                          This will permanently delete {organization.name} and all its data. This
-                          action cannot be undone.
+                          This will permanently delete {displayName} and all its data. This action
+                          cannot be undone.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>

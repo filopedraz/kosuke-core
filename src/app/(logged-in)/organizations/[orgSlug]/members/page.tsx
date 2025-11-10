@@ -21,6 +21,7 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useOrganizationOperations } from '@/hooks/use-organization-operations';
+import { getOrganizationDisplayName } from '@/lib/organizations/utils';
 
 export default function OrganizationMembersPage() {
   const { userId } = useAuth();
@@ -56,6 +57,7 @@ export default function OrganizationMembersPage() {
 
   const isPersonal = organization.publicMetadata?.isPersonal === true;
   const isAdmin = membership?.role === 'org:admin';
+  const displayName = getOrganizationDisplayName(organization.name, isPersonal);
 
   const handleInviteMember = async () => {
     try {
@@ -120,9 +122,7 @@ export default function OrganizationMembersPage() {
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle>Invite Member</DialogTitle>
-                    <DialogDescription>
-                      Send an invitation to join {organization.name}.
-                    </DialogDescription>
+                    <DialogDescription>Send an invitation to join {displayName}.</DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4 py-4">
                     <div className="space-y-2">
