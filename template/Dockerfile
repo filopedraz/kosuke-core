@@ -13,11 +13,10 @@ RUN chmod +x /docker-entrypoint.sh
 
 # Copy optimized Next.js config for preview environments
 # This will override any next.config.ts from the user's project
-COPY next.config.ts /next.config.ts
+# COPY next.config.ts /next.config.ts
 
 EXPOSE 3000
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
 # Use Turbopack for 60% faster compilation
 CMD ["bun", "run", "dev", "--", "-H", "0.0.0.0", "--turbopack"]
-

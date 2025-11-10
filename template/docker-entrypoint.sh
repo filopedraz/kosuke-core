@@ -19,11 +19,11 @@ fi
 echo "📁 Working directory: $(pwd)"
 
 # Override next.config.ts with optimized version for preview environments
-if [ -f "/next.config.ts" ]; then
-  echo "⚙️  Applying optimized Next.js configuration for preview..."
-  cp /next.config.ts /app/next.config.ts
-  echo "✅ Next.js configuration updated"
-fi
+# if [ -f "/next.config.ts" ]; then
+#   echo "⚙️  Applying optimized Next.js configuration for preview..."
+#   cp /next.config.ts /app/next.config.ts
+#   echo "✅ Next.js configuration updated"
+# fi
 
 # Install dependencies only if node_modules doesn't exist
 if [ -d "node_modules" ]; then
