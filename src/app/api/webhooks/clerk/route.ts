@@ -5,13 +5,8 @@ import { NextResponse } from 'next/server';
 import { Webhook } from 'svix';
 
 import { db } from '@/lib/db/drizzle';
-import {
-  organizationInvitations,
-  organizationMemberships,
-  organizations,
-  users,
-} from '@/lib/db/schema';
-import { and, eq } from 'drizzle-orm';
+import { organizations, users } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
 
 type ClerkEventType =
   | 'user.created'
@@ -19,13 +14,7 @@ type ClerkEventType =
   | 'user.deleted'
   | 'organization.created'
   | 'organization.updated'
-  | 'organization.deleted'
-  | 'organizationMembership.created'
-  | 'organizationMembership.updated'
-  | 'organizationMembership.deleted'
-  | 'organizationInvitation.created'
-  | 'organizationInvitation.accepted'
-  | 'organizationInvitation.revoked';
+  | 'organization.deleted';
 
 interface DatabaseError {
   code?: string;
@@ -57,28 +46,9 @@ interface ClerkOrganization {
   updated_at: number;
 }
 
-interface ClerkOrganizationMembership {
-  id: string;
-  organization: { id: string };
-  public_user_data: { user_id: string };
-  role: string;
-  created_at: number;
-  updated_at: number;
-}
-
-interface ClerkOrganizationInvitation {
-  id: string;
-  organization_id: string;
-  email_address: string;
-  role: string;
-  public_metadata?: Record<string, unknown>;
-  created_at: number;
-  status: string;
-}
-
 interface ClerkEvent {
   type: ClerkEventType;
-  data: ClerkUser | ClerkOrganization | ClerkOrganizationMembership | ClerkOrganizationInvitation;
+  data: ClerkUser | ClerkOrganization;
 }
 
 export async function POST(request: Request) {
@@ -136,21 +106,6 @@ export async function POST(request: Request) {
         break;
       case 'organization.deleted':
         await handleOrganizationDeleted(data as ClerkOrganization);
-        break;
-      case 'organizationMembership.created':
-        await handleMembershipCreated(data as ClerkOrganizationMembership);
-        break;
-      case 'organizationMembership.deleted':
-        await handleMembershipDeleted(data as ClerkOrganizationMembership);
-        break;
-      case 'organizationInvitation.created':
-        await handleInvitationCreated(data as ClerkOrganizationInvitation);
-        break;
-      case 'organizationInvitation.accepted':
-        await handleInvitationAccepted(data as ClerkOrganizationInvitation);
-        break;
-      case 'organizationInvitation.revoked':
-        await handleInvitationRevoked(data as ClerkOrganizationInvitation);
         break;
       default:
         console.log(`Unhandled webhook type: ${type}`);
@@ -389,100 +344,6 @@ async function handleOrganizationDeleted(data: ClerkOrganization) {
     console.log(`✅ Soft deleted organization in database: ${data.id}`);
   } catch (error) {
     console.error('Error soft deleting organization in database:', error);
-    throw error;
-  }
-}
-
-async function handleMembershipCreated(data: ClerkOrganizationMembership) {
-  try {
-    await db.insert(organizationMemberships).values({
-      clerkOrgId: data.organization.id,
-      clerkUserId: data.public_user_data.user_id,
-      role: data.role,
-      createdAt: new Date(data.created_at),
-      updatedAt: new Date(data.updated_at),
-    });
-
-    console.log(
-      `✅ Created organization membership: ${data.public_user_data.user_id} → ${data.organization.id}`
-    );
-  } catch (error) {
-    console.error('Error creating organization membership in database:', error);
-    throw error;
-  }
-}
-
-async function handleMembershipDeleted(data: ClerkOrganizationMembership) {
-  try {
-    await db
-      .delete(organizationMemberships)
-      .where(
-        and(
-          eq(organizationMemberships.clerkOrgId, data.organization.id),
-          eq(organizationMemberships.clerkUserId, data.public_user_data.user_id)
-        )
-      );
-
-    console.log(
-      `✅ Deleted organization membership: ${data.public_user_data.user_id} → ${data.organization.id}`
-    );
-  } catch (error) {
-    console.error('Error deleting organization membership in database:', error);
-    throw error;
-  }
-}
-
-async function handleInvitationCreated(data: ClerkOrganizationInvitation) {
-  try {
-    await db.insert(organizationInvitations).values({
-      clerkInvitationId: data.id,
-      clerkOrgId: data.organization_id,
-      email: data.email_address,
-      role: data.role,
-      status: 'pending',
-      createdAt: new Date(data.created_at),
-      updatedAt: new Date(data.created_at),
-    });
-
-    console.log(
-      `✅ Created organization invitation: ${data.email_address} → ${data.organization_id}`
-    );
-  } catch (error) {
-    console.error('Error creating organization invitation in database:', error);
-    throw error;
-  }
-}
-
-async function handleInvitationAccepted(data: ClerkOrganizationInvitation) {
-  try {
-    await db
-      .update(organizationInvitations)
-      .set({
-        status: 'accepted',
-        updatedAt: new Date(),
-      })
-      .where(eq(organizationInvitations.clerkInvitationId, data.id));
-
-    console.log(`✅ Accepted organization invitation: ${data.id}`);
-  } catch (error) {
-    console.error('Error updating organization invitation in database:', error);
-    throw error;
-  }
-}
-
-async function handleInvitationRevoked(data: ClerkOrganizationInvitation) {
-  try {
-    await db
-      .update(organizationInvitations)
-      .set({
-        status: 'revoked',
-        updatedAt: new Date(),
-      })
-      .where(eq(organizationInvitations.clerkInvitationId, data.id));
-
-    console.log(`✅ Revoked organization invitation: ${data.id}`);
-  } catch (error) {
-    console.error('Error updating organization invitation in database:', error);
     throw error;
   }
 }

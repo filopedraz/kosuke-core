@@ -78,13 +78,11 @@ Ensure you have the following tools installed and configured:
      - Copy your static domain URL (e.g., `https://your-domain.ngrok-free.app`)
      - Go to **Webhooks** in the Clerk dashboard
      - Add endpoint: `https://YOUR_STATIC_DOMAIN.ngrok-free.app/api/webhooks/clerk`
-     - Subscribe to **user events**: `user.created`, `user.updated`, `user.deleted`
-     - Subscribe to **organization events**:
-       - `organization.created`, `organization.updated`, `organization.deleted`
-       - `organizationMembership.created`, `organizationMembership.deleted`
-       - `organizationInvitation.created`, `organizationInvitation.accepted`, `organizationInvitation.revoked`
+     - Subscribe to these events:
+       - **User events**: `user.created`, `user.updated`, `user.deleted`
+       - **Organization events**: `organization.created`, `organization.updated`, `organization.deleted`
      - Copy the **Signing Secret** to `CLERK_WEBHOOK_SECRET` in your `.env` file
-     - **Note**: Keep ngrok running while developing to receive webhook events
+     - **Note**: Keep ngrok running while developing to receive webhook events.
 
 ### Running Locally
 

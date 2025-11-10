@@ -38,39 +38,6 @@ export const organizations = pgTable('organizations', {
   deletedAt: timestamp('deleted_at'),
 });
 
-export const organizationMemberships = pgTable(
-  'organization_memberships',
-  {
-    id: serial('id').primaryKey(),
-    clerkOrgId: text('clerk_org_id')
-      .notNull()
-      .references(() => organizations.clerkOrgId, { onDelete: 'cascade' }),
-    clerkUserId: text('clerk_user_id')
-      .notNull()
-      .references(() => users.clerkUserId, { onDelete: 'cascade' }),
-    role: varchar('role', { length: 50 }).notNull(), // 'org:admin' or 'org:member'
-    createdAt: timestamp('created_at').notNull().defaultNow(),
-    updatedAt: timestamp('updated_at').notNull().defaultNow(),
-  },
-  table => ({
-    uniqueMembership: unique().on(table.clerkOrgId, table.clerkUserId),
-  })
-);
-
-export const organizationInvitations = pgTable('organization_invitations', {
-  id: serial('id').primaryKey(),
-  clerkInvitationId: text('clerk_invitation_id').notNull().unique(),
-  clerkOrgId: text('clerk_org_id')
-    .notNull()
-    .references(() => organizations.clerkOrgId, { onDelete: 'cascade' }),
-  email: varchar('email', { length: 255 }).notNull(),
-  role: varchar('role', { length: 50 }).notNull(),
-  invitedBy: text('invited_by').references(() => users.clerkUserId),
-  status: varchar('status', { length: 20 }).notNull().default('pending'), // 'pending', 'accepted', 'revoked'
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-  updatedAt: timestamp('updated_at').notNull().defaultNow(),
-});
-
 export const activityLogs = pgTable('activity_logs', {
   id: serial('id').primaryKey(),
   userId: text('user_id').references(() => users.clerkUserId),
@@ -244,39 +211,13 @@ export const projectIntegrations = pgTable(
 export const usersRelations = relations(users, ({ many }) => ({
   projects: many(projects),
   githubTokens: many(userGithubTokens),
-  organizationMemberships: many(organizationMemberships),
   createdOrganizations: many(organizations),
-  organizationInvitations: many(organizationInvitations),
 }));
 
 export const organizationsRelations = relations(organizations, ({ many, one }) => ({
-  memberships: many(organizationMemberships),
   projects: many(projects),
-  invitations: many(organizationInvitations),
   creator: one(users, {
     fields: [organizations.createdBy],
-    references: [users.clerkUserId],
-  }),
-}));
-
-export const organizationMembershipsRelations = relations(organizationMemberships, ({ one }) => ({
-  organization: one(organizations, {
-    fields: [organizationMemberships.clerkOrgId],
-    references: [organizations.clerkOrgId],
-  }),
-  user: one(users, {
-    fields: [organizationMemberships.clerkUserId],
-    references: [users.clerkUserId],
-  }),
-}));
-
-export const organizationInvitationsRelations = relations(organizationInvitations, ({ one }) => ({
-  organization: one(organizations, {
-    fields: [organizationInvitations.clerkOrgId],
-    references: [organizations.clerkOrgId],
-  }),
-  inviter: one(users, {
-    fields: [organizationInvitations.invitedBy],
     references: [users.clerkUserId],
   }),
 }));
@@ -389,10 +330,6 @@ export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type Organization = typeof organizations.$inferSelect;
 export type NewOrganization = typeof organizations.$inferInsert;
-export type OrganizationMembership = typeof organizationMemberships.$inferSelect;
-export type NewOrganizationMembership = typeof organizationMemberships.$inferInsert;
-export type OrganizationInvitation = typeof organizationInvitations.$inferSelect;
-export type NewOrganizationInvitation = typeof organizationInvitations.$inferInsert;
 export type ActivityLog = typeof activityLogs.$inferSelect;
 export type NewActivityLog = typeof activityLogs.$inferInsert;
 
