@@ -1,22 +1,19 @@
 #!/bin/bash
 set -e
 
-# Environment variable defaults
-DEV_MODE=${DEV_MODE:-true}
-
 # Start total timing using built-in SECONDS
 TOTAL_START=$SECONDS
 
-echo "📦 Bun version: $(bun -v)"
+# echo "📦 Bun version: $(bun -v)"
 
-# Check if package.json exists (should exist from GitHub template)
-if [ ! -f "package.json" ]; then
-  echo "❌ No package.json found. Project should be initialized via GitHub template."
-  echo "🔗 Get started at: https://github.com/Kosuke-Org/kosuke-template"
-  exit 1
-fi
+# # Check if package.json exists (should exist from GitHub template)
+# if [ ! -f "package.json" ]; then
+#   echo "❌ No package.json found. Project should be initialized via GitHub template."
+#   echo "🔗 Get started at: https://github.com/Kosuke-Org/kosuke-template"
+#   exit 1
+# fi
 
-echo "📁 Working directory: $(pwd)"
+# echo "📁 Working directory: $(pwd)"
 
 # Override next.config.ts with optimized version for preview environments
 # if [ -f "/next.config.ts" ]; then
@@ -25,17 +22,17 @@ echo "📁 Working directory: $(pwd)"
 #   echo "✅ Next.js configuration updated"
 # fi
 
-# Install dependencies only if node_modules doesn't exist
-if [ -d "node_modules" ]; then
-  echo "📦 node_modules already exists, skipping installation"
-else
-  echo "📦 Installing dependencies..."
-  INSTALL_START=$SECONDS
-  bun install --silent
-  INSTALL_TIME=$(( SECONDS - INSTALL_START ))
-  echo "📦 Dependencies installed"
-  echo "⏱️  [Entrypoint] bun install took ${INSTALL_TIME}s"
-fi
+# # Install dependencies only if node_modules doesn't exist
+# if [ -d "node_modules" ]; then
+#   echo "📦 node_modules already exists, skipping installation"
+# else
+#   echo "📦 Installing dependencies..."
+#   INSTALL_START=$SECONDS
+#   bun install --silent
+#   INSTALL_TIME=$(( SECONDS - INSTALL_START ))
+#   echo "📦 Dependencies installed"
+#   echo "⏱️  [Entrypoint] bun install took ${INSTALL_TIME}s"
+# fi
 
 # Create database if it doesn't exist
 if [ -n "$POSTGRES_URL" ]; then
@@ -80,18 +77,6 @@ DB_PUSH_START=$SECONDS
 bun run db:push
 DB_PUSH_TIME=$(( SECONDS - DB_PUSH_START ))
 echo "⏱️  [Entrypoint] db:push took ${DB_PUSH_TIME}s"
-
-# Show project structure for debugging in dev mode
-if [ "$DEV_MODE" = "true" ]; then
-  echo "📋 Project structure:"
-  ls -la | head -20
-fi
-
-# Set proper ownership for mounted volumes if specified
-if [ -n "$PUID" ] && [ -n "$PGID" ]; then
-  echo "👤 Setting file ownership to $PUID:$PGID..."
-  chown -R $PUID:$PGID . 2>/dev/null || true
-fi
 
 # Calculate total startup time
 STARTUP_TIME=$(( SECONDS - TOTAL_START ))

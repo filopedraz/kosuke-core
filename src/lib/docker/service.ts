@@ -200,18 +200,10 @@ class DockerService {
   private createContainerConfig(
     environment: string[],
     hostPath: string,
-    routeInfo: RouteInfo,
-    isSessionDefaultBranch: boolean = false,
-    projectId?: number
+    routeInfo: RouteInfo
   ): ContainerCreateRequest {
     // Build binds array starting with the main path mount
-    const binds = [`${hostPath}:/app:rw`];
-
-    // For non-default branches, mount project's node_modules as read-only
-    if (!isSessionDefaultBranch && projectId) {
-      const projectNodeModulesPath = join(this.getHostProjectPath(projectId), 'node_modules');
-      binds.push(`${projectNodeModulesPath}:/app/node_modules:rw`);
-    }
+    const binds = [`${hostPath}:/app:rw`, `/app/node_modules`, `/app/.next`];
 
     const baseHostConfig = {
       Binds: binds,
@@ -248,8 +240,7 @@ class DockerService {
     sessionId: string,
     environment: string[],
     hostPath: string,
-    containerName: string,
-    isSessionDefaultBranch: boolean = false
+    containerName: string
   ): Promise<string> {
     await this.ensurePreviewImage();
 
@@ -264,13 +255,7 @@ class DockerService {
       );
 
       try {
-        const config = this.createContainerConfig(
-          environment,
-          hostPath,
-          routeInfo,
-          isSessionDefaultBranch,
-          projectId
-        );
+        const config = this.createContainerConfig(environment, hostPath, routeInfo);
 
         // Create and start container - pass name as option, not in body
         const createResponse = await client.containerCreate(config, { name: containerName });
@@ -408,8 +393,7 @@ class DockerService {
       sessionId,
       environment,
       hostPath,
-      containerName,
-      isSessionDefaultBranch
+      containerName
     );
     const containerCreateTime = performance.now() - containerCreateStart;
     console.log(
