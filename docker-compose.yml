@@ -21,12 +21,16 @@ services:
       - 'traefik.http.routers.traefik.rule=Host(`traefik.kosuke.ai`)'
       - 'traefik.http.routers.traefik.tls.certresolver=letsencrypt'
       - 'traefik.http.services.traefik.loadbalancer.server.port=8080'
+      # Request wildcard certificate for preview domain
+      - 'traefik.http.routers.wildcard-cert.rule=Host(`kosuke.app`)'
+      - 'traefik.http.routers.wildcard-cert.tls.certresolver=letsencrypt'
+      - 'traefik.http.routers.wildcard-cert.tls.domains[0].main=kosuke.app'
+      - 'traefik.http.routers.wildcard-cert.tls.domains[0].sans=*.kosuke.app'
     environment:
       - CLOUDFLARE_EMAIL=${CLOUDFLARE_EMAIL}
       - CLOUDFLARE_API_KEY=${CLOUDFLARE_API_KEY}
       - MAIN_DOMAIN=${MAIN_DOMAIN}
       - PREVIEW_DOMAIN=${PREVIEW_BASE_DOMAIN}
-
 
   postgres:
     image: postgres:16.4-alpine
