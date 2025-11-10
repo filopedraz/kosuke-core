@@ -271,18 +271,16 @@ async function createPersonalOrganization(clerkUser: ClerkUser) {
     const clerk = await clerkClient();
     const personalOrg = await clerk.organizations.createOrganization({
       name: `${firstName}'s Workspace`,
-      slug: `${clerkUser.id}-personal`,
       createdBy: clerkUser.id,
+      maxAllowedMemberships: 1,
       publicMetadata: {
         isPersonal: true,
       },
     });
 
-    console.log(
-      `✅ Created personal organization for user: ${personalOrg.id} (${personalOrg.name})`
-    );
+    console.log(`✅ Created personal workspace for user: ${personalOrg.id} (${personalOrg.name})`);
   } catch (error) {
-    console.error(`⚠️ Failed to create personal organization for user ${clerkUser.id}:`, error);
+    console.error(`⚠️ Failed to create personal workspace for user ${clerkUser.id}:`, error);
     // Don't throw - we don't want to fail user creation if org creation fails
   }
 }

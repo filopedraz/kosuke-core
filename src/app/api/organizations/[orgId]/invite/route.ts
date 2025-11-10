@@ -17,6 +17,16 @@ export async function POST(request: Request, { params }: { params: Promise<{ org
 
     const { orgId } = await params;
 
+    const clerk = await clerkClient();
+
+    // Get organization to check if it's personal
+    const org = await clerk.organizations.getOrganization({ organizationId: orgId });
+
+    // Block invitations to personal workspaces
+    if (org.publicMetadata?.isPersonal === true) {
+      return ApiErrorHandler.forbidden('Cannot invite members to personal workspaces');
+    }
+
     // Check if user is admin
     const isAdmin = await isOrgAdmin(userId, orgId);
     if (!isAdmin) {
@@ -31,7 +41,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ org
     }
 
     // Create invitation via Clerk
-    const clerk = await clerkClient();
     const invitation = await clerk.organizations.createOrganizationInvitation({
       organizationId: orgId,
       emailAddress: email,

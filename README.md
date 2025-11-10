@@ -66,7 +66,6 @@ Ensure you have the following tools installed and configured:
   6. **Enable Organizations** in Clerk:
      - Go to **Configure** → **Organizations** in the Clerk dashboard
      - Toggle **Enable organizations**
-     - Enable **Personal accounts** (creates a default organization for each user)
      - Set max organizations per user (recommended: 10)
      - Keep default roles: `org:admin` (owner) and `org:member` (member)
   7. Configure **Webhook** endpoint (requires ngrok for local development):

@@ -97,6 +97,7 @@ export default function Navbar({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [solutionsOpen, setSolutionsOpen] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -118,8 +119,7 @@ export default function Navbar({
     if (isSignedIn && clerkUser) {
       return (
         <div className="flex items-center gap-3">
-          <OrganizationSwitcherComponent />
-          <DropdownMenu>
+          <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-8 w-8 rounded-md p-0">
                 <Avatar className="h-8 w-8 cursor-pointer transition-all">
@@ -137,6 +137,8 @@ export default function Navbar({
                   <p className="text-xs text-muted-foreground">{dbUser?.email}</p>
                 </div>
               </div>
+              <DropdownMenuSeparator />
+              <OrganizationSwitcherComponent onClose={() => setDropdownOpen(false)} />
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => router.push('/projects')} className="cursor-pointer">
                 <LayoutDashboard className="mr-2 h-4 w-4" />

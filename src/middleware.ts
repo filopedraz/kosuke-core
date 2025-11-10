@@ -35,7 +35,11 @@ const isPublicRoute = createRouteMatcher([
   '/opengraph-image-square.jpg',
 ]);
 
-const isProtectedRoute = createRouteMatcher(['/projects(.*)', '/settings(.*)']);
+const isProtectedRoute = createRouteMatcher([
+  '/projects(.*)',
+  '/settings(.*)',
+  '/organizations(.*)',
+]);
 const isRootRoute = createRouteMatcher(['/']);
 const isApiRoute = createRouteMatcher(['/api(.*)']);
 
