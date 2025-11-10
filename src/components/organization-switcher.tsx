@@ -1,10 +1,10 @@
 'use client';
 
-import { useOrganization, useOrganizationList } from '@clerk/nextjs';
-import { Loader2, Plus, Settings } from 'lucide-react';
+import { useOrganizationList } from '@clerk/nextjs';
+import { Loader2, Plus, Settings, Upload, X } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -27,7 +27,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useToast } from '@/hooks/use-toast';
+import { useOrganizationOperations } from '@/hooks/use-organization-operations';
 
 interface OrganizationSwitcherComponentProps {
   onClose?: () => void;
@@ -35,8 +35,14 @@ interface OrganizationSwitcherComponentProps {
 
 export function OrganizationSwitcherComponent({ onClose }: OrganizationSwitcherComponentProps) {
   const router = useRouter();
-  const { toast } = useToast();
-  const { organization, isLoaded: isOrgLoaded } = useOrganization();
+  const {
+    organization,
+    createOrganization,
+    isCreating,
+    invitations,
+    acceptInvitation,
+    acceptingInvitationId,
+  } = useOrganizationOperations();
   const {
     userMemberships,
     isLoaded: isListLoaded,
@@ -49,7 +55,11 @@ export function OrganizationSwitcherComponent({ onClose }: OrganizationSwitcherC
   const [isSwitching, setIsSwitching] = useState(false);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [newOrgName, setNewOrgName] = useState('');
-  const [isCreatingOrg, setIsCreatingOrg] = useState(false);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreviewUrl, setLogoPreviewUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const isOrgLoaded = organization !== undefined;
 
   // Auto-select first available organization if none is active
   useEffect(() => {
@@ -84,9 +94,9 @@ export function OrganizationSwitcherComponent({ onClose }: OrganizationSwitcherC
     if (!setActive || isSwitching) return;
 
     setIsSwitching(true);
+    onClose?.(); // Close dropdown immediately
     try {
       await setActive({ organization: orgId });
-      onClose?.();
       router.push('/projects');
       router.refresh();
     } catch (error) {
@@ -96,48 +106,47 @@ export function OrganizationSwitcherComponent({ onClose }: OrganizationSwitcherC
     }
   };
 
-  const handleCreateOrganization = async () => {
-    if (!newOrgName.trim()) {
-      toast({
-        title: 'Error',
-        description: 'Organization name is required',
-        variant: 'destructive',
-      });
-      return;
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setLogoFile(file);
+    const url = URL.createObjectURL(file);
+    setLogoPreviewUrl(url);
+  };
+
+  const clearLogo = () => {
+    setLogoFile(null);
+    if (logoPreviewUrl) {
+      URL.revokeObjectURL(logoPreviewUrl);
+      setLogoPreviewUrl(null);
     }
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
 
-    setIsCreatingOrg(true);
+  const handleCreateOrganization = async () => {
     try {
-      const response = await fetch('/api/organizations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newOrgName }),
-      });
-
-      if (!response.ok) throw new Error('Failed to create organization');
-
-      const { data } = await response.json();
-
-      if (setActive && data.clerkOrgId) {
-        await setActive({ organization: data.clerkOrgId });
-      }
-
-      toast({
-        title: 'Success',
-        description: 'Organization created successfully',
+      await createOrganization({
+        name: newOrgName,
+        logo: logoFile || undefined,
       });
 
       setNewOrgName('');
+      clearLogo();
       setCreateDialogOpen(false);
-      router.refresh();
     } catch (_error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to create organization',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsCreatingOrg(false);
+      // Error handling is done in the hook
+    }
+  };
+
+  const handleAcceptInvitation = async (invitationId: string) => {
+    onClose?.(); // Close the dropdown immediately for better UX
+    try {
+      await acceptInvitation(invitationId);
+    } catch (_error) {
+      // Error handling is done in the hook
     }
   };
 
@@ -194,7 +203,9 @@ export function OrganizationSwitcherComponent({ onClose }: OrganizationSwitcherC
                     </Link>
                   </div>
                 </div>
-                <DropdownMenuSeparator className="my-1" />
+                {userMemberships.data?.some(m => m.organization.id !== organization.id) && (
+                  <DropdownMenuSeparator className="my-1" />
+                )}
               </>
             )}
 
@@ -223,7 +234,44 @@ export function OrganizationSwitcherComponent({ onClose }: OrganizationSwitcherC
                   </button>
                 </div>
               ))}
-            <DropdownMenuSeparator className="my-1" />
+            {userMemberships.data?.some(m => m.organization.id !== organization?.id) && (
+              <DropdownMenuSeparator className="my-1" />
+            )}
+
+            {/* Pending Invitations */}
+            {invitations.length > 0 && (
+              <>
+                {invitations.map(invitation => (
+                  <div key={invitation.id} className="relative">
+                    <button
+                      onClick={() => handleAcceptInvitation(invitation.id)}
+                      disabled={acceptingInvitationId === invitation.id}
+                      className="w-full flex items-center gap-2 px-2 py-1.5 rounded-sm hover:bg-accent transition-colors text-left"
+                    >
+                      <Avatar className="h-6 w-6">
+                        <AvatarImage
+                          src={invitation.organizationImageUrl}
+                          alt={invitation.organizationName}
+                        />
+                        <AvatarFallback className="text-xs">
+                          {invitation.organizationName?.slice(0, 2).toUpperCase() || 'IN'}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm truncate">{invitation.organizationName}</p>
+                      </div>
+                      {acceptingInvitationId === invitation.id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+                      ) : (
+                        <span className="text-xs text-primary">Join</span>
+                      )}
+                    </button>
+                  </div>
+                ))}
+                <DropdownMenuSeparator className="my-1" />
+              </>
+            )}
+
             <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
               <DialogTrigger asChild>
                 <button className="w-full flex items-center gap-2 px-2 py-1.5 rounded-sm hover:bg-accent transition-colors text-left text-sm text-muted-foreground">
@@ -248,15 +296,58 @@ export function OrganizationSwitcherComponent({ onClose }: OrganizationSwitcherC
                       placeholder="Acme Inc."
                       value={newOrgName}
                       onChange={e => setNewOrgName(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter' && newOrgName.trim()) {
+                          handleCreateOrganization();
+                        }
+                      }}
                     />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Organization Logo (Optional)</Label>
+                    {logoPreviewUrl ? (
+                      <div className="flex items-center gap-4">
+                        <Avatar className="h-16 w-16">
+                          <AvatarImage src={logoPreviewUrl} alt="Preview" />
+                          <AvatarFallback>
+                            {newOrgName.slice(0, 2).toUpperCase() || 'OR'}
+                          </AvatarFallback>
+                        </Avatar>
+                        <Button variant="ghost" size="sm" onClick={clearLogo} className="h-8">
+                          <X className="h-4 w-4 mr-2" />
+                          Remove
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => fileInputRef.current?.click()}
+                        type="button"
+                      >
+                        <Upload className="h-4 w-4 mr-2" />
+                        Upload logo
+                      </Button>
+                    )}
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/jpeg,image/jpg,image/png"
+                      onChange={handleFileChange}
+                      className="hidden"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      JPEG or PNG. Square image, at least 400x400px. Max 5MB.
+                    </p>
                   </div>
                 </div>
                 <DialogFooter>
                   <Button
                     onClick={handleCreateOrganization}
-                    disabled={isCreatingOrg || !newOrgName.trim()}
+                    disabled={isCreating || !newOrgName.trim()}
                   >
-                    {isCreatingOrg ? (
+                    {isCreating ? (
                       <>
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                         Creating...
@@ -297,15 +388,58 @@ export function OrganizationSwitcherComponent({ onClose }: OrganizationSwitcherC
                     placeholder="Acme Inc."
                     value={newOrgName}
                     onChange={e => setNewOrgName(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' && newOrgName.trim()) {
+                        handleCreateOrganization();
+                      }
+                    }}
                   />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Organization Logo (Optional)</Label>
+                  {logoPreviewUrl ? (
+                    <div className="flex items-center gap-4">
+                      <Avatar className="h-16 w-16">
+                        <AvatarImage src={logoPreviewUrl} alt="Preview" />
+                        <AvatarFallback>
+                          {newOrgName.slice(0, 2).toUpperCase() || 'OR'}
+                        </AvatarFallback>
+                      </Avatar>
+                      <Button variant="ghost" size="sm" onClick={clearLogo} className="h-8">
+                        <X className="h-4 w-4 mr-2" />
+                        Remove
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => fileInputRef.current?.click()}
+                      type="button"
+                    >
+                      <Upload className="h-4 w-4 mr-2" />
+                      Upload logo
+                    </Button>
+                  )}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/jpg,image/png"
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    JPEG or PNG. Square image, at least 400x400px. Max 5MB.
+                  </p>
                 </div>
               </div>
               <DialogFooter>
                 <Button
                   onClick={handleCreateOrganization}
-                  disabled={isCreatingOrg || !newOrgName.trim()}
+                  disabled={isCreating || !newOrgName.trim()}
                 >
-                  {isCreatingOrg ? (
+                  {isCreating ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                       Creating...

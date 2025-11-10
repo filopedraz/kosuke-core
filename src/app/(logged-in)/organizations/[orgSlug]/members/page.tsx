@@ -1,7 +1,7 @@
 'use client';
 
-import { useOrganization } from '@clerk/nextjs';
-import { Clock, Loader2, Mail, UserX, X } from 'lucide-react';
+import { useAuth, useOrganization } from '@clerk/nextjs';
+import { Clock, Loader2, Mail, X } from 'lucide-react';
 import { useState } from 'react';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -20,19 +20,25 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useToast } from '@/hooks/use-toast';
+import { useOrganizationOperations } from '@/hooks/use-organization-operations';
 
 export default function OrganizationMembersPage() {
+  const { userId } = useAuth();
   const { organization, isLoaded, membership, memberships, invitations } = useOrganization({
     memberships: { pageSize: 50 },
     invitations: { pageSize: 50 },
   });
-  const { toast } = useToast();
+  const {
+    inviteMember,
+    isInvitingMember,
+    removeMember,
+    removingMemberId,
+    revokeInvitation,
+    revokingInvitationId,
+  } = useOrganizationOperations();
 
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
-  const [isInviting, setIsInviting] = useState(false);
-  const [revokingInviteId, setRevokingInviteId] = useState<string | null>(null);
 
   if (!isLoaded) {
     return <OrganizationMembersSkeleton />;
@@ -52,69 +58,41 @@ export default function OrganizationMembersPage() {
   const isAdmin = membership?.role === 'org:admin';
 
   const handleInviteMember = async () => {
-    if (!inviteEmail.trim()) {
-      toast({
-        title: 'Error',
-        description: 'Email address is required',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    setIsInviting(true);
     try {
-      const response = await fetch(`/api/organizations/${organization.id}/invite`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: inviteEmail }),
+      await inviteMember({
+        email: inviteEmail,
+        organizationId: organization.id,
       });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to invite member');
-      }
-
-      toast({
-        title: 'Success',
-        description: 'Invitation sent successfully',
-      });
-
       setInviteEmail('');
       setInviteDialogOpen(false);
       invitations?.revalidate?.();
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to invite member',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsInviting(false);
+    } catch (_error) {
+      // Error handling is done in the hook
     }
   };
 
   const handleRevokeInvite = async (inviteId: string) => {
-    if (!invitations) return;
-
-    setRevokingInviteId(inviteId);
     try {
-      const invitation = invitations.data?.find(inv => inv.id === inviteId);
-      if (invitation) {
-        await invitation.revoke();
-        toast({
-          title: 'Success',
-          description: 'Invitation revoked',
-        });
-        invitations.revalidate?.();
-      }
-    } catch (_error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to revoke invitation',
-        variant: 'destructive',
+      await revokeInvitation({
+        invitationId: inviteId,
+        organizationId: organization.id,
       });
-    } finally {
-      setRevokingInviteId(null);
+      invitations?.revalidate?.();
+    } catch (_error) {
+      // Error handling is done in the hook
+    }
+  };
+
+  const handleRemoveMember = async (userId: string | undefined) => {
+    if (!userId) return;
+    try {
+      await removeMember({
+        userId,
+        organizationId: organization.id,
+      });
+      memberships?.revalidate?.();
+    } catch (_error) {
+      // Error handling is done in the hook
     }
   };
 
@@ -161,9 +139,9 @@ export default function OrganizationMembersPage() {
                   <DialogFooter>
                     <Button
                       onClick={handleInviteMember}
-                      disabled={isInviting || !inviteEmail.trim()}
+                      disabled={isInvitingMember || !inviteEmail.trim()}
                     >
-                      {isInviting ? (
+                      {isInvitingMember ? (
                         <>
                           <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                           Sending...
@@ -185,8 +163,8 @@ export default function OrganizationMembersPage() {
               {memberships.data.map((member, index) => (
                 <div key={member.id}>
                   <div className="flex items-center justify-between py-3">
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-10 w-10">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <Avatar className="h-10 w-10 shrink-0">
                         <AvatarImage
                           src={member.publicUserData?.imageUrl}
                           alt={
@@ -201,27 +179,46 @@ export default function OrganizationMembersPage() {
                             'U'}
                         </AvatarFallback>
                       </Avatar>
-                      <div>
-                        <p className="text-sm font-medium">
-                          {member.publicUserData?.firstName && member.publicUserData?.lastName
-                            ? `${member.publicUserData.firstName} ${member.publicUserData.lastName}`
-                            : member.publicUserData?.identifier || 'Unknown User'}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-medium truncate">
+                            {member.publicUserData?.firstName && member.publicUserData?.lastName
+                              ? `${member.publicUserData.firstName} ${member.publicUserData.lastName}`
+                              : member.publicUserData?.identifier || 'Unknown User'}
+                          </p>
+                          <span
+                            className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${
+                              member.role === 'org:admin'
+                                ? 'bg-primary/10 text-primary font-medium'
+                                : 'bg-muted text-muted-foreground'
+                            }`}
+                          >
+                            {member.role === 'org:admin' ? 'Admin' : 'Member'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground truncate">
                           {member.publicUserData?.identifier}
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs bg-muted px-2 py-1 rounded">
-                        {member.role === 'org:admin' ? 'Admin' : 'Member'}
-                      </span>
-                      {isAdmin && member.id !== membership?.id && !isPersonal && (
-                        <Button variant="ghost" size="icon" disabled>
-                          <UserX className="h-4 w-4 text-muted-foreground" />
+                    {isAdmin &&
+                      member.publicUserData?.userId &&
+                      member.publicUserData.userId !== userId &&
+                      !isPersonal && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="shrink-0"
+                          onClick={() => handleRemoveMember(member.publicUserData?.userId)}
+                          disabled={removingMemberId === member.publicUserData?.userId}
+                        >
+                          {removingMemberId === member.publicUserData?.userId ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <X className="h-4 w-4 text-muted-foreground hover:text-destructive" />
+                          )}
                         </Button>
                       )}
-                    </div>
                   </div>
                   {index < memberships.data.length - 1 && <Separator />}
                 </div>
@@ -260,9 +257,9 @@ export default function OrganizationMembersPage() {
                             variant="ghost"
                             size="icon"
                             onClick={() => handleRevokeInvite(invite.id)}
-                            disabled={revokingInviteId === invite.id}
+                            disabled={revokingInvitationId === invite.id}
                           >
-                            {revokingInviteId === invite.id ? (
+                            {revokingInvitationId === invite.id ? (
                               <Loader2 className="h-4 w-4 animate-spin" />
                             ) : (
                               <X className="h-4 w-4 text-muted-foreground hover:text-destructive" />

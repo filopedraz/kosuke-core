@@ -1,5 +1,4 @@
 import { ApiErrorHandler } from '@/lib/api/errors';
-import { isOrgAdmin } from '@/lib/organizations';
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 
@@ -17,10 +16,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ org
 
     const { orgId } = await params;
 
-    const clerk = await clerkClient();
+    const client = await clerkClient();
 
     // Get organization to check if it's personal
-    const org = await clerk.organizations.getOrganization({ organizationId: orgId });
+    const org = await client.organizations.getOrganization({ organizationId: orgId });
 
     // Block invitations to personal workspaces
     if (org.publicMetadata?.isPersonal === true) {
@@ -28,8 +27,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ org
     }
 
     // Check if user is admin
-    const isAdmin = await isOrgAdmin(userId, orgId);
-    if (!isAdmin) {
+    const memberships = await client.organizations.getOrganizationMembershipList({
+      organizationId: orgId,
+    });
+
+    const membership = memberships.data.find(m => m.publicUserData?.userId === userId);
+
+    if (!membership || membership.role !== 'org:admin') {
       return ApiErrorHandler.forbidden('Only organization admins can invite members');
     }
 
@@ -41,7 +45,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ org
     }
 
     // Create invitation via Clerk
-    const invitation = await clerk.organizations.createOrganizationInvitation({
+    const invitation = await client.organizations.createOrganizationInvitation({
       organizationId: orgId,
       emailAddress: email,
       role,
@@ -50,7 +54,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ org
 
     return NextResponse.json({ data: invitation });
   } catch (error) {
-    console.error('Error creating invitation:', error);
+    console.error('Failed to create invitation:', error);
     return ApiErrorHandler.handle(error);
   }
 }

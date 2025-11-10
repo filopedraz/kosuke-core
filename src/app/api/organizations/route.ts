@@ -10,8 +10,9 @@ export async function POST(request: Request) {
       return ApiErrorHandler.unauthorized('User not authenticated');
     }
 
-    const body = await request.json();
-    const { name } = body;
+    const formData = await request.formData();
+    const name = formData.get('name') as string;
+    const logoFile = formData.get('logo') as File | null;
 
     if (!name || typeof name !== 'string' || name.trim().length === 0) {
       return ApiErrorHandler.badRequest('Organization name is required');
@@ -26,6 +27,16 @@ export async function POST(request: Request) {
         isPersonal: false,
       },
     });
+
+    // Upload logo if provided
+    if (logoFile && logoFile.size > 0) {
+      try {
+        await clerk.organizations.updateOrganizationLogo(clerkOrg.id, { file: logoFile });
+      } catch (logoError) {
+        console.error('Failed to upload logo during org creation:', logoError);
+        // Don't fail the whole operation if logo upload fails
+      }
+    }
 
     // Organization will be synced to DB via webhook
     // Return the Clerk org ID for immediate use

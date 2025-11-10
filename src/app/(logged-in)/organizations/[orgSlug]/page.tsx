@@ -1,8 +1,6 @@
 'use client';
 
-import { useOrganization, useOrganizationList } from '@clerk/nextjs';
 import { Copy, Loader2, Upload } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
 
 import {
@@ -23,20 +21,26 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useToast } from '@/hooks/use-toast';
+import { useOrganizationOperations } from '@/hooks/use-organization-operations';
 
 export default function OrganizationGeneralPage() {
-  const router = useRouter();
-  const { toast } = useToast();
-  const { organization, isLoaded, membership } = useOrganization();
-  const { userMemberships, setActive } = useOrganizationList({
-    userMemberships: { infinite: true },
-  });
+  const {
+    organization,
+    membership,
+    uploadLogo,
+    isUploadingLogo,
+    deleteLogo,
+    isDeletingLogo,
+    deleteOrganization,
+    isDeleting,
+    leaveOrganization,
+    isLeaving,
+  } = useOrganizationOperations();
 
-  const [isDeleting, setIsDeleting] = useState(false);
   const [copiedField, setCopiedField] = useState<'name' | 'id' | null>(null);
-  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const isLoaded = organization !== undefined;
 
   if (!isLoaded) {
     return <OrganizationGeneralSkeleton />;
@@ -65,127 +69,23 @@ export default function OrganizationGeneralPage() {
     }
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !organization) return;
-
-    // Validate file type
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png'];
-    if (!allowedTypes.includes(file.type)) {
-      toast({
-        title: 'Invalid file type',
-        description: 'Please upload a JPEG or PNG image',
-        variant: 'destructive',
-      });
-      // Reset input
-      if (fileInputRef.current) fileInputRef.current.value = '';
-      return;
-    }
-
-    // Validate file size (5MB max)
-    const maxSize = 5 * 1024 * 1024; // 5MB in bytes
-    if (file.size > maxSize) {
-      toast({
-        title: 'File too large',
-        description: 'Please upload an image smaller than 5MB',
-        variant: 'destructive',
-      });
-      // Reset input
-      if (fileInputRef.current) fileInputRef.current.value = '';
-      return;
-    }
-
-    setIsUploadingImage(true);
-    try {
-      await organization.setLogo({ file });
-      toast({
-        title: 'Success',
-        description: 'Organization logo updated',
-      });
-      router.refresh();
-    } catch (error) {
-      const errorMessage =
-        error && typeof error === 'object' && 'errors' in error
-          ? (error.errors as Array<{ message: string }>)[0]?.message || 'Failed to update logo'
-          : 'Failed to update organization logo';
-
-      toast({
-        title: 'Error',
-        description: errorMessage,
-        variant: 'destructive',
-      });
-    } finally {
-      setIsUploadingImage(false);
-      // Reset input
-      if (fileInputRef.current) fileInputRef.current.value = '';
+    if (!file) return;
+    await uploadLogo({ file });
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   };
 
-  const handleClickUpload = () => {
-    fileInputRef.current?.click();
+  const handleLeave = async () => {
+    if (!organization) return;
+    await leaveOrganization(organization.id);
   };
 
-  const handleLeaveOrganization = async () => {
-    if (!setActive) return;
-
-    try {
-      const otherOrg = userMemberships.data?.find(m => m.organization.id !== organization.id);
-
-      if (otherOrg) {
-        await setActive({ organization: otherOrg.organization.id });
-      } else {
-        await setActive({ organization: null });
-      }
-
-      toast({
-        title: 'Success',
-        description: 'Left organization',
-      });
-
-      router.push('/organizations');
-    } catch (_error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to leave organization',
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const handleDeleteOrganization = async () => {
-    setIsDeleting(true);
-    try {
-      const response = await fetch(`/api/organizations/${organization.id}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) throw new Error('Failed to delete organization');
-
-      const otherOrg = userMemberships.data?.find(m => m.organization.id !== organization.id);
-
-      if (setActive) {
-        if (otherOrg) {
-          await setActive({ organization: otherOrg.organization.id });
-        } else {
-          await setActive({ organization: null });
-        }
-      }
-
-      toast({
-        title: 'Success',
-        description: 'Organization deleted',
-      });
-
-      router.push('/organizations');
-    } catch (_error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to delete organization',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsDeleting(false);
-    }
+  const handleDelete = async () => {
+    if (!organization) return;
+    await deleteOrganization(organization.id);
   };
 
   return (
@@ -197,41 +97,60 @@ export default function OrganizationGeneralPage() {
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="flex items-center gap-6">
-            <Avatar className="h-20 w-20">
+            <Avatar className="h-20 w-20 shrink-0">
               <AvatarImage src={organization.imageUrl} alt={organization.name} />
               <AvatarFallback className="text-2xl">
                 {organization.name.slice(0, 2).toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <div className="flex-1 space-y-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleClickUpload}
-                disabled={isUploadingImage}
-              >
-                {isUploadingImage ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Uploading...
-                  </>
-                ) : (
-                  <>
-                    <Upload className="h-4 w-4 mr-2" />
-                    Update profile
-                  </>
+            <div className="flex-1">
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={isUploadingLogo}
+                  onClick={() => fileInputRef.current?.click()}
+                  type="button"
+                >
+                  {isUploadingLogo ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-4 w-4 mr-2" />
+                      Upload image
+                    </>
+                  )}
+                </Button>
+                {organization.imageUrl && organization.imageUrl.trim() && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={isDeletingLogo}
+                    onClick={deleteLogo}
+                    type="button"
+                  >
+                    {isDeletingLogo ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Removing...
+                      </>
+                    ) : (
+                      'Remove'
+                    )}
+                  </Button>
                 )}
-              </Button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/jpeg,image/jpg,image/png"
-                onChange={handleImageUpload}
-                className="hidden"
-              />
-              <p className="text-xs text-muted-foreground">
-                JPEG or PNG. Square image, at least 400x400px. Max 5MB.
-              </p>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/jpg,image/png"
+                  onChange={handleImageChange}
+                  className="hidden"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">Recommend size 1:1, up to 2mb</p>
             </div>
           </div>
 
@@ -316,8 +235,8 @@ export default function OrganizationGeneralPage() {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={handleLeaveOrganization}>
-                        Leave organization
+                      <AlertDialogAction onClick={handleLeave} disabled={isLeaving}>
+                        {isLeaving ? 'Leaving...' : 'Leave organization'}
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
@@ -358,7 +277,7 @@ export default function OrganizationGeneralPage() {
                       </AlertDialogHeader>
                       <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDeleteOrganization}>
+                        <AlertDialogAction onClick={handleDelete}>
                           Delete organization
                         </AlertDialogAction>
                       </AlertDialogFooter>
