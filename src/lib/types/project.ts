@@ -4,10 +4,7 @@ export interface CreateProjectData {
   prompt: string;
   github: {
     type: 'create' | 'import';
-    repositoryName?: string; // For create mode
-    repositoryUrl?: string; // For import mode
-    description?: string;
-    isPrivate?: boolean;
+    repositoryUrl?: string;
   };
 }
 

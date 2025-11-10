@@ -3,20 +3,53 @@ import type {
   GitHubRepoResponse,
   GitHubRepository,
 } from '@/lib/types/github';
-import type { RestEndpointMethodTypes } from '@octokit/rest';
-import { createOctokit } from './client';
+import crypto from 'crypto';
+import { createKosukeOctokit, createOctokit, getKosukeOrg } from './client';
 
-export async function listUserRepositories(userId: string): Promise<GitHubRepository[]> {
+export async function listUserRepositories(
+  userId: string,
+  page: number = 1,
+  perPage: number = 10,
+  search: string = ''
+): Promise<{ repositories: GitHubRepository[]; hasMore: boolean }> {
   const octokit = await createOctokit(userId);
-  const repos = await octokit.paginate(octokit.rest.repos.listForAuthenticatedUser, {
-    per_page: 100,
-    sort: 'updated',
-  });
-  // Octokit returns slightly different shapes; normalize to our type
-  return repos.map(
-    (
-      repo: RestEndpointMethodTypes['repos']['listForAuthenticatedUser']['response']['data'][0]
-    ) => ({
+
+  let repositories: GitHubRepository[];
+  let hasMore: boolean;
+
+  if (search) {
+    // Use search API when search term is provided
+    const searchResponse = await octokit.rest.search.repos({
+      q: `${search} in:name user:@me`,
+      per_page: perPage,
+      page,
+      sort: 'updated',
+    });
+
+    repositories = searchResponse.data.items.map(repo => ({
+      id: repo.id,
+      name: repo.name,
+      full_name: repo.full_name,
+      description: repo.description,
+      private: repo.private ?? false,
+      html_url: repo.html_url,
+      clone_url: repo.clone_url ?? '',
+      default_branch: repo.default_branch ?? 'main',
+      language: repo.language as string | null,
+      created_at: repo.created_at as unknown as string,
+      updated_at: repo.updated_at as unknown as string,
+    }));
+
+    hasMore = searchResponse.data.items.length === perPage;
+  } else {
+    // Use regular list when no search
+    const response = await octokit.rest.repos.listForAuthenticatedUser({
+      per_page: perPage,
+      page,
+      sort: 'updated',
+    });
+
+    repositories = response.data.map(repo => ({
       id: repo.id,
       name: repo.name,
       full_name: repo.full_name,
@@ -28,15 +61,22 @@ export async function listUserRepositories(userId: string): Promise<GitHubReposi
       language: repo.language as string | null,
       created_at: repo.created_at as unknown as string,
       updated_at: repo.updated_at as unknown as string,
-    })
-  );
+    }));
+
+    hasMore = response.data.length === perPage;
+  }
+
+  return { repositories, hasMore };
 }
 
+/**
+ * Create repository in Kosuke organization from template
+ */
 export async function createRepositoryFromTemplate(
-  userId: string,
   request: CreateRepositoryFromTemplateRequest
 ): Promise<GitHubRepoResponse> {
-  const octokit = await createOctokit(userId);
+  const octokit = createKosukeOctokit();
+  const kosukeOrg = getKosukeOrg();
 
   // Parse template repository
   const templateRepo = request.templateRepo;
@@ -45,6 +85,13 @@ export async function createRepositoryFromTemplate(
     throw new Error(`Invalid template repository format: ${templateRepo}. Expected 'owner/repo'`);
   }
   const [templateOwner, templateName] = templateRepo.split('/', 2);
+
+  // Sanitize repo name
+  const sanitizedName = request.name
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, '-')
+    .replace(/-+/g, '-')
+    .substring(0, 50);
 
   // Validate template repository exists and is a template
   try {
@@ -65,17 +112,18 @@ export async function createRepositoryFromTemplate(
     throw error;
   }
 
-  // Get authenticated user info
-  const { data: user } = await octokit.rest.users.getAuthenticated();
-
-  // Check if repository name is already taken
+  // Try with clean name first, add random suffix only if taken
+  let repoName = sanitizedName;
   try {
     const { data: existingRepo } = await octokit.rest.repos.get({
-      owner: user.login,
-      repo: request.name,
+      owner: kosukeOrg,
+      repo: repoName,
     });
     if (existingRepo) {
-      throw new Error(`Repository name is already taken`);
+      // Repo exists, generate unique name with random suffix
+      const shortId = crypto.randomBytes(4).toString('hex');
+      repoName = `${sanitizedName}-${shortId}`;
+      console.log(`Name taken, using unique name: ${repoName}`);
     }
   } catch (error) {
     // If we get a 404, the repo doesn't exist (which is what we want)
@@ -84,23 +132,25 @@ export async function createRepositoryFromTemplate(
     }
   }
 
-  // Create repository from template using GitHub API
+  console.log(`Creating repo in ${kosukeOrg}: ${repoName}`);
+
+  // Create repository from template in Kosuke org
   try {
     const { data: repo } = await octokit.rest.repos.createUsingTemplate({
       template_owner: templateOwner,
       template_repo: templateName,
-      owner: user.login,
-      name: request.name,
-      description: request.description || '',
+      owner: kosukeOrg,
+      name: repoName,
+      description: request.description || `Kosuke project: ${request.name}`,
       private: request.private,
       include_all_branches: false,
     });
 
-    console.log(`Successfully created repository: ${repo.full_name}`);
+    console.log(`✅ Successfully created repository: ${repo.full_name}`);
 
     return {
       name: repo.name,
-      owner: repo.owner?.login || user.login,
+      owner: kosukeOrg,
       url: repo.clone_url || '',
       private: repo.private,
       description: repo.description || undefined,
@@ -110,11 +160,11 @@ export async function createRepositoryFromTemplate(
       const errorMessage = error.message.toLowerCase();
 
       if (errorMessage.includes('already exists') || errorMessage.includes('name already exists')) {
-        throw new Error('Repository name is already taken');
+        throw new Error('Repository name already exists in Kosuke organization');
       }
 
       if (errorMessage.includes('403') || errorMessage.includes('forbidden')) {
-        throw new Error("Insufficient GitHub permissions. Ensure your token has 'repo' scope.");
+        throw new Error('Kosuke service token lacks permissions. Check token scopes.');
       }
 
       if (errorMessage.includes('404') || errorMessage.includes('not found')) {

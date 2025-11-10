@@ -126,12 +126,148 @@ const isPro = subscription?.tier === 'pro' || subscription?.tier === 'business';
 ### Component Architecture & UI Guidelines
 
 - **Shadcn Components**: Use pre-installed components from `./components/ui`
+  - ALWAYS check https://ui.shadcn.com/docs/components before building custom UI
+  - Use `Combobox` for searchable selects, `Command` for search, `Dialog` for modals, etc.
 - **Icons**: Always use Lucide React (`lucide-react` package)
 - **Styling**: Tailwind CSS with Shadcn design tokens
 - **Themes**: Dark/light mode support built-in
 - **Layout**: Responsive design with mobile-first approach
 - **Loading States**: Use Shadcn skeleton components for loading
 - **Error Handling**: Implement proper error boundaries
+- **Navigation**: Use Next.js `Link` component for navigation, NOT buttons with onClick
+
+### Navigation: Links vs Buttons - MANDATORY
+
+**Use semantic HTML for navigation. If it navigates, it should be a link, not a button.**
+
+#### **✅ WHEN TO USE Links (Next.js Link component)**
+
+- **Page navigation** - Navigating to internal routes
+- **External URLs** - Links to external websites
+- **Anchor navigation** - Jump to sections on the page
+- **Any action that changes the URL** - Even if styled as a button
+
+#### **✅ WHEN TO USE Buttons**
+
+- **Form submissions** - Submitting data to server
+- **Data mutations** - Creating, updating, deleting data
+- **Modal/dialog triggers** - Opening/closing UI elements (no URL change)
+- **Client-side actions** - Sorting, filtering, toggling without navigation
+
+#### **🔧 Implementation Patterns**
+
+**✅ CORRECT - Link styled as button for navigation:**
+
+```typescript
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Github } from 'lucide-react';
+
+// Navigation to internal route - use Link
+<Button asChild>
+  <Link href="/settings">
+    <Github className="h-4 w-4 mr-2" />
+    Connect GitHub in Settings
+  </Link>
+</Button>
+
+// External navigation
+<Button asChild variant="outline">
+  <Link href="https://github.com/user/repo" target="_blank" rel="noopener noreferrer">
+    View on GitHub
+  </Link>
+</Button>
+```
+
+**✅ CORRECT - Button for actions (no navigation):**
+
+```typescript
+// Data mutation - use Button with onClick
+<Button onClick={() => createProject(data)}>
+  <FolderPlus className="h-4 w-4 mr-2" />
+  Create Project
+</Button>
+
+// Toggle modal - use Button with onClick
+<Button onClick={() => setIsOpen(true)}>
+  Open Dialog
+</Button>
+```
+
+**❌ WRONG - Button with onClick for navigation:**
+
+```typescript
+// ❌ NO! This breaks accessibility, SEO, and UX
+<Button onClick={() => window.location.href = '/settings'}>
+  <Github className="h-4 w-4 mr-2" />
+  Connect GitHub in Settings
+</Button>
+
+// ❌ NO! This breaks Next.js routing and prefetching
+<Button onClick={() => router.push('/settings')}>
+  Go to Settings
+</Button>
+```
+
+#### **🏗️ Best Practices**
+
+**Accessibility Benefits:**
+
+- Screen readers announce links as navigation elements
+- Links support keyboard navigation (Enter key)
+- Links have proper semantic meaning in the document structure
+
+**SEO Benefits:**
+
+- Search engines can crawl `<a>` tags for site structure
+- Internal links contribute to page ranking
+- Proper link structure helps with site discovery
+
+**UX Benefits:**
+
+- Right-click → "Open in new tab" works
+- Cmd/Ctrl + click to open in new tab works
+- Next.js automatically prefetches linked pages on hover
+- Browser back/forward buttons work correctly
+- Links show URL in browser status bar on hover
+
+**Styling:**
+
+- Use `asChild` prop on Shadcn Button to render as Link
+- Button maintains all visual styles while being semantically correct
+- Supports all button variants (default, outline, ghost, etc.)
+
+**Next.js Link Features:**
+
+```typescript
+// Prefetch on hover (default behavior)
+<Link href="/dashboard" prefetch={true}>Dashboard</Link>
+
+// Scroll to top on navigation (default)
+<Link href="/about" scroll={true}>About</Link>
+
+// Replace history instead of push
+<Link href="/login" replace>Login</Link>
+
+// Shallow routing (no server request)
+<Link href="/posts?sort=date" shallow>Sort by Date</Link>
+```
+
+#### **Decision Tree**
+
+**Does this element change the URL or navigate to a different page?**
+
+- ✅ **YES** → Use `Link` (can be styled as button with `asChild`)
+- ❌ **NO** → Use `Button` with `onClick`
+
+**Examples:**
+
+- "Go to Settings" → `Link` styled as button
+- "Save Changes" → `Button` with mutation
+- "View Details" (navigates) → `Link`
+- "Delete Item" (mutation) → `Button`
+- "Open Modal" (no navigation) → `Button`
+- "Next Page" (pagination) → `Link`
 
 ### Loading States & Skeleton Components - MANDATORY
 
