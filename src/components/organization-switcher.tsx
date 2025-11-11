@@ -1,6 +1,6 @@
 'use client';
 
-import { useOrganizationList } from '@clerk/nextjs';
+import { useOrganization, useOrganizationList } from '@clerk/nextjs';
 import { Loader2, Plus, Settings } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -17,7 +17,8 @@ import {
   DropdownMenuSubTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useOrganizationOperations } from '@/hooks/use-organization-operations';
+import { useOrganizationInvitations } from '@/hooks/use-organization-invitations';
+import { useOrganizationSettings } from '@/hooks/use-organization-settings';
 import { getOrganizationDisplayName } from '@/lib/organizations/utils';
 
 interface OrganizationSwitcherComponentProps {
@@ -26,14 +27,9 @@ interface OrganizationSwitcherComponentProps {
 
 export function OrganizationSwitcherComponent({ onClose }: OrganizationSwitcherComponentProps) {
   const router = useRouter();
-  const {
-    organization,
-    createOrganization,
-    isCreating,
-    invitations,
-    acceptInvitation,
-    acceptingInvitationId,
-  } = useOrganizationOperations();
+  const { organization } = useOrganization();
+  const { createOrganization, isCreating } = useOrganizationSettings();
+  const { invitations, acceptInvitation, acceptingInvitationId } = useOrganizationInvitations();
   const {
     userMemberships,
     isLoaded: isListLoaded,

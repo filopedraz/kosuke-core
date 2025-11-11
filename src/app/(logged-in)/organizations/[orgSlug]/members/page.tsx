@@ -37,7 +37,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useOrganizationOperations } from '@/hooks/use-organization-operations';
+import { useOrganizationMembers } from '@/hooks/use-organization-members';
 import { getOrganizationDisplayName } from '@/lib/organizations/utils';
 
 const ITEMS_PER_PAGE = 10;
@@ -63,7 +63,7 @@ export default function OrganizationMembersPage() {
     revokingInvitationId,
     transferOwnership,
     isTransferringOwnership,
-  } = useOrganizationOperations();
+  } = useOrganizationMembers();
 
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');

@@ -1,5 +1,6 @@
 'use client';
 
+import { useOrganization } from '@clerk/nextjs';
 import { Copy, Loader2, Upload } from 'lucide-react';
 import { useRef, useState } from 'react';
 
@@ -21,13 +22,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useOrganizationOperations } from '@/hooks/use-organization-operations';
+import { useOrganizationSettings } from '@/hooks/use-organization-settings';
 import { getOrganizationDisplayName } from '@/lib/organizations/utils';
 
 export default function OrganizationGeneralPage() {
+  const { organization, membership } = useOrganization();
   const {
-    organization,
-    membership,
     uploadLogo,
     isUploadingLogo,
     deleteLogo,
@@ -36,7 +36,7 @@ export default function OrganizationGeneralPage() {
     isDeleting,
     leaveOrganization,
     isLeaving,
-  } = useOrganizationOperations();
+  } = useOrganizationSettings();
 
   const [copiedField, setCopiedField] = useState<'name' | 'id' | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);

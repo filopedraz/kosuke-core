@@ -33,8 +33,15 @@ export async function POST(request: Request) {
     );
 
     if (existingPersonalOrg) {
-      // User already has a personal org, just return success
-      return NextResponse.json({ success: true });
+      // User already has a personal org, return it
+      return NextResponse.json({
+        success: true,
+        data: {
+          clerkOrgId: existingPersonalOrg.organization.id,
+          name: existingPersonalOrg.organization.name,
+          slug: existingPersonalOrg.organization.slug,
+        },
+      });
     }
 
     // Create personal organization with constraints
@@ -49,7 +56,14 @@ export async function POST(request: Request) {
 
     console.log(`✅ Created personal workspace for user: ${personalOrg.id} (${personalOrg.name})`);
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({
+      success: true,
+      data: {
+        clerkOrgId: personalOrg.id,
+        name: personalOrg.name,
+        slug: personalOrg.slug,
+      },
+    });
   } catch (error) {
     console.error('Error creating personal organization:', error);
     return ApiErrorHandler.handle(error);
