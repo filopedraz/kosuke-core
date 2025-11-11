@@ -1,11 +1,12 @@
 import { ApiErrorHandler } from '@/lib/api/errors';
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 
-interface InviteRequestBody {
-  email: string;
-  role?: string;
-}
+const inviteMemberSchema = z.object({
+  email: z.string().regex(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, 'Invalid email address'),
+  role: z.enum(['org:admin', 'org:member']).optional().default('org:member'),
+});
 
 export async function POST(request: Request, { params }: { params: Promise<{ orgId: string }> }) {
   try {
@@ -37,12 +38,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ org
       return ApiErrorHandler.forbidden('Only organization admins can invite members');
     }
 
-    const body: InviteRequestBody = await request.json();
-    const { email, role = 'org:member' } = body;
+    const body = await request.json();
+    const result = inviteMemberSchema.safeParse(body);
 
-    if (!email) {
-      return ApiErrorHandler.badRequest('Email is required');
+    if (!result.success) {
+      return ApiErrorHandler.badRequest(result.error.issues.map(e => e.message).join(', '));
     }
+
+    const { email, role } = result.data;
 
     // Check if user is already a member of the organization
     const existingMember = memberships.data.find(m => m.publicUserData?.identifier === email);

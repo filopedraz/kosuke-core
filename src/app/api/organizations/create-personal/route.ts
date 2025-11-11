@@ -1,7 +1,12 @@
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 
 import { ApiErrorHandler } from '@/lib/api/errors';
+
+const createPersonalWorkspaceSchema = z.object({
+  name: z.string().min(1, 'Workspace name is required').max(100, 'Workspace name too long'),
+});
 
 export async function POST(request: Request) {
   try {
@@ -11,11 +16,13 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { name } = body;
+    const result = createPersonalWorkspaceSchema.safeParse(body);
 
-    if (!name || typeof name !== 'string' || name.trim().length === 0) {
-      return ApiErrorHandler.badRequest('Workspace name is required');
+    if (!result.success) {
+      return ApiErrorHandler.badRequest(result.error.issues.map(e => e.message).join(', '));
     }
+
+    const { name } = result.data;
 
     const clerk = await clerkClient();
 

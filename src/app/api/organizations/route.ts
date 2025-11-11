@@ -1,7 +1,12 @@
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 
 import { ApiErrorHandler } from '@/lib/api/errors';
+
+const createOrganizationSchema = z.object({
+  name: z.string().min(1, 'Organization name is required').max(100, 'Organization name too long'),
+});
 
 export async function POST(request: Request) {
   try {
@@ -14,14 +19,18 @@ export async function POST(request: Request) {
     const name = formData.get('name') as string;
     const logoFile = formData.get('logo') as File | null;
 
-    if (!name || typeof name !== 'string' || name.trim().length === 0) {
-      return ApiErrorHandler.badRequest('Organization name is required');
+    // Validate name
+    const nameResult = createOrganizationSchema.safeParse({ name });
+    if (!nameResult.success) {
+      return ApiErrorHandler.badRequest(nameResult.error.issues.map(e => e.message).join(', '));
     }
+
+    const validatedName = nameResult.data.name;
 
     // Create organization via Clerk
     const clerk = await clerkClient();
     const clerkOrg = await clerk.organizations.createOrganization({
-      name: name.trim(),
+      name: validatedName.trim(),
       createdBy: userId,
       publicMetadata: {
         isPersonal: false,
