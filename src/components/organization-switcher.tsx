@@ -89,7 +89,7 @@ export function OrganizationSwitcherComponent({ onClose }: OrganizationSwitcherC
     }
   };
 
-  const handleCreateOrganization = async (data: { name: string; logo?: File }) => {
+  const handleCreateOrganization = async (data: { name: string }) => {
     await createOrganization(data);
     setCreateDialogOpen(false);
   };
