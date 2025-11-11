@@ -38,13 +38,17 @@ interface UseOrganizationMembersReturn {
 /**
  * Admin-side member management
  * Handles inviting, removing members, revoking invitations, and transferring ownership
+ *
+ * Note: This hook only needs minimal pagination since it only uses the revalidate() function
+ * to refresh data after mutations. The actual member/invitation data is fetched separately
+ * by consuming components (e.g., members page uses useOrganization with proper pagination).
  */
 export function useOrganizationMembers(): UseOrganizationMembersReturn {
   const router = useRouter();
   const { toast } = useToast();
   const { userMemberships, userInvitations } = useOrganizationList({
-    userMemberships: { infinite: true, keepPreviousData: true },
-    userInvitations: { infinite: true, status: 'pending', keepPreviousData: true },
+    userMemberships: { pageSize: 1 }, // Minimal pagination - only need revalidate() function
+    userInvitations: { pageSize: 1, status: 'pending' }, // Minimal pagination - only need revalidate() function
   });
 
   const [isInvitingMember, setIsInvitingMember] = useState(false);
