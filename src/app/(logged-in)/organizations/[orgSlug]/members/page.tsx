@@ -1,7 +1,7 @@
 'use client';
 
 import { useAuth, useOrganization } from '@clerk/nextjs';
-import { Clock, Loader2, Mail, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, Loader2, Mail, X } from 'lucide-react';
 import { useState } from 'react';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -23,11 +23,19 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useOrganizationOperations } from '@/hooks/use-organization-operations';
 import { getOrganizationDisplayName } from '@/lib/organizations/utils';
 
+const ITEMS_PER_PAGE = 10;
+
 export default function OrganizationMembersPage() {
   const { userId } = useAuth();
   const { organization, isLoaded, membership, memberships, invitations } = useOrganization({
-    memberships: { pageSize: 50 },
-    invitations: { pageSize: 50 },
+    memberships: {
+      pageSize: ITEMS_PER_PAGE,
+      keepPreviousData: true,
+    },
+    invitations: {
+      pageSize: ITEMS_PER_PAGE,
+      keepPreviousData: true,
+    },
   });
   const {
     inviteMember,
@@ -85,6 +93,10 @@ export default function OrganizationMembersPage() {
     });
     memberships?.revalidate?.();
   };
+
+  // Calculate total pages
+  const totalMembersPages = Math.ceil((memberships?.count ?? 0) / ITEMS_PER_PAGE);
+  const totalInvitationsPages = Math.ceil((invitations?.count ?? 0) / ITEMS_PER_PAGE);
 
   return (
     <div className="space-y-6">
@@ -147,71 +159,103 @@ export default function OrganizationMembersPage() {
         <CardContent className="space-y-6">
           {/* Members Section */}
           {memberships?.data && memberships.data.length > 0 ? (
-            <div className="space-y-0">
-              {memberships.data.map((member, index) => (
-                <div key={member.id}>
-                  <div className="flex items-center justify-between py-3">
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <Avatar className="h-10 w-10 shrink-0">
-                        <AvatarImage
-                          src={member.publicUserData?.imageUrl}
-                          alt={
-                            member.publicUserData?.firstName ||
-                            member.publicUserData?.identifier ||
-                            'User'
-                          }
-                        />
-                        <AvatarFallback>
-                          {member.publicUserData?.firstName?.charAt(0) ||
-                            member.publicUserData?.identifier?.charAt(0) ||
-                            'U'}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="text-sm font-medium truncate">
-                            {member.publicUserData?.firstName && member.publicUserData?.lastName
-                              ? `${member.publicUserData.firstName} ${member.publicUserData.lastName}`
-                              : member.publicUserData?.identifier || 'Unknown User'}
+            <>
+              <div className="space-y-0">
+                {memberships.data.map((member, index) => (
+                  <div key={member.id}>
+                    <div className="flex items-center justify-between py-3">
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <Avatar className="h-10 w-10 shrink-0">
+                          <AvatarImage
+                            src={member.publicUserData?.imageUrl}
+                            alt={
+                              member.publicUserData?.firstName ||
+                              member.publicUserData?.identifier ||
+                              'User'
+                            }
+                          />
+                          <AvatarFallback>
+                            {member.publicUserData?.firstName?.charAt(0) ||
+                              member.publicUserData?.identifier?.charAt(0) ||
+                              'U'}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-medium truncate">
+                              {member.publicUserData?.firstName && member.publicUserData?.lastName
+                                ? `${member.publicUserData.firstName} ${member.publicUserData.lastName}`
+                                : member.publicUserData?.identifier || 'Unknown User'}
+                            </p>
+                            <span
+                              className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${
+                                member.role === 'org:admin'
+                                  ? 'bg-primary/10 text-primary font-medium'
+                                  : 'bg-muted text-muted-foreground'
+                              }`}
+                            >
+                              {member.role === 'org:admin' ? 'Admin' : 'Member'}
+                            </span>
+                          </div>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {member.publicUserData?.identifier}
                           </p>
-                          <span
-                            className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${
-                              member.role === 'org:admin'
-                                ? 'bg-primary/10 text-primary font-medium'
-                                : 'bg-muted text-muted-foreground'
-                            }`}
-                          >
-                            {member.role === 'org:admin' ? 'Admin' : 'Member'}
-                          </span>
                         </div>
-                        <p className="text-xs text-muted-foreground truncate">
-                          {member.publicUserData?.identifier}
-                        </p>
                       </div>
+                      {isAdmin &&
+                        member.publicUserData?.userId &&
+                        member.publicUserData.userId !== userId &&
+                        !isPersonal && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="shrink-0"
+                            onClick={() => handleRemoveMember(member.publicUserData?.userId)}
+                            disabled={removingMemberId === member.publicUserData?.userId}
+                          >
+                            {removingMemberId === member.publicUserData?.userId ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <X className="h-4 w-4 text-muted-foreground hover:text-destructive" />
+                            )}
+                          </Button>
+                        )}
                     </div>
-                    {isAdmin &&
-                      member.publicUserData?.userId &&
-                      member.publicUserData.userId !== userId &&
-                      !isPersonal && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="shrink-0"
-                          onClick={() => handleRemoveMember(member.publicUserData?.userId)}
-                          disabled={removingMemberId === member.publicUserData?.userId}
-                        >
-                          {removingMemberId === member.publicUserData?.userId ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <X className="h-4 w-4 text-muted-foreground hover:text-destructive" />
-                          )}
-                        </Button>
-                      )}
+                    {index < memberships.data.length - 1 && <Separator />}
                   </div>
-                  {index < memberships.data.length - 1 && <Separator />}
+                ))}
+              </div>
+
+              {/* Members Pagination */}
+              {(memberships.hasPreviousPage || memberships.hasNextPage) && (
+                <div className="flex items-center justify-between pt-2">
+                  <p className="text-sm text-muted-foreground">
+                    Showing {memberships.data.length} of {memberships.count ?? 0} members
+                    {totalMembersPages > 1 && ` (${totalMembersPages} pages)`}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => memberships.fetchPrevious?.()}
+                      disabled={!memberships.hasPreviousPage || memberships.isFetching}
+                    >
+                      <ChevronLeft className="h-4 w-4 mr-1" />
+                      Previous
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => memberships.fetchNext?.()}
+                      disabled={!memberships.hasNextPage || memberships.isFetching}
+                    >
+                      Next
+                      <ChevronRight className="h-4 w-4 ml-1" />
+                    </Button>
+                  </div>
                 </div>
-              ))}
-            </div>
+              )}
+            </>
           ) : (
             <div className="text-center py-8">
               <p className="text-sm text-muted-foreground">No members found</p>
@@ -259,6 +303,36 @@ export default function OrganizationMembersPage() {
                     </div>
                   ))}
                 </div>
+
+                {/* Invitations Pagination */}
+                {(invitations.hasPreviousPage || invitations.hasNextPage) && (
+                  <div className="flex items-center justify-between pt-4">
+                    <p className="text-sm text-muted-foreground">
+                      Showing {invitations.data.length} of {invitations.count ?? 0} invitations
+                      {totalInvitationsPages > 1 && ` (${totalInvitationsPages} pages)`}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => invitations.fetchPrevious?.()}
+                        disabled={!invitations.hasPreviousPage || invitations.isFetching}
+                      >
+                        <ChevronLeft className="h-4 w-4 mr-1" />
+                        Previous
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => invitations.fetchNext?.()}
+                        disabled={!invitations.hasNextPage || invitations.isFetching}
+                      >
+                        Next
+                        <ChevronRight className="h-4 w-4 ml-1" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             </>
           )}
@@ -278,8 +352,9 @@ function OrganizationMembersSkeleton() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <Skeleton className="h-16 w-full" />
-            <Skeleton className="h-16 w-full" />
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-16 w-full" />
+            ))}
           </div>
         </CardContent>
       </Card>
