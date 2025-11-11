@@ -41,6 +41,11 @@ interface RevokeInvitationParams {
   organizationId: string;
 }
 
+interface TransferOwnershipParams {
+  newOwnerId: string;
+  organizationId: string;
+}
+
 interface UseOrganizationOperationsReturn {
   // Creation
   createOrganization: (params: CreateOrganizationParams) => Promise<void>;
@@ -73,6 +78,8 @@ interface UseOrganizationOperationsReturn {
   removingMemberId: string | null;
   revokeInvitation: (params: RevokeInvitationParams) => Promise<void>;
   revokingInvitationId: string | null;
+  transferOwnership: (params: TransferOwnershipParams) => Promise<void>;
+  isTransferringOwnership: boolean;
 
   // Current organization
   organization: ReturnType<typeof useOrganization>['organization'];
@@ -98,6 +105,7 @@ export function useOrganizationOperations(): UseOrganizationOperationsReturn {
   const [isInvitingMember, setIsInvitingMember] = useState(false);
   const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
   const [revokingInvitationId, setRevokingInvitationId] = useState<string | null>(null);
+  const [isTransferringOwnership, setIsTransferringOwnership] = useState(false);
 
   // Process invitations from Clerk
   useEffect(() => {
@@ -250,7 +258,10 @@ export function useOrganizationOperations(): UseOrganizationOperationsReturn {
         method: 'DELETE',
       });
 
-      if (!response.ok) throw new Error('Failed to delete organization');
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to delete organization');
+      }
 
       const otherOrg = userMemberships.data?.find(m => m.organization.id !== orgId);
 
@@ -271,13 +282,14 @@ export function useOrganizationOperations(): UseOrganizationOperationsReturn {
       await userMemberships.revalidate?.();
 
       router.push('/projects');
-    } catch (_error) {
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to delete organization';
       toast({
         title: 'Error',
-        description: 'Failed to delete organization',
+        description: message,
         variant: 'destructive',
       });
-      throw _error;
+      throw error;
     } finally {
       setIsDeleting(false);
     }
@@ -511,6 +523,51 @@ export function useOrganizationOperations(): UseOrganizationOperationsReturn {
     }
   };
 
+  const transferOwnership = async ({ newOwnerId, organizationId }: TransferOwnershipParams) => {
+    if (!newOwnerId) {
+      toast({
+        title: 'Error',
+        description: 'New owner ID is required',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsTransferringOwnership(true);
+    try {
+      const response = await fetch(`/api/organizations/${organizationId}/transfer-ownership`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newOwnerId }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to transfer ownership');
+      }
+
+      toast({
+        title: 'Success',
+        description: 'Organization ownership transferred successfully',
+      });
+
+      // Revalidate memberships to reflect role changes
+      await userMemberships.revalidate?.();
+
+      // Refresh the page to update UI with new permissions
+      router.refresh();
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to transfer ownership',
+        variant: 'destructive',
+      });
+      throw error;
+    } finally {
+      setIsTransferringOwnership(false);
+    }
+  };
+
   return {
     createOrganization,
     isCreating,
@@ -532,6 +589,8 @@ export function useOrganizationOperations(): UseOrganizationOperationsReturn {
     removingMemberId,
     revokeInvitation,
     revokingInvitationId,
+    transferOwnership,
+    isTransferringOwnership,
     organization,
     membership,
   };

@@ -6,6 +6,14 @@ import { db } from '@/lib/db/drizzle';
 import { organizations, projects } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 
+/**
+ * DELETE /api/organizations/[orgId]
+ *
+ * Deletes an organization. Requires:
+ * - User must be an admin
+ * - Organization cannot be personal
+ *
+ */
 export async function DELETE(request: Request, { params }: { params: Promise<{ orgId: string }> }) {
   try {
     const { userId } = await auth();

@@ -1,7 +1,17 @@
 'use client';
 
 import { useAuth, useOrganization } from '@clerk/nextjs';
-import { ChevronLeft, ChevronRight, Clock, Loader2, Mail, X } from 'lucide-react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  Loader2,
+  Mail,
+  MoreVertical,
+  Repeat,
+  Trash2,
+  X,
+} from 'lucide-react';
 import { useState } from 'react';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -16,6 +26,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
@@ -44,10 +61,18 @@ export default function OrganizationMembersPage() {
     removingMemberId,
     revokeInvitation,
     revokingInvitationId,
+    transferOwnership,
+    isTransferringOwnership,
   } = useOrganizationOperations();
 
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
+  const [transferringUserId, setTransferringUserId] = useState<string | null>(null);
+  const [transferDialogOpen, setTransferDialogOpen] = useState(false);
+  const [transferTarget, setTransferTarget] = useState<{
+    userId: string;
+    name: string;
+  } | null>(null);
 
   if (!isLoaded) {
     return <OrganizationMembersSkeleton />;
@@ -66,6 +91,11 @@ export default function OrganizationMembersPage() {
   const isPersonal = organization.publicMetadata?.isPersonal === true;
   const isAdmin = membership?.role === 'org:admin';
   const displayName = getOrganizationDisplayName(organization.name, isPersonal);
+
+  // Get creator ID from organization metadata, fallback to checking if user is admin
+  // (since we only have single admin model, admin = owner)
+  const creatorId = organization.publicMetadata?.creatorId as string | undefined;
+  const isCreator = creatorId ? userId === creatorId : isAdmin;
 
   const handleInviteMember = async () => {
     await inviteMember({
@@ -94,12 +124,72 @@ export default function OrganizationMembersPage() {
     memberships?.revalidate?.();
   };
 
+  const openTransferDialog = (userId: string, memberName: string) => {
+    setTransferTarget({ userId, name: memberName });
+    setTransferDialogOpen(true);
+  };
+
+  const handleTransferOwnership = async () => {
+    if (!transferTarget) return;
+
+    setTransferringUserId(transferTarget.userId);
+    setTransferDialogOpen(false);
+
+    try {
+      await transferOwnership({
+        newOwnerId: transferTarget.userId,
+        organizationId: organization.id,
+      });
+      memberships?.revalidate?.();
+    } finally {
+      setTransferringUserId(null);
+      setTransferTarget(null);
+    }
+  };
+
   // Calculate total pages
   const totalMembersPages = Math.ceil((memberships?.count ?? 0) / ITEMS_PER_PAGE);
   const totalInvitationsPages = Math.ceil((invitations?.count ?? 0) / ITEMS_PER_PAGE);
 
   return (
     <div className="space-y-6">
+      {/* Transfer Ownership Confirmation Dialog */}
+      <Dialog open={transferDialogOpen} onOpenChange={setTransferDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Transfer Ownership</DialogTitle>
+            <DialogDescription>
+              Transfer organization ownership to <strong>{transferTarget?.name}</strong>?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-3">
+            <p className="text-sm text-muted-foreground">
+              You will lose admin privileges and become a regular member. This action cannot be
+              undone.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTransferDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleTransferOwnership}
+              disabled={isTransferringOwnership}
+            >
+              {isTransferringOwnership ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Transferring...
+                </>
+              ) : (
+                'Transfer'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -206,19 +296,58 @@ export default function OrganizationMembersPage() {
                         member.publicUserData?.userId &&
                         member.publicUserData.userId !== userId &&
                         !isPersonal && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="shrink-0"
-                            onClick={() => handleRemoveMember(member.publicUserData?.userId)}
-                            disabled={removingMemberId === member.publicUserData?.userId}
-                          >
-                            {removingMemberId === member.publicUserData?.userId ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <X className="h-4 w-4 text-muted-foreground hover:text-destructive" />
-                            )}
-                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="shrink-0"
+                                disabled={
+                                  removingMemberId === member.publicUserData?.userId ||
+                                  transferringUserId === member.publicUserData?.userId ||
+                                  isTransferringOwnership
+                                }
+                              >
+                                {removingMemberId === member.publicUserData?.userId ||
+                                transferringUserId === member.publicUserData?.userId ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <MoreVertical className="h-4 w-4 text-muted-foreground" />
+                                )}
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              {/* Only show transfer option if current user is creator/admin */}
+                              {isCreator && (
+                                <>
+                                  <DropdownMenuItem
+                                    onClick={() => {
+                                      const memberName =
+                                        member.publicUserData?.firstName &&
+                                        member.publicUserData?.lastName
+                                          ? `${member.publicUserData.firstName} ${member.publicUserData.lastName}`
+                                          : member.publicUserData?.identifier || 'this member';
+                                      openTransferDialog(
+                                        member.publicUserData!.userId!,
+                                        memberName
+                                      );
+                                    }}
+                                  >
+                                    <Repeat className="h-4 w-4 mr-2" />
+                                    Transfer
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                </>
+                              )}
+                              <DropdownMenuItem
+                                onClick={() => handleRemoveMember(member.publicUserData?.userId)}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2 text-destructive" />
+                                Remove
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         )}
                     </div>
                     {index < memberships.data.length - 1 && <Separator />}

@@ -1,27 +1,33 @@
 'use client';
 
 import { useClerk } from '@clerk/nextjs';
-import { AlertTriangle, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
-type FormState = {
-  error?: string;
-  success?: string;
-} | null;
-
 export default function SecurityPage() {
   const [isDeleting, setIsDeleting] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [deleteFormState, setDeleteFormState] = useState<FormState>(null);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const { signOut } = useClerk();
 
   const handleAccountDelete = async () => {
     setIsDeleting(true);
+    setError(null);
 
     try {
       const response = await fetch('/api/user/delete-account', {
@@ -35,11 +41,11 @@ export default function SecurityPage() {
         await signOut();
         router.push('/');
       } else {
-        setDeleteFormState({ error: result.error || 'Failed to delete account' });
+        setError(result.error || 'Failed to delete account');
       }
     } catch (error) {
       console.error('Error deleting account:', error);
-      setDeleteFormState({ error: 'Failed to delete account' });
+      setError('Failed to delete account');
     } finally {
       setIsDeleting(false);
     }
@@ -47,68 +53,58 @@ export default function SecurityPage() {
 
   return (
     <div className="space-y-6">
-      <Card className="border-destructive/20">
-        <CardHeader>
-          <CardTitle className="text-destructive">Danger Zone</CardTitle>
-          <CardDescription>
-            Permanently delete your account and all associated data.
-          </CardDescription>
+      <Card className="border-destructive/50">
+        <CardHeader className="space-y-4">
+          {error && (
+            <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-3">
+              <p className="text-sm text-destructive">{error}</p>
+            </div>
+          )}
+          <div>
+            <CardTitle className="text-destructive">Danger Zone</CardTitle>
+            <CardDescription>
+              Permanently delete your account and all associated data.
+            </CardDescription>
+          </div>
         </CardHeader>
         <CardContent>
-          {!showDeleteConfirm ? (
-            <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium">Delete account</p>
               <p className="text-sm text-muted-foreground">
-                Once you delete your account, there is no going back. This action cannot be undone.
+                This will permanently delete all your data and cannot be undone
               </p>
-              <Button variant="destructive" onClick={() => setShowDeleteConfirm(true)}>
-                Delete Account
-              </Button>
             </div>
-          ) : (
-            <div className="space-y-6">
-              <div className="rounded-md bg-destructive/10 p-4 flex items-start gap-3">
-                <AlertTriangle className="h-5 w-5 text-destructive mt-0.5" />
-                <div>
-                  <h4 className="text-sm font-medium text-destructive">
-                    Warning: This action is irreversible
-                  </h4>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    All your data, including projects, settings, and history will be permanently
-                    deleted.
-                  </p>
-                </div>
-              </div>
-
-              {deleteFormState?.error && (
-                <div className="rounded-md bg-destructive/10 p-3">
-                  <div className="text-sm text-destructive">{deleteFormState.error}</div>
-                </div>
-              )}
-
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setShowDeleteConfirm(false);
-                    setDeleteFormState(null);
-                  }}
-                >
-                  Cancel
-                </Button>
-                <Button onClick={handleAccountDelete} variant="destructive" disabled={isDeleting}>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" disabled={isDeleting}>
                   {isDeleting ? (
                     <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                       Deleting...
                     </>
                   ) : (
-                    'Confirm Delete'
+                    'Delete account'
                   )}
                 </Button>
-              </div>
-            </div>
-          )}
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete Account?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will permanently delete your account, all projects, settings, and history.
+                    This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleAccountDelete}>
+                    Delete account
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
         </CardContent>
       </Card>
     </div>

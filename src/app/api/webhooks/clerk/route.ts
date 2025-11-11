@@ -183,14 +183,68 @@ async function handleUserUpdated(clerkUser: ClerkUser) {
 
 async function handleUserDeleted(clerkUser: ClerkUser) {
   try {
-    // Hard delete user from database (will cascade delete related records)
-    await db.delete(users).where(eq(users.clerkUserId, clerkUser.id));
+    const userId = clerkUser.id;
 
-    console.log(`✅ Deleted user from database: ${clerkUser.id}`);
+    // Step 1: Handle organization cleanup BEFORE deleting user
+    // Query DB for organizations where this user is the creator
+    const userOrganizations = await db
+      .select()
+      .from(organizations)
+      .where(eq(organizations.createdBy, userId));
+
+    console.log(`📋 Found ${userOrganizations.length} organization(s) created by user ${userId}`);
+
+    // Step 2: Process each organization
+    for (const org of userOrganizations) {
+      try {
+        await handleOrganizationOnUserDeletion(org);
+      } catch (orgError) {
+        console.error(`⚠️ Failed to process organization ${org.clerkOrgId}:`, orgError);
+        // Continue processing other orgs even if one fails
+      }
+    }
+
+    // Step 3: Hard delete user from database (will cascade delete related records)
+    await db.delete(users).where(eq(users.clerkUserId, userId));
+
+    console.log(`✅ Deleted user from database: ${userId}`);
   } catch (error) {
     console.error('Error deleting user from database:', error);
     throw error;
   }
+}
+
+/**
+ * Handle organization cleanup when its creator is deleted
+ *
+ * At this point, the DELETE route has already validated that:
+ * - Team orgs with other members have been handled (user was blocked from deleting)
+ * - Only personal workspaces and empty team orgs reach this point
+ *
+ * This function simply deletes the organization from DB.
+ * The organization.deleted webhook will handle Clerk cleanup if needed.
+ */
+async function handleOrganizationOnUserDeletion(org: typeof organizations.$inferSelect) {
+  const { clerkOrgId, isPersonal, name } = org;
+
+  try {
+    // Delete from Clerk (will trigger organization.deleted webhook)
+    const { clerkClient } = await import('@clerk/nextjs/server');
+    const clerk = await clerkClient();
+
+    await clerk.organizations.deleteOrganization(clerkOrgId);
+    console.log(
+      `🗑️ Deleted organization from Clerk: ${clerkOrgId} (${name}) - ${isPersonal ? 'personal' : 'team'}`
+    );
+  } catch (clerkError) {
+    console.error(`⚠️ Failed to delete org ${clerkOrgId} from Clerk:`, clerkError);
+    // Continue to DB deletion even if Clerk fails
+  }
+
+  // Delete from database directly (organization.deleted webhook will also try, but that's idempotent)
+  // This will cascade delete projects
+  await db.delete(organizations).where(eq(organizations.clerkOrgId, clerkOrgId));
+  console.log(`🗑️ Deleted organization from DB: ${clerkOrgId} (${name})`);
 }
 
 // Organization webhook handlers
