@@ -70,13 +70,21 @@ export async function GET(
         // Fetch environment variables for the project
         const envVars = await getProjectEnvironmentVariables(projectId);
 
+        // Validate GitHub repository URL
+        if (!project.githubRepoUrl) {
+          return NextResponse.json(
+            { error: 'Project does not have a GitHub repository configured' },
+            { status: 400 }
+          );
+        }
+
         // Start preview
         const url = await dockerService.startPreview(
           projectId,
           sessionId,
           envVars,
           userId,
-          project.defaultBranch || 'main'
+          project.githubRepoUrl
         );
 
         // Get updated status
@@ -167,6 +175,14 @@ export async function POST(
     const envVarsTime = performance.now() - envVarsStart;
     console.log(`⏱️  [Preview POST] getProjectEnvironmentVariables took ${envVarsTime.toFixed(2)}ms`);
 
+    // Validate GitHub repository URL
+    if (!project.githubRepoUrl) {
+      return NextResponse.json(
+        { error: 'Project does not have a GitHub repository configured' },
+        { status: 400 }
+      );
+    }
+
     // Start preview using singleton DockerService instance
     const dockerService = getDockerService();
     const url = await dockerService.startPreview(
@@ -174,7 +190,7 @@ export async function POST(
       sessionId,
       envVars,
       userId,
-      project.defaultBranch || 'main'
+      project.githubRepoUrl
     );
 
     // Get status to check if responding

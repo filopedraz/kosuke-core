@@ -3,7 +3,6 @@
  * Manages Docker containers for preview environments
  */
 
-import { sessionManager } from '@/lib/sessions';
 import type { DockerContainerStatus, RouteInfo } from '@/lib/types/docker';
 import type { PreviewUrl, PreviewUrlsResponse } from '@/lib/types/preview-urls';
 import { DockerClient, type ContainerCreateRequest } from '@docker/node-sdk';
@@ -82,6 +81,7 @@ class DockerService {
   private prepareContainerEnvironment(
     projectId: number,
     sessionId: string,
+    githubRepoUrl: string,
     envVars: Record<string, string> = {}
   ): string[] {
     const postgresUrl =
@@ -93,6 +93,8 @@ class DockerService {
       NODE_ENV: 'development',
       PORT: '3000',
       POSTGRES_URL: postgresUrl,
+      REPO_URL: githubRepoUrl,
+      SESSION_ID: sessionId,
       ...envVars,
     };
 
@@ -116,10 +118,7 @@ class DockerService {
       console.log(`Pulling preview image ${imageName}...`);
       try {
         // imageCreate takes a callback as first parameter and options as second
-        await client.imageCreate(
-          () => {}, // Empty callback - we don't need to process events
-          { fromImage: imageName }
-        );
+        await client.imageCreate({ fromImage: imageName });
         console.log(`Successfully pulled preview image ${imageName}`);
       } catch (pullError) {
         throw new Error(
@@ -199,14 +198,9 @@ class DockerService {
    */
   private createContainerConfig(
     environment: string[],
-    hostPath: string,
     routeInfo: RouteInfo
   ): ContainerCreateRequest {
-    // Build binds array starting with the main path mount
-    const binds = [`${hostPath}:/app:rw`, `/app/node_modules`, `/app/.next`];
-
     const baseHostConfig = {
-      Binds: binds,
       NetworkMode: this.config.previewNetwork,
       AutoRemove: false,
     };
@@ -217,6 +211,7 @@ class DockerService {
       Labels: routeInfo.labels,
       WorkingDir: '/app',
       HostConfig: baseHostConfig,
+      Cmd: ['bun', 'run', 'dev', '--', '-H', '0.0.0.0', '--turbopack'],
     };
 
     // Add port bindings for port mode
@@ -239,7 +234,6 @@ class DockerService {
     projectId: number,
     sessionId: string,
     environment: string[],
-    hostPath: string,
     containerName: string
   ): Promise<string> {
     await this.ensurePreviewImage();
@@ -255,13 +249,14 @@ class DockerService {
       );
 
       try {
-        const config = this.createContainerConfig(environment, hostPath, routeInfo);
+        const config = this.createContainerConfig(environment, routeInfo);
 
         // Create and start container - pass name as option, not in body
         const createResponse = await client.containerCreate(config, { name: containerName });
         await client.containerStart(createResponse.Id);
 
         console.log(`Successfully started container ${containerName}`);
+
         return routeInfo.url;
       } catch (error: unknown) {
         lastError = error as Error;
@@ -338,14 +333,12 @@ class DockerService {
     sessionId: string,
     envVars: Record<string, string> = {},
     userId: string,
-    defaultBranch: string = 'main'
+    githubRepoUrl: string
   ): Promise<string> {
     const containerName = this.getContainerName(projectId, sessionId);
-    const isSessionDefaultBranch = sessionId === defaultBranch;
 
     console.log(
-      `Starting preview for project ${projectId} session ${sessionId} as ${containerName}` +
-        ` (${isSessionDefaultBranch ? 'default branch' : 'feature branch'})`
+      `Starting preview for project ${projectId} session ${sessionId} as ${containerName}`
     );
 
     // Check Docker availability
@@ -362,37 +355,36 @@ class DockerService {
       throw new Error('Docker is not available');
     }
 
-    // Ensure session directory exists (create if needed)
-    const sessionEnvStart = performance.now();
-    await sessionManager.ensureSessionEnvironment(projectId, sessionId, userId);
-    const sessionEnvTime = performance.now() - sessionEnvStart;
-    console.log(`⏱️  [DockerService] ensureSessionEnvironment took ${sessionEnvTime.toFixed(2)}ms`);
-
     // Reuse existing running container if possible
     const existingUrl = await this.getExistingContainerUrlOrRemove(containerName);
     if (existingUrl) {
       return existingUrl;
     }
 
-    // Determine which path to use for container mount
-    const hostPath = isSessionDefaultBranch
-      ? this.getHostProjectPath(projectId)
-      : this.getHostSessionPath(projectId, sessionId);
-
-    console.log(
-      `Mounting ${isSessionDefaultBranch ? 'project' : 'session'} path: ${hostPath}` +
-        (!isSessionDefaultBranch ? ' (with node_modules from project)' : '')
+    // Get GitHub token for cloning inside container
+    const { getGitHubToken } = await import('@/lib/github/auth');
+    const githubToken = await getGitHubToken(userId);
+    if (!githubToken) {
+      throw new Error('GitHub token required for preview creation');
+    }
+    const authenticatedUrl = githubRepoUrl.replace(
+      'https://github.com/',
+      `https://x-access-token:${githubToken}@github.com/`
     );
 
     // Prepare environment and create container
-    const environment = this.prepareContainerEnvironment(projectId, sessionId, envVars);
+    const environment = this.prepareContainerEnvironment(
+      projectId,
+      sessionId,
+      authenticatedUrl,
+      envVars
+    );
 
     const containerCreateStart = performance.now();
     const url = await this.runContainerWithRetries(
       projectId,
       sessionId,
       environment,
-      hostPath,
       containerName
     );
     const containerCreateTime = performance.now() - containerCreateStart;

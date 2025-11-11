@@ -1,7 +1,7 @@
 FROM oven/bun:1.3.1-alpine
 
-# Install bash and PostgreSQL client for the entrypoint script
-RUN apk add --no-cache bash postgresql-client
+# Install required tools: bash, git, postgresql-client
+RUN apk add --no-cache bash git postgresql-client openssh-client
 
 WORKDIR /app
 
