@@ -130,7 +130,8 @@ export async function getUserOrganizationMemberships(userId: string): Promise<Ca
 /**
  * Clean up organization memberships using cached membership data
  * - Deletes personal workspaces
- * - Leaves non-personal organizations
+ * - Deletes shared orgs if user is last member or last admin
+ * - Leaves non-personal organizations if other members remain
  * Note: userId may be deleted from Clerk at this point
  */
 export async function cleanupCachedOrganizations(userId: string, memberships: CachedMembership[]) {
@@ -151,17 +152,57 @@ export async function cleanupCachedOrganizations(userId: string, memberships: Ca
         await clerk.organizations.deleteOrganization(orgId);
         console.log(`🗑️ Deleted personal workspace: ${orgId} (${org.name})`);
       } else {
-        // Leave non-personal organizations
-        // Note: This might fail if user is already deleted from Clerk
+        // For shared organizations, check if user is last member or last admin
         try {
-          await clerk.organizations.deleteOrganizationMembership({
+          const orgMemberships = await clerk.organizations.getOrganizationMembershipList({
             organizationId: orgId,
-            userId,
           });
-          console.log(`👋 Left organization: ${orgId} (${org.name})`);
-        } catch (_membershipError) {
-          // If user is already deleted, this will fail - that's ok, user is already removed
-          console.log(`ℹ️ Could not remove membership for ${orgId} (user likely already deleted)`);
+
+          const totalMembers = orgMemberships.totalCount;
+          const adminMembers = orgMemberships.data.filter(m => m.role === 'org:admin');
+          const isLastAdmin =
+            adminMembers.length === 1 && adminMembers[0]?.publicUserData?.userId === userId;
+
+          if (totalMembers <= 1 || isLastAdmin) {
+            // Delete the org if user is the last member or last admin
+            await clerk.organizations.deleteOrganization(orgId);
+
+            // Also clean up DB directly
+            await db.delete(projects).where(eq(projects.clerkOrgId, orgId));
+            await db.delete(organizations).where(eq(organizations.clerkOrgId, orgId));
+
+            console.log(
+              `🗑️ Deleted organization ${orgId} (${org.name}) - ${totalMembers <= 1 ? 'last member' : 'last admin'}`
+            );
+          } else {
+            // Remove user membership (may fail if user already deleted)
+            try {
+              await clerk.organizations.deleteOrganizationMembership({
+                organizationId: orgId,
+                userId,
+              });
+              console.log(`👋 Left organization: ${orgId} (${org.name})`);
+            } catch (_membershipError) {
+              // If user is already deleted, this will fail - that's ok, user is already removed
+              console.log(
+                `ℹ️ Could not remove membership for ${orgId} (user likely already deleted)`
+              );
+            }
+          }
+        } catch (membershipError) {
+          // If we can't get memberships, try to leave anyway
+          console.error(`⚠️ Could not check memberships for ${orgId}:`, membershipError);
+          try {
+            await clerk.organizations.deleteOrganizationMembership({
+              organizationId: orgId,
+              userId,
+            });
+            console.log(`👋 Left organization: ${orgId} (${org.name})`);
+          } catch (_fallbackError) {
+            console.log(
+              `ℹ️ Could not remove membership for ${orgId} (user likely already deleted)`
+            );
+          }
         }
       }
     } catch (orgError) {
