@@ -70,12 +70,21 @@ export async function GET(
         // Fetch environment variables for the project
         const envVars = await getProjectEnvironmentVariables(projectId);
 
+        // Validate GitHub repository URL
+        if (!project.githubRepoUrl) {
+          return NextResponse.json(
+            { error: 'Project does not have a GitHub repository configured' },
+            { status: 400 }
+          );
+        }
+
         // Start preview
         const url = await dockerService.startPreview(
           projectId,
           sessionId,
           envVars,
-          userId
+          userId,
+          project.githubRepoUrl
         );
 
         // Get updated status
@@ -142,6 +151,7 @@ export async function POST(
     // If this is the default branch, allow starting preview without a chat session record
     const isDefaultBranchSession = sessionId === project.defaultBranch;
     if (!isDefaultBranchSession) {
+      const sessionQueryStart = performance.now();
       const [session] = await db
         .select()
         .from(chatSessions)
@@ -151,6 +161,8 @@ export async function POST(
             eq(chatSessions.sessionId, sessionId)
           )
         );
+      const sessionQueryTime = performance.now() - sessionQueryStart;
+      console.log(`⏱️  [Preview POST] Session DB query took ${sessionQueryTime.toFixed(2)}ms`);
 
       if (!session) {
         return ApiErrorHandler.chatSessionNotFound();
@@ -158,7 +170,18 @@ export async function POST(
     }
 
     // Fetch environment variables for the project
+    const envVarsStart = performance.now();
     const envVars = await getProjectEnvironmentVariables(projectId);
+    const envVarsTime = performance.now() - envVarsStart;
+    console.log(`⏱️  [Preview POST] getProjectEnvironmentVariables took ${envVarsTime.toFixed(2)}ms`);
+
+    // Validate GitHub repository URL
+    if (!project.githubRepoUrl) {
+      return NextResponse.json(
+        { error: 'Project does not have a GitHub repository configured' },
+        { status: 400 }
+      );
+    }
 
     // Start preview using singleton DockerService instance
     const dockerService = getDockerService();
@@ -166,7 +189,8 @@ export async function POST(
       projectId,
       sessionId,
       envVars,
-      userId
+      userId,
+      project.githubRepoUrl
     );
 
     // Get status to check if responding

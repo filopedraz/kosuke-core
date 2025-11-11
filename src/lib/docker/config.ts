@@ -11,7 +11,7 @@ import type { DockerConfig, RouterMode } from '@/lib/types/docker';
 export function getDockerConfig(): DockerConfig {
   // Preview image settings
   const previewDefaultImage =
-    process.env.PREVIEW_DEFAULT_IMAGE || 'ghcr.io/kosuke-org/kosuke-template:v1.8.0';
+    process.env.PREVIEW_DEFAULT_IMAGE || 'ghcr.io/kosuke-org/kosuke-template:latest';
 
   // Port mode settings
   const previewPortRangeStart = parseInt(process.env.PREVIEW_PORT_RANGE_START || '3001', 10);

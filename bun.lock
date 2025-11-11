@@ -7,7 +7,7 @@
         "@anthropic-ai/sdk": "^0.68.0",
         "@clerk/nextjs": "^6.34.1",
         "@clerk/themes": "^2.4.30",
-        "@docker/node-sdk": "^0.0.11",
+        "@docker/node-sdk": "^0.0.17",
         "@hookform/resolvers": "^5.2.2",
         "@octokit/rest": "^22.0.0",
         "@radix-ui/react-accordion": "^1.2.12",
@@ -210,7 +210,7 @@
 
     "@date-fns/tz": ["@date-fns/tz@1.4.1", "", {}, "sha512-P5LUNhtbj6YfI3iJjw5EL9eUAG6OitD0W3fWQcpQjDRc/QIsL0tRNuO1PcDvPccWL1fSTXXdE1ds+l95DV/OFA=="],
 
-    "@docker/node-sdk": ["@docker/node-sdk@0.0.11", "", { "dependencies": { "ssh2": "^1.16.0", "tar-stream": "^3.1.4", "undici": "^6.22.0" } }, "sha512-KpDVrq9KgLE3Kh9QQbTlrH8DniQEP0QFaIqZyWNUAx5Ize4pTrLqOeUCCJL196PdnzyGHKLG37wEsgfkqW9r9g=="],
+    "@docker/node-sdk": ["@docker/node-sdk@0.0.17", "", { "dependencies": { "ssh2": "^1.16.0", "tar-stream": "^3.1.4", "undici": "^6.22.0" } }, "sha512-j+pxXOhNSagm9pwSHSBy5YGgV22TYTmL9GJRFGYT8AaDb8rZg7MekM4+QfRzdP1AzL6/HD8nEDyEkYjkz7/yMg=="],
 
     "@drizzle-team/brocli": ["@drizzle-team/brocli@0.10.2", "", {}, "sha512-z33Il7l5dKjUgGULTqBsQBQwckHh5AbIuxhdsIxDDiZAzBOrZO6q9ogcWC65kU382AfynTfgNumVcNIjuIua6w=="],
 
