@@ -11,6 +11,8 @@ import { createRepositoryFromTemplate } from '@/lib/github';
 import { getGitHubToken } from '@/lib/github/auth';
 import { GitOperations } from '@/lib/github/git-operations';
 
+// GitHub needs time to initialize repos after creation
+const GITHUB_REPO_INIT_DELAY_MS = 10_000; // 10 seconds
 
 // Schema for project creation with GitHub integration
 const createProjectSchema = z.object({
@@ -76,7 +78,7 @@ async function createGitHubRepository(
   });
 
   // Wait for GitHub to initialize the repository
-  await new Promise(resolve => setTimeout(resolve, 10000));
+  await new Promise(resolve => setTimeout(resolve, GITHUB_REPO_INIT_DELAY_MS));
 
   // Clone the repository locally using Kosuke service token
   try {

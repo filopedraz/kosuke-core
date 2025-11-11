@@ -62,7 +62,7 @@ export function OrganizationSwitcherComponent({ onClose }: OrganizationSwitcherC
 
     const firstOrg = userMemberships.data?.[0];
     if (firstOrg) {
-      console.log('Auto-selecting first org:', firstOrg.organization.name);
+      console.debug('Auto-selecting first org:', firstOrg.organization.name);
       setIsSwitching(true);
       setActive({ organization: firstOrg.organization.id })
         .then(() => {
