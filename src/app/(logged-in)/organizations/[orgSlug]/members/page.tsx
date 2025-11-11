@@ -60,42 +60,30 @@ export default function OrganizationMembersPage() {
   const displayName = getOrganizationDisplayName(organization.name, isPersonal);
 
   const handleInviteMember = async () => {
-    try {
-      await inviteMember({
-        email: inviteEmail,
-        organizationId: organization.id,
-      });
-      setInviteEmail('');
-      setInviteDialogOpen(false);
-      invitations?.revalidate?.();
-    } catch (_error) {
-      // Error handling is done in the hook
-    }
+    await inviteMember({
+      email: inviteEmail,
+      organizationId: organization.id,
+    });
+    setInviteEmail('');
+    setInviteDialogOpen(false);
+    invitations?.revalidate?.();
   };
 
   const handleRevokeInvite = async (inviteId: string) => {
-    try {
-      await revokeInvitation({
-        invitationId: inviteId,
-        organizationId: organization.id,
-      });
-      invitations?.revalidate?.();
-    } catch (_error) {
-      // Error handling is done in the hook
-    }
+    await revokeInvitation({
+      invitationId: inviteId,
+      organizationId: organization.id,
+    });
+    invitations?.revalidate?.();
   };
 
   const handleRemoveMember = async (userId: string | undefined) => {
     if (!userId) return;
-    try {
-      await removeMember({
-        userId,
-        organizationId: organization.id,
-      });
-      memberships?.revalidate?.();
-    } catch (_error) {
-      // Error handling is done in the hook
-    }
+    await removeMember({
+      userId,
+      organizationId: organization.id,
+    });
+    memberships?.revalidate?.();
   };
 
   return (
