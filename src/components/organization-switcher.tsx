@@ -9,7 +9,6 @@ import { useEffect, useState } from 'react';
 import { CreateOrganizationDialog } from '@/components/create-organization-dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { DialogTrigger } from '@/components/ui/dialog';
 import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -240,15 +239,16 @@ export function OrganizationSwitcherComponent({ onClose }: OrganizationSwitcherC
               </>
             )}
 
-            <DialogTrigger
+            <Button
+              variant="ghost"
               onClick={() => setCreateDialogOpen(true)}
-              className="w-full flex items-center gap-2 px-2 py-1.5 rounded-sm hover:bg-accent transition-colors text-left text-sm text-muted-foreground"
+              className="w-full justify-start px-2 py-1.5 h-auto font-normal text-sm text-muted-foreground hover:text-foreground"
             >
-              <div className="h-6 w-6 rounded-full border border-dashed border-muted-foreground/40 flex items-center justify-center">
+              <div className="h-6 w-6 rounded-full border border-dashed border-muted-foreground/40 flex items-center justify-center mr-2">
                 <Plus className="h-3 w-3" />
               </div>
               <span>Create organization</span>
-            </DialogTrigger>
+            </Button>
           </DropdownMenuSubContent>
         </DropdownMenuSub>
       ) : (
