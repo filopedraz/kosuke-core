@@ -1,22 +1,15 @@
 'use client';
 
 import { useOrganizationList } from '@clerk/nextjs';
-import { Loader2, Plus, Settings, Upload, X } from 'lucide-react';
+import { Loader2, Plus, Settings } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 
+import { CreateOrganizationDialog } from '@/components/create-organization-dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
+import { DialogTrigger } from '@/components/ui/dialog';
 import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -24,8 +17,6 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useOrganizationOperations } from '@/hooks/use-organization-operations';
 import { getOrganizationDisplayName } from '@/lib/organizations/utils';
@@ -55,10 +46,6 @@ export function OrganizationSwitcherComponent({ onClose }: OrganizationSwitcherC
   });
   const [isSwitching, setIsSwitching] = useState(false);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [newOrgName, setNewOrgName] = useState('');
-  const [logoFile, setLogoFile] = useState<File | null>(null);
-  const [logoPreviewUrl, setLogoPreviewUrl] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isOrgLoaded = organization !== undefined;
 
@@ -107,48 +94,14 @@ export function OrganizationSwitcherComponent({ onClose }: OrganizationSwitcherC
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setLogoFile(file);
-    const url = URL.createObjectURL(file);
-    setLogoPreviewUrl(url);
-  };
-
-  const clearLogo = () => {
-    setLogoFile(null);
-    if (logoPreviewUrl) {
-      URL.revokeObjectURL(logoPreviewUrl);
-      setLogoPreviewUrl(null);
-    }
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  };
-
-  const handleCreateOrganization = async () => {
-    try {
-      await createOrganization({
-        name: newOrgName,
-        logo: logoFile || undefined,
-      });
-
-      setNewOrgName('');
-      clearLogo();
-      setCreateDialogOpen(false);
-    } catch (_error) {
-      // Error handling is done in the hook
-    }
+  const handleCreateOrganization = async (data: { name: string; logo?: File }) => {
+    await createOrganization(data);
+    setCreateDialogOpen(false);
   };
 
   const handleAcceptInvitation = async (invitationId: string) => {
     onClose?.(); // Close the dropdown immediately for better UX
-    try {
-      await acceptInvitation(invitationId);
-    } catch (_error) {
-      // Error handling is done in the hook
-    }
+    await acceptInvitation(invitationId);
   };
 
   if (!isOrgLoaded || !isListLoaded || userMemberships.isLoading) {
@@ -287,93 +240,15 @@ export function OrganizationSwitcherComponent({ onClose }: OrganizationSwitcherC
               </>
             )}
 
-            <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-              <DialogTrigger asChild>
-                <button className="w-full flex items-center gap-2 px-2 py-1.5 rounded-sm hover:bg-accent transition-colors text-left text-sm text-muted-foreground">
-                  <div className="h-6 w-6 rounded-full border border-dashed border-muted-foreground/40 flex items-center justify-center">
-                    <Plus className="h-3 w-3" />
-                  </div>
-                  <span>Create organization</span>
-                </button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Create New Organization</DialogTitle>
-                  <DialogDescription>
-                    Create a new team workspace to collaborate with others.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="orgName">Organization Name</Label>
-                    <Input
-                      id="orgName"
-                      placeholder="Acme Inc."
-                      value={newOrgName}
-                      onChange={e => setNewOrgName(e.target.value)}
-                      onKeyDown={e => {
-                        if (e.key === 'Enter' && newOrgName.trim()) {
-                          handleCreateOrganization();
-                        }
-                      }}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Organization Logo (Optional)</Label>
-                    {logoPreviewUrl ? (
-                      <div className="flex items-center gap-4">
-                        <Avatar className="h-16 w-16">
-                          <AvatarImage src={logoPreviewUrl} alt="Preview" />
-                          <AvatarFallback>
-                            {newOrgName.slice(0, 2).toUpperCase() || 'OR'}
-                          </AvatarFallback>
-                        </Avatar>
-                        <Button variant="ghost" size="sm" onClick={clearLogo} className="h-8">
-                          <X className="h-4 w-4 mr-2" />
-                          Remove
-                        </Button>
-                      </div>
-                    ) : (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => fileInputRef.current?.click()}
-                        type="button"
-                      >
-                        <Upload className="h-4 w-4 mr-2" />
-                        Upload logo
-                      </Button>
-                    )}
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/jpeg,image/jpg,image/png"
-                      onChange={handleFileChange}
-                      className="hidden"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      JPEG or PNG. Square image, at least 400x400px. Max 5MB.
-                    </p>
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button
-                    onClick={handleCreateOrganization}
-                    disabled={isCreating || !newOrgName.trim()}
-                  >
-                    {isCreating ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Creating...
-                      </>
-                    ) : (
-                      'Create Organization'
-                    )}
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+            <DialogTrigger
+              onClick={() => setCreateDialogOpen(true)}
+              className="w-full flex items-center gap-2 px-2 py-1.5 rounded-sm hover:bg-accent transition-colors text-left text-sm text-muted-foreground"
+            >
+              <div className="h-6 w-6 rounded-full border border-dashed border-muted-foreground/40 flex items-center justify-center">
+                <Plus className="h-3 w-3" />
+              </div>
+              <span>Create organization</span>
+            </DialogTrigger>
           </DropdownMenuSubContent>
         </DropdownMenuSub>
       ) : (
@@ -381,93 +256,24 @@ export function OrganizationSwitcherComponent({ onClose }: OrganizationSwitcherC
           <p className="text-xs text-muted-foreground mb-3">
             No workspace found. Try signing out and back in, or create one manually.
           </p>
-          <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline" size="sm" className="w-full">
-                <Plus className="mr-2 h-4 w-4" />
-                <span>Create Workspace</span>
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Create New Organization</DialogTitle>
-                <DialogDescription>
-                  Create a new team workspace to collaborate with others.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="orgNameEmpty">Organization Name</Label>
-                  <Input
-                    id="orgNameEmpty"
-                    placeholder="Acme Inc."
-                    value={newOrgName}
-                    onChange={e => setNewOrgName(e.target.value)}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter' && newOrgName.trim()) {
-                        handleCreateOrganization();
-                      }
-                    }}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Organization Logo (Optional)</Label>
-                  {logoPreviewUrl ? (
-                    <div className="flex items-center gap-4">
-                      <Avatar className="h-16 w-16">
-                        <AvatarImage src={logoPreviewUrl} alt="Preview" />
-                        <AvatarFallback>
-                          {newOrgName.slice(0, 2).toUpperCase() || 'OR'}
-                        </AvatarFallback>
-                      </Avatar>
-                      <Button variant="ghost" size="sm" onClick={clearLogo} className="h-8">
-                        <X className="h-4 w-4 mr-2" />
-                        Remove
-                      </Button>
-                    </div>
-                  ) : (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => fileInputRef.current?.click()}
-                      type="button"
-                    >
-                      <Upload className="h-4 w-4 mr-2" />
-                      Upload logo
-                    </Button>
-                  )}
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/jpeg,image/jpg,image/png"
-                    onChange={handleFileChange}
-                    className="hidden"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    JPEG or PNG. Square image, at least 400x400px. Max 5MB.
-                  </p>
-                </div>
-              </div>
-              <DialogFooter>
-                <Button
-                  onClick={handleCreateOrganization}
-                  disabled={isCreating || !newOrgName.trim()}
-                >
-                  {isCreating ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Creating...
-                    </>
-                  ) : (
-                    'Create Organization'
-                  )}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full"
+            onClick={() => setCreateDialogOpen(true)}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            <span>Create Workspace</span>
+          </Button>
         </div>
       )}
+
+      <CreateOrganizationDialog
+        open={createDialogOpen}
+        onOpenChange={setCreateDialogOpen}
+        onCreateOrganization={handleCreateOrganization}
+        isCreating={isCreating}
+      />
     </>
   );
 }
