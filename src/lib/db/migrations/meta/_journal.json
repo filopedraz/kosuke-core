@@ -19,15 +19,8 @@
     {
       "idx": 2,
       "version": "7",
-      "when": 1762762888690,
-      "tag": "0002_thin_banshee",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1762859658873,
-      "tag": "0003_condemned_stranger",
+      "when": 1762859862003,
+      "tag": "0002_concerned_malice",
       "breakpoints": true
     }
   ]
