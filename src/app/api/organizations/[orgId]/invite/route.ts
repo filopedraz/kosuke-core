@@ -44,6 +44,25 @@ export async function POST(request: Request, { params }: { params: Promise<{ org
       return ApiErrorHandler.badRequest('Email is required');
     }
 
+    // Check if user is already a member of the organization
+    const existingMember = memberships.data.find(m => m.publicUserData?.identifier === email);
+
+    if (existingMember) {
+      return ApiErrorHandler.badRequest('User is already a member of this organization');
+    }
+
+    // Check if there's already a pending invitation for this email
+    const pendingInvitations = await client.organizations.getOrganizationInvitationList({
+      organizationId: orgId,
+      status: ['pending'],
+    });
+
+    const existingInvitation = pendingInvitations.data.find(inv => inv.emailAddress === email);
+
+    if (existingInvitation) {
+      return ApiErrorHandler.badRequest('An invitation has already been sent to this email');
+    }
+
     // Create invitation via Clerk
     const invitation = await client.organizations.createOrganizationInvitation({
       organizationId: orgId,
