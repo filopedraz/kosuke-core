@@ -77,7 +77,6 @@ export async function GET() {
                 name: fullName,
                 imageUrl: clerkUser.imageUrl,
                 updatedAt: new Date(),
-                deletedAt: null, // Ensure user is not soft-deleted
               })
               .where(eq(users.email, primaryEmail));
 

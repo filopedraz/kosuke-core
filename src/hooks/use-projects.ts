@@ -1,6 +1,7 @@
 'use client';
 
 import type { Project } from '@/lib/db/schema';
+import { useOrganization } from '@clerk/nextjs';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 
@@ -10,11 +11,14 @@ interface UseProjectsOptions {
 }
 
 export function useProjects({ userId, initialData }: UseProjectsOptions) {
+  const { organization } = useOrganization();
+  const orgId = organization?.id;
+
   return useQuery<Project[]>({
-    queryKey: ['projects', userId],
+    queryKey: ['projects', userId, orgId],
     queryFn: async () => {
       try {
-        // Make the API call (userId is obtained from auth on server side)
+        // Make the API call (userId and orgId are obtained from auth on server side)
         const response = await fetch('/api/projects');
         if (!response.ok) {
           throw new Error('Failed to fetch projects');
@@ -33,7 +37,7 @@ export function useProjects({ userId, initialData }: UseProjectsOptions) {
     staleTime: 1000 * 60 * 2, // Consider data stale after 2 minutes
     refetchOnWindowFocus: false, // Don't refetch on window focus to reduce glitches
     refetchOnMount: false, // Don't always refetch on mount - let staleTime control this
-    enabled: !!userId,
+    enabled: !!userId && !!orgId,
   });
 }
 

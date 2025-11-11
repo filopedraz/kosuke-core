@@ -10,6 +10,16 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import { ReactNode } from 'react';
 
+// Mock Clerk
+jest.mock('@clerk/nextjs', () => ({
+  useOrganization: () => ({
+    organization: {
+      id: 'org_123',
+      name: 'Test Org',
+    },
+  }),
+}));
+
 // Mock Next.js router
 const mockPush = jest.fn();
 const mockReplace = jest.fn();

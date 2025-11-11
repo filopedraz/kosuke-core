@@ -26,16 +26,7 @@ export async function DELETE() {
       // (we need this list to clean up after deletion)
       const orgMemberships = await getUserOrganizationMemberships(userId);
 
-      // Soft delete the user in our database first
-      await db
-        .update(users)
-        .set({
-          deletedAt: new Date(),
-          updatedAt: new Date(),
-        })
-        .where(eq(users.clerkUserId, userId));
-
-      // Then delete the user from Clerk
+      // Delete the user from Clerk first (triggers webhook for DB cleanup)
       await client.users.deleteUser(userId);
 
       // User is now deleted from Clerk - do best-effort org cleanup
@@ -47,20 +38,19 @@ export async function DELETE() {
         console.error('Error cleaning up organizations after user deletion:', cleanupError);
       }
 
+      // Hard delete from DB (webhook might have already done this, but ensure it's done)
+      try {
+        await db.delete(users).where(eq(users.clerkUserId, userId));
+      } catch (_dbError) {
+        // User might already be deleted by webhook - that's ok
+        console.log('DB cleanup completed or already done by webhook');
+      }
+
       return NextResponse.json({
         success: 'Account deleted successfully',
       });
     } catch (clerkError: unknown) {
       console.error('Clerk error deleting user:', clerkError);
-
-      // If Clerk deletion fails, revert the database change
-      await db
-        .update(users)
-        .set({
-          deletedAt: null,
-          updatedAt: new Date(),
-        })
-        .where(eq(users.clerkUserId, userId));
 
       if (
         typeof clerkError === 'object' &&

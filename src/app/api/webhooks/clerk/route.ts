@@ -15,12 +15,6 @@ type ClerkEventType =
   | 'organization.updated'
   | 'organization.deleted';
 
-interface DatabaseError {
-  code?: string;
-  constraint_name?: string;
-  message?: string;
-}
-
 interface ClerkUser {
   id: string;
   email_addresses: Array<{
@@ -140,68 +134,19 @@ async function handleUserCreated(clerkUser: ClerkUser) {
       return;
     }
 
-    // Try to insert new user, handle email constraint gracefully
-    try {
-      await db.insert(users).values({
-        clerkUserId: clerkUser.id,
-        email: primaryEmail,
-        name: fullName,
-        imageUrl: clerkUser.image_url,
-        marketingEmails: false, // Default to false, user can opt-in later
-        role: 'member',
-        createdAt: new Date(clerkUser.created_at),
-        updatedAt: new Date(clerkUser.updated_at),
-      });
+    // Insert new user
+    await db.insert(users).values({
+      clerkUserId: clerkUser.id,
+      email: primaryEmail,
+      name: fullName,
+      imageUrl: clerkUser.image_url,
+      marketingEmails: false, // Default to false, user can opt-in later
+      role: 'member',
+      createdAt: new Date(clerkUser.created_at),
+      updatedAt: new Date(clerkUser.updated_at),
+    });
 
-      console.log(`✅ Created user in database: ${clerkUser.id} (${primaryEmail})`);
-    } catch (insertError: unknown) {
-      // Handle duplicate email constraint specifically
-      const dbError = insertError as DatabaseError;
-      if (dbError?.code === '23505' && dbError?.constraint_name === 'users_email_unique') {
-        console.log(
-          `⚠️ User with email ${primaryEmail} already exists, but with different Clerk ID. This is likely a recreated account.`
-        );
-
-        // Check if there's an existing user with this email that might be soft-deleted
-        const existingUserByEmail = await db
-          .select()
-          .from(users)
-          .where(eq(users.email, primaryEmail))
-          .limit(1);
-
-        if (existingUserByEmail.length > 0) {
-          const existingUser = existingUserByEmail[0];
-
-          // If the existing user is soft-deleted, update it with new Clerk ID
-          if (existingUser.deletedAt) {
-            await db
-              .update(users)
-              .set({
-                clerkUserId: clerkUser.id,
-                name: fullName,
-                imageUrl: clerkUser.image_url,
-                deletedAt: null, // Restore the user
-                updatedAt: new Date(clerkUser.updated_at),
-              })
-              .where(eq(users.email, primaryEmail));
-
-            console.log(
-              `✅ Restored soft-deleted user and updated Clerk ID: ${clerkUser.id} (${primaryEmail})`
-            );
-          } else {
-            console.log(
-              `ℹ️ Active user with email ${primaryEmail} already exists with different Clerk ID. Skipping creation.`
-            );
-          }
-        }
-
-        // Don't throw error - webhook should succeed even if user exists
-        return;
-      }
-
-      // For other database errors, re-throw
-      throw insertError;
-    }
+    console.log(`✅ Created user in database: ${clerkUser.id} (${primaryEmail})`);
   } catch (error) {
     console.error('Error creating user in database:', error);
     throw error;
@@ -243,18 +188,12 @@ async function handleUserDeleted(clerkUser: ClerkUser) {
     // this webhook fires, the user is already deleted from Clerk and
     // we can't query their memberships anymore.
 
-    // Soft delete user in database
-    await db
-      .update(users)
-      .set({
-        deletedAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .where(eq(users.clerkUserId, clerkUser.id));
+    // Hard delete user from database (will cascade delete related records)
+    await db.delete(users).where(eq(users.clerkUserId, clerkUser.id));
 
-    console.log(`✅ Soft deleted user in database: ${clerkUser.id}`);
+    console.log(`✅ Deleted user from database: ${clerkUser.id}`);
   } catch (error) {
-    console.error('Error soft deleting user in database:', error);
+    console.error('Error deleting user from database:', error);
     throw error;
   }
 }
@@ -304,18 +243,12 @@ async function handleOrganizationUpdated(data: ClerkOrganization) {
 
 async function handleOrganizationDeleted(data: ClerkOrganization) {
   try {
-    // Soft delete
-    await db
-      .update(organizations)
-      .set({
-        deletedAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .where(eq(organizations.clerkOrgId, data.id));
+    // Hard delete (will cascade delete projects)
+    await db.delete(organizations).where(eq(organizations.clerkOrgId, data.id));
 
-    console.log(`✅ Soft deleted organization in database: ${data.id}`);
+    console.log(`✅ Deleted organization from database: ${data.id}`);
   } catch (error) {
-    console.error('Error soft deleting organization in database:', error);
+    console.error('Error deleting organization from database:', error);
     throw error;
   }
 }

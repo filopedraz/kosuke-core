@@ -14,6 +14,7 @@ const customJestConfig = {
   },
   testMatch: ['**/__tests__/**/*.test.(ts|tsx)'],
   testPathIgnorePatterns: ['<rootDir>/projects/', '<rootDir>/.next/'],
+  transformIgnorePatterns: ['node_modules/(?!(@clerk)/)'],
   collectCoverageFrom: [
     'src/app/api/**/*.ts',
     'src/hooks/**/*.{ts,tsx}',

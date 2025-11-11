@@ -1,7 +1,7 @@
 import { db } from '@/lib/db/drizzle';
 import { organizations, projects } from '@/lib/db/schema';
 import { auth, clerkClient } from '@clerk/nextjs/server';
-import { eq, isNull } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 
 export * from './utils';
 
@@ -16,7 +16,7 @@ export async function getUserOrganizations(userId: string) {
   const orgIds = memberships.data.map(m => m.organization.id);
   if (orgIds.length === 0) return [];
 
-  const orgs = await db.select().from(organizations).where(isNull(organizations.deletedAt));
+  const orgs = await db.select().from(organizations);
 
   return memberships.data.map(m => ({
     organization: orgs.find(o => o.clerkOrgId === m.organization.id),
@@ -152,28 +152,45 @@ export async function cleanupCachedOrganizations(userId: string, memberships: Ca
         await clerk.organizations.deleteOrganization(orgId);
         console.log(`🗑️ Deleted personal workspace: ${orgId} (${org.name})`);
       } else {
-        // For shared organizations, check if user is last member or last admin
+        // For shared organizations, check if user created it or is last member
         try {
+          // NOTE: User is already deleted from Clerk at this point,
+          // so member count is AFTER their removal
           const orgMemberships = await clerk.organizations.getOrganizationMembershipList({
             organizationId: orgId,
           });
 
-          const totalMembers = orgMemberships.totalCount;
-          const adminMembers = orgMemberships.data.filter(m => m.role === 'org:admin');
-          const isLastAdmin =
-            adminMembers.length === 1 && adminMembers[0]?.publicUserData?.userId === userId;
+          const remainingMembers = orgMemberships.totalCount;
 
-          if (totalMembers <= 1 || isLastAdmin) {
-            // Delete the org if user is the last member or last admin
+          // Check if user is the creator/owner from DB
+          const [dbOrg] = await db
+            .select({ createdBy: organizations.createdBy })
+            .from(organizations)
+            .where(eq(organizations.clerkOrgId, orgId))
+            .limit(1);
+
+          // User is creator if they match createdBy (handles null createdBy as false)
+          const isCreator = dbOrg?.createdBy === userId;
+
+          // If createdBy is null (original creator deleted), treat as orphaned
+          const isOrphaned = dbOrg && dbOrg.createdBy === null;
+
+          if (remainingMembers === 0 || isCreator || isOrphaned) {
+            // Delete the org if:
+            // - No members remaining (user was the last one), OR
+            // - User is/was the creator, OR
+            // - Org is orphaned (original creator gone, clean up on any deletion)
             await clerk.organizations.deleteOrganization(orgId);
 
             // Also clean up DB directly
             await db.delete(projects).where(eq(projects.clerkOrgId, orgId));
             await db.delete(organizations).where(eq(organizations.clerkOrgId, orgId));
 
-            console.log(
-              `🗑️ Deleted organization ${orgId} (${org.name}) - ${totalMembers <= 1 ? 'last member' : 'last admin'}`
-            );
+            let reason = 'no members remaining';
+            if (isCreator) reason = 'creator';
+            else if (isOrphaned) reason = 'orphaned (no creator)';
+
+            console.log(`🗑️ Deleted organization ${orgId} (${org.name}) - ${reason}`);
           } else {
             // Remove user membership (may fail if user already deleted)
             try {

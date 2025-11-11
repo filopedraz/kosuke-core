@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
     // Find discrepancies
     const missingInDb = clerkUsers.filter(cu => !dbUserMap.has(cu.id));
     const missingInClerk = dbUsers.filter(
-      du => du.clerkUserId && !clerkUserMap.has(du.clerkUserId) && !du.deletedAt
+      du => du.clerkUserId && !clerkUserMap.has(du.clerkUserId)
     );
     const outdatedInDb = clerkUsers.filter(cu => {
       const dbUser = dbUserMap.get(cu.id);
@@ -225,21 +225,15 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Soft delete users missing in Clerk (they might have been deleted there)
+    // Hard delete users missing in Clerk (they might have been deleted there)
     for (const dbUser of missingInClerk) {
       try {
-        await db
-          .update(users)
-          .set({
-            deletedAt: new Date(),
-            updatedAt: new Date(),
-          })
-          .where(eq(users.clerkUserId, dbUser.clerkUserId));
+        await db.delete(users).where(eq(users.clerkUserId, dbUser.clerkUserId));
 
-        results.actions_taken.soft_deleted++;
-        console.log(`🗑️ Soft deleted user: ${dbUser.clerkUserId} (${dbUser.email})`);
+        results.actions_taken.soft_deleted++; // Keep counter name for compatibility
+        console.log(`🗑️ Deleted user: ${dbUser.clerkUserId} (${dbUser.email})`);
       } catch (error) {
-        console.error(`❌ Error soft deleting user ${dbUser.clerkUserId}:`, error);
+        console.error(`❌ Error deleting user ${dbUser.clerkUserId}:`, error);
         results.actions_taken.errors++;
       }
     }

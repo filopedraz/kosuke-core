@@ -23,7 +23,6 @@ export const users = pgTable('users', {
   role: varchar('role', { length: 20 }).notNull().default('member'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
-  deletedAt: timestamp('deleted_at'),
 });
 
 export const organizations = pgTable('organizations', {
@@ -32,15 +31,18 @@ export const organizations = pgTable('organizations', {
   slug: varchar('slug', { length: 100 }).notNull().unique(),
   imageUrl: text('image_url'),
   isPersonal: boolean('is_personal').default(false).notNull(),
-  createdBy: text('created_by').references(() => users.clerkUserId),
+  createdBy: text('created_by').references(() => users.clerkUserId, {
+    onDelete: 'set null',
+  }),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
-  deletedAt: timestamp('deleted_at'),
 });
 
 export const activityLogs = pgTable('activity_logs', {
   id: serial('id').primaryKey(),
-  userId: text('user_id').references(() => users.clerkUserId),
+  userId: text('user_id').references(() => users.clerkUserId, {
+    onDelete: 'cascade',
+  }),
   action: text('action').notNull(),
   timestamp: timestamp('timestamp').notNull().defaultNow(),
   ipAddress: varchar('ip_address', { length: 45 }),
@@ -53,10 +55,12 @@ export const projects = pgTable('projects', {
   clerkOrgId: text('clerk_org_id').references(() => organizations.clerkOrgId, {
     onDelete: 'cascade',
   }),
-  userId: text('user_id').references(() => users.clerkUserId),
-  createdBy: text('created_by')
-    .references(() => users.clerkUserId)
-    .notNull(),
+  userId: text('user_id').references(() => users.clerkUserId, {
+    onDelete: 'set null',
+  }),
+  createdBy: text('created_by').references(() => users.clerkUserId, {
+    onDelete: 'set null',
+  }),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
   isArchived: boolean('is_archived').default(false),
@@ -74,9 +78,9 @@ export const chatSessions = pgTable('chat_sessions', {
   projectId: integer('project_id')
     .references(() => projects.id, { onDelete: 'cascade' })
     .notNull(),
-  userId: text('user_id')
-    .references(() => users.clerkUserId)
-    .notNull(),
+  userId: text('user_id').references(() => users.clerkUserId, {
+    onDelete: 'set null',
+  }),
   title: varchar('title', { length: 100 }).notNull(),
   description: text('description'),
   sessionId: varchar('session_id', { length: 50 }).unique().notNull(),
@@ -101,7 +105,9 @@ export const chatMessages = pgTable('chat_messages', {
   chatSessionId: integer('chat_session_id')
     .references(() => chatSessions.id, { onDelete: 'cascade' })
     .notNull(), // Make this NOT NULL - all messages must be tied to a session
-  userId: text('user_id').references(() => users.clerkUserId),
+  userId: text('user_id').references(() => users.clerkUserId, {
+    onDelete: 'set null',
+  }),
   role: varchar('role', { length: 20 }).notNull(), // 'user' or 'assistant'
   content: text('content'), // For user messages (nullable for assistant messages)
   blocks: jsonb('blocks'), // For assistant message blocks (text, thinking, tools)
