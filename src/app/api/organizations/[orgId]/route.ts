@@ -17,14 +17,10 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ o
 
     // Check if user is admin of this org
     const clerk = await clerkClient();
-    const membership = await clerk.organizations.getOrganizationMembershipList({
-      organizationId: orgId,
-      limit: 100,
-    });
+    const memberships = await clerk.users.getOrganizationMembershipList({ userId });
+    const membership = memberships.data.find(m => m.organization.id === orgId);
 
-    const userMembership = membership.data.find(m => m.publicUserData?.userId === userId);
-
-    if (!userMembership || userMembership.role !== 'org:admin') {
+    if (!membership || membership.role !== 'org:admin') {
       return ApiErrorHandler.forbidden('Only admins can delete organizations');
     }
 
