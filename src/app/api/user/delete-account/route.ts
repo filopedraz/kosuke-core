@@ -80,16 +80,6 @@ export async function DELETE() {
       });
     } catch (clerkError: unknown) {
       console.error('Clerk error deleting user:', clerkError);
-
-      if (
-        typeof clerkError === 'object' &&
-        clerkError !== null &&
-        'status' in clerkError &&
-        (clerkError as { status: number }).status === 422
-      ) {
-        return ApiErrorHandler.badRequest('Unable to delete account. Please try again.');
-      }
-
       return ApiErrorHandler.handle(clerkError);
     }
   } catch (error) {
