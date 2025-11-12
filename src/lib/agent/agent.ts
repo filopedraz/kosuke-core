@@ -55,12 +55,6 @@ export class Agent {
   async *run(prompt: string, remoteId?: string | null): AsyncGenerator<StreamEvent> {
     console.log(`🤖 Processing request for project ${this.projectId}, session ${this.sessionId}`);
 
-    if (remoteId) {
-      console.log(`🔄 Resuming Claude session with remoteId: ${remoteId}`);
-    } else {
-      console.log(`🆕 Starting new Claude session (will capture remoteId)`);
-    }
-
     const startTime = Date.now();
     let capturedRemoteId: string | null = null;
 
