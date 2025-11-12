@@ -9,6 +9,7 @@ import { chatMessages } from '@/lib/db/schema';
 import { GitOperations } from '@/lib/github/git-operations';
 import { sessionManager } from '@/lib/sessions';
 import type { AgentConfig, StreamEvent } from '@/lib/types/agent';
+import { SDKResultMessage } from '@anthropic-ai/claude-agent-sdk';
 import { eq } from 'drizzle-orm';
 import { ClaudeService } from './claude-service';
 import { EventProcessor } from './event-processor';
@@ -51,16 +52,23 @@ export class Agent {
   /**
    * Run the agent and stream responses
    */
-  async *run(prompt: string): AsyncGenerator<StreamEvent> {
+  async *run(prompt: string, remoteId?: string | null): AsyncGenerator<StreamEvent> {
     console.log(`🤖 Processing request for project ${this.projectId}, session ${this.sessionId}`);
 
     const startTime = Date.now();
+    let capturedRemoteId: string | null = null;
 
     try {
       // Stream events from Claude Agent SDK
-      const sdkMessages = this.claudeService.runAgenticQuery(prompt);
+      const sdkMessages = this.claudeService.runAgenticQuery(prompt, remoteId);
 
       for await (const message of sdkMessages) {
+        // Capture remoteId from result message (only if we don't already have one)
+        if (!remoteId && !capturedRemoteId && message.type === 'result') {
+          capturedRemoteId = (message as SDKResultMessage).session_id;
+          console.log(`📝 Captured remoteId from Claude SDK: ${capturedRemoteId}`);
+        }
+
         // Process each SDK message and yield client events
         const clientEvents = this.eventProcessor.processMessage(message);
 
@@ -72,8 +80,11 @@ export class Agent {
       // Finalize processing
       await this.finalizeProcessing();
 
-      // Send completion event
-      yield { type: 'message_complete' };
+      // Send completion event with captured remoteId
+      yield {
+        type: 'message_complete',
+        remoteId: capturedRemoteId,
+      };
 
       const duration = Date.now() - startTime;
       console.log(`⏱️ Total processing time: ${(duration / 1000).toFixed(2)}s`);
@@ -230,4 +241,3 @@ export class Agent {
     }
   }
 }
-

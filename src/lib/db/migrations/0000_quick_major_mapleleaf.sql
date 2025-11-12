@@ -22,6 +22,7 @@ CREATE TABLE "chat_sessions" (
 	"title" varchar(100) NOT NULL,
 	"description" text,
 	"session_id" varchar(50) NOT NULL,
+	"remote_id" varchar(255),
 	"status" varchar(20) DEFAULT 'active',
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL,
@@ -32,7 +33,8 @@ CREATE TABLE "chat_sessions" (
 	"branch_merged_by" varchar(100),
 	"merge_commit_sha" varchar(40),
 	"pull_request_number" integer,
-	CONSTRAINT "chat_sessions_session_id_unique" UNIQUE("session_id")
+	CONSTRAINT "chat_sessions_session_id_unique" UNIQUE("session_id"),
+	CONSTRAINT "chat_sessions_remote_id_unique" UNIQUE("remote_id")
 );
 --> statement-breakpoint
 CREATE TABLE "diffs" (

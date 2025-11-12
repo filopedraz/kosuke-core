@@ -438,8 +438,19 @@ export async function POST(
     const stream = new ReadableStream({
       async start(controller) {
         try {
-          // Stream events from agent
-          for await (const event of agent.run(messageContent)) {
+          // Stream events from agent, passing the remoteId for session resumption
+          for await (const event of agent.run(messageContent, chatSession.remoteId)) {
+            // Check if this is the message_complete event with a captured remoteId
+            if (event.type === 'message_complete' && event.remoteId && !chatSession.remoteId) {
+              // Save the captured remoteId to the database
+              await db
+                .update(chatSessions)
+                .set({ remoteId: event.remoteId })
+                .where(eq(chatSessions.id, chatSession.id));
+              console.log(`✅ Saved remoteId to database for session ${chatSession.sessionId}: ${event.remoteId}`);
+
+            }
+
             // Format as Server-Sent Events
             const data = JSON.stringify(event);
             controller.enqueue(new TextEncoder().encode(`data: ${data}\n\n`));

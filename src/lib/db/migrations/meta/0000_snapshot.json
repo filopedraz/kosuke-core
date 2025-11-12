@@ -1,5 +1,5 @@
 {
-  "id": "697c7901-a761-48bf-9383-2ae6f5471332",
+  "id": "fb54748f-8fb8-464e-8143-bbb45d2b40c6",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -161,6 +161,12 @@
           "primaryKey": false,
           "notNull": true
         },
+        "remote_id": {
+          "name": "remote_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
         "status": {
           "name": "status",
           "type": "varchar(20)",
@@ -246,6 +252,11 @@
           "name": "chat_sessions_session_id_unique",
           "nullsNotDistinct": false,
           "columns": ["session_id"]
+        },
+        "chat_sessions_remote_id_unique": {
+          "name": "chat_sessions_remote_id_unique",
+          "nullsNotDistinct": false,
+          "columns": ["remote_id"]
         }
       },
       "policies": {},

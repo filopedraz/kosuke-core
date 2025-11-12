@@ -26,15 +26,15 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'https',
-        hostname: 'picsum.photos',
-      },
-      {
-        protocol: 'https',
         hostname: 'lh3.googleusercontent.com',
       },
       {
         protocol: 'https',
         hostname: 'avatar.vercel.sh',
+      },
+      {
+        protocol: 'https',
+        hostname: 'img.clerk.com',
       },
       // Ghost CMS images
       {
@@ -51,6 +51,7 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+
   webpack: (config, { dev }) => {
     // Suppress OpenTelemetry warnings in development
     if (dev) {

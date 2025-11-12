@@ -38,6 +38,7 @@ export const chatSessions = pgTable('chat_sessions', {
   title: varchar('title', { length: 100 }).notNull(),
   description: text('description'),
   sessionId: varchar('session_id', { length: 50 }).unique().notNull(),
+  remoteId: varchar('remote_id', { length: 255 }).unique(), // Claude Agent SDK session ID for resuming conversations
   status: varchar('status', { length: 20 }).default('active'), // active, archived, completed
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),

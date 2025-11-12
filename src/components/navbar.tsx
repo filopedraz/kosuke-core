@@ -101,11 +101,11 @@ export default function Navbar({
 
   const handleLogout = async () => {
     try {
-      await signOut({ redirectUrl: '/home' });
+      await signOut({ redirectUrl: '/' });
     } catch (error) {
       console.error('Error signing out:', error);
       // Fallback redirect if signOut fails
-      router.push('/home');
+      router.push('/');
       router.refresh();
     }
   };
