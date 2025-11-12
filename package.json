@@ -115,6 +115,7 @@
     "@tailwindcss/postcss": "^4.1.11",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.2.0",
+    "@types/cookiebot-sdk": "^2.43.5",
     "@types/jest": "^29.5.14",
     "@types/mime-types": "^2.1.4",
     "@types/tryghost__admin-api": "^0.0.1",
