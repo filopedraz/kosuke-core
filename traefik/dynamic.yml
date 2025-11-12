@@ -1,2 +1,22 @@
 # Dynamic configuration for Traefik
 # This file is for any additional dynamic routing rules that need to be configured
+
+# TLS Configuration
+tls:
+  # Request wildcard certificate for all preview subdomains
+  # This dramatically speeds up preview startup by eliminating per-subdomain cert generation
+  certificates:
+    # Wildcard certificate for *.kosuke.app (preview subdomains)
+    - certFile: /certs/wildcard-kosuke-app.crt
+      keyFile: /certs/wildcard-kosuke-app.key
+      stores:
+        - default
+
+  stores:
+    default:
+      defaultGeneratedCert:
+        resolver: letsencrypt
+        domain:
+          main: 'kosuke.app'
+          sans:
+            - '*.kosuke.app'

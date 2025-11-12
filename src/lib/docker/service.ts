@@ -109,10 +109,7 @@ class DockerService {
       console.log(`Pulling preview image ${imageName}...`);
       try {
         // imageCreate takes a callback as first parameter and options as second
-        await client.imageCreate(
-          () => {}, // Empty callback - we don't need to process events
-          { fromImage: imageName }
-        );
+        await client.imageCreate({ fromImage: imageName });
         console.log(`Successfully pulled preview image ${imageName}`);
       } catch (pullError) {
         throw new Error(
