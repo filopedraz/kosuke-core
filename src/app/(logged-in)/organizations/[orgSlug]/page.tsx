@@ -23,7 +23,6 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useOrganizationSettings } from '@/hooks/use-organization-settings';
-import { getOrganizationDisplayName } from '@/lib/organizations/utils';
 
 export default function OrganizationGeneralPage() {
   const { organization, membership } = useOrganization();
@@ -59,7 +58,7 @@ export default function OrganizationGeneralPage() {
 
   const isPersonal = organization.publicMetadata?.isPersonal === true;
   const isAdmin = membership?.role === 'org:admin';
-  const displayName = getOrganizationDisplayName(organization.name, isPersonal);
+  const displayName = isPersonal ? 'Personal Workspace' : organization.name;
 
   const copyToClipboard = async (text: string, field: 'name' | 'id') => {
     try {

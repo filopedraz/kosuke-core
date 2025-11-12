@@ -19,7 +19,6 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { useOrganizationInvitations } from '@/hooks/use-organization-invitations';
 import { useOrganizationSettings } from '@/hooks/use-organization-settings';
-import { getOrganizationDisplayName } from '@/lib/organizations/utils';
 
 interface OrganizationSwitcherComponentProps {
   onClose?: () => void;
@@ -108,10 +107,9 @@ export function OrganizationSwitcherComponent({ onClose }: OrganizationSwitcherC
   }
 
   const currentOrgName = organization
-    ? getOrganizationDisplayName(
-        organization.name,
-        organization.publicMetadata?.isPersonal as boolean | undefined
-      )
+    ? organization.publicMetadata?.isPersonal
+      ? 'Personal Workspace'
+      : organization.name
     : 'No organization';
   const currentOrgImage = organization?.imageUrl;
   const hasOrganizations = userMemberships.data && userMemberships.data.length > 0;
@@ -167,10 +165,9 @@ export function OrganizationSwitcherComponent({ onClose }: OrganizationSwitcherC
             {userMemberships.data
               ?.filter(membership => membership.organization.id !== organization?.id)
               .map(membership => {
-                const displayName = getOrganizationDisplayName(
-                  membership.organization.name,
-                  membership.organization.publicMetadata?.isPersonal as boolean | undefined
-                );
+                const displayName = membership.organization.publicMetadata?.isPersonal
+                  ? 'Personal Workspace'
+                  : membership.organization.name;
                 return (
                   <div key={membership.organization.id} className="relative">
                     <button
@@ -199,10 +196,9 @@ export function OrganizationSwitcherComponent({ onClose }: OrganizationSwitcherC
             {invitations.length > 0 && (
               <>
                 {invitations.map(invitation => {
-                  const invitationDisplayName = getOrganizationDisplayName(
-                    invitation.organizationName || 'Organization',
-                    invitation.organizationIsPersonal
-                  );
+                  const invitationDisplayName = invitation.organizationIsPersonal
+                    ? 'Personal Workspace'
+                    : invitation.organizationName || 'Organization';
                   return (
                     <div key={invitation.id} className="relative">
                       <button
