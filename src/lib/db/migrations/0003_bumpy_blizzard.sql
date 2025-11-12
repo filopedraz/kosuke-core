@@ -1,0 +1,2 @@
+ALTER TABLE "chat_sessions" ALTER COLUMN "remote_id" SET DATA TYPE varchar(255);--> statement-breakpoint
+ALTER TABLE "chat_sessions" ADD CONSTRAINT "chat_sessions_remote_id_unique" UNIQUE("remote_id");

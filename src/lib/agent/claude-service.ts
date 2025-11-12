@@ -31,14 +31,20 @@ export class ClaudeService {
   /**
    * Run an agentic query with the Claude Agent SDK
    */
-  async *runAgenticQuery(prompt: string): AsyncGenerator<SDKMessage> {
+  async *runAgenticQuery(prompt: string, remoteId?: string | null): AsyncGenerator<SDKMessage> {
     console.log('🤖 Starting Claude Agent SDK query');
     console.log(`📁 Working directory: ${this.projectPath}`);
     console.log(`⚙️ Max turns: ${this.options.maxTurns}`);
     console.log(`🔐 Permission mode: ${this.options.permissionMode}`);
 
+    if (remoteId) {
+      console.log(`🔄 Resuming session with remoteId: ${remoteId}`);
+    } else {
+      console.log(`🆕 Starting new session (no remoteId)`);
+    }
+
     try {
-      const sdkOptions = this.buildSDKOptions();
+      const sdkOptions = this.buildSDKOptions(remoteId);
       const queryInstance: Query = query({
         prompt,
         options: sdkOptions,
@@ -63,7 +69,7 @@ export class ClaudeService {
   /**
    * Build SDK options from agent configuration
    */
-  private buildSDKOptions(): Options {
+  private buildSDKOptions(remoteId?: string | null): Options {
     // Build options object with only supported properties
     const options: Partial<Options> = {
       // Working directory
@@ -88,6 +94,11 @@ export class ClaudeService {
     // Add permission mode only if it's explicitly set
     if (this.options.permissionMode === 'acceptEdits') {
       options.permissionMode = 'acceptEdits';
+    }
+
+    // Add resume parameter if remoteId is provided
+    if (remoteId) {
+      options.resume = remoteId;
     }
 
     return options as Options;
