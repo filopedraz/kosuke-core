@@ -6,20 +6,6 @@ import { createClerkClient } from '@clerk/nextjs/server';
 import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
-/**
- * DELETE /api/user/delete-account
- *
- * Deletes the authenticated user's account.
- *
- * Flow:
- * 1. Validates user exists in Clerk
- * 2. Checks if user owns team organizations with other members
- * 3. If yes, prevents deletion and returns error
- * 4. If no, deletes user from Clerk (triggers webhook for cleanup)
- * 5. Returns success immediately
- *
- * Note: Webhook handles deletion of personal workspaces and empty team orgs
- */
 export async function DELETE() {
   try {
     const { userId } = await auth();
