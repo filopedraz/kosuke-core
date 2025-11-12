@@ -16,7 +16,6 @@ function validateEnvironmentVariables() {
 
     // Clerk Authentication
     { key: 'CLERK_SECRET_KEY', description: 'Clerk secret key for authentication' },
-    { key: 'CLERK_WEBHOOK_SECRET', description: 'Clerk webhook secret for user sync' },
 
     // AI Provider
     { key: 'ANTHROPIC_API_KEY', description: 'Anthropic API key for Claude AI' },

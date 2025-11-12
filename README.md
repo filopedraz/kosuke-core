@@ -69,20 +69,7 @@ Ensure you have the following tools installed and configured:
      - Toggle **Allow personal accounts**
      - Set max organizations per user (recommended: 10)
      - Keep default roles: `org:admin` (owner) and `org:member` (member)
-  7. Configure **Webhook** endpoint (requires ngrok for local development):
-     - Install ngrok: `brew install ngrok` or download from [ngrok.com](https://ngrok.com)
-     - Sign up for a free ngrok account and get your auth token
-     - Authenticate ngrok: `ngrok config add-authtoken YOUR_TOKEN`
-     - Claim a free static domain in the [ngrok dashboard](https://dashboard.ngrok.com/domains)
-     - In a new terminal, run: `ngrok http 3000 --domain=YOUR_STATIC_DOMAIN.ngrok-free.app`
-     - Copy your static domain URL (e.g., `https://your-domain.ngrok-free.app`)
-     - Go to **Webhooks** in the Clerk dashboard
-     - Add endpoint: `https://YOUR_STATIC_DOMAIN.ngrok-free.app/api/webhooks/clerk`
-     - Subscribe to these events:
-       - **User events**: `user.created`, `user.updated`, `user.deleted`
-       - **Organization events**: `organization.created`, `organization.updated`, `organization.deleted`
-     - Copy the **Signing Secret** to `CLERK_WEBHOOK_SECRET` in your `.env` file
-     - **Note**: Keep ngrok running while developing to receive webhook events.
+     - **Note**: The app is organization-first - all projects belong to an organization (either personal workspace or team workspace)
 
 ### Running Locally
 
