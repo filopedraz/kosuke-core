@@ -15,11 +15,9 @@ import { existsSync } from 'fs';
 export class ClaudeService {
   private projectPath: string;
   private options: AgentOptions;
-  private remoteId?: string | null;
 
-  constructor(projectPath: string, remoteId?: string | null, options: AgentOptions = {}) {
+  constructor(projectPath: string, options: AgentOptions = {}) {
     this.projectPath = projectPath;
-    this.remoteId = remoteId;
 
     this.options = {
       maxTurns: options.maxTurns || parseInt(process.env.AGENT_MAX_TURNS || '25', 10),
@@ -33,20 +31,20 @@ export class ClaudeService {
   /**
    * Run an agentic query with the Claude Agent SDK
    */
-  async *runAgenticQuery(prompt: string): AsyncGenerator<SDKMessage> {
+  async *runAgenticQuery(prompt: string, remoteId?: string | null): AsyncGenerator<SDKMessage> {
     console.log('🤖 Starting Claude Agent SDK query');
     console.log(`📁 Working directory: ${this.projectPath}`);
     console.log(`⚙️ Max turns: ${this.options.maxTurns}`);
     console.log(`🔐 Permission mode: ${this.options.permissionMode}`);
 
-    if (this.remoteId) {
-      console.log(`🔄 Resuming session with remoteId: ${this.remoteId}`);
+    if (remoteId) {
+      console.log(`🔄 Resuming session with remoteId: ${remoteId}`);
     } else {
       console.log(`🆕 Starting new session (no remoteId)`);
     }
 
     try {
-      const sdkOptions = this.buildSDKOptions();
+      const sdkOptions = this.buildSDKOptions(remoteId);
       const queryInstance: Query = query({
         prompt,
         options: sdkOptions,
@@ -71,7 +69,7 @@ export class ClaudeService {
   /**
    * Build SDK options from agent configuration
    */
-  private buildSDKOptions(): Options {
+  private buildSDKOptions(remoteId?: string | null): Options {
     // Build options object with only supported properties
     const options: Partial<Options> = {
       // Working directory
@@ -91,14 +89,16 @@ export class ClaudeService {
 
       // Additional directories Claude can access (none by default for isolation)
       additionalDirectories: [],
-
-      // Add resume parameter if remoteId is provided
-      resume: this.remoteId ? this.remoteId : undefined,
     };
 
     // Add permission mode only if it's explicitly set
     if (this.options.permissionMode === 'acceptEdits') {
       options.permissionMode = 'acceptEdits';
+    }
+
+    // Add resume parameter if remoteId is provided
+    if (remoteId) {
+      options.resume = remoteId;
     }
 
     return options as Options;

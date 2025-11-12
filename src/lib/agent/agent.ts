@@ -21,7 +21,6 @@ import { EventProcessor } from './event-processor';
 export class Agent {
   private projectId: number;
   private sessionId: string;
-  private remoteId?: string | null;
   private assistantMessageId: number;
   private userId: string;
   private githubToken: string | null;
@@ -30,12 +29,10 @@ export class Agent {
   private claudeService: ClaudeService;
   private eventProcessor: EventProcessor;
   private gitOperations: GitOperations | null;
-  private capturedRemoteId?: string | null;
 
   constructor(config: AgentConfig) {
     this.projectId = config.projectId;
     this.sessionId = config.sessionId;
-    this.remoteId = config.remoteId;
     this.assistantMessageId = config.assistantMessageId;
     this.userId = config.userId;
     this.githubToken = config.githubToken;
@@ -44,7 +41,7 @@ export class Agent {
     this.sessionPath = sessionManager.getSessionPath(this.projectId, this.sessionId);
 
     // Initialize services
-    this.claudeService = new ClaudeService(this.sessionPath, this.remoteId);
+    this.claudeService = new ClaudeService(this.sessionPath);
     this.eventProcessor = new EventProcessor();
     this.gitOperations = this.githubToken ? new GitOperations() : null;
 
@@ -55,20 +52,27 @@ export class Agent {
   /**
    * Run the agent and stream responses
    */
-  async *run(prompt: string): AsyncGenerator<StreamEvent> {
+  async *run(prompt: string, remoteId?: string | null): AsyncGenerator<StreamEvent> {
     console.log(`🤖 Processing request for project ${this.projectId}, session ${this.sessionId}`);
 
+    if (remoteId) {
+      console.log(`🔄 Resuming Claude session with remoteId: ${remoteId}`);
+    } else {
+      console.log(`🆕 Starting new Claude session (will capture remoteId)`);
+    }
+
     const startTime = Date.now();
+    let capturedRemoteId: string | null = null;
 
     try {
       // Stream events from Claude Agent SDK
-      const sdkMessages = this.claudeService.runAgenticQuery(prompt);
+      const sdkMessages = this.claudeService.runAgenticQuery(prompt, remoteId);
 
       for await (const message of sdkMessages) {
-        // Capture remoteId from system init message (only if we don't have one yet)
-        if (!this.remoteId && !this.capturedRemoteId && message.type === 'result') {
-          this.capturedRemoteId = (message as SDKResultMessage).session_id;
-          console.log(`📝 Captured remoteId from Claude SDK: ${this.capturedRemoteId}`);
+        // Capture remoteId from result message (only if we don't already have one)
+        if (!remoteId && !capturedRemoteId && message.type === 'result') {
+          capturedRemoteId = (message as SDKResultMessage).session_id;
+          console.log(`📝 Captured remoteId from Claude SDK: ${capturedRemoteId}`);
         }
 
         // Process each SDK message and yield client events
@@ -82,8 +86,11 @@ export class Agent {
       // Finalize processing
       await this.finalizeProcessing();
 
-      // Send completion event
-      yield { type: 'message_complete' };
+      // Send completion event with captured remoteId
+      yield {
+        type: 'message_complete',
+        remoteId: capturedRemoteId,
+      };
 
       const duration = Date.now() - startTime;
       console.log(`⏱️ Total processing time: ${(duration / 1000).toFixed(2)}s`);
@@ -95,13 +102,6 @@ export class Agent {
         message: error instanceof Error ? error.message : 'Unknown error occurred',
       };
     }
-  }
-
-  /**
-   * Get the captured remoteId from the Claude SDK session
-   */
-  getCapturedRemoteId(): string | null | undefined {
-    return this.capturedRemoteId;
   }
 
   /**

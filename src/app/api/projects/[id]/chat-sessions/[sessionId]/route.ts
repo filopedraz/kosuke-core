@@ -443,40 +443,33 @@ export async function POST(
     const agent = new Agent({
       projectId,
       sessionId: chatSession.sessionId,
-      remoteId: chatSession.remoteId,
       githubToken,
       assistantMessageId: assistantMessage.id,
       userId,
     });
 
     console.log(`🚀 Starting agent stream for session ${chatSession.sessionId}`);
-    if (chatSession.remoteId) {
-      console.log(`🔄 Resuming Claude session with remoteId: ${chatSession.remoteId}`);
-    } else {
-      console.log(`🆕 Starting new Claude session (will capture remoteId)`);
-    }
 
     // Create a ReadableStream from the agent's async generator
     const stream = new ReadableStream({
       async start(controller) {
         try {
-          // Stream events from agent
-          for await (const event of agent.run(messageContent)) {
+          // Stream events from agent, passing the remoteId for session resumption
+          for await (const event of agent.run(messageContent, chatSession.remoteId)) {
+            // Check if this is the message_complete event with a captured remoteId
+            if (event.type === 'message_complete' && event.remoteId && !chatSession.remoteId) {
+              // Save the captured remoteId to the database
+              await db
+                .update(chatSessions)
+                .set({ remoteId: event.remoteId })
+                .where(eq(chatSessions.id, chatSession.id));
+              console.log(`✅ Saved remoteId to database for session ${chatSession.sessionId}: ${event.remoteId}`);
+
+            }
+
             // Format as Server-Sent Events
             const data = JSON.stringify(event);
             controller.enqueue(new TextEncoder().encode(`data: ${data}\n\n`));
-          }
-
-          // After streaming completes, check if we captured a remoteId and save it
-          if (!chatSession.remoteId) {
-            const capturedRemoteId = agent.getCapturedRemoteId();
-            if (capturedRemoteId) {
-              await db
-                .update(chatSessions)
-                .set({ remoteId: capturedRemoteId })
-                .where(eq(chatSessions.id, chatSession.id));
-              console.log(`✅ Saved remoteId to database for session ${chatSession.sessionId}: ${capturedRemoteId}`);
-            }
           }
 
           // Send completion marker

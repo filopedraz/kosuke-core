@@ -49,6 +49,7 @@ export interface ToolStopEvent {
 
 interface MessageCompleteEvent {
   type: 'message_complete';
+  remoteId?: string | null; // Claude Agent SDK session ID captured during execution
 }
 
 interface ErrorEvent {
@@ -90,7 +91,6 @@ interface ToolResultBlock {
 export interface AgentConfig {
   projectId: number;
   sessionId: string;
-  remoteId?: string | null; // Claude Agent SDK session ID for resuming conversations
   githubToken: string | null;
   assistantMessageId: number;
   userId: string;
