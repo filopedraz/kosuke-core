@@ -20,9 +20,9 @@ export class GitOperations {
   /**
    * Clone a GitHub repository to the local project directory
    */
-  async cloneRepository(repoUrl: string, projectId: number, githubToken: string): Promise<string> {
+  async cloneRepository(repoUrl: string, projectId: string, githubToken: string): Promise<string> {
     try {
-      const projectPath = join(PROJECTS_BASE_PATH, String(projectId));
+      const projectPath = join(PROJECTS_BASE_PATH, projectId);
 
       // Remove existing project directory if it exists
       if (existsSync(projectPath)) {

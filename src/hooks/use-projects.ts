@@ -41,7 +41,7 @@ export function useProjects({ userId, initialData }: UseProjectsOptions) {
   });
 }
 
-export function useProject(projectId: number) {
+export function useProject(projectId: string) {
   return useQuery<Project, Error>({
     queryKey: ['project', projectId],
     queryFn: async () => {
@@ -135,10 +135,10 @@ export function useCreateProject() {
 export function useDeleteProject() {
   const queryClient = useQueryClient();
 
-  return useMutation<number, Error, number | { projectId: number; deleteRepo?: boolean }>({
+  return useMutation<string, Error, string | { projectId: string; deleteRepo?: boolean }>({
     mutationFn: async input => {
       const { projectId, deleteRepo } =
-        typeof input === 'number' ? { projectId: input, deleteRepo: false } : input;
+        typeof input === 'string' ? { projectId: input, deleteRepo: false } : input;
 
       // Ensure at least 2 seconds pass for UI feedback
       const startTime = Date.now();
@@ -192,7 +192,7 @@ export function useDeleteProject() {
 export function useUpdateProject() {
   const queryClient = useQueryClient();
 
-  return useMutation<Project, Error, { projectId: number; updates: Partial<Project> }>({
+  return useMutation<Project, Error, { projectId: string; updates: Partial<Project> }>({
     mutationFn: async ({ projectId, updates }) => {
       const response = await fetch(`/api/projects/${projectId}`, {
         method: 'PATCH',

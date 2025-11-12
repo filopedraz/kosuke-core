@@ -1,6 +1,6 @@
 export interface PreviewUrl {
-  id: number;
-  project_id: number;
+  id: string;
+  project_id: string;
   branch_name: string;
   subdomain: string;
   full_url: string;

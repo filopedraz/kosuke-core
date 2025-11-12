@@ -1,7 +1,7 @@
 'use client';
 
 import { Loader2 } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 import { cn } from '@/lib/utils';
 
@@ -16,7 +16,7 @@ interface FileNode {
 }
 
 interface CodeExplorerProps {
-  projectId: number;
+  projectId: string;
   className?: string;
 }
 
@@ -29,25 +29,25 @@ export default function CodeExplorer({
   const [isLoading, setIsLoading] = useState(true);
   const [fileContent, setFileContent] = useState<string>('');
   const [fileLanguage, setFileLanguage] = useState<string>('');
-  
+
   // Fetch project files
   useEffect(() => {
     const fetchProjectFiles = async () => {
       setIsLoading(true);
-      
+
       try {
         // Fetch the file structure from the API
         const response = await fetch(`/api/projects/${projectId}/files`);
-        
+
         if (!response.ok) {
           throw new Error(`Failed to fetch project files: ${response.statusText}`);
         }
-        
+
         const data = await response.json();
-        
+
         if (data.files && Array.isArray(data.files)) {
           setFiles(data.files);
-          
+
           // Select the first file by default if available
           const firstFile = findFirstFile(data.files);
           if (firstFile && firstFile.type === 'file') {
@@ -60,37 +60,37 @@ export default function CodeExplorer({
         setIsLoading(false);
       }
     };
-    
+
     fetchProjectFiles();
   }, [projectId]);
-  
+
   // Function to handle file selection
   const handleSelectFile = (path: string) => {
     setSelectedFile(path);
   };
-  
+
   // Fetch file content when the file is selected
   useEffect(() => {
     if (!selectedFile) return;
-    
+
     const fetchFileContent = async () => {
       setIsLoading(true);
-      
+
       try {
         // Fetch the file content from the API
         const response = await fetch(`/api/projects/${projectId}/files/${encodeURIComponent(selectedFile)}`);
-        
+
         if (!response.ok) {
           throw new Error(`Failed to fetch file content: ${response.statusText}`);
         }
 
         // Get the raw text content first
         const text = await response.text();
-        
+
         // Determine the language from the file name
         const fileName = selectedFile.split('/').pop() || '';
         const extension = fileName.split('.').pop()?.toLowerCase() || '';
-        
+
         // For JSON files, try to parse and prettify
         if (extension === 'json') {
           try {
@@ -103,7 +103,7 @@ export default function CodeExplorer({
         } else {
           setFileContent(text);
         }
-        
+
         // Check if it's a special file without extension (like Dockerfile)
         if (fileName.toLowerCase() === 'dockerfile') {
           setFileLanguage('dockerfile');
@@ -117,10 +117,10 @@ export default function CodeExplorer({
         setIsLoading(false);
       }
     };
-    
+
     fetchFileContent();
   }, [selectedFile, projectId]);
-  
+
   return (
     <div className={cn('flex h-full w-full overflow-hidden', className)} data-testid="code-explorer">
       <div className="w-64 border-r border-border overflow-y-auto">
@@ -136,7 +136,7 @@ export default function CodeExplorer({
           />
         )}
       </div>
-      
+
       <div className="flex-1 overflow-hidden">
         {selectedFile ? (
           // Use the new minimal editor component with directly passed content
@@ -165,13 +165,13 @@ function findFirstFile(nodes: FileNode[]): FileNode | null {
     if (node.type === 'file') {
       return node;
     }
-    
+
     if (node.children && node.children.length > 0) {
       const file = findFirstFile(node.children);
       if (file) return file;
     }
   }
-  
+
   return null;
 }
 
@@ -185,19 +185,19 @@ function getLanguageFromExtension(extension: string): string {
     mjs: 'mjs',
     ts: 'typescript',
     tsx: 'typescript',
-    
+
     // Web technologies
     html: 'html',
     css: 'css',
     scss: 'scss',
     svg: 'svg',
-    
+
     // Data formats
     json: 'json',
     md: 'markdown',
     yml: 'yaml',
     yaml: 'yaml',
-    
+
     // Backend languages
     py: 'python',
     rb: 'ruby',
@@ -211,17 +211,17 @@ function getLanguageFromExtension(extension: string): string {
     swift: 'swift',
     kt: 'kotlin',
     dart: 'dart',
-    
+
     // Shell and config files
     sh: 'sh',
     bash: 'sh',
     zsh: 'sh',
   };
-  
+
   // Handle special file names (not extensions)
   if (extension.toLowerCase() === 'dockerfile') {
     return 'dockerfile';
   }
-  
+
   return extensionMap[extension.toLowerCase()] || 'plaintext';
-} 
+}

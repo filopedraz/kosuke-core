@@ -34,7 +34,7 @@ export interface StartPreviewResponse {
   url?: string;
   previewUrl?: string;
   error?: string;
-  project_id?: number;
+  project_id?: string;
   session_id?: string;
   running?: boolean;
   is_responding?: boolean;
@@ -42,7 +42,7 @@ export interface StartPreviewResponse {
 
 // Preview Panel Hook Types
 export interface UsePreviewPanelOptions {
-  projectId: number;
+  projectId: string;
   sessionId: string;
   projectName: string;
   enabled?: boolean;

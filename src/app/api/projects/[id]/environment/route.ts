@@ -25,12 +25,7 @@ export async function GET(
       return ApiErrorHandler.unauthorized();
     }
 
-    const { id } = await params;
-    const projectId = parseInt(id);
-
-    if (isNaN(projectId)) {
-      return ApiErrorHandler.badRequest('Invalid project ID');
-    }
+    const { id: projectId } = await params;
 
     // Verify user has access to project through organization membership
     const { hasAccess } = await verifyProjectAccess(userId, projectId);
@@ -63,12 +58,7 @@ export async function POST(
       return ApiErrorHandler.unauthorized();
     }
 
-    const { id } = await params;
-    const projectId = parseInt(id);
-
-    if (isNaN(projectId)) {
-      return ApiErrorHandler.badRequest('Invalid project ID');
-    }
+    const { id: projectId } = await params;
 
     // Parse request body
     const body = await request.json();

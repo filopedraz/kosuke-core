@@ -8,7 +8,7 @@ import type {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 // Hook to get default branch settings
-export function useDefaultBranchSettings(projectId: number) {
+export function useDefaultBranchSettings(projectId: string) {
   return useQuery({
     queryKey: ['default-branch-settings', projectId],
     queryFn: async (): Promise<DefaultBranchSettings> => {
@@ -24,7 +24,7 @@ export function useDefaultBranchSettings(projectId: number) {
 }
 
 // Hook to update default branch
-export function useUpdateDefaultBranch(projectId: number) {
+export function useUpdateDefaultBranch(projectId: string) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -63,7 +63,7 @@ export function useUpdateDefaultBranch(projectId: number) {
 }
 
 // Hook to create pull request from chat session
-export function useCreatePullRequest(projectId: number) {
+export function useCreatePullRequest(projectId: string) {
   const { toast } = useToast();
 
   return useMutation({

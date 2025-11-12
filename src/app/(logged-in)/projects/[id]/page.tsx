@@ -127,16 +127,11 @@ function ProjectLoadingSkeleton() {
 
 export default function ProjectPage({ params }: ProjectPageProps) {
   // Unwrap promises using React.use()
-  const { id } = use(params);
+  const { id: projectId } = use(params);
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const projectId = Number(id);
   const sessionFromUrl = searchParams.get('session');
-
-  if (isNaN(projectId)) {
-    notFound();
-  }
 
   const { user } = useUser();
   const { data: project, isLoading: isProjectLoading, error: projectError } = useProject(projectId);
@@ -149,7 +144,7 @@ export default function ProjectPage({ params }: ProjectPageProps) {
   const { currentView, setCurrentView, isChatCollapsed, toggleChatCollapsed } = useProjectUIState(project);
 
   // Chat session state management
-  const [activeChatSessionId, setActiveChatSessionId] = useState<number | null>(null);
+  const [activeChatSessionId, setActiveChatSessionId] = useState<string | null>(null);
   const [showSidebar, setShowSidebar] = useState(!sessionFromUrl); // Show sidebar unless we have a session in URL
 
   // Auto-select session based on URL or default session when sessions are loaded
@@ -177,7 +172,7 @@ export default function ProjectPage({ params }: ProjectPageProps) {
   }, [sessions, activeChatSessionId, sessionFromUrl]);
 
   // Handle session selection and URL updates
-  const handleSessionSelect = (sessionId: number) => {
+  const handleSessionSelect = (sessionId: string) => {
     const session = sessions.find(s => s.id === sessionId);
     if (session) {
       setActiveChatSessionId(sessionId);

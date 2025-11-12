@@ -10,11 +10,11 @@ import { useCallback, useState } from 'react';
 
 // Send message function with streaming support
 const sendMessage = async (
-  projectId: number,
+  projectId: string,
   content: string,
   options?: MessageOptions,
   contentBlockCallback?: (contentBlocks: ContentBlock[]) => void,
-  setAssistantIdCallback?: (id: number) => void,
+  setAssistantIdCallback?: (id: string) => void,
   onStreamEnd?: () => void,
   abortController?: AbortController,
   sessionId?: string | null
@@ -103,7 +103,7 @@ const sendMessage = async (
       }
 
       // Extract assistant message ID from response headers for real-time updates
-      const assistantMessageId = parseInt(response.headers.get('X-Assistant-Message-Id') || '0');
+      const assistantMessageId = response.headers.get('X-Assistant-Message-Id') || '';
 
       // Notify callback with assistant message ID
       if (setAssistantIdCallback) {
@@ -386,6 +386,8 @@ const sendMessage = async (
           content: finalContent.trim(),
           role: 'assistant',
           timestamp: new Date(),
+          projectId,
+          userId: '', // Will be populated by the backend
         } as ApiChatMessage,
         success: true,
         expectingWebhookUpdate: true,
@@ -399,8 +401,8 @@ const sendMessage = async (
 
 // Hook for sending messages with streaming support
 export function useSendMessage(
-  projectId: number,
-  activeChatSessionId?: number | null,
+  projectId: string,
+  activeChatSessionId?: string | null,
   sessionId?: string | null
 ) {
   const queryClient = useQueryClient();
@@ -410,7 +412,7 @@ export function useSendMessage(
     isStreaming: false,
     expectingWebhookUpdate: false,
     streamingContentBlocks: [] as ContentBlock[],
-    streamingAssistantMessageId: null as number | null,
+    streamingAssistantMessageId: null as string | null,
     streamAbortController: null as AbortController | null,
   });
 
@@ -456,7 +458,7 @@ export function useSendMessage(
       };
 
       // Create assistant ID callback
-      const setAssistantIdCallback = (id: number) => {
+      const setAssistantIdCallback = (id: string) => {
         setStreamingState(prev => ({
           ...prev,
           streamingAssistantMessageId: id,

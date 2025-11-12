@@ -19,9 +19,9 @@ import { EventProcessor } from './event-processor';
  * Orchestrates Claude Agent SDK with session isolation and GitHub integration
  */
 export class Agent {
-  private projectId: number;
+  private projectId: string;
   private sessionId: string;
-  private assistantMessageId: number;
+  private assistantMessageId: string;
   private userId: string;
   private githubToken: string | null;
 

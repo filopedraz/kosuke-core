@@ -28,11 +28,7 @@ export async function GET(
       return ApiErrorHandler.unauthorized();
     }
 
-    const { id } = await params;
-    const projectId = Number(id);
-    if (isNaN(projectId)) {
-      return ApiErrorHandler.invalidProjectId();
-    }
+    const { id: projectId } = await params;
 
     // Verify user has access to project through organization membership
     const { hasAccess, project } = await verifyProjectAccess(userId, projectId);
@@ -89,11 +85,7 @@ export async function PUT(
       return ApiErrorHandler.unauthorized();
     }
 
-    const { id } = await params;
-    const projectId = Number(id);
-    if (isNaN(projectId)) {
-      return ApiErrorHandler.invalidProjectId();
-    }
+    const { id: projectId } = await params;
 
     // Verify user has access to project through organization membership
     const { hasAccess, project, isOrgAdmin } = await verifyProjectAccess(userId, projectId);

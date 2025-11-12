@@ -8,7 +8,7 @@ import { projectEnvironmentVariables } from '@/lib/db/schema';
  * Returns a key-value object suitable for Docker container environment
  */
 export async function getProjectEnvironmentVariables(
-  projectId: number
+  projectId: string
 ): Promise<Record<string, string>> {
   try {
     const variables = await db

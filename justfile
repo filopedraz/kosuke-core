@@ -23,7 +23,7 @@ install:
 
 migrate:
     @echo "Migrating database..."
-    @docker exec kosuke_nextjs npm run db:push
+    @docker exec kosuke_nextjs npm run db:migrate
 
 remove-previews:
     @docker rm -f $(docker ps -aq --filter "name=kosuke-preview")

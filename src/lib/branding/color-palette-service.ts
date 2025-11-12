@@ -57,7 +57,7 @@ export class ColorPaletteService {
    * Generate a color palette for a session using Claude
    */
   async generateColorPalette(
-    projectId: number,
+    projectId: string,
     sessionId: string,
     keywords: string = ''
   ): Promise<{
@@ -103,7 +103,7 @@ export class ColorPaletteService {
    * Use Claude to generate a color palette
    */
   private async generateColorsWithClaude(
-    projectId: number,
+    projectId: string,
     keywords: string,
     existingColors: ColorVariable[]
   ): Promise<ColorVariable[]> {

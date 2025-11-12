@@ -4,15 +4,15 @@ import {
   integer,
   jsonb,
   pgTable,
-  serial,
   text,
   timestamp,
   unique,
+  uuid,
   varchar,
 } from 'drizzle-orm/pg-core';
 
 export const projects = pgTable('projects', {
-  id: serial('id').primaryKey(),
+  id: uuid('id').defaultRandom().primaryKey(),
   name: varchar('name', { length: 100 }).notNull(),
   description: text('description'),
   orgId: text('org_id'),
@@ -30,8 +30,8 @@ export const projects = pgTable('projects', {
 });
 
 export const chatSessions = pgTable('chat_sessions', {
-  id: serial('id').primaryKey(),
-  projectId: integer('project_id')
+  id: uuid('id').defaultRandom().primaryKey(),
+  projectId: uuid('project_id')
     .references(() => projects.id, { onDelete: 'cascade' })
     .notNull(),
   userId: text('user_id'), // No FK
@@ -53,11 +53,11 @@ export const chatSessions = pgTable('chat_sessions', {
 });
 
 export const chatMessages = pgTable('chat_messages', {
-  id: serial('id').primaryKey(),
-  projectId: integer('project_id')
+  id: uuid('id').defaultRandom().primaryKey(),
+  projectId: uuid('project_id')
     .references(() => projects.id)
     .notNull(),
-  chatSessionId: integer('chat_session_id')
+  chatSessionId: uuid('chat_session_id')
     .references(() => chatSessions.id, { onDelete: 'cascade' })
     .notNull(), // Make this NOT NULL - all messages must be tied to a session
   userId: text('user_id'), // No FK
@@ -74,11 +74,11 @@ export const chatMessages = pgTable('chat_messages', {
 });
 
 export const diffs = pgTable('diffs', {
-  id: serial('id').primaryKey(),
-  projectId: integer('project_id')
+  id: uuid('id').defaultRandom().primaryKey(),
+  projectId: uuid('project_id')
     .references(() => projects.id)
     .notNull(),
-  chatMessageId: integer('chat_message_id')
+  chatMessageId: uuid('chat_message_id')
     .references(() => chatMessages.id)
     .notNull(),
   filePath: text('file_path').notNull(),
@@ -89,8 +89,8 @@ export const diffs = pgTable('diffs', {
 });
 
 export const projectCommits = pgTable('project_commits', {
-  id: serial('id').primaryKey(),
-  projectId: integer('project_id')
+  id: uuid('id').defaultRandom().primaryKey(),
+  projectId: uuid('project_id')
     .notNull()
     .references(() => projects.id, { onDelete: 'cascade' }),
   commitSha: text('commit_sha').notNull(),
@@ -101,8 +101,8 @@ export const projectCommits = pgTable('project_commits', {
 });
 
 export const githubSyncSessions = pgTable('github_sync_sessions', {
-  id: serial('id').primaryKey(),
-  projectId: integer('project_id')
+  id: uuid('id').defaultRandom().primaryKey(),
+  projectId: uuid('project_id')
     .references(() => projects.id, { onDelete: 'cascade' })
     .notNull(),
   triggerType: varchar('trigger_type', { length: 50 }).notNull(), // 'manual', 'webhook', 'cron'
@@ -116,8 +116,8 @@ export const githubSyncSessions = pgTable('github_sync_sessions', {
 export const projectEnvironmentVariables = pgTable(
   'project_environment_variables',
   {
-    id: serial('id').primaryKey(),
-    projectId: integer('project_id')
+    id: uuid('id').defaultRandom().primaryKey(),
+    projectId: uuid('project_id')
       .notNull()
       .references(() => projects.id, { onDelete: 'cascade' }),
     key: text('key').notNull(),
@@ -135,8 +135,8 @@ export const projectEnvironmentVariables = pgTable(
 export const projectIntegrations = pgTable(
   'project_integrations',
   {
-    id: serial('id').primaryKey(),
-    projectId: integer('project_id')
+    id: uuid('id').defaultRandom().primaryKey(),
+    projectId: uuid('project_id')
       .notNull()
       .references(() => projects.id, { onDelete: 'cascade' }),
     integrationType: text('integration_type').notNull(), // 'clerk', 'polar', 'stripe', 'custom'
