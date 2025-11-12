@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 
-import Navbar from '@/components/ui/navbar';
+import Navbar from '@/components/navbar';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();

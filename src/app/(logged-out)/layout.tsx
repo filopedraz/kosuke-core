@@ -1,7 +1,7 @@
 import React from 'react';
 
 import Footer from '@/components/footer';
-import Navbar from '@/components/ui/navbar';
+import Navbar from '@/components/navbar';
 
 export default function LoggedOutLayout({ children }: { children: React.ReactNode }) {
   return (

@@ -3,7 +3,7 @@
 import { notFound, useRouter, useSearchParams } from 'next/navigation';
 import { use, useEffect, useRef, useState } from 'react';
 
-import Navbar from '@/components/ui/navbar';
+import Navbar from '@/components/navbar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useChatSessions } from '@/hooks/use-chat-sessions';
 import { useCreatePullRequest } from '@/hooks/use-project-settings';
