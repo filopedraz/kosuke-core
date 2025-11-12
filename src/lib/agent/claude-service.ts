@@ -15,9 +15,11 @@ import { existsSync } from 'fs';
 export class ClaudeService {
   private projectPath: string;
   private options: AgentOptions;
+  private remoteId?: string | null;
 
-  constructor(projectPath: string, options: AgentOptions = {}) {
+  constructor(projectPath: string, remoteId?: string | null, options: AgentOptions = {}) {
     this.projectPath = projectPath;
+    this.remoteId = remoteId;
 
     this.options = {
       maxTurns: options.maxTurns || parseInt(process.env.AGENT_MAX_TURNS || '25', 10),
@@ -36,6 +38,12 @@ export class ClaudeService {
     console.log(`📁 Working directory: ${this.projectPath}`);
     console.log(`⚙️ Max turns: ${this.options.maxTurns}`);
     console.log(`🔐 Permission mode: ${this.options.permissionMode}`);
+
+    if (this.remoteId) {
+      console.log(`🔄 Resuming session with remoteId: ${this.remoteId}`);
+    } else {
+      console.log(`🆕 Starting new session (no remoteId)`);
+    }
 
     try {
       const sdkOptions = this.buildSDKOptions();
@@ -83,6 +91,9 @@ export class ClaudeService {
 
       // Additional directories Claude can access (none by default for isolation)
       additionalDirectories: [],
+
+      // Add resume parameter if remoteId is provided
+      resume: this.remoteId ? this.remoteId : undefined,
     };
 
     // Add permission mode only if it's explicitly set

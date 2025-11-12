@@ -9,6 +9,7 @@ import { chatMessages } from '@/lib/db/schema';
 import { GitOperations } from '@/lib/github/git-operations';
 import { sessionManager } from '@/lib/sessions';
 import type { AgentConfig, StreamEvent } from '@/lib/types/agent';
+import { SDKResultMessage } from '@anthropic-ai/claude-agent-sdk';
 import { eq } from 'drizzle-orm';
 import { ClaudeService } from './claude-service';
 import { EventProcessor } from './event-processor';
@@ -20,6 +21,7 @@ import { EventProcessor } from './event-processor';
 export class Agent {
   private projectId: number;
   private sessionId: string;
+  private remoteId?: string | null;
   private assistantMessageId: number;
   private userId: string;
   private githubToken: string | null;
@@ -28,10 +30,12 @@ export class Agent {
   private claudeService: ClaudeService;
   private eventProcessor: EventProcessor;
   private gitOperations: GitOperations | null;
+  private capturedRemoteId?: string | null;
 
   constructor(config: AgentConfig) {
     this.projectId = config.projectId;
     this.sessionId = config.sessionId;
+    this.remoteId = config.remoteId;
     this.assistantMessageId = config.assistantMessageId;
     this.userId = config.userId;
     this.githubToken = config.githubToken;
@@ -40,7 +44,7 @@ export class Agent {
     this.sessionPath = sessionManager.getSessionPath(this.projectId, this.sessionId);
 
     // Initialize services
-    this.claudeService = new ClaudeService(this.sessionPath);
+    this.claudeService = new ClaudeService(this.sessionPath, this.remoteId);
     this.eventProcessor = new EventProcessor();
     this.gitOperations = this.githubToken ? new GitOperations() : null;
 
@@ -61,6 +65,12 @@ export class Agent {
       const sdkMessages = this.claudeService.runAgenticQuery(prompt);
 
       for await (const message of sdkMessages) {
+        // Capture remoteId from system init message (only if we don't have one yet)
+        if (!this.remoteId && !this.capturedRemoteId && message.type === 'result') {
+          this.capturedRemoteId = (message as SDKResultMessage).session_id;
+          console.log(`📝 Captured remoteId from Claude SDK: ${this.capturedRemoteId}`);
+        }
+
         // Process each SDK message and yield client events
         const clientEvents = this.eventProcessor.processMessage(message);
 
@@ -85,6 +95,13 @@ export class Agent {
         message: error instanceof Error ? error.message : 'Unknown error occurred',
       };
     }
+  }
+
+  /**
+   * Get the captured remoteId from the Claude SDK session
+   */
+  getCapturedRemoteId(): string | null | undefined {
+    return this.capturedRemoteId;
   }
 
   /**
@@ -230,4 +247,3 @@ export class Agent {
     }
   }
 }
-

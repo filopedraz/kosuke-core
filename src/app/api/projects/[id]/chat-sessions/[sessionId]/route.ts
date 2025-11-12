@@ -443,12 +443,18 @@ export async function POST(
     const agent = new Agent({
       projectId,
       sessionId: chatSession.sessionId,
+      remoteId: chatSession.remoteId,
       githubToken,
       assistantMessageId: assistantMessage.id,
       userId,
     });
 
     console.log(`🚀 Starting agent stream for session ${chatSession.sessionId}`);
+    if (chatSession.remoteId) {
+      console.log(`🔄 Resuming Claude session with remoteId: ${chatSession.remoteId}`);
+    } else {
+      console.log(`🆕 Starting new Claude session (will capture remoteId)`);
+    }
 
     // Create a ReadableStream from the agent's async generator
     const stream = new ReadableStream({
@@ -459,6 +465,22 @@ export async function POST(
             // Format as Server-Sent Events
             const data = JSON.stringify(event);
             controller.enqueue(new TextEncoder().encode(`data: ${data}\n\n`));
+          }
+
+          // After streaming completes, check if we captured a remoteId and save it
+          if (!chatSession.remoteId) {
+            const capturedRemoteId = agent.getCapturedRemoteId();
+            if (capturedRemoteId) {
+              try {
+                await db
+                  .update(chatSessions)
+                  .set({ remoteId: capturedRemoteId })
+                  .where(eq(chatSessions.id, chatSession.id));
+                console.log(`✅ Saved remoteId to database for session ${chatSession.sessionId}: ${capturedRemoteId}`);
+              } catch (dbError) {
+                console.error(`⚠️ Failed to save remoteId to database:`, dbError);
+              }
+            }
           }
 
           // Send completion marker
