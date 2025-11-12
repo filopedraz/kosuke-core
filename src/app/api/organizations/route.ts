@@ -45,8 +45,6 @@ export async function POST(request: Request) {
       }
     }
 
-    // Organization will be synced to DB via webhook
-    // Return the Clerk org ID for immediate use
     return NextResponse.json({
       data: {
         orgId: clerkOrg.id,
