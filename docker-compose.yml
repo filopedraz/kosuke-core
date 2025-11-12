@@ -27,7 +27,6 @@ services:
       - MAIN_DOMAIN=${MAIN_DOMAIN}
       - PREVIEW_DOMAIN=${PREVIEW_BASE_DOMAIN}
 
-
   postgres:
     image: postgres:16.4-alpine
     container_name: kosuke_postgres
@@ -54,6 +53,7 @@ services:
       - 'traefik.enable=true'
       - 'traefik.http.routers.main.rule=Host(`kosuke.ai`) || Host(`www.kosuke.ai`)'
       - 'traefik.http.routers.main.tls.certresolver=letsencrypt'
+      - 'traefik.http.middlewares.main.headers=security-headers@file'
       - 'traefik.http.services.main.loadbalancer.server.port=3000'
     depends_on:
       - postgres
