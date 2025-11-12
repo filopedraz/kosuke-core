@@ -93,6 +93,7 @@ export interface AgentConfig {
   githubToken: string | null;
   assistantMessageId: number;
   userId: string;
+  conversationContext?: string;
 }
 
 export interface AgentOptions {

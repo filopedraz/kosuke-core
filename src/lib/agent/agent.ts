@@ -23,6 +23,7 @@ export class Agent {
   private assistantMessageId: number;
   private userId: string;
   private githubToken: string | null;
+  private conversationContext: string | undefined;
 
   private sessionPath: string;
   private claudeService: ClaudeService;
@@ -35,6 +36,7 @@ export class Agent {
     this.assistantMessageId = config.assistantMessageId;
     this.userId = config.userId;
     this.githubToken = config.githubToken;
+    this.conversationContext = config.conversationContext;
 
     // Get session-specific working directory
     this.sessionPath = sessionManager.getSessionPath(this.projectId, this.sessionId);
@@ -46,6 +48,7 @@ export class Agent {
 
     console.log(`🚀 Agent initialized for project ${this.projectId}, session ${this.sessionId}`);
     console.log(`📁 Working directory: ${this.sessionPath}`);
+    console.log(`📜 Has conversation context: ${!!this.conversationContext}`);
   }
 
   /**
@@ -57,8 +60,8 @@ export class Agent {
     const startTime = Date.now();
 
     try {
-      // Stream events from Claude Agent SDK
-      const sdkMessages = this.claudeService.runAgenticQuery(prompt);
+      // Stream events from Claude Agent SDK with conversation context
+      const sdkMessages = this.claudeService.runAgenticQuery(prompt, this.conversationContext);
 
       for await (const message of sdkMessages) {
         // Process each SDK message and yield client events
@@ -230,4 +233,3 @@ export class Agent {
     }
   }
 }
-

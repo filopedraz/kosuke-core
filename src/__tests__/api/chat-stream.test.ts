@@ -17,19 +17,38 @@ jest.mock('@/lib/auth', () => ({
   auth: jest.fn().mockResolvedValue({ userId: 'test-user-123' }),
 }));
 
+// Mock call counter to return different values
+let selectCallCount = 0;
+
 jest.mock('@/lib/db/drizzle', () => ({
   db: {
-    select: jest.fn(() => ({
-      from: jest.fn(() => ({
-        where: jest.fn().mockResolvedValue([
-          {
-            id: 1,
-            name: 'Test Project',
-            createdBy: 'test-user-123',
-          },
-        ]),
-      })),
-    })),
+    select: jest.fn(() => {
+      selectCallCount++;
+      return {
+        from: jest.fn(() => ({
+          where: jest.fn(() => {
+            // First two calls: project and chatSession (no orderBy)
+            if (selectCallCount <= 2) {
+              return Promise.resolve([
+                {
+                  id: 1,
+                  name: 'Test Project',
+                  createdBy: 'test-user-123',
+                  projectId: 1,
+                  sessionId: 'test-session-123',
+                },
+              ]);
+            }
+            // Third call onwards: previous messages (with orderBy)
+            return {
+              orderBy: jest.fn(() => ({
+                limit: jest.fn().mockResolvedValue([]), // Empty array for previous messages
+              })),
+            };
+          }),
+        })),
+      };
+    }),
     insert: jest.fn(() => ({
       values: jest.fn(() => ({
         returning: jest.fn().mockResolvedValue([
@@ -76,6 +95,7 @@ describe('Chat Stream API', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    selectCallCount = 0; // Reset counter for each test
   });
 
   describe('POST /api/projects/[id]/chat-sessions/[sessionId]', () => {

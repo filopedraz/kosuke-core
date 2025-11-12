@@ -30,17 +30,24 @@ export class ClaudeService {
 
   /**
    * Run an agentic query with the Claude Agent SDK
+   * Includes conversation context for continuity
    */
-  async *runAgenticQuery(prompt: string): AsyncGenerator<SDKMessage> {
+  async *runAgenticQuery(prompt: string, conversationContext?: string): AsyncGenerator<SDKMessage> {
     console.log('🤖 Starting Claude Agent SDK query');
+    console.log(`🔤 Prompt: ${prompt}`);
     console.log(`📁 Working directory: ${this.projectPath}`);
+    console.log(`📜 Has conversation context: ${!!conversationContext}`);
     console.log(`⚙️ Max turns: ${this.options.maxTurns}`);
     console.log(`🔐 Permission mode: ${this.options.permissionMode}`);
 
     try {
       const sdkOptions = this.buildSDKOptions();
+
+      // Prepend conversation context to the prompt if available
+      const fullPrompt = conversationContext ? `${conversationContext}\n\n${prompt}` : prompt;
+
       const queryInstance: Query = query({
-        prompt,
+        prompt: fullPrompt,
         options: sdkOptions,
       });
 

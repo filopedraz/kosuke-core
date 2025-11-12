@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { Agent } from '@/lib/agent';
+import { createConversationContext } from '@/lib/agent/message-converter';
 import { ApiErrorHandler } from '@/lib/api/errors';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db/drizzle';
@@ -11,7 +12,7 @@ import { deleteDir } from '@/lib/fs/operations';
 import { getGitHubToken } from '@/lib/github/auth';
 import { sessionManager } from '@/lib/sessions';
 import { uploadFile } from '@/lib/storage';
-import { and, eq } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 
 // Schema for updating a chat session
 const updateChatSessionSchema = z.object({
@@ -377,6 +378,24 @@ export async function POST(
 
     console.log(`Received message content: "${messageContent.substring(0, 50)}${messageContent.length > 50 ? '...' : ''}"`);
 
+    // Fetch the last 10 messages from this chat session for conversation history
+    const previousMessages = await db
+      .select()
+      .from(chatMessages)
+      .where(
+        and(
+          eq(chatMessages.chatSessionId, chatSession.id),
+          eq(chatMessages.projectId, projectId)
+        )
+      )
+      .orderBy(desc(chatMessages.timestamp))
+      .limit(10);
+
+    // Reverse to get chronological order (oldest first)
+    previousMessages.reverse();
+
+    console.log(`📜 Fetched ${previousMessages.length} previous messages for context`);
+
     // Save user message immediately
     const [userMessage] = await db.insert(chatMessages).values({
       projectId,
@@ -439,13 +458,17 @@ export async function POST(
 
     console.log(`✅ Session environment validated for session ${chatSession.sessionId}`);
 
-    // Initialize Agent with session configuration
+    // Create conversation context from previous messages
+    const conversationContext = createConversationContext(previousMessages);
+
+    // Initialize Agent with session configuration and conversation context
     const agent = new Agent({
       projectId,
       sessionId: chatSession.sessionId,
       githubToken,
       assistantMessageId: assistantMessage.id,
       userId,
+      conversationContext: conversationContext || undefined,
     });
 
     console.log(`🚀 Starting agent stream for session ${chatSession.sessionId}`);
