@@ -68,7 +68,7 @@ export function useOrganizationMembers(): UseOrganizationMembersReturn {
 
     setIsInvitingMember(true);
     try {
-      const response = await fetch(`/api/organizations/${organizationId}/invite`, {
+      const response = await fetch(`/api/organizations/${organizationId}/invitations`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
