@@ -209,12 +209,6 @@ export default function ProjectPage({ params }: ProjectPageProps) {
     notFound();
   }
 
-  // Access control - check project ownership
-  if (project.createdBy !== user.id) {
-    console.error('Access denied: User does not own this project');
-    notFound();
-  }
-
   // Handlers
   const handleRefresh = () => {
     // Refresh could trigger a page reload or refetch project data

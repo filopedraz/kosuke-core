@@ -28,8 +28,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ org
       return ApiErrorHandler.badRequest('Cannot transfer ownership of personal workspaces');
     }
 
-    if (org.createdBy !== userId) {
-      return ApiErrorHandler.forbidden('Only the organization owner can transfer ownership');
+    // Check if user is admin of the organization
+    const isAdmin = await clerkService.isOrgAdmin(userId, orgId);
+    if (!isAdmin) {
+      return ApiErrorHandler.forbidden('Only organization admins can transfer ownership');
     }
 
     const body = await request.json();
