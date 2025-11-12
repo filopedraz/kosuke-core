@@ -78,14 +78,15 @@ export function useUser(): UseUserReturn {
   // Profile update mutation
   const updateProfileMutation = useMutation({
     mutationFn: async (formData: FormData): Promise<UpdateProfileResponse> => {
-      const name = formData.get('name') as string;
+      const firstName = formData.get('firstName') as string;
+      const lastName = formData.get('lastName') as string;
       const pipelinePreference = formData.get('pipelinePreference') as PipelinePreference;
       const marketingEmails = formData.get('marketingEmails') === 'true';
 
       const response = await fetch('/api/user/profile', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, pipelinePreference, marketingEmails }),
+        body: JSON.stringify({ firstName, lastName, pipelinePreference, marketingEmails }),
       });
 
       if (!response.ok) {

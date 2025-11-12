@@ -1,10 +1,7 @@
 import { ApiErrorHandler } from '@/lib/api/errors';
 import { auth } from '@/lib/auth';
 import { clerkService } from '@/lib/clerk';
-import { existsSync } from 'fs';
-import { mkdir, writeFile } from 'fs/promises';
 import { NextRequest, NextResponse } from 'next/server';
-import { join } from 'path';
 
 export async function PUT(request: NextRequest) {
   try {
@@ -25,41 +22,22 @@ export async function PUT(request: NextRequest) {
       return ApiErrorHandler.badRequest('File must be an image');
     }
 
-    // Validate file size (max 5MB)
-    const maxSize = 5 * 1024 * 1024; // 5MB
+    // Validate file size (max 2MB - Clerk's limit, recommended 1:1 aspect ratio)
+    const maxSize = 2 * 1024 * 1024; // 2MB
     if (file.size > maxSize) {
-      return ApiErrorHandler.badRequest('File size must be less than 5MB');
+      return ApiErrorHandler.badRequest('File size must be less than 2MB');
     }
 
-    let imageUrl: string;
-
     try {
-      // Use local file system for the moment
-      const fileName = `${userId}-${Date.now()}-${file.name}`;
-      const uploadsDir = join(process.cwd(), 'public', 'uploads');
+      // Update user's image using Clerk's native API
+      await clerkService.updateUserImage(userId, file);
 
-      // Ensure uploads directory exists
-      if (!existsSync(uploadsDir)) {
-        await mkdir(uploadsDir, { recursive: true });
-      }
-
-      // Convert file to buffer
-      const bytes = await file.arrayBuffer();
-      const buffer = Buffer.from(bytes);
-
-      // Write file to public/uploads
-      const filePath = join(uploadsDir, fileName);
-      await writeFile(filePath, buffer);
-
-      // Set URL for local development
-      imageUrl = `/uploads/${fileName}`;
-
-      // Update user's image URL in Clerk
-      await clerkService.updateUserImage(userId, imageUrl);
+      // Get updated user to return new image URL
+      const updatedUser = await clerkService.getUser(userId);
 
       return NextResponse.json({
         success: 'Profile image updated successfully',
-        imageUrl,
+        imageUrl: updatedUser.imageUrl,
       });
     } catch (uploadError) {
       console.error('Error uploading image:', uploadError);

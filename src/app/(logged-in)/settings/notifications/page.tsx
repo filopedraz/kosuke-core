@@ -1,53 +1,23 @@
 'use client';
 
-import { useUser } from '@clerk/nextjs';
-import { Check } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
-
-type FormState = {
-  error?: string;
-  success?: string;
-} | null;
+import { useToast } from '@/hooks/use-toast';
+import { useUser } from '@/hooks/use-user';
 
 export default function NotificationsPage() {
-  const { user, isLoaded } = useUser();
+  const { user, isLoading, refresh } = useUser();
+  const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formState, setFormState] = useState<FormState>(null);
-
-  // Notification settings state - only marketing emails
-  const [marketingEmails, setMarketingEmails] = useState(false);
-  const [dbUser, setDbUser] = useState<{ marketingEmails: boolean } | null>(null);
-
-  // Load user's preferences from database
-  useEffect(() => {
-    if (isLoaded && user) {
-      fetchUserPreferences();
-    }
-  }, [isLoaded, user]);
-
-  const fetchUserPreferences = async () => {
-    try {
-      const response = await fetch('/api/user/profile');
-      if (response.ok) {
-        const userData = await response.json();
-        setDbUser(userData);
-        setMarketingEmails(userData.marketingEmails || false);
-      }
-    } catch (error) {
-      console.error('Error fetching user preferences:', error);
-    }
-  };
 
   // Handle toggle change and automatically save
   const handleToggleChange = async (checked: boolean) => {
     if (!user) return;
 
-    setMarketingEmails(checked);
     setIsSubmitting(true);
 
     try {
@@ -63,30 +33,32 @@ export default function NotificationsPage() {
       const result = await response.json();
 
       if (response.ok) {
-        setFormState({ success: result.success });
-        // Update local state
-        setDbUser({ ...dbUser, marketingEmails: checked });
-
-        // Hide success message after 3 seconds
-        setTimeout(() => {
-          setFormState(null);
-        }, 3000);
+        // Refresh user data to update the UI immediately
+        await refresh();
+        toast({
+          title: 'Success',
+          description: result.success || 'Notification preferences updated',
+        });
       } else {
-        setFormState({ error: result.error || 'Failed to update preferences' });
-        // Revert the toggle if the API call failed
-        setMarketingEmails(!checked);
+        toast({
+          title: 'Error',
+          description: result.error || 'Failed to update preferences',
+          variant: 'destructive',
+        });
       }
     } catch (error) {
       console.error('Error saving preferences:', error);
-      setFormState({ error: 'Failed to update preferences' });
-      // Revert the toggle if the API call failed
-      setMarketingEmails(!checked);
+      toast({
+        title: 'Error',
+        description: 'Failed to update preferences',
+        variant: 'destructive',
+      });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  if (!isLoaded) {
+  if (isLoading) {
     return (
       <div className="space-y-6">
         <Card>
@@ -101,7 +73,7 @@ export default function NotificationsPage() {
                   <Skeleton className="h-4 w-32" />
                   <Skeleton className="h-3 w-64" />
                 </div>
-                <Skeleton className="h-6 w-11 rounded-full mt-0.5 flex-shrink-0" />
+                <Skeleton className="h-6 w-11 rounded-full mt-0.5 shrink-0" />
               </div>
             </div>
           </CardContent>
@@ -131,26 +103,13 @@ export default function NotificationsPage() {
                 </div>
                 <Switch
                   id="marketing-emails"
-                  checked={marketingEmails}
+                  checked={user?.marketingEmails || false}
                   onCheckedChange={handleToggleChange}
                   disabled={isSubmitting}
-                  className="mt-0.5 flex-shrink-0"
+                  className="mt-0.5 shrink-0"
                 />
               </div>
             </div>
-
-            {formState?.error && (
-              <div className="rounded-md bg-destructive/10 p-3">
-                <div className="text-sm text-destructive">{formState.error}</div>
-              </div>
-            )}
-
-            {formState?.success && (
-              <div className="rounded-md bg-green-500/10 p-3 flex items-center gap-2">
-                <Check className="h-4 w-4 text-green-500" />
-                <div className="text-sm text-green-500">{formState.success}</div>
-              </div>
-            )}
           </div>
         </CardContent>
       </Card>

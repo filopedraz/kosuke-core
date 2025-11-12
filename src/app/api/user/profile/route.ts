@@ -30,8 +30,12 @@ export async function PUT(request: Request) {
     const body = await request.json();
     const updateData: UpdateUserData = {};
 
-    if (body.name !== undefined) {
-      updateData.name = body.name;
+    if (body.firstName !== undefined) {
+      updateData.firstName = body.firstName;
+    }
+
+    if (body.lastName !== undefined) {
+      updateData.lastName = body.lastName;
     }
 
     if (body.pipelinePreference !== undefined) {

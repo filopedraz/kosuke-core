@@ -11,7 +11,6 @@ export type {
   OrganizationMembershipRole,
   PipelinePreference,
   UpdateUserData,
-  UserRole,
 } from './clerk';
 export * from './database';
 export * from './docker';

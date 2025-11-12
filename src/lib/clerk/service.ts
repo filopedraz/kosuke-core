@@ -5,7 +5,6 @@ import type {
   OrganizationMembershipRole,
   PipelinePreference,
   UpdateUserData,
-  UserRole,
 } from '@/lib/types/clerk';
 import { createClerkClient } from '@clerk/nextjs/server';
 
@@ -13,10 +12,6 @@ import { createClerkClient } from '@clerk/nextjs/server';
 interface UserPrivateMetadata {
   marketingEmails?: boolean;
   pipelinePreference?: PipelinePreference;
-}
-
-interface UserPublicMetadata {
-  role?: UserRole;
 }
 
 interface OrgPublicMetadata {
@@ -42,7 +37,6 @@ export class ClerkService {
   async getUser(userId: string): Promise<ClerkUser> {
     const user = await this.client.users.getUser(userId);
     const privateMetadata = (user.privateMetadata || {}) as UserPrivateMetadata;
-    const publicMetadata = (user.publicMetadata || {}) as UserPublicMetadata;
 
     // Get primary email
     const primaryEmail = user.emailAddresses.find(
@@ -63,23 +57,16 @@ export class ClerkService {
       imageUrl: user.imageUrl,
       marketingEmails: privateMetadata.marketingEmails || false,
       pipelinePreference: privateMetadata.pipelinePreference || 'claude-code',
-      role: publicMetadata.role || 'member',
       createdAt: new Date(user.createdAt),
       updatedAt: new Date(user.updatedAt),
     };
   }
 
   /**
-   * Update user image
+   * Update user image - uses Clerk's native image hosting
    */
-  async updateUserImage(userId: string, imageUrl: string): Promise<void> {
-    const currentUser = await this.client.users.getUser(userId);
-    await this.client.users.updateUser(userId, {
-      publicMetadata: {
-        ...(currentUser.publicMetadata || {}),
-        customImageUrl: imageUrl,
-      },
-    });
+  async updateUserImage(userId: string, file: File): Promise<void> {
+    await this.client.users.updateUserProfileImage(userId, { file });
   }
 
   /**
@@ -92,11 +79,13 @@ export class ClerkService {
       privateMetadata?: Record<string, unknown>;
     } = {};
 
-    // Handle name update
-    if (data.name !== undefined) {
-      const nameParts = data.name.trim().split(' ');
-      updates.firstName = nameParts[0] || '';
-      updates.lastName = nameParts.slice(1).join(' ') || '';
+    // Handle name updates directly
+    if (data.firstName !== undefined) {
+      updates.firstName = data.firstName;
+    }
+
+    if (data.lastName !== undefined) {
+      updates.lastName = data.lastName;
     }
 
     // Handle metadata updates
