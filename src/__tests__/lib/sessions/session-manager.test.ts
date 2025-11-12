@@ -2,7 +2,6 @@
  * Session Manager Tests
  */
 
-import { SessionManager } from '@/lib/sessions/session-manager';
 import { existsSync } from 'fs';
 
 // Mock fs and simple-git
@@ -16,6 +15,16 @@ jest.mock('simple-git', () => ({
     status: jest.fn().mockResolvedValue({ current: 'main' }),
   })),
 }));
+
+// Mock clerkService to avoid ESM module issues
+jest.mock('@/lib/clerk', () => ({
+  clerkService: {
+    getUser: jest.fn(),
+    getOrganization: jest.fn(),
+  },
+}));
+
+import { SessionManager } from '@/lib/sessions/session-manager';
 
 describe('SessionManager', () => {
   let manager: SessionManager;

@@ -1,8 +1,6 @@
 import { ApiErrorHandler } from '@/lib/api/errors';
-import { db } from '@/lib/db/drizzle';
-import { organizations } from '@/lib/db/schema';
-import { auth, clerkClient } from '@clerk/nextjs/server';
-import { eq } from 'drizzle-orm';
+import { clerkService } from '@/lib/clerk';
+import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -18,33 +16,22 @@ export async function POST(request: Request, { params }: { params: Promise<{ org
     }
 
     const { orgId } = await params;
-    const client = await clerkClient();
 
-    // Get organization from DB
-    const [org] = await db
-      .select()
-      .from(organizations)
-      .where(eq(organizations.clerkOrgId, orgId))
-      .limit(1);
+    // Get organization
+    const org = await clerkService.getOrganization(orgId);
 
     if (!org) {
       return ApiErrorHandler.notFound('Organization not found');
     }
 
-    // Get organization from Clerk for metadata
-    const clerkOrg = await client.organizations.getOrganization({ organizationId: orgId });
-
-    // Check if current user is the creator
-    if (org.createdBy !== userId) {
-      return ApiErrorHandler.forbidden('Only the organization owner can transfer ownership');
-    }
-
-    // Cannot transfer personal workspaces
     if (org.isPersonal) {
       return ApiErrorHandler.badRequest('Cannot transfer ownership of personal workspaces');
     }
 
-    // Validate request body
+    if (org.createdBy !== userId) {
+      return ApiErrorHandler.forbidden('Only the organization owner can transfer ownership');
+    }
+
     const body = await request.json();
     const result = transferOwnershipSchema.safeParse(body);
 
@@ -54,52 +41,24 @@ export async function POST(request: Request, { params }: { params: Promise<{ org
 
     const { newOwnerId } = result.data;
 
-    // Cannot transfer to yourself
     if (newOwnerId === userId) {
       return ApiErrorHandler.badRequest('You are already the owner');
     }
 
-    // Verify new owner is a member of the organization
-    const memberships = await client.organizations.getOrganizationMembershipList({
-      organizationId: orgId,
-    });
-
+    // Verify new owner is a member
+    const memberships = await clerkService.getOrganizationMembers(orgId);
     const newOwnerMembership = memberships.data.find(m => m.publicUserData?.userId === newOwnerId);
 
     if (!newOwnerMembership) {
       return ApiErrorHandler.badRequest('New owner must be a member of the organization');
     }
 
-    // Update new owner to admin role in Clerk
-    await client.organizations.updateOrganizationMembership({
-      organizationId: orgId,
-      userId: newOwnerId,
-      role: 'org:admin',
-    });
+    // Update roles
+    await clerkService.updateMemberRole(orgId, newOwnerId, 'org:admin');
+    await clerkService.updateMemberRole(orgId, userId, 'org:member');
 
-    // Update old owner to member role in Clerk (demote)
-    await client.organizations.updateOrganizationMembership({
-      organizationId: orgId,
-      userId: userId,
-      role: 'org:member',
-    });
-
-    // Update organization creator in database
-    await db
-      .update(organizations)
-      .set({
-        createdBy: newOwnerId,
-        updatedAt: new Date(),
-      })
-      .where(eq(organizations.clerkOrgId, orgId));
-
-    // Update organization metadata in Clerk to reflect new creator
-    await client.organizations.updateOrganization(orgId, {
-      publicMetadata: {
-        ...clerkOrg.publicMetadata,
-        creatorId: newOwnerId,
-      },
-    });
+    // Track transfer in metadata
+    await clerkService.updateOrganizationTransfer(orgId, { from: userId, to: newOwnerId });
 
     console.log(
       `👑 Ownership transferred for org ${org.name} (${orgId}): ${userId} → ${newOwnerId}`

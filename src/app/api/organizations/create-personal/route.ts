@@ -1,8 +1,9 @@
-import { auth, clerkClient } from '@clerk/nextjs/server';
+import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { ApiErrorHandler } from '@/lib/api/errors';
+import { clerkService } from '@/lib/clerk';
 
 const createPersonalWorkspaceSchema = z.object({
   name: z.string().min(1, 'Workspace name is required').max(100, 'Workspace name too long'),
@@ -24,10 +25,8 @@ export async function POST(request: Request) {
 
     const { name } = result.data;
 
-    const clerk = await clerkClient();
-
     // Check if user already has a personal organization
-    const memberships = await clerk.users.getOrganizationMembershipList({ userId });
+    const memberships = await clerkService.getUserMemberships(userId);
     const existingPersonalOrg = memberships.data.find(
       membership => membership.organization.publicMetadata?.isPersonal === true
     );
@@ -37,7 +36,7 @@ export async function POST(request: Request) {
       return NextResponse.json({
         success: true,
         data: {
-          clerkOrgId: existingPersonalOrg.organization.id,
+          orgId: existingPersonalOrg.organization.id,
           name: existingPersonalOrg.organization.name,
           slug: existingPersonalOrg.organization.slug,
         },
@@ -45,13 +44,11 @@ export async function POST(request: Request) {
     }
 
     // Create personal organization with constraints
-    const personalOrg = await clerk.organizations.createOrganization({
+    const personalOrg = await clerkService.createOrganization({
       name: name.trim(),
       createdBy: userId,
       maxAllowedMemberships: 1,
-      publicMetadata: {
-        isPersonal: true,
-      },
+      isPersonal: true,
     });
 
     console.log(`✅ Created personal workspace for user: ${personalOrg.id} (${personalOrg.name})`);
@@ -59,7 +56,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       data: {
-        clerkOrgId: personalOrg.id,
+        orgId: personalOrg.id,
         name: personalOrg.name,
         slug: personalOrg.slug,
       },

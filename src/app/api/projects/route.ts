@@ -47,7 +47,7 @@ export async function GET() {
     const orgProjects = await db
       .select()
       .from(projects)
-      .where(and(eq(projects.clerkOrgId, orgId), eq(projects.isArchived, false)))
+      .where(and(eq(projects.orgId, orgId), eq(projects.isArchived, false)))
       .orderBy(desc(projects.createdAt));
 
     return NextResponse.json(orgProjects);
@@ -208,8 +208,7 @@ export async function POST(request: NextRequest) {
         .values({
           name: name,
           description: github.description || null,
-          clerkOrgId: orgId,
-          userId: userId,
+          orgId: orgId,
           createdBy: userId,
           createdAt: new Date(),
           updatedAt: new Date(),

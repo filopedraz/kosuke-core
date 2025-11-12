@@ -62,9 +62,9 @@ function ProjectsSearchParamsHandler({
 }
 
 function ProjectsContent() {
-  const { clerkUser, dbUser, isLoading } = useUser();
+  const { clerkUser, user, isLoading } = useUser();
   const { data: projects, isLoading: isProjectsLoading } = useProjects({
-    userId: dbUser?.clerkUserId ?? '',
+    userId: user?.id ?? '',
     initialData: []
   });
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -74,23 +74,23 @@ function ProjectsContent() {
 
   // Only refetch projects if data is stale (don't force refetch on every mount)
   useEffect(() => {
-    if (dbUser?.clerkUserId) {
+    if (user?.id) {
       // Only invalidate if we don't have fresh data
-      const queryState = queryClient.getQueryState(['projects', dbUser.clerkUserId]);
+      const queryState = queryClient.getQueryState(['projects', user.id]);
       const isStale = !queryState?.data || Date.now() - (queryState?.dataUpdatedAt || 0) > 60000; // 1 minute
 
       if (isStale) {
         queryClient.invalidateQueries({
-          queryKey: ['projects', dbUser.clerkUserId],
+          queryKey: ['projects', user.id],
           refetchType: 'active'
         });
       }
     }
-  }, [queryClient, dbUser?.clerkUserId]);
+  }, [queryClient, user?.id]);
 
   // Show loading skeleton only during initial load or when we don't have auth
   // Don't show skeleton during background refetches (isFetching) when we already have data
-  if (isLoading || isProjectsLoading || !clerkUser || !dbUser || projects === undefined) {
+  if (isLoading || isProjectsLoading || !clerkUser || !user || projects === undefined) {
     return <ProjectsLoadingSkeleton />;
   }
 
@@ -129,7 +129,7 @@ function ProjectsContent() {
           {!projects?.length ? (
             <EmptyState onCreateClick={handleOpenModal} />
           ) : (
-            <ProjectGrid userId={dbUser.clerkUserId} initialProjects={projects} />
+            <ProjectGrid userId={user.id} initialProjects={projects} />
           )}
         </Suspense>
       </div>

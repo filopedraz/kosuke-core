@@ -79,8 +79,8 @@ export function useOrganizationSettings(): UseOrganizationSettingsReturn {
       const { data } = await response.json();
 
       // Switch to the new org
-      if (setActive && data.clerkOrgId) {
-        await setActive({ organization: data.clerkOrgId });
+      if (setActive && data.orgId) {
+        await setActive({ organization: data.orgId });
       }
 
       toast({

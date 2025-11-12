@@ -101,7 +101,6 @@
     "shiki": "^3.14.0",
     "simple-git": "^3.29.0",
     "sonner": "^2.0.6",
-    "svix": "^1.80.0",
     "tailwind-merge": "^3.3.0",
     "tiktoken": "^1.0.22",
     "ts-node": "^10.9.2",

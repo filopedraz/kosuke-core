@@ -1,8 +1,6 @@
 import { ApiErrorHandler } from '@/lib/api/errors';
 import { auth } from '@/lib/auth';
-import { db } from '@/lib/db/drizzle';
-import { users } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { clerkService } from '@/lib/clerk';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function PUT(request: NextRequest) {
@@ -18,14 +16,8 @@ export async function PUT(request: NextRequest) {
       return ApiErrorHandler.badRequest('Invalid marketingEmails value');
     }
 
-    // Update user's notification preferences in database
-    await db
-      .update(users)
-      .set({
-        marketingEmails,
-        updatedAt: new Date(),
-      })
-      .where(eq(users.clerkUserId, userId));
+    // Update user's notification preferences in Clerk
+    await clerkService.updateUser(userId, { marketingEmails });
 
     return NextResponse.json({
       success: 'Notification preferences updated successfully',

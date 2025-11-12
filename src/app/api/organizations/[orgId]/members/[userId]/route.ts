@@ -1,5 +1,6 @@
 import { ApiErrorHandler } from '@/lib/api/errors';
-import { auth, clerkClient } from '@clerk/nextjs/server';
+import { clerkService } from '@/lib/clerk';
+import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 
 export async function DELETE(
@@ -14,24 +15,15 @@ export async function DELETE(
 
     const { orgId, userId } = await params;
 
-    const client = await clerkClient();
-
     // Check if current user is admin
-    const currentUserMemberships = await client.organizations.getOrganizationMembershipList({
-      organizationId: orgId,
-    });
-
-    const currentUserMembership = currentUserMemberships.data.find(
-      m => m.publicUserData?.userId === currentUserId
-    );
-
-    if (!currentUserMembership || currentUserMembership.role !== 'org:admin') {
+    const isAdmin = await clerkService.isOrgAdmin(currentUserId, orgId);
+    if (!isAdmin) {
       return ApiErrorHandler.forbidden('Only organization admins can remove members');
     }
 
     // Check if it's a personal workspace
-    const org = await client.organizations.getOrganization({ organizationId: orgId });
-    if (org.publicMetadata?.isPersonal === true) {
+    const org = await clerkService.getOrganization(orgId);
+    if (org.isPersonal) {
       return ApiErrorHandler.forbidden('Cannot remove members from personal workspaces');
     }
 
@@ -41,10 +33,7 @@ export async function DELETE(
     }
 
     // Remove the member
-    await client.organizations.deleteOrganizationMembership({
-      organizationId: orgId,
-      userId,
-    });
+    await clerkService.deleteOrganizationMembership(orgId, userId);
 
     return NextResponse.json({ success: true });
   } catch (error) {

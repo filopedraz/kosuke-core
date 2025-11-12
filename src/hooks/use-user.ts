@@ -3,43 +3,35 @@
 import { useToast } from '@/hooks/use-toast';
 import type {
   ApiSuccess,
-  DatabaseUser,
   EnhancedUser,
   PipelinePreference,
   UpdateProfileResponse,
   UseUserReturn,
+  UserProfile,
 } from '@/lib/types';
 import { useUser as useClerkUser } from '@clerk/nextjs';
+import type { User as ClerkUser_SDK } from '@clerk/nextjs/server';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { useCallback, useMemo } from 'react';
 
-// Helper function to create enhanced user from database user and Clerk user
-function createEnhancedUser(dbUser: DatabaseUser, clerkUser: unknown): EnhancedUser {
-  const clerkUserTyped = clerkUser as { firstName?: string; lastName?: string } | null;
-
-  const fullName =
-    dbUser.name ||
-    `${clerkUserTyped?.firstName || ''} ${clerkUserTyped?.lastName || ''}`.trim() ||
-    '';
-  const displayName = fullName || dbUser.email.split('@')[0] || 'User';
-
-  // Create initials from name or email
-  const initials = fullName
-    ? fullName
-        .split(' ')
-        .map(n => n[0])
-        .join('')
-        .toUpperCase()
-        .slice(0, 2)
-    : dbUser.email[0].toUpperCase();
+// Helper function to create enhanced user from UserProfile and Clerk SDK user
+function createEnhancedUser(userProfile: UserProfile, clerkUser: ClerkUser_SDK): EnhancedUser {
+  const fullName = userProfile.name || '';
+  const nameParts = fullName.split(' ').filter(Boolean);
+  const initials =
+    nameParts.length >= 2
+      ? `${nameParts[0][0]}${nameParts[nameParts.length - 1][0]}`.toUpperCase()
+      : nameParts[0]
+        ? nameParts[0][0].toUpperCase()
+        : userProfile.email[0].toUpperCase();
 
   return {
-    ...dbUser,
-    clerkUser: clerkUserTyped,
+    ...userProfile,
+    clerkUser,
     fullName,
-    displayName,
     initials,
+    displayName: fullName || userProfile.email.split('@')[0] || 'User',
   };
 }
 
@@ -53,33 +45,29 @@ export function useUser(): UseUserReturn {
   const queryClient = useQueryClient();
   const router = useRouter();
 
-  // Fetch database user data
+  // Fetch user profile from API
   const {
-    data: dbUser,
-    isLoading: isDbUserLoading,
-    error: dbUserError,
+    data: userProfile,
+    isLoading: isProfileLoading,
+    error: profileError,
     refetch: refetchUser,
   } = useQuery({
     queryKey: ['user', clerkUser?.id],
-    queryFn: async (): Promise<DatabaseUser | null> => {
+    queryFn: async (): Promise<UserProfile | null> => {
       if (!clerkUser) return null;
 
       const response = await fetch('/api/user/profile');
       if (!response.ok) {
-        if (response.status === 404) {
-          // User not found in database yet (might be syncing)
-          return null;
-        }
+        if (response.status === 404) return null;
         throw new Error('Failed to fetch user profile');
       }
 
-      const data: ApiSuccess<DatabaseUser> = await response.json();
+      const data: ApiSuccess<UserProfile> = await response.json();
       return data.data;
     },
     enabled: isClerkLoaded && !!clerkUser,
     staleTime: 1000 * 60 * 5, // 5 minutes
     retry: (failureCount, error) => {
-      // Don't retry on 404 (user not found)
       if (error instanceof Error && error.message.includes('404')) {
         return false;
       }
@@ -90,35 +78,30 @@ export function useUser(): UseUserReturn {
   // Profile update mutation
   const updateProfileMutation = useMutation({
     mutationFn: async (formData: FormData): Promise<UpdateProfileResponse> => {
+      const name = formData.get('name') as string;
+      const pipelinePreference = formData.get('pipelinePreference') as PipelinePreference;
+      const marketingEmails = formData.get('marketingEmails') === 'true';
+
       const response = await fetch('/api/user/profile', {
         method: 'PUT',
-        body: formData,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, pipelinePreference, marketingEmails }),
       });
-
-      const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to update profile');
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to update profile');
       }
 
-      return result;
+      return response.json();
     },
-    onSuccess: data => {
-      toast({
-        title: 'Profile updated',
-        description: data.success,
-      });
-
-      // Invalidate and refetch user data
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['user', clerkUser?.id] });
+      toast({ title: 'Success', description: 'Profile updated successfully' });
       router.refresh();
     },
-    onError: error => {
-      toast({
-        title: 'Update failed',
-        description: error instanceof Error ? error.message : 'Failed to update profile',
-        variant: 'destructive',
-      });
+    onError: (error: Error) => {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
     },
   });
 
@@ -163,37 +146,30 @@ export function useUser(): UseUserReturn {
   // Pipeline preference update mutation
   const updatePipelinePreferenceMutation = useMutation({
     mutationFn: async (preference: PipelinePreference): Promise<UpdateProfileResponse> => {
-      const formData = new FormData();
-      // Only send pipeline preference for pipeline-only updates
-      formData.set('pipelinePreference', preference);
-
       const response = await fetch('/api/user/profile', {
         method: 'PUT',
-        body: formData,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pipelinePreference: preference }),
       });
 
-      const result = await response.json();
-
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to update pipeline preference');
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to update pipeline preference');
       }
 
-      return result;
+      return response.json();
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['user', clerkUser?.id] });
       toast({
         title: 'Pipeline preference updated',
         description: 'Your pipeline preference has been saved.',
       });
-
-      // Invalidate and refetch user data
-      queryClient.invalidateQueries({ queryKey: ['user', clerkUser?.id] });
     },
-    onError: error => {
+    onError: (error: Error) => {
       toast({
         title: 'Update failed',
-        description:
-          error instanceof Error ? error.message : 'Failed to update pipeline preference',
+        description: error.message,
         variant: 'destructive',
       });
     },
@@ -233,13 +209,13 @@ export function useUser(): UseUserReturn {
 
   // Computed values
   const enhancedUser = useMemo((): EnhancedUser | null => {
-    if (!dbUser || !clerkUser) return null;
-    return createEnhancedUser(dbUser, clerkUser);
-  }, [dbUser, clerkUser]);
+    if (!userProfile || !clerkUser) return null;
+    return createEnhancedUser(userProfile, clerkUser as unknown as ClerkUser_SDK);
+  }, [userProfile, clerkUser]);
 
   const imageUrl = useMemo(() => {
-    return dbUser?.imageUrl || clerkUser?.imageUrl || null;
-  }, [dbUser?.imageUrl, clerkUser?.imageUrl]);
+    return userProfile?.imageUrl || clerkUser?.imageUrl || null;
+  }, [userProfile?.imageUrl, clerkUser?.imageUrl]);
 
   const displayName = useMemo(() => {
     if (enhancedUser) return enhancedUser.displayName;
@@ -298,14 +274,13 @@ export function useUser(): UseUserReturn {
   }, [refetchUser]);
 
   // Loading states
-  const isLoading = !isClerkLoaded || isDbUserLoading;
-  const isLoaded = isClerkLoaded && !isDbUserLoading;
+  const isLoading = !isClerkLoaded || isProfileLoading;
+  const isLoaded = isClerkLoaded && !isProfileLoading;
 
   return {
     // Primary data
     user: enhancedUser,
-    clerkUser,
-    dbUser: dbUser || null,
+    clerkUser: clerkUser as unknown as ClerkUser_SDK | null,
 
     // Loading states
     isLoading,
@@ -313,7 +288,7 @@ export function useUser(): UseUserReturn {
     isSignedIn: isSignedIn || false,
 
     // Error states
-    error: dbUserError as Error | null,
+    error: profileError as Error | null,
 
     // Computed helpers
     imageUrl,

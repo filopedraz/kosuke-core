@@ -2,12 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { ApiErrorHandler } from '@/lib/api/errors';
 import { auth } from '@/lib/auth';
-import { db } from '@/lib/db/drizzle';
-import { projects } from '@/lib/db/schema';
 import { getDockerService } from '@/lib/docker';
 import { getGitHubToken } from '@/lib/github/auth';
+import { verifyProjectAccess } from '@/lib/projects';
 import { sessionManager } from '@/lib/sessions';
-import { eq } from 'drizzle-orm';
 
 /**
  * POST /api/projects/[id]/chat-sessions/[sessionId]/pull
@@ -30,15 +28,11 @@ export async function POST(
       return ApiErrorHandler.badRequest('Invalid project ID');
     }
 
-    // Get the project
-    const [project] = await db.select().from(projects).where(eq(projects.id, projectId));
-    if (!project) {
-      return ApiErrorHandler.projectNotFound();
-    }
+    // Verify user has access to project through organization membership
+    const { hasAccess, project } = await verifyProjectAccess(userId, projectId);
 
-    // Check if the user has access to the project
-    if (project.createdBy !== userId) {
-      return ApiErrorHandler.forbidden();
+    if (!hasAccess || !project) {
+      return ApiErrorHandler.projectNotFound();
     }
 
     // Get user's GitHub token (mandatory)

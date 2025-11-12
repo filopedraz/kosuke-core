@@ -1,9 +1,7 @@
 import { ApiErrorHandler } from '@/lib/api/errors';
 import { auth } from '@/lib/auth';
 import { DatabaseService } from '@/lib/database';
-import { db } from '@/lib/db';
-import { projects } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { verifyProjectAccess } from '@/lib/projects';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(
@@ -26,12 +24,10 @@ export async function GET(
       return ApiErrorHandler.badRequest('Session ID is required');
     }
 
-    // Verify project ownership
-    const project = await db.query.projects.findFirst({
-      where: eq(projects.id, projectId),
-    });
+    // Verify user has access to project through organization membership
+    const { hasAccess } = await verifyProjectAccess(userId, projectId);
 
-    if (!project || project.userId !== userId) {
+    if (!hasAccess) {
       return ApiErrorHandler.projectNotFound();
     }
 

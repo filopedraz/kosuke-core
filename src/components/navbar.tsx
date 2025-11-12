@@ -91,7 +91,7 @@ export default function Navbar({
   projectProps,
   className,
 }: NavbarProps) {
-  const { clerkUser, dbUser, isLoaded, isSignedIn, imageUrl, displayName, initials } = useUser();
+  const { clerkUser, user, isLoaded, isSignedIn, imageUrl, displayName, initials } = useUser();
   const { signOut } = useClerk();
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -134,7 +134,7 @@ export default function Navbar({
               <div className="flex items-center justify-start gap-2 p-2">
                 <div className="flex flex-col space-y-0.5">
                   <p className="text-sm font-medium">{displayName}</p>
-                  <p className="text-xs text-muted-foreground">{dbUser?.email}</p>
+                  <p className="text-xs text-muted-foreground">{user?.email}</p>
                 </div>
               </div>
               <DropdownMenuSeparator />

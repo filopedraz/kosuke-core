@@ -1,4 +1,5 @@
-import { auth, clerkClient, currentUser } from '@clerk/nextjs/server';
+import { clerkService } from '@/lib/clerk';
+import { auth, currentUser } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
 import OnboardingForm from './onboarding-form';
 
@@ -10,10 +11,9 @@ export default async function OnboardingPage() {
   }
 
   // Check if user already has any organizations
-  const client = await clerkClient();
-  const organizationMemberships = await client.users.getOrganizationMembershipList({ userId });
+  const hasOrganizations = await clerkService.userHasOrganizations(userId);
 
-  if (organizationMemberships.data.length > 0) {
+  if (hasOrganizations) {
     redirect('/projects');
   }
 

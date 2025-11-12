@@ -37,7 +37,7 @@ export default function OnboardingForm({ defaultWorkspaceName }: OnboardingFormP
       }
 
       const result = await response.json();
-      const createdOrgId = result.data?.clerkOrgId;
+      const createdOrgId = result.data?.orgId;
 
       if (!createdOrgId) {
         throw new Error('Organization ID not returned from API');

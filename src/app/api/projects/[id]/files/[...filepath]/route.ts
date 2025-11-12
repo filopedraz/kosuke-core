@@ -2,12 +2,10 @@ import mime from 'mime-types';
 import { NextRequest, NextResponse } from 'next/server';
 import path from 'path';
 
-import { auth } from '@/lib/auth';
-import { db } from '@/lib/db/drizzle';
-import { projects } from '@/lib/db/schema';
-import { getFileContent } from '@/lib/fs/operations';
-import { eq } from 'drizzle-orm';
 import { ApiErrorHandler } from '@/lib/api/errors';
+import { auth } from '@/lib/auth';
+import { getFileContent } from '@/lib/fs/operations';
+import { verifyProjectAccess } from '@/lib/projects';
 /**
  * GET /api/projects/[id]/files/[...filepath]
  * Get the content of a file in a project
@@ -30,15 +28,11 @@ export async function GET(
       return ApiErrorHandler.invalidProjectId();
     }
 
-    // Get the project
-    const [project] = await db.select().from(projects).where(eq(projects.id, projectId));
-    if (!project) {
-      return ApiErrorHandler.projectNotFound();
-    }
+    // Verify user has access to project through organization membership
+    const { hasAccess } = await verifyProjectAccess(userId, projectId);
 
-    // Check if the user has access to the project
-    if (project.createdBy !== userId) {
-      return ApiErrorHandler.forbidden();
+    if (!hasAccess) {
+      return ApiErrorHandler.projectNotFound();
     }
 
     // Construct the relative file path

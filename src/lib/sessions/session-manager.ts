@@ -3,9 +3,7 @@
  * Manages isolated session environments for chat sessions
  */
 
-import { db } from '@/lib/db/drizzle';
-import { users } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { clerkService } from '@/lib/clerk';
 import { existsSync, mkdirSync, rmSync } from 'fs';
 import { join, resolve } from 'path';
 import simpleGit, { type SimpleGit } from 'simple-git';
@@ -68,27 +66,20 @@ export class SessionManager {
   }
 
   /**
-   * Configure Git user identity using database
-   * Fetches user information from database and sets it locally in the repository
+   * Configure Git user identity using Clerk
+   * Fetches user information from Clerk and sets it locally in the repository
    */
   private async configureGitIdentity(git: SimpleGit, userId: string): Promise<void> {
     try {
-      // Fetch user information from database
-      const [user] = await db
-        .select({
-          name: users.name,
-          email: users.email,
-        })
-        .from(users)
-        .where(eq(users.clerkUserId, userId))
-        .limit(1);
+      // Fetch user from Clerk
+      const user = await clerkService.getUser(userId);
 
       if (!user) {
         throw new Error(`User not found: ${userId}`);
       }
 
       // Use user's name or email username as fallback
-      const gitName = user.name || 'Kosuke User';
+      const gitName = user.name || user.email.split('@')[0] || 'Kosuke User';
       const gitEmail = user.email;
 
       // Configure Git identity locally (repository-specific, not global)
@@ -98,9 +89,7 @@ export class SessionManager {
       console.log(`✅ Configured Git identity: ${gitName} <${gitEmail}>`);
     } catch (error) {
       console.error('❌ Error configuring Git identity:', error);
-      throw new Error(
-        `Failed to configure Git identity: ${error instanceof Error ? error.message : 'Unknown error'}`
-      );
+      throw error;
     }
   }
 

@@ -1,6 +1,7 @@
-import { auth, clerkClient } from '@clerk/nextjs/server';
-import { NextResponse } from 'next/server';
 import { ApiErrorHandler } from '@/lib/api/errors';
+import { clerkService } from '@/lib/clerk';
+import { auth } from '@clerk/nextjs/server';
+import { NextResponse } from 'next/server';
 
 export async function POST(_request: Request, { params }: { params: Promise<{ orgId: string }> }) {
   try {
@@ -11,30 +12,22 @@ export async function POST(_request: Request, { params }: { params: Promise<{ or
 
     const { orgId } = await params;
 
-    const client = await clerkClient();
+    // Check if it's a personal workspace
+    const org = await clerkService.getOrganization(orgId);
+    if (org.isPersonal) {
+      return ApiErrorHandler.forbidden('Cannot leave personal workspace');
+    }
 
     // Get the user's membership in this organization
-    const memberships = await client.organizations.getOrganizationMembershipList({
-      organizationId: orgId,
-    });
-
+    const memberships = await clerkService.getOrganizationMembers(orgId);
     const membership = memberships.data.find(m => m.publicUserData?.userId === userId);
 
     if (!membership) {
       return ApiErrorHandler.notFound('Membership not found');
     }
 
-    // Check if it's a personal workspace
-    const org = await client.organizations.getOrganization({ organizationId: orgId });
-    if (org.publicMetadata?.isPersonal === true) {
-      return ApiErrorHandler.forbidden('Cannot leave personal workspace');
-    }
-
     // Delete the membership
-    await client.organizations.deleteOrganizationMembership({
-      organizationId: orgId,
-      userId,
-    });
+    await clerkService.deleteOrganizationMembership(orgId, userId);
 
     return NextResponse.json({ success: true });
   } catch (error) {

@@ -1,39 +1,25 @@
-// User Profile and Settings Types
-import type { User } from '@/lib/db/schema';
+import type { User as ClerkUser_SDK } from '@clerk/nextjs/server';
+import type { ClerkUser, PipelinePreference } from './clerk';
 
-// Database User (from our database)
-export type DatabaseUser = Pick<
-  User,
-  'clerkUserId' | 'name' | 'email' | 'imageUrl' | 'pipelinePreference' | 'createdAt' | 'updatedAt'
->;
+// User profile data (same as ClerkUser for now)
+export type UserProfile = ClerkUser;
 
-// Enhanced User (combined data with computed fields)
-export interface EnhancedUser extends DatabaseUser {
-  // Clerk data
-  clerkUser: unknown;
+// Enhanced User (for UI components)
+export interface EnhancedUser extends UserProfile {
+  // Clerk SDK object (for hooks that need it)
+  clerkUser: ClerkUser_SDK;
 
   // Computed fields
   fullName: string;
   initials: string;
   displayName: string;
-
-  // Optional subscription data
-  subscription?: {
-    tier: 'free' | 'pro' | 'business';
-    status: string;
-    currentPeriodEnd?: Date;
-  };
 }
-
-// Legacy types for backward compatibility
-type UserProfile = DatabaseUser;
 
 // Unified User Hook Return Type
 export interface UseUserReturn {
   // Primary data
   user: EnhancedUser | null;
-  clerkUser: unknown;
-  dbUser: DatabaseUser | null;
+  clerkUser: ClerkUser_SDK | null;
 
   // Loading states
   isLoading: boolean;
@@ -57,9 +43,6 @@ export interface UseUserReturn {
   // Utilities
   refresh: () => Promise<void>;
 }
-
-// Pipeline Preference Types
-export type PipelinePreference = 'kosuke' | 'claude-code';
 
 // API Response Types for User Operations
 export interface UpdateProfileResponse {

@@ -1,5 +1,6 @@
 import { ApiErrorHandler } from '@/lib/api/errors';
-import { auth, clerkClient } from '@clerk/nextjs/server';
+import { clerkService } from '@/lib/clerk';
+import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 
 export async function DELETE(
@@ -14,24 +15,14 @@ export async function DELETE(
 
     const { orgId, invitationId } = await params;
 
-    const client = await clerkClient();
-
     // Check if current user is admin
-    const memberships = await client.organizations.getOrganizationMembershipList({
-      organizationId: orgId,
-    });
-
-    const membership = memberships.data.find(m => m.publicUserData?.userId === userId);
-
-    if (!membership || membership.role !== 'org:admin') {
+    const isAdmin = await clerkService.isOrgAdmin(userId, orgId);
+    if (!isAdmin) {
       return ApiErrorHandler.forbidden('Only organization admins can revoke invitations');
     }
 
     // Revoke the invitation
-    await client.organizations.revokeOrganizationInvitation({
-      organizationId: orgId,
-      invitationId: invitationId,
-    });
+    await clerkService.revokeOrganizationInvitation(orgId, invitationId);
 
     return NextResponse.json({ success: true });
   } catch (error) {

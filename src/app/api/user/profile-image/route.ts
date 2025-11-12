@@ -1,8 +1,6 @@
 import { ApiErrorHandler } from '@/lib/api/errors';
 import { auth } from '@/lib/auth';
-import { db } from '@/lib/db/drizzle';
-import { users } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { clerkService } from '@/lib/clerk';
 import { existsSync } from 'fs';
 import { mkdir, writeFile } from 'fs/promises';
 import { NextRequest, NextResponse } from 'next/server';
@@ -56,14 +54,8 @@ export async function PUT(request: NextRequest) {
       // Set URL for local development
       imageUrl = `/uploads/${fileName}`;
 
-      // Update user's image URL in database
-      await db
-        .update(users)
-        .set({
-          imageUrl,
-          updatedAt: new Date(),
-        })
-        .where(eq(users.clerkUserId, userId));
+      // Update user's image URL in Clerk
+      await clerkService.updateUserImage(userId, imageUrl);
 
       return NextResponse.json({
         success: 'Profile image updated successfully',

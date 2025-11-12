@@ -1,8 +1,9 @@
-import { auth, clerkClient } from '@clerk/nextjs/server';
+import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { ApiErrorHandler } from '@/lib/api/errors';
+import { clerkService } from '@/lib/clerk';
 
 const createOrganizationSchema = z.object({
   name: z.string().min(1, 'Organization name is required').max(100, 'Organization name too long'),
@@ -28,19 +29,16 @@ export async function POST(request: Request) {
     const validatedName = nameResult.data.name;
 
     // Create organization via Clerk
-    const clerk = await clerkClient();
-    const clerkOrg = await clerk.organizations.createOrganization({
+    const clerkOrg = await clerkService.createOrganization({
       name: validatedName.trim(),
       createdBy: userId,
-      publicMetadata: {
-        isPersonal: false,
-      },
+      isPersonal: false,
     });
 
     // Upload logo if provided
     if (logoFile && logoFile.size > 0) {
       try {
-        await clerk.organizations.updateOrganizationLogo(clerkOrg.id, { file: logoFile });
+        await clerkService.updateOrganizationLogo(clerkOrg.id, logoFile);
       } catch (logoError) {
         console.error('Failed to upload logo during org creation:', logoError);
         // Don't fail the whole operation if logo upload fails
@@ -51,7 +49,7 @@ export async function POST(request: Request) {
     // Return the Clerk org ID for immediate use
     return NextResponse.json({
       data: {
-        clerkOrgId: clerkOrg.id,
+        orgId: clerkOrg.id,
         name: clerkOrg.name,
         slug: clerkOrg.slug,
       },
