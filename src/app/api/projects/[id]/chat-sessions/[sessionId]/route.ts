@@ -471,15 +471,11 @@ export async function POST(
           if (!chatSession.remoteId) {
             const capturedRemoteId = agent.getCapturedRemoteId();
             if (capturedRemoteId) {
-              try {
-                await db
-                  .update(chatSessions)
-                  .set({ remoteId: capturedRemoteId })
-                  .where(eq(chatSessions.id, chatSession.id));
-                console.log(`✅ Saved remoteId to database for session ${chatSession.sessionId}: ${capturedRemoteId}`);
-              } catch (dbError) {
-                console.error(`⚠️ Failed to save remoteId to database:`, dbError);
-              }
+              await db
+                .update(chatSessions)
+                .set({ remoteId: capturedRemoteId })
+                .where(eq(chatSessions.id, chatSession.id));
+              console.log(`✅ Saved remoteId to database for session ${chatSession.sessionId}: ${capturedRemoteId}`);
             }
           }
 

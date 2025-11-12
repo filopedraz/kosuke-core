@@ -52,15 +52,31 @@ const nextConfig: NextConfig = {
     ],
   },
   async headers() {
+    const isDev = process.env.NODE_ENV !== 'production';
+
+    // Skip CSP in development to allow preview panels on different ports
+    if (isDev) {
+      return [
+        {
+          source: '/(.*)',
+          headers: [
+            {
+              key: 'X-DNS-Prefetch-Control',
+              value: 'on',
+            },
+          ],
+        },
+      ];
+    }
+
+    // Production CSP
     const ghostUrl = process.env.NEXT_PUBLIC_GHOST_URL ?? '';
     const posthogHost = process.env.NEXT_PUBLIC_POSTHOG_HOST ?? '';
 
-    const isDev = process.env.NODE_ENV !== 'production';
-
     const cspHeader = `
       default-src 'self';
-      script-src 'self' ${isDev ? "'unsafe-eval' 'unsafe-inline'" : ''} https://*.clerk.accounts.dev https://challenges.cloudflare.com https://plausible.io ${posthogHost};
-      style-src 'self' ${isDev ? "'unsafe-inline'" : ''};
+      script-src 'self' https://*.clerk.accounts.dev https://challenges.cloudflare.com https://plausible.io ${posthogHost};
+      style-src 'self';
       img-src 'self' data: blob: https://*.public.blob.vercel-storage.com https://lh3.googleusercontent.com https://avatar.vercel.sh ${ghostUrl} https://images.unsplash.com https://static.ghost.org https://img.clerk.com;
       font-src 'self' data:;
       connect-src 'self' https://*.clerk.accounts.dev https://clerk-telemetry.com https://*.sentry.io wss://*.clerk.accounts.dev https://plausible.io ${posthogHost} ${ghostUrl};
