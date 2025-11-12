@@ -1,5 +1,5 @@
 import type { User as ClerkUser_SDK } from '@clerk/nextjs/server';
-import type { ClerkUser, PipelinePreference } from './clerk';
+import type { ClerkUser } from './clerk';
 
 // User profile data (same as ClerkUser for now)
 export type UserProfile = ClerkUser;
@@ -37,7 +37,6 @@ export interface UseUserReturn {
   // Mutations
   updateProfile: (data: FormData) => Promise<void>;
   updateProfileImage: (file: File) => Promise<void>;
-  updatePipelinePreference: (preference: PipelinePreference) => Promise<void>;
   deleteAccount: () => Promise<void>;
 
   // Utilities

@@ -38,10 +38,6 @@ export async function PUT(request: Request) {
       updateData.lastName = body.lastName;
     }
 
-    if (body.pipelinePreference !== undefined) {
-      updateData.pipelinePreference = body.pipelinePreference;
-    }
-
     if (body.marketingEmails !== undefined) {
       updateData.marketingEmails = body.marketingEmails;
     }

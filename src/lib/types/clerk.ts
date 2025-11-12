@@ -4,16 +4,12 @@ export type OrganizationMembershipRole = 'org:admin' | 'org:member';
 // Organization invitation status types
 export type OrganizationInvitationStatus = 'pending' | 'accepted' | 'revoked';
 
-// Pipeline preference types (app-specific)
-export type PipelinePreference = 'kosuke' | 'claude-code';
-
 export interface ClerkUser {
   id: string;
   email: string;
   name: string | null;
   imageUrl: string;
   marketingEmails: boolean;
-  pipelinePreference: PipelinePreference;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -33,5 +29,4 @@ export interface UpdateUserData {
   firstName?: string;
   lastName?: string;
   marketingEmails?: boolean;
-  pipelinePreference?: PipelinePreference;
 }

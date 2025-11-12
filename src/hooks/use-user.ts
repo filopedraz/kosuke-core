@@ -4,7 +4,6 @@ import { useToast } from '@/hooks/use-toast';
 import type {
   ApiSuccess,
   EnhancedUser,
-  PipelinePreference,
   UpdateProfileResponse,
   UseUserReturn,
   UserProfile,
@@ -80,13 +79,12 @@ export function useUser(): UseUserReturn {
     mutationFn: async (formData: FormData): Promise<UpdateProfileResponse> => {
       const firstName = formData.get('firstName') as string;
       const lastName = formData.get('lastName') as string;
-      const pipelinePreference = formData.get('pipelinePreference') as PipelinePreference;
       const marketingEmails = formData.get('marketingEmails') === 'true';
 
       const response = await fetch('/api/user/profile', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ firstName, lastName, pipelinePreference, marketingEmails }),
+        body: JSON.stringify({ firstName, lastName, marketingEmails }),
       });
 
       if (!response.ok) {
@@ -139,38 +137,6 @@ export function useUser(): UseUserReturn {
       toast({
         title: 'Image update failed',
         description: error instanceof Error ? error.message : 'Failed to update profile image',
-        variant: 'destructive',
-      });
-    },
-  });
-
-  // Pipeline preference update mutation
-  const updatePipelinePreferenceMutation = useMutation({
-    mutationFn: async (preference: PipelinePreference): Promise<UpdateProfileResponse> => {
-      const response = await fetch('/api/user/profile', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pipelinePreference: preference }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to update pipeline preference');
-      }
-
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['user', clerkUser?.id] });
-      toast({
-        title: 'Pipeline preference updated',
-        description: 'Your pipeline preference has been saved.',
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: 'Update failed',
-        description: error.message,
         variant: 'destructive',
       });
     },
@@ -259,13 +225,6 @@ export function useUser(): UseUserReturn {
     [updateProfileImageMutation]
   );
 
-  const updatePipelinePreference = useCallback(
-    async (preference: PipelinePreference) => {
-      await updatePipelinePreferenceMutation.mutateAsync(preference);
-    },
-    [updatePipelinePreferenceMutation]
-  );
-
   const deleteAccount = useCallback(async () => {
     await deleteAccountMutation.mutateAsync();
   }, [deleteAccountMutation]);
@@ -299,7 +258,6 @@ export function useUser(): UseUserReturn {
     // Mutations
     updateProfile,
     updateProfileImage,
-    updatePipelinePreference,
     deleteAccount,
 
     // Utilities

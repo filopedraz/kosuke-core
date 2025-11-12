@@ -3,7 +3,6 @@ import type {
   ClerkUser,
   OrganizationInvitationStatus,
   OrganizationMembershipRole,
-  PipelinePreference,
   UpdateUserData,
 } from '@/lib/types/clerk';
 import { createClerkClient } from '@clerk/nextjs/server';
@@ -11,7 +10,6 @@ import { createClerkClient } from '@clerk/nextjs/server';
 // Internal metadata types (not exported - hidden from consumers)
 interface UserPrivateMetadata {
   marketingEmails?: boolean;
-  pipelinePreference?: PipelinePreference;
 }
 
 interface OrgPublicMetadata {
@@ -56,7 +54,6 @@ export class ClerkService {
       name: fullName || null,
       imageUrl: user.imageUrl,
       marketingEmails: privateMetadata.marketingEmails || false,
-      pipelinePreference: privateMetadata.pipelinePreference || 'claude-code',
       createdAt: new Date(user.createdAt),
       updatedAt: new Date(user.updatedAt),
     };
@@ -94,10 +91,6 @@ export class ClerkService {
 
     if (data.marketingEmails !== undefined) {
       metadataUpdates.marketingEmails = data.marketingEmails;
-    }
-
-    if (data.pipelinePreference !== undefined) {
-      metadataUpdates.pipelinePreference = data.pipelinePreference;
     }
 
     if (Object.keys(metadataUpdates).length > 0) {

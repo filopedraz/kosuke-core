@@ -9,7 +9,6 @@ export type {
   ClerkUser,
   OrganizationInvitationStatus,
   OrganizationMembershipRole,
-  PipelinePreference,
   UpdateUserData,
 } from './clerk';
 export * from './database';
