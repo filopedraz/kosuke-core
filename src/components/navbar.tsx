@@ -24,6 +24,7 @@ import { useState } from 'react';
 import { useUser } from '@/hooks/use-user';
 
 import { PrivateAlphaModal } from '@/app/(logged-out)/home/components/private-alpha-modal';
+import { OrganizationSwitcherComponent } from '@/components/organization-switcher';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -90,12 +91,13 @@ export default function Navbar({
   projectProps,
   className,
 }: NavbarProps) {
-  const { clerkUser, dbUser, isLoaded, isSignedIn, imageUrl, displayName, initials } = useUser();
+  const { clerkUser, user, isLoaded, isSignedIn, imageUrl, displayName, initials } = useUser();
   const { signOut } = useClerk();
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [solutionsOpen, setSolutionsOpen] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -116,40 +118,44 @@ export default function Navbar({
 
     if (isSignedIn && clerkUser) {
       return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="relative h-8 w-8 rounded-md p-0">
-              <Avatar className="h-8 w-8 cursor-pointer transition-all">
-                <AvatarImage src={imageUrl || undefined} alt={displayName || 'User'} />
-                <AvatarFallback className="bg-primary text-primary-foreground">
-                  {initials}
-                </AvatarFallback>
-              </Avatar>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56 mt-1">
-            <div className="flex items-center justify-start gap-2 p-2">
-              <div className="flex flex-col space-y-0.5">
-                <p className="text-sm font-medium">{displayName}</p>
-                <p className="text-xs text-muted-foreground">{dbUser?.email}</p>
+        <div className="flex items-center gap-3">
+          <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="relative h-8 w-8 rounded-md p-0">
+                <Avatar className="h-8 w-8 cursor-pointer transition-all">
+                  <AvatarImage src={imageUrl || undefined} alt={displayName || 'User'} />
+                  <AvatarFallback className="bg-primary text-primary-foreground">
+                    {initials}
+                  </AvatarFallback>
+                </Avatar>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 mt-1">
+              <div className="flex items-center justify-start gap-2 p-2">
+                <div className="flex flex-col space-y-0.5">
+                  <p className="text-sm font-medium">{displayName}</p>
+                  <p className="text-xs text-muted-foreground">{user?.email}</p>
+                </div>
               </div>
-            </div>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => router.push('/projects')} className="cursor-pointer">
-              <LayoutDashboard className="mr-2 h-4 w-4" />
-              <span>Projects</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => router.push('/settings')} className="cursor-pointer">
-              <Settings className="mr-2 h-4 w-4" />
-              <span>Settings</span>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
-              <LogOut className="mr-2 h-4 w-4" />
-              <span>Log out</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+              <DropdownMenuSeparator />
+              <OrganizationSwitcherComponent onClose={() => setDropdownOpen(false)} />
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => router.push('/projects')} className="cursor-pointer">
+                <LayoutDashboard className="mr-2 h-4 w-4" />
+                <span>Projects</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.push('/settings')} className="cursor-pointer">
+                <Settings className="mr-2 h-4 w-4" />
+                <span>Settings</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Log out</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       );
     }
 

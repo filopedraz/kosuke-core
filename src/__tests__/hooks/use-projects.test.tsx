@@ -10,6 +10,16 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import { ReactNode } from 'react';
 
+// Mock Clerk
+jest.mock('@clerk/nextjs', () => ({
+  useOrganization: () => ({
+    organization: {
+      id: 'org_123',
+      name: 'Test Org',
+    },
+  }),
+}));
+
 // Mock Next.js router
 const mockPush = jest.fn();
 const mockReplace = jest.fn();
@@ -47,7 +57,7 @@ const mockProject: Project = {
   id: 1,
   name: 'Test Project',
   description: 'A test project',
-  userId: 'user_123',
+  orgId: 'org_123',
   createdBy: 'user_123',
   createdAt: new Date('2024-01-01'),
   updatedAt: new Date('2024-01-01'),

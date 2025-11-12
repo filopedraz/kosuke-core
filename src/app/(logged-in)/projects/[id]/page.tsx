@@ -3,7 +3,7 @@
 import { notFound, useRouter, useSearchParams } from 'next/navigation';
 import { use, useEffect, useRef, useState } from 'react';
 
-import Navbar from '@/components/ui/navbar';
+import Navbar from '@/components/navbar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useChatSessions } from '@/hooks/use-chat-sessions';
 import { useCreatePullRequest } from '@/hooks/use-project-settings';
@@ -206,12 +206,6 @@ export default function ProjectPage({ params }: ProjectPageProps) {
 
   // Error handling
   if (projectError || !project) {
-    notFound();
-  }
-
-  // Access control - check project ownership
-  if (project.createdBy !== user.id) {
-    console.error('Access denied: User does not own this project');
     notFound();
   }
 

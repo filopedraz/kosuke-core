@@ -1,1 +1,0 @@
-ALTER TABLE "chat_sessions" ADD COLUMN "remote_id" text;

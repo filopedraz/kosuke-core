@@ -11,39 +11,12 @@ import {
   varchar,
 } from 'drizzle-orm/pg-core';
 
-export const users = pgTable('users', {
-  clerkUserId: text('clerk_user_id').primaryKey(),
-  name: varchar('name', { length: 100 }),
-  email: varchar('email', { length: 255 }).notNull().unique(),
-  imageUrl: text('image_url'),
-  marketingEmails: boolean('marketing_emails').default(false),
-  pipelinePreference: varchar('pipeline_preference', { length: 20 })
-    .notNull()
-    .default('claude-code'), // 'kosuke' | 'claude-code'
-  role: varchar('role', { length: 20 }).notNull().default('member'),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-  updatedAt: timestamp('updated_at').notNull().defaultNow(),
-  deletedAt: timestamp('deleted_at'),
-});
-
-export const activityLogs = pgTable('activity_logs', {
-  id: serial('id').primaryKey(),
-  userId: text('user_id').references(() => users.clerkUserId),
-  action: text('action').notNull(),
-  timestamp: timestamp('timestamp').notNull().defaultNow(),
-  ipAddress: varchar('ip_address', { length: 45 }),
-});
-
 export const projects = pgTable('projects', {
   id: serial('id').primaryKey(),
   name: varchar('name', { length: 100 }).notNull(),
   description: text('description'),
-  userId: text('user_id')
-    .references(() => users.clerkUserId)
-    .notNull(),
-  createdBy: text('created_by')
-    .references(() => users.clerkUserId)
-    .notNull(),
+  orgId: text('org_id'),
+  createdBy: text('created_by'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
   isArchived: boolean('is_archived').default(false),
@@ -61,9 +34,7 @@ export const chatSessions = pgTable('chat_sessions', {
   projectId: integer('project_id')
     .references(() => projects.id, { onDelete: 'cascade' })
     .notNull(),
-  userId: text('user_id')
-    .references(() => users.clerkUserId)
-    .notNull(),
+  userId: text('user_id'), // No FK
   title: varchar('title', { length: 100 }).notNull(),
   description: text('description'),
   sessionId: varchar('session_id', { length: 50 }).unique().notNull(),
@@ -89,7 +60,7 @@ export const chatMessages = pgTable('chat_messages', {
   chatSessionId: integer('chat_session_id')
     .references(() => chatSessions.id, { onDelete: 'cascade' })
     .notNull(), // Make this NOT NULL - all messages must be tied to a session
-  userId: text('user_id').references(() => users.clerkUserId),
+  userId: text('user_id'), // No FK
   role: varchar('role', { length: 20 }).notNull(), // 'user' or 'assistant'
   content: text('content'), // For user messages (nullable for assistant messages)
   blocks: jsonb('blocks'), // For assistant message blocks (text, thinking, tools)
@@ -115,18 +86,6 @@ export const diffs = pgTable('diffs', {
   status: varchar('status', { length: 20 }).notNull().default('pending'), // 'pending', 'applied', 'rejected'
   createdAt: timestamp('created_at').notNull().defaultNow(),
   appliedAt: timestamp('applied_at'),
-});
-
-export const userGithubTokens = pgTable('user_github_tokens', {
-  id: serial('id').primaryKey(),
-  userId: text('user_id')
-    .notNull()
-    .references(() => users.clerkUserId, { onDelete: 'cascade' }),
-  githubToken: text('github_token').notNull(),
-  githubUsername: text('github_username'),
-  tokenScope: text('token_scope').array(),
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
 });
 
 export const projectCommits = pgTable('project_commits', {
@@ -196,27 +155,7 @@ export const projectIntegrations = pgTable(
   })
 );
 
-export const usersRelations = relations(users, ({ many }) => ({
-  projects: many(projects),
-  githubTokens: many(userGithubTokens),
-}));
-
-export const activityLogsRelations = relations(activityLogs, ({ one }) => ({
-  user: one(users, {
-    fields: [activityLogs.userId],
-    references: [users.clerkUserId],
-  }),
-}));
-
-export const projectsRelations = relations(projects, ({ one, many }) => ({
-  user: one(users, {
-    fields: [projects.userId],
-    references: [users.clerkUserId],
-  }),
-  creator: one(users, {
-    fields: [projects.createdBy],
-    references: [users.clerkUserId],
-  }),
+export const projectsRelations = relations(projects, ({ many }) => ({
   chatMessages: many(chatMessages),
   chatSessions: many(chatSessions),
   diffs: many(diffs),
@@ -228,10 +167,6 @@ export const chatSessionsRelations = relations(chatSessions, ({ one, many }) => 
   project: one(projects, {
     fields: [chatSessions.projectId],
     references: [projects.id],
-  }),
-  user: one(users, {
-    fields: [chatSessions.userId],
-    references: [users.clerkUserId],
   }),
   messages: many(chatMessages),
 }));
@@ -245,10 +180,6 @@ export const chatMessagesRelations = relations(chatMessages, ({ one, many }) => 
     fields: [chatMessages.chatSessionId],
     references: [chatSessions.id],
   }),
-  user: one(users, {
-    fields: [chatMessages.userId],
-    references: [users.clerkUserId],
-  }),
   diffs: many(diffs),
 }));
 
@@ -260,13 +191,6 @@ export const diffsRelations = relations(diffs, ({ one }) => ({
   chatMessage: one(chatMessages, {
     fields: [diffs.chatMessageId],
     references: [chatMessages.id],
-  }),
-}));
-
-export const userGithubTokensRelations = relations(userGithubTokens, ({ one }) => ({
-  user: one(users, {
-    fields: [userGithubTokens.userId],
-    references: [users.clerkUserId],
   }),
 }));
 
@@ -301,22 +225,6 @@ export const projectIntegrationsRelations = relations(projectIntegrations, ({ on
   }),
 }));
 
-export type User = typeof users.$inferSelect;
-export type NewUser = typeof users.$inferInsert;
-export type ActivityLog = typeof activityLogs.$inferSelect;
-export type NewActivityLog = typeof activityLogs.$inferInsert;
-
-export enum ActivityType {
-  SIGN_UP = 'SIGN_UP',
-  SIGN_IN = 'SIGN_IN',
-  SIGN_OUT = 'SIGN_OUT',
-  UPDATE_PASSWORD = 'UPDATE_PASSWORD',
-  DELETE_ACCOUNT = 'DELETE_ACCOUNT',
-  UPDATE_ACCOUNT = 'UPDATE_ACCOUNT',
-  UPDATE_PREFERENCES = 'UPDATE_PREFERENCES',
-  UPDATE_PROFILE = 'UPDATE_PROFILE',
-}
-
 export type Project = typeof projects.$inferSelect;
 export type NewProject = typeof projects.$inferInsert;
 export type ChatSession = typeof chatSessions.$inferSelect;
@@ -325,9 +233,6 @@ export type ChatMessage = typeof chatMessages.$inferSelect;
 export type NewChatMessage = typeof chatMessages.$inferInsert;
 export type Diff = typeof diffs.$inferSelect;
 export type NewDiff = typeof diffs.$inferInsert;
-
-export type UserGithubToken = typeof userGithubTokens.$inferSelect;
-export type NewUserGithubToken = typeof userGithubTokens.$inferInsert;
 export type ProjectCommit = typeof projectCommits.$inferSelect;
 export type NewProjectCommit = typeof projectCommits.$inferInsert;
 export type GithubSyncSession = typeof githubSyncSessions.$inferSelect;

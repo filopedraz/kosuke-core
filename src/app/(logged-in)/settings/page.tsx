@@ -309,7 +309,7 @@ export default function SettingsPage() {
                     className="hidden"
                   />
                   <p className="text-sm text-muted-foreground mt-1">
-                    JPG, PNG or GIF. Max size 5MB.
+                    JPG, PNG or GIF. 1:1 ratio recommended. Max size 2MB.
                   </p>
                 </div>
               </div>

@@ -4,8 +4,9 @@ import { z } from 'zod';
 import { ApiErrorHandler } from '@/lib/api/errors';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db/drizzle';
-import { chatSessions, projects } from '@/lib/db/schema';
+import { chatSessions } from '@/lib/db/schema';
 import { getGitHubToken } from '@/lib/github/auth';
+import { verifyProjectAccess } from '@/lib/projects';
 import { Octokit } from '@octokit/rest';
 import { desc, eq } from 'drizzle-orm';
 
@@ -111,18 +112,11 @@ export async function GET(
       return ApiErrorHandler.invalidProjectId();
     }
 
-    // Verify project access
-    const [project] = await db
-      .select()
-      .from(projects)
-      .where(eq(projects.id, projectId));
+    // Verify user has access to project through organization membership
+    const { hasAccess, project } = await verifyProjectAccess(userId, projectId);
 
-    if (!project) {
+    if (!hasAccess || !project) {
       return ApiErrorHandler.projectNotFound();
-    }
-
-    if (project.createdBy !== userId) {
-      return ApiErrorHandler.forbidden();
     }
 
     // Get all chat sessions for the project
@@ -226,18 +220,11 @@ export async function POST(
       return ApiErrorHandler.invalidProjectId();
     }
 
-    // Verify project access
-    const [project] = await db
-      .select()
-      .from(projects)
-      .where(eq(projects.id, projectId));
+    // Verify user has access to project through organization membership
+    const { hasAccess, project } = await verifyProjectAccess(userId, projectId);
 
-    if (!project) {
+    if (!hasAccess || !project) {
       return ApiErrorHandler.projectNotFound();
-    }
-
-    if (project.createdBy !== userId) {
-      return ApiErrorHandler.forbidden();
     }
 
     // Parse request body

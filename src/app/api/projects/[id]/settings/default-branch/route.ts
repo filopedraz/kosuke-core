@@ -6,6 +6,7 @@ import { auth } from '@/lib/auth';
 import { db } from '@/lib/db/drizzle';
 import { projects } from '@/lib/db/schema';
 import { getGitHubToken } from '@/lib/github/auth';
+import { verifyProjectAccess } from '@/lib/projects';
 import { Octokit } from '@octokit/rest';
 import { eq } from 'drizzle-orm';
 // Schema for updating default branch
@@ -33,18 +34,11 @@ export async function GET(
       return ApiErrorHandler.invalidProjectId();
     }
 
-    // Get project
-    const [project] = await db
-      .select()
-      .from(projects)
-      .where(eq(projects.id, projectId));
+    // Verify user has access to project through organization membership
+    const { hasAccess, project } = await verifyProjectAccess(userId, projectId);
 
-    if (!project) {
+    if (!hasAccess || !project) {
       return ApiErrorHandler.projectNotFound();
-    }
-
-    if (project.createdBy !== userId) {
-      return ApiErrorHandler.forbidden();
     }
 
     let availableBranches: string[] = [];
@@ -101,18 +95,16 @@ export async function PUT(
       return ApiErrorHandler.invalidProjectId();
     }
 
-    // Get project
-    const [project] = await db
-      .select()
-      .from(projects)
-      .where(eq(projects.id, projectId));
+    // Verify user has access to project through organization membership
+    const { hasAccess, project, isOrgAdmin } = await verifyProjectAccess(userId, projectId);
 
-    if (!project) {
+    if (!hasAccess || !project) {
       return ApiErrorHandler.projectNotFound();
     }
 
-    if (project.createdBy !== userId) {
-      return ApiErrorHandler.forbidden();
+    // Only org admins can change default branch
+    if (!isOrgAdmin) {
+      return ApiErrorHandler.forbidden('Only organization admins can change the default branch');
     }
 
     // Parse request body

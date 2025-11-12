@@ -1,9 +1,7 @@
 import { ApiErrorHandler } from '@/lib/api/errors';
 import { auth } from '@/lib/auth';
 import { extractExistingColors, formatColorValue, updateSingleColor } from '@/lib/branding';
-import { db } from '@/lib/db/drizzle';
-import { projects } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { verifyProjectAccess } from '@/lib/projects';
 import { NextRequest, NextResponse } from 'next/server';
 
 
@@ -33,15 +31,11 @@ export async function GET(
       return ApiErrorHandler.badRequest('Session ID is required');
     }
 
-    // Get project and verify ownership
-    const [project] = await db.select().from(projects).where(eq(projects.id, projectId));
+    // Verify user has access to project through organization membership
+    const { hasAccess } = await verifyProjectAccess(userId, projectId);
 
-    if (!project) {
+    if (!hasAccess) {
       return ApiErrorHandler.projectNotFound();
-    }
-
-    if (project.createdBy !== userId) {
-      return ApiErrorHandler.forbidden();
     }
 
     console.log(`🔍 Getting existing colors for project ${projectId}, session ${sessionId}`);
@@ -95,15 +89,11 @@ export async function POST(
       return ApiErrorHandler.badRequest('Session ID is required');
     }
 
-    // Get project and verify ownership
-    const [project] = await db.select().from(projects).where(eq(projects.id, projectId));
+    // Verify user has access to project through organization membership
+    const { hasAccess } = await verifyProjectAccess(userId, projectId);
 
-    if (!project) {
+    if (!hasAccess) {
       return ApiErrorHandler.projectNotFound();
-    }
-
-    if (project.createdBy !== userId) {
-      return ApiErrorHandler.forbidden();
     }
 
     const body = await request.json();

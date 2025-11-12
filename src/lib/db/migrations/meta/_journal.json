@@ -5,29 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1754512058779,
-      "tag": "0000_fantastic_puppet_master",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1754847287708,
-      "tag": "0001_fancy_richard_fisk",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1762933447021,
-      "tag": "0002_nosy_swordsman",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1762934408402,
-      "tag": "0003_bumpy_blizzard",
+      "when": 1762947218245,
+      "tag": "0000_quick_major_mapleleaf",
       "breakpoints": true
     }
   ]

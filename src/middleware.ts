@@ -5,13 +5,10 @@ const isPublicRoute = createRouteMatcher([
   '/',
   '/sign-in(.*)',
   '/sign-up(.*)',
-  '/api/webhooks(.*)',
-  '/api/projects/(.*)/webhook(.*)', // Allow project webhook endpoints
   '/home',
   '/terms',
   '/privacy',
   '/cookies',
-  '/api/webhooks/clerk',
   '/blog',
   '/blog/:path*',
   '/customers',
@@ -35,7 +32,12 @@ const isPublicRoute = createRouteMatcher([
   '/opengraph-image-square.jpg',
 ]);
 
-const isProtectedRoute = createRouteMatcher(['/projects(.*)', '/settings(.*)']);
+const isProtectedRoute = createRouteMatcher([
+  '/projects(.*)',
+  '/settings(.*)',
+  '/organizations(.*)',
+  '/onboarding',
+]);
 const isRootRoute = createRouteMatcher(['/']);
 const isApiRoute = createRouteMatcher(['/api(.*)']);
 

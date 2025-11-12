@@ -3,8 +3,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ApiErrorHandler } from '@/lib/api/errors';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db/drizzle';
-import { chatSessions, projects } from '@/lib/db/schema';
+import { chatSessions } from '@/lib/db/schema';
 import { getDockerService } from '@/lib/docker';
+import { verifyProjectAccess } from '@/lib/projects';
 import { and, eq } from 'drizzle-orm';
 
 /**
@@ -30,14 +31,11 @@ export async function GET(
       return ApiErrorHandler.invalidProjectId();
     }
 
-    // Verify project access
-    const [project] = await db.select().from(projects).where(eq(projects.id, projectId));
-    if (!project) {
-      return ApiErrorHandler.projectNotFound();
-    }
+    // Verify user has access to project through organization membership
+    const { hasAccess, project } = await verifyProjectAccess(userId, projectId);
 
-    if (project.createdBy !== userId) {
-      return ApiErrorHandler.forbidden();
+    if (!hasAccess || !project) {
+      return ApiErrorHandler.projectNotFound();
     }
 
     // If this is the default branch, allow health check without a chat session record

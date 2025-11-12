@@ -4,8 +4,9 @@ import { ApiErrorHandler } from '@/lib/api/errors';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db/drizzle';
 import { getProjectEnvironmentVariables } from '@/lib/db/queries';
-import { chatSessions, projects } from '@/lib/db/schema';
+import { chatSessions } from '@/lib/db/schema';
 import { getDockerService } from '@/lib/docker';
+import { verifyProjectAccess } from '@/lib/projects';
 import { and, eq } from 'drizzle-orm';
 /**
  * GET /api/projects/[id]/chat-sessions/[sessionId]/preview
@@ -29,15 +30,11 @@ export async function GET(
       return ApiErrorHandler.invalidProjectId();
     }
 
-    // Get the project
-    const [project] = await db.select().from(projects).where(eq(projects.id, projectId));
-    if (!project) {
-      return ApiErrorHandler.projectNotFound();
-    }
+    // Verify user has access to project through organization membership
+    const { hasAccess, project } = await verifyProjectAccess(userId, projectId);
 
-    // Check if the user has access to the project
-    if (project.createdBy !== userId) {
-      return ApiErrorHandler.forbidden();
+    if (!hasAccess || !project) {
+      return ApiErrorHandler.projectNotFound();
     }
 
     // If this is the default branch, allow preview without a chat session record
@@ -128,15 +125,11 @@ export async function POST(
       return ApiErrorHandler.invalidProjectId();
     }
 
-    // Get the project
-    const [project] = await db.select().from(projects).where(eq(projects.id, projectId));
-    if (!project) {
-      return ApiErrorHandler.projectNotFound();
-    }
+    // Verify user has access to project through organization membership
+    const { hasAccess, project } = await verifyProjectAccess(userId, projectId);
 
-    // Check if the user has access to the project
-    if (project.createdBy !== userId) {
-      return ApiErrorHandler.forbidden();
+    if (!hasAccess || !project) {
+      return ApiErrorHandler.projectNotFound();
     }
 
     // If this is the default branch, allow starting preview without a chat session record

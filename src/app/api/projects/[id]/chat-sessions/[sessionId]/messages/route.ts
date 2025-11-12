@@ -3,7 +3,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ApiErrorHandler } from '@/lib/api/errors';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db/drizzle';
-import { chatMessages, chatSessions, projects } from '@/lib/db/schema';
+import { chatMessages, chatSessions } from '@/lib/db/schema';
+import { verifyProjectAccess } from '@/lib/projects';
 import { and, asc, eq } from 'drizzle-orm';
 /**
  * GET /api/projects/[id]/chat-sessions/[sessionId]/messages
@@ -25,18 +26,11 @@ export async function GET(
       return ApiErrorHandler.invalidProjectId();
     }
 
-    // Verify project access
-    const [project] = await db
-      .select()
-      .from(projects)
-      .where(eq(projects.id, projectId));
+    // Verify user has access to project through organization membership
+    const { hasAccess } = await verifyProjectAccess(userId, projectId);
 
-    if (!project) {
+    if (!hasAccess) {
       return ApiErrorHandler.projectNotFound();
-    }
-
-    if (project.createdBy !== userId) {
-      return ApiErrorHandler.forbidden();
     }
 
     // Verify chat session exists and belongs to project

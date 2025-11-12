@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-import { auth } from '@/lib/auth';
-import { db } from '@/lib/db/drizzle';
-import { projects } from '@/lib/db/schema';
-import { getProjectFiles } from '@/lib/fs/operations';
-import { eq } from 'drizzle-orm';
 import { ApiErrorHandler } from '@/lib/api/errors';
+import { auth } from '@/lib/auth';
+import { getProjectFiles } from '@/lib/fs/operations';
+import { verifyProjectAccess } from '@/lib/projects';
 
 /**
  * GET /api/projects/[id]/files
@@ -28,15 +26,11 @@ export async function GET(
       return ApiErrorHandler.invalidProjectId();
     }
 
-    // Get the project
-    const [project] = await db.select().from(projects).where(eq(projects.id, projectId));
-    if (!project) {
-      return ApiErrorHandler.projectNotFound();
-    }
+    // Verify user has access to project through organization membership
+    const { hasAccess } = await verifyProjectAccess(userId, projectId);
 
-    // Check if the user has access to the project
-    if (project.createdBy !== userId) {
-      return ApiErrorHandler.forbidden();
+    if (!hasAccess) {
+      return ApiErrorHandler.projectNotFound();
     }
 
     // Get the project files using the shared file operations

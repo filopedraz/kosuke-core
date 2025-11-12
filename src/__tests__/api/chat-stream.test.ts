@@ -19,6 +19,16 @@ jest.mock('@/lib/auth', () => ({
 
 jest.mock('@/lib/db/drizzle', () => ({
   db: {
+    query: {
+      projects: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: 1,
+          name: 'Test Project',
+          createdBy: 'test-user-123',
+          orgId: 'test-org-123',
+        }),
+      },
+    },
     select: jest.fn(() => ({
       from: jest.fn(() => ({
         where: jest.fn().mockResolvedValue([
@@ -26,6 +36,7 @@ jest.mock('@/lib/db/drizzle', () => ({
             id: 1,
             name: 'Test Project',
             createdBy: 'test-user-123',
+            orgId: 'test-org-123',
           },
         ]),
       })),
@@ -68,6 +79,19 @@ jest.mock('@/lib/agent', () => ({
 jest.mock('@/lib/sessions', () => ({
   sessionManager: {
     validateSessionDirectory: jest.fn().mockResolvedValue(true),
+  },
+}));
+
+jest.mock('@/lib/clerk', () => ({
+  clerkService: {
+    getUserMemberships: jest.fn().mockResolvedValue({
+      data: [
+        {
+          organization: { id: 'test-org-123' },
+          role: 'org:admin',
+        },
+      ],
+    }),
   },
 }));
 

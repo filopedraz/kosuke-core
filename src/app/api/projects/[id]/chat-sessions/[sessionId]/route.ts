@@ -5,10 +5,11 @@ import { Agent } from '@/lib/agent';
 import { ApiErrorHandler } from '@/lib/api/errors';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db/drizzle';
-import { chatMessages, chatSessions, projects } from '@/lib/db/schema';
+import { chatMessages, chatSessions } from '@/lib/db/schema';
 import { getDockerService } from '@/lib/docker';
 import { deleteDir } from '@/lib/fs/operations';
 import { getGitHubToken } from '@/lib/github/auth';
+import { verifyProjectAccess } from '@/lib/projects';
 import { sessionManager } from '@/lib/sessions';
 import { uploadFile } from '@/lib/storage';
 import { and, eq } from 'drizzle-orm';
@@ -104,18 +105,11 @@ export async function PUT(
       return ApiErrorHandler.invalidProjectId();
     }
 
-    // Verify project access
-    const [project] = await db
-      .select()
-      .from(projects)
-      .where(eq(projects.id, projectId));
+    // Verify user has access to project through organization membership
+    const { hasAccess, project } = await verifyProjectAccess(userId, projectId);
 
-    if (!project) {
+    if (!hasAccess || !project) {
       return ApiErrorHandler.projectNotFound();
-    }
-
-    if (project.createdBy !== userId) {
-      return ApiErrorHandler.forbidden();
     }
 
     // Verify chat session exists and belongs to project
@@ -183,18 +177,11 @@ export async function DELETE(
       return ApiErrorHandler.invalidProjectId();
     }
 
-    // Verify project access
-    const [project] = await db
-      .select()
-      .from(projects)
-      .where(eq(projects.id, projectId));
+    // Verify user has access to project through organization membership
+    const { hasAccess, project } = await verifyProjectAccess(userId, projectId);
 
-    if (!project) {
+    if (!hasAccess || !project) {
       return ApiErrorHandler.projectNotFound();
-    }
-
-    if (project.createdBy !== userId) {
-      return ApiErrorHandler.forbidden();
     }
 
     // Verify chat session exists and belongs to project
@@ -280,14 +267,11 @@ export async function POST(
       return ApiErrorHandler.invalidProjectId();
     }
 
-    // Get the project and verify access
-    const [project] = await db.select().from(projects).where(eq(projects.id, projectId));
-    if (!project) {
-      return ApiErrorHandler.projectNotFound();
-    }
+    // Verify user has access to project through organization membership
+    const { hasAccess, project } = await verifyProjectAccess(userId, projectId);
 
-    if (project.createdBy !== userId) {
-      return ApiErrorHandler.forbidden();
+    if (!hasAccess || !project) {
+      return ApiErrorHandler.projectNotFound();
     }
 
     // Get the chat session and verify it belongs to this project

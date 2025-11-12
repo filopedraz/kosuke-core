@@ -1,9 +1,10 @@
 import { ApiErrorHandler } from '@/lib/api/errors';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db/drizzle';
-import { chatMessages, chatSessions, projects } from '@/lib/db/schema';
+import { chatMessages, chatSessions } from '@/lib/db/schema';
 import { getGitHubToken } from '@/lib/github/auth';
 import { GitOperations } from '@/lib/github/git-operations';
+import { verifyProjectAccess } from '@/lib/projects';
 import { sessionManager } from '@/lib/sessions';
 import type { RevertToMessageRequest } from '@/lib/types/chat';
 import { and, eq } from 'drizzle-orm';
@@ -77,15 +78,11 @@ export async function POST(
 
     const body: RevertToMessageRequest = await request.json();
 
-    // Get project and verify ownership
-    const [project] = await db.select().from(projects).where(eq(projects.id, projectId));
+    // Verify user has access to project through organization membership
+    const { hasAccess, project } = await verifyProjectAccess(userId, projectId);
 
-    if (!project) {
+    if (!hasAccess || !project) {
       return ApiErrorHandler.projectNotFound();
-    }
-
-    if (project.createdBy !== userId) {
-      return ApiErrorHandler.forbidden();
     }
 
     // Verify the message exists and belongs to this session

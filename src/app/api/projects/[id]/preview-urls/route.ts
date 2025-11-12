@@ -1,9 +1,7 @@
 import { ApiErrorHandler } from '@/lib/api/errors';
 import { auth } from '@/lib/auth';
-import { db } from '@/lib/db/drizzle';
-import { projects } from '@/lib/db/schema';
 import { getDockerService } from '@/lib/docker';
-import { eq } from 'drizzle-orm';
+import { verifyProjectAccess } from '@/lib/projects';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -25,15 +23,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       return ApiErrorHandler.badRequest('Invalid project ID');
     }
 
-    // Get project and verify ownership
-    const [project] = await db.select().from(projects).where(eq(projects.id, projectId));
+    // Verify user has access to project through organization membership
+    const { hasAccess } = await verifyProjectAccess(userId, projectId);
 
-    if (!project) {
+    if (!hasAccess) {
       return ApiErrorHandler.projectNotFound();
-    }
-
-    if (project.createdBy !== userId) {
-      return ApiErrorHandler.forbidden();
     }
 
     // Get preview URLs from Docker service

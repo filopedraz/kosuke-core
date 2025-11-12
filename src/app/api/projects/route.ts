@@ -11,6 +11,8 @@ import { createRepositoryFromTemplate } from '@/lib/github';
 import { getGitHubToken } from '@/lib/github/auth';
 import { GitOperations } from '@/lib/github/git-operations';
 
+// GitHub needs time to initialize repos after creation
+const GITHUB_REPO_INIT_DELAY_MS = 10_000; // 10 seconds
 
 // Schema for project creation with GitHub integration
 const createProjectSchema = z.object({
@@ -27,23 +29,28 @@ const createProjectSchema = z.object({
 
 /**
  * GET /api/projects
- * Get all projects for the current user
+ * Get all projects for the current user's active organization
  */
 export async function GET() {
   try {
-    const { userId } = await auth();
+    const { userId, orgId } = await auth();
     if (!userId) {
       return ApiErrorHandler.unauthorized();
     }
 
-    // Query projects directly from database
-    const userProjects = await db
+    // Filter by active organization
+    if (!orgId) {
+      return NextResponse.json([]);
+    }
+
+    // Query projects for the active organization
+    const orgProjects = await db
       .select()
       .from(projects)
-      .where(and(eq(projects.userId, userId), eq(projects.isArchived, false)))
+      .where(and(eq(projects.orgId, orgId), eq(projects.isArchived, false)))
       .orderBy(desc(projects.createdAt));
 
-    return NextResponse.json(userProjects);
+    return NextResponse.json(orgProjects);
   } catch (error) {
     console.error('Error fetching projects:', error);
     return ApiErrorHandler.handle(error);
@@ -71,7 +78,7 @@ async function createGitHubRepository(
   });
 
   // Wait for GitHub to initialize the repository
-  await new Promise(resolve => setTimeout(resolve, 10000));
+  await new Promise(resolve => setTimeout(resolve, GITHUB_REPO_INIT_DELAY_MS));
 
   // Clone the repository locally using Kosuke service token
   try {
@@ -157,9 +164,14 @@ async function importGitHubRepository(
  */
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = await auth();
+    const { userId, orgId } = await auth();
     if (!userId) {
       return ApiErrorHandler.unauthorized();
+    }
+
+    // Require active organization
+    if (!orgId) {
+      return ApiErrorHandler.badRequest('No organization selected. Please select an organization to create a project.');
     }
 
     // Parse and validate the request body
@@ -196,7 +208,7 @@ export async function POST(request: NextRequest) {
         .values({
           name: name,
           description: github.description || null,
-          userId: userId,
+          orgId: orgId,
           createdBy: userId,
           createdAt: new Date(),
           updatedAt: new Date(),

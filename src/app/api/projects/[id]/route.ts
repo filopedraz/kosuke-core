@@ -9,6 +9,7 @@ import { projects } from '@/lib/db/schema';
 import { getDockerService } from '@/lib/docker';
 import { deleteDir, getProjectPath } from '@/lib/fs/operations';
 import { getGitHubToken } from '@/lib/github/auth';
+import { verifyProjectAccess } from '@/lib/projects';
 import { eq } from 'drizzle-orm';
 
 // Schema for updating a project
@@ -39,15 +40,11 @@ export async function GET(
       return ApiErrorHandler.invalidProjectId();
     }
 
-    // Get the project
-    const [project] = await db.select().from(projects).where(eq(projects.id, projectId));
-    if (!project) {
-      return ApiErrorHandler.projectNotFound();
-    }
+    // Verify user has access to project through organization membership
+    const { hasAccess, project } = await verifyProjectAccess(userId, projectId);
 
-    // Check if the user has access to the project
-    if (project.createdBy !== userId) {
-      return ApiErrorHandler.forbidden();
+    if (!hasAccess || !project) {
+      return ApiErrorHandler.projectNotFound();
     }
 
     return ApiResponseHandler.success(project);
@@ -78,15 +75,16 @@ export async function PATCH(
       return ApiErrorHandler.invalidProjectId();
     }
 
-    // Get the project
-    const [project] = await db.select().from(projects).where(eq(projects.id, projectId));
-    if (!project) {
+    // Verify user has access to project through organization membership
+    const { hasAccess, project, isOrgAdmin } = await verifyProjectAccess(userId, projectId);
+
+    if (!hasAccess || !project) {
       return ApiErrorHandler.projectNotFound();
     }
 
-    // Check if the user has access to the project
-    if (project.createdBy !== userId) {
-      return ApiErrorHandler.forbidden();
+    // Only org admins can update project settings
+    if (!isOrgAdmin) {
+      return ApiErrorHandler.forbidden('Only organization admins can update project settings');
     }
 
     // Parse the request body
@@ -130,15 +128,16 @@ export async function DELETE(
       return ApiErrorHandler.invalidProjectId();
     }
 
-    // Get the project
-    const [project] = await db.select().from(projects).where(eq(projects.id, projectId));
-    if (!project) {
+    // Verify user has access to project through organization membership
+    const { hasAccess, project, isOrgAdmin } = await verifyProjectAccess(userId, projectId);
+
+    if (!hasAccess || !project) {
       return ApiErrorHandler.projectNotFound();
     }
 
-    // Check if the user has access to the project
-    if (project.createdBy !== userId) {
-      return ApiErrorHandler.forbidden();
+    // Only org admins can delete projects
+    if (!isOrgAdmin) {
+      return ApiErrorHandler.forbidden('Only organization admins can delete projects');
     }
 
     // Read delete options from request body (optional)

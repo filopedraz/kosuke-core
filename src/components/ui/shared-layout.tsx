@@ -1,6 +1,6 @@
 'use client';
 
-import Navbar from '@/components/ui/navbar';
+import Navbar from '@/components/navbar';
 
 type SharedLayoutProps = {
   children: React.ReactNode;

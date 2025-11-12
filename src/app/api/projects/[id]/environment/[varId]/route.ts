@@ -1,7 +1,8 @@
 import { ApiErrorHandler, ApiResponseHandler } from '@/lib/api';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db/drizzle';
-import { projectEnvironmentVariables, projects } from '@/lib/db/schema';
+import { projectEnvironmentVariables } from '@/lib/db/schema';
+import { verifyProjectAccess } from '@/lib/projects';
 import { and, eq } from 'drizzle-orm';
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
@@ -35,15 +36,16 @@ export async function PUT(
     const body = await request.json();
     const validatedData = updateEnvironmentVariableSchema.parse(body);
 
-    // Verify project ownership
-    const project = await db
-      .select()
-      .from(projects)
-      .where(and(eq(projects.id, projectId), eq(projects.createdBy, userId)))
-      .limit(1);
+    // Verify user has access to project through organization membership
+    const { hasAccess, isOrgAdmin } = await verifyProjectAccess(userId, projectId);
 
-    if (project.length === 0) {
+    if (!hasAccess) {
       return ApiErrorHandler.projectNotFound();
+    }
+
+    // Only org admins can update environment variables
+    if (!isOrgAdmin) {
+      return ApiErrorHandler.forbidden('Only organization admins can update environment variables');
     }
 
     // Verify variable exists and belongs to project
@@ -100,15 +102,16 @@ export async function DELETE(
       return ApiErrorHandler.badRequest('Invalid project ID or variable ID');
     }
 
-    // Verify project ownership
-    const project = await db
-      .select()
-      .from(projects)
-      .where(and(eq(projects.id, projectId), eq(projects.createdBy, userId)))
-      .limit(1);
+    // Verify user has access to project through organization membership
+    const { hasAccess, isOrgAdmin } = await verifyProjectAccess(userId, projectId);
 
-    if (project.length === 0) {
+    if (!hasAccess) {
       return ApiErrorHandler.projectNotFound();
+    }
+
+    // Only org admins can delete environment variables
+    if (!isOrgAdmin) {
+      return ApiErrorHandler.forbidden('Only organization admins can delete environment variables');
     }
 
     // Verify variable exists and belongs to project
