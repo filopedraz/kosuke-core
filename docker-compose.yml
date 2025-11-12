@@ -55,6 +55,7 @@ services:
       - 'traefik.http.routers.main.rule=Host(`kosuke.ai`) || Host(`www.kosuke.ai`)'
       - 'traefik.http.routers.main.tls.certresolver=letsencrypt'
       - 'traefik.http.services.main.loadbalancer.server.port=3000'
+      - 'traefik.http.routers.main.middlewares=security-headers@file'
       # Request wildcard certificate for preview domain
       - 'traefik.http.routers.wildcard-cert.rule=Host(`kosuke.app`)'
       - 'traefik.http.routers.wildcard-cert.tls.certresolver=letsencrypt'
