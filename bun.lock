@@ -89,6 +89,7 @@
         "@tailwindcss/postcss": "^4.1.11",
         "@testing-library/jest-dom": "^6.6.3",
         "@testing-library/react": "^16.2.0",
+        "@types/cookiebot-sdk": "^2.43.5",
         "@types/jest": "^29.5.14",
         "@types/mime-types": "^2.1.4",
         "@types/tryghost__admin-api": "^0.0.1",
@@ -875,6 +876,8 @@
     "@types/bcryptjs": ["@types/bcryptjs@3.0.0", "", { "dependencies": { "bcryptjs": "*" } }, "sha512-WRZOuCuaz8UcZZE4R5HXTco2goQSI2XxjGY3hbM/xDvwmqFWd4ivooImsMx65OKM6CtNKbnZ5YL+YwAwK7c1dg=="],
 
     "@types/connect": ["@types/connect@3.4.38", "", { "dependencies": { "@types/node": "*" } }, "sha512-K6uROf1LD88uDQqJCktA4yzL1YYAK6NgfsI0v/mTgyPKWsX1CnJ0XPSDhViejru1GcRkLWb8RlzFYJRqGUbaug=="],
+
+    "@types/cookiebot-sdk": ["@types/cookiebot-sdk@2.43.5", "", {}, "sha512-He2a4YhTOL8HW2REs8GNcPamLV+JW5CXUlP3RJW7xmYyq0Pwo+EQmh5mufNhHVNEkCN8uI7C0L9Qa5lXmXyFxQ=="],
 
     "@types/d3-array": ["@types/d3-array@3.2.2", "", {}, "sha512-hOLWVbm7uRza0BYXpIIW5pxfrKe0W+D5lrFiAEYR+pb6w3N2SwSMaJbXdUfSEv+dT4MfHBLtn5js0LAWaO6otw=="],
 

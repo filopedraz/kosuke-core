@@ -1,4 +1,4 @@
-import { posthog } from '@/lib/analytics/posthog';
+import { hasAnalyticsConsent, posthog } from '@/lib/analytics/posthog';
 import { useCallback } from 'react';
 
 export interface EventProperties {
@@ -7,12 +7,12 @@ export interface EventProperties {
 
 /**
  * Hook for tracking events with PostHog
+ * Respects Cookiebot consent - events are only captured if user has given statistics consent
  * @returns Object with capture and identify methods
  */
 export function usePostHog() {
   const capture = useCallback((eventName: string, properties?: EventProperties) => {
-    if (!posthog) {
-      console.warn('PostHog not initialized');
+    if (!posthog || !hasAnalyticsConsent()) {
       return;
     }
 
@@ -20,8 +20,7 @@ export function usePostHog() {
   }, []);
 
   const identify = useCallback((userId: string, properties?: EventProperties) => {
-    if (!posthog) {
-      console.warn('PostHog not initialized');
+    if (!posthog || !hasAnalyticsConsent()) {
       return;
     }
 
@@ -29,8 +28,7 @@ export function usePostHog() {
   }, []);
 
   const reset = useCallback(() => {
-    if (!posthog) {
-      console.warn('PostHog not initialized');
+    if (!posthog || !hasAnalyticsConsent()) {
       return;
     }
 
@@ -38,8 +36,7 @@ export function usePostHog() {
   }, []);
 
   const featureEnabled = useCallback((featureFlagKey: string) => {
-    if (!posthog) {
-      console.warn('PostHog not initialized');
+    if (!posthog || !hasAnalyticsConsent()) {
       return false;
     }
 
