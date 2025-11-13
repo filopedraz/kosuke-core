@@ -1,4 +1,5 @@
 import { getGitHubToken } from '@/lib/github/auth';
+import { createAppAuth } from '@octokit/auth-app';
 import { Octokit } from '@octokit/rest';
 
 /**
@@ -24,12 +25,48 @@ export async function createOctokit(userId: string): Promise<Octokit> {
 }
 
 /**
- * Create an authenticated Octokit client for Kosuke org operations
+ * Create an authenticated Octokit client for Kosuke org operations using GitHub App authentication
  */
 export function createKosukeOctokit(): Octokit {
-  const token = process.env.GITHUB_TOKEN;
-  if (!token) {
-    throw new Error('GITHUB_TOKEN not configured. Set it in environment variables.');
+  const appId = process.env.GITHUB_APP_ID;
+  const privateKey = process.env.GITHUB_APP_PRIVATE_KEY;
+  const installationId = process.env.GITHUB_APP_INSTALLATION_ID;
+
+  if (!appId || !privateKey || !installationId) {
+    throw new Error('GitHub App authentication not configured.');
   }
-  return new Octokit({ auth: token });
+
+  console.log('Using GitHub App authentication');
+
+  return new Octokit({
+    authStrategy: createAppAuth,
+    auth: {
+      appId,
+      privateKey: privateKey.replace(/\\n/g, '\n'),
+      installationId,
+    },
+  });
+}
+
+/**
+ * Get an installation access token from the GitHub App
+ * This token can be used for git operations (clone, push, etc.)
+ */
+export async function getKosukeGitHubToken(): Promise<string> {
+  const appId = process.env.GITHUB_APP_ID;
+  const privateKey = process.env.GITHUB_APP_PRIVATE_KEY;
+  const installationId = process.env.GITHUB_APP_INSTALLATION_ID;
+
+  if (!appId || !privateKey || !installationId) {
+    throw new Error('GitHub App authentication not configured.');
+  }
+
+  const auth = createAppAuth({
+    appId,
+    privateKey: privateKey.replace(/\\n/g, '\n'),
+    installationId,
+  });
+
+  const { token } = await auth({ type: 'installation' });
+  return token;
 }

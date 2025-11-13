@@ -80,12 +80,10 @@ async function createGitHubRepository(
   // Wait for GitHub to initialize the repository
   await new Promise(resolve => setTimeout(resolve, GITHUB_REPO_INIT_DELAY_MS));
 
-  // Clone the repository locally using Kosuke service token
+  // Clone the repository locally using GitHub App token
   try {
-    const kosukeToken = process.env.GITHUB_TOKEN;
-    if (!kosukeToken) {
-      throw new Error('GITHUB_TOKEN not configured');
-    }
+    const { getKosukeGitHubToken } = await import('@/lib/github/client');
+    const kosukeToken = await getKosukeGitHubToken();
     const gitOps = new GitOperations();
     await gitOps.cloneRepository(repoData.url, projectId, kosukeToken);
     console.log(`✅ Repository cloned successfully to project ${projectId}`);
