@@ -8,7 +8,7 @@ import { db } from '@/lib/db/drizzle';
 import { chatMessages, chatSessions } from '@/lib/db/schema';
 import { getDockerService } from '@/lib/docker';
 import { deleteDir } from '@/lib/fs/operations';
-import { getGitHubToken } from '@/lib/github/auth';
+import { getKosukeGitHubToken, getUserGitHubToken } from '@/lib/github/client';
 import { verifyProjectAccess } from '@/lib/projects';
 import { sessionManager } from '@/lib/sessions';
 import { uploadFile } from '@/lib/storage';
@@ -392,15 +392,21 @@ export async function POST(
     void includeContext;
     void contextFiles;
 
-    // Get GitHub token for the user (optional for GitHub integration)
+    // Get GitHub token based on project ownership (optional for GitHub integration)
     let githubToken: string | null = null;
 
     try {
-      githubToken = await getGitHubToken(userId);
+      const kosukeOrg = process.env.NEXT_PUBLIC_KOSUKE_ORG;
+      const isKosukeRepo = project.githubOwner === kosukeOrg;
+
+      githubToken = isKosukeRepo
+        ? await getKosukeGitHubToken()
+        : await getUserGitHubToken(userId);
+
       if (githubToken) {
         console.log(`🔗 GitHub integration enabled for session: ${chatSession.sessionId}`);
       } else {
-        console.log(`⚪ GitHub integration disabled: no token found for user ${userId}`);
+        console.log(`⚪ GitHub integration disabled: no token found`);
       }
     } catch (error) {
       console.log(`⚠️ GitHub token retrieval failed: ${error}`);

@@ -8,7 +8,7 @@ import { POST } from '@/app/api/projects/[id]/chat-sessions/[sessionId]/route';
 import { Agent } from '@/lib/agent';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db/drizzle';
-import { getGitHubToken } from '@/lib/github/auth';
+import { getUserGitHubToken } from '@/lib/github/client';
 import { sessionManager } from '@/lib/sessions';
 import { NextRequest } from 'next/server';
 
@@ -61,8 +61,12 @@ jest.mock('@/lib/db/schema', () => ({
   chatMessages: {},
 }));
 
-jest.mock('@/lib/github/auth', () => ({
-  getGitHubToken: jest.fn().mockResolvedValue('mock-github-token'),
+jest.mock('@/lib/github/client', () => ({
+  getUserGitHubToken: jest.fn().mockResolvedValue('mock-github-token'),
+  getKosukeGitHubToken: jest.fn().mockResolvedValue('mock-github-app-token'),
+  createUserOctokit: jest.fn(),
+  createKosukeOctokit: jest.fn(),
+  getUserGitHubInfo: jest.fn(),
 }));
 
 jest.mock('@/lib/agent', () => ({
@@ -213,7 +217,9 @@ describe('Chat Stream API', () => {
     });
 
     it('should work with GitHub token when available', async () => {
-      const mockGetGitHubToken = getGitHubToken as jest.MockedFunction<typeof getGitHubToken>;
+      const mockGetGitHubToken = getUserGitHubToken as jest.MockedFunction<
+        typeof getUserGitHubToken
+      >;
       mockGetGitHubToken.mockResolvedValueOnce('mock-token');
 
       const request = new NextRequest(
@@ -229,7 +235,9 @@ describe('Chat Stream API', () => {
     });
 
     it('should work without GitHub token', async () => {
-      const mockGetGitHubToken = getGitHubToken as jest.MockedFunction<typeof getGitHubToken>;
+      const mockGetGitHubToken = getUserGitHubToken as jest.MockedFunction<
+        typeof getUserGitHubToken
+      >;
       mockGetGitHubToken.mockResolvedValueOnce(null);
 
       const request = new NextRequest(

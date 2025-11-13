@@ -4,9 +4,13 @@
 
 import { GitOperations } from '@/lib/github/git-operations';
 
-// Mock getGitHubToken
-jest.mock('@/lib/github/auth', () => ({
-  getGitHubToken: jest.fn().mockResolvedValue('mock-github-token'),
+// Mock getUserGitHubToken
+jest.mock('@/lib/github/client', () => ({
+  getUserGitHubToken: jest.fn().mockResolvedValue('mock-github-token'),
+  getKosukeGitHubToken: jest.fn().mockResolvedValue('mock-github-app-token'),
+  createUserOctokit: jest.fn(),
+  createKosukeOctokit: jest.fn(),
+  getUserGitHubInfo: jest.fn(),
 }));
 
 // Mock simple-git

@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ApiErrorHandler } from '@/lib/api/errors';
 import { auth } from '@/lib/auth';
 import { getDockerService } from '@/lib/docker';
-import { getGitHubToken } from '@/lib/github/auth';
+import { getKosukeGitHubToken, getUserGitHubToken } from '@/lib/github/client';
 import { verifyProjectAccess } from '@/lib/projects';
 import { sessionManager } from '@/lib/sessions';
 
@@ -35,8 +35,14 @@ export async function POST(
       return ApiErrorHandler.projectNotFound();
     }
 
-    // Get user's GitHub token (mandatory)
-    const githubToken = await getGitHubToken(userId);
+    // Get GitHub token based on project ownership (mandatory)
+    const kosukeOrg = process.env.NEXT_PUBLIC_KOSUKE_ORG;
+    const isKosukeRepo = project.githubOwner === kosukeOrg;
+
+    const githubToken = isKosukeRepo
+      ? await getKosukeGitHubToken()
+      : await getUserGitHubToken(userId);
+
     if (!githubToken) {
       return ApiErrorHandler.badRequest('GitHub not connected');
     }

@@ -6,9 +6,8 @@ import { auth } from '@/lib/auth';
 import { SESSION_BRANCH_PREFIX } from '@/lib/constants';
 import { db } from '@/lib/db/drizzle';
 import { chatSessions } from '@/lib/db/schema';
-import { getGitHubToken } from '@/lib/github/auth';
+import { createKosukeOctokit, createUserOctokit } from '@/lib/github/client';
 import { verifyProjectAccess } from '@/lib/projects';
-import { Octokit } from '@octokit/rest';
 import { and, eq } from 'drizzle-orm';
 
 // Schema for creating pull request
@@ -65,12 +64,6 @@ export async function POST(
       return ApiErrorHandler.chatSessionNotFound();
     }
 
-    // Get GitHub token
-    const githubToken = await getGitHubToken(userId);
-    if (!githubToken) {
-      return ApiErrorHandler.badRequest('GitHub token not found. Please connect your GitHub account.');
-    }
-
     // Parse request body
     const body = await request.json();
     const parseResult = createPullRequestSchema.safeParse(body);
@@ -88,9 +81,13 @@ export async function POST(
     const prDescription = description || `Automated changes from Kosuke chat session: ${session.title}\n\nSession ID: ${sessionId}`;
 
     try {
-      const github = new Octokit({
-        auth: githubToken,
-      });
+      // Get GitHub client based on project ownership
+      const kosukeOrg = process.env.NEXT_PUBLIC_KOSUKE_ORG;
+      const isKosukeRepo = project.githubOwner === kosukeOrg;
+
+      const github = isKosukeRepo
+        ? createKosukeOctokit()
+        : await createUserOctokit(userId);
 
       // Check if source branch exists
       try {
