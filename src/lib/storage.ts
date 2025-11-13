@@ -14,6 +14,16 @@ const s3Client = new S3Client({
 
 const S3_BUCKET = process.env.S3_BUCKET || '';
 
+// File upload result with metadata
+export interface UploadResult {
+  fileUrl: string;
+  filename: string; // Original filename
+  storedFilename: string; // Sanitized filename used in storage
+  fileType: 'image' | 'document';
+  mediaType: string; // MIME type
+  fileSize: number;
+}
+
 // Generate unique filename with sanitization
 function generateFilename(originalName: string, prefix: string = ''): string {
   const timestamp = Date.now();
@@ -37,10 +47,24 @@ function getFileUrl(filename: string): string {
   return `https://${bucket}.${endpointWithoutProtocol}/${filename}`;
 }
 
-// Upload to Digital Ocean Spaces
-async function uploadFileToS3(file: globalThis.File, filename: string): Promise<string> {
-  const buffer = Buffer.from(await file.arrayBuffer());
+// Determine file type from MIME type
+function getFileType(mediaType: string): 'image' | 'document' {
+  if (mediaType.startsWith('image/')) {
+    return 'image';
+  }
+  if (mediaType === 'application/pdf') {
+    return 'document';
+  }
+  // Default to document for unsupported types
+  return 'document';
+}
 
+// Upload to Digital Ocean Spaces
+async function uploadFileToS3(
+  file: globalThis.File,
+  filename: string,
+  buffer: Buffer
+): Promise<UploadResult> {
   const command = new PutObjectCommand({
     Bucket: S3_BUCKET,
     Key: filename,
@@ -50,7 +74,15 @@ async function uploadFileToS3(file: globalThis.File, filename: string): Promise<
   });
 
   await s3Client.send(command);
-  return getFileUrl(filename);
+
+  return {
+    fileUrl: getFileUrl(filename),
+    filename: file.name,
+    storedFilename: filename,
+    fileType: getFileType(file.type),
+    mediaType: file.type,
+    fileSize: file.size,
+  };
 }
 
 /**
@@ -58,12 +90,18 @@ async function uploadFileToS3(file: globalThis.File, filename: string): Promise<
  * Uploads files to Digital Ocean Spaces in both development and production
  * @param file File to upload
  * @param prefix Optional prefix for organizing files (e.g., 'documents/', 'images/')
- * @returns URL of the uploaded file
+ * @param buffer Optional precomputed Buffer to avoid re-reading the file
+ * @returns Upload result with file metadata
  */
-export async function uploadFile(file: globalThis.File, prefix: string = '') {
+export async function uploadFile(
+  file: globalThis.File,
+  prefix: string = '',
+  buffer?: Buffer
+): Promise<UploadResult> {
   try {
     const filename = generateFilename(file.name, prefix);
-    return await uploadFileToS3(file, filename);
+    const fileBuffer = buffer ?? Buffer.from(await file.arrayBuffer());
+    return await uploadFileToS3(file, filename, fileBuffer);
   } catch (error) {
     console.error('Error uploading file:', error);
     throw new Error('Failed to upload file');

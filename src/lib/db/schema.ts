@@ -73,6 +73,31 @@ export const chatMessages = pgTable('chat_messages', {
   metadata: jsonb('metadata'), // NEW: System message metadata (e.g., revert info)
 });
 
+export const attachments = pgTable('attachments', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  projectId: uuid('project_id')
+    .references(() => projects.id, { onDelete: 'cascade' })
+    .notNull(),
+  filename: text('filename').notNull(), // Original filename
+  storedFilename: text('stored_filename').notNull(), // Sanitized filename in storage
+  fileUrl: text('file_url').notNull(), // Full URL to the file
+  fileType: varchar('file_type', { length: 50 }).notNull(), // 'image' or 'document'
+  mediaType: varchar('media_type', { length: 100 }).notNull(), // MIME type: image/jpeg, image/png, application/pdf
+  fileSize: integer('file_size'), // File size in bytes
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+
+export const messageAttachments = pgTable('message_attachments', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  messageId: uuid('message_id')
+    .references(() => chatMessages.id, { onDelete: 'cascade' })
+    .notNull(),
+  attachmentId: uuid('attachment_id')
+    .references(() => attachments.id, { onDelete: 'cascade' })
+    .notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+
 export const diffs = pgTable('diffs', {
   id: uuid('id').defaultRandom().primaryKey(),
   projectId: uuid('project_id')
@@ -181,6 +206,26 @@ export const chatMessagesRelations = relations(chatMessages, ({ one, many }) => 
     references: [chatSessions.id],
   }),
   diffs: many(diffs),
+  messageAttachments: many(messageAttachments),
+}));
+
+export const attachmentsRelations = relations(attachments, ({ one, many }) => ({
+  project: one(projects, {
+    fields: [attachments.projectId],
+    references: [projects.id],
+  }),
+  messageAttachments: many(messageAttachments),
+}));
+
+export const messageAttachmentsRelations = relations(messageAttachments, ({ one }) => ({
+  message: one(chatMessages, {
+    fields: [messageAttachments.messageId],
+    references: [chatMessages.id],
+  }),
+  attachment: one(attachments, {
+    fields: [messageAttachments.attachmentId],
+    references: [attachments.id],
+  }),
 }));
 
 export const diffsRelations = relations(diffs, ({ one }) => ({
@@ -231,6 +276,10 @@ export type ChatSession = typeof chatSessions.$inferSelect;
 export type NewChatSession = typeof chatSessions.$inferInsert;
 export type ChatMessage = typeof chatMessages.$inferSelect;
 export type NewChatMessage = typeof chatMessages.$inferInsert;
+export type Attachment = typeof attachments.$inferSelect;
+export type NewAttachment = typeof attachments.$inferInsert;
+export type MessageAttachment = typeof messageAttachments.$inferSelect;
+export type NewMessageAttachment = typeof messageAttachments.$inferInsert;
 export type Diff = typeof diffs.$inferSelect;
 export type NewDiff = typeof diffs.$inferInsert;
 export type ProjectCommit = typeof projectCommits.$inferSelect;

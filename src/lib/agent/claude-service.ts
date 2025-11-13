@@ -6,6 +6,7 @@
 
 import type { AgentOptions } from '@/lib/types/agent';
 import { query, type Options, type Query, type SDKMessage } from '@anthropic-ai/claude-agent-sdk';
+import type { MessageParam } from '@anthropic-ai/sdk/resources';
 import { existsSync } from 'fs';
 
 /**
@@ -30,8 +31,12 @@ export class ClaudeService {
 
   /**
    * Run an agentic query with the Claude Agent SDK
+   * Supports both string prompts and MessageParam with content blocks
    */
-  async *runAgenticQuery(prompt: string, remoteId?: string | null): AsyncGenerator<SDKMessage> {
+  async *runAgenticQuery(
+    message: MessageParam | string,
+    remoteId?: string | null
+  ): AsyncGenerator<SDKMessage> {
     console.log('🤖 Starting Claude Agent SDK query');
     console.log(`📁 Working directory: ${this.projectPath}`);
     console.log(`⚙️ Max turns: ${this.options.maxTurns}`);
@@ -45,16 +50,22 @@ export class ClaudeService {
 
     try {
       const sdkOptions = this.buildSDKOptions(remoteId);
+
+      // Convert MessageParam to prompt format
+      // For now, the Agent SDK's query() function accepts a string
+      // We'll create an async generator that yields the message as SDKUserMessage
+      const promptInput = this.convertToPrompt(message);
+
       const queryInstance: Query = query({
-        prompt,
+        prompt: promptInput,
         options: sdkOptions,
       });
 
       let messageCount = 0;
-      for await (const message of queryInstance) {
+      for await (const sdkMessage of queryInstance) {
         messageCount++;
-        console.log(`📨 Received message ${messageCount}: ${this.getMessageType(message)}`);
-        yield message;
+        console.log(`📨 Received message ${messageCount}: ${this.getMessageType(sdkMessage)}`);
+        yield sdkMessage;
       }
 
       console.log(`✅ Processed ${messageCount} messages from Claude Agent SDK`);
@@ -64,6 +75,52 @@ export class ClaudeService {
         `Claude Agent SDK error: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
     }
+  }
+
+  /**
+   * Convert MessageParam or string to prompt format
+   * The Claude Agent SDK currently accepts a string prompt
+   * For MessageParam with content blocks, we convert to a prompt with embedded instructions
+   */
+  private convertToPrompt(message: MessageParam | string): string {
+    // If it's already a string, return as-is
+    if (typeof message === 'string') {
+      return message;
+    }
+
+    // If it's a MessageParam, extract content blocks
+    const content = message.content;
+
+    // If content is a string, return it
+    if (typeof content === 'string') {
+      return content;
+    }
+
+    // If content is an array of blocks, build a structured prompt
+    const blocks = content as Array<{ type: string; text?: string; source?: { url?: string } }>;
+    const textBlocks: string[] = [];
+    const attachments: string[] = [];
+
+    for (const block of blocks) {
+      if (block.type === 'text' && block.text) {
+        textBlocks.push(block.text);
+      } else if (block.type === 'image' && block.source?.url) {
+        attachments.push(`Image: ${block.source.url}`);
+      } else if (block.type === 'document' && block.source?.url) {
+        attachments.push(`Document: ${block.source.url}`);
+      }
+    }
+
+    // Combine text and attachment references
+    const parts: string[] = [];
+    if (textBlocks.length > 0) {
+      parts.push(textBlocks.join('\n\n'));
+    }
+    if (attachments.length > 0) {
+      parts.push('\nAttached files:\n' + attachments.join('\n'));
+    }
+
+    return parts.join('\n');
   }
 
   /**
