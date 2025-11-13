@@ -5,6 +5,7 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useUpdateBrandColor } from '@/hooks/use-brand-colors';
 import { useBrandGuidelines } from '@/hooks/use-brand-guidelines';
+import { getCategoryTitle, groupColorsByCategory } from '@/lib/branding/color-utils';
 import type { FontInfo } from '@/lib/types/branding';
 import { Moon, Palette, Sun, TextQuote, Wand2 } from 'lucide-react';
 import ColorCard, { ColorCardSkeleton } from './color-card';
@@ -12,7 +13,6 @@ import ColorPaletteModal from './color-palette-modal';
 import FontCard, { FontCardSkeleton } from './font-card';
 import KeywordsModal from './keywords-modal';
 import { ThemePreviewProvider } from './theme-context';
-import { getCategoryTitle, groupColorsByCategory } from './utils/color-utils';
 
 interface BrandGuidelinesProps {
   projectId: string;
