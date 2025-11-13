@@ -1,5 +1,5 @@
-import { convertToHsl } from '@/app/(logged-in)/projects/[id]/components/brand/utils/color-utils';
 import { useToast } from '@/hooks/use-toast';
+import { convertToHsl } from '@/lib/branding/color-utils';
 import type { ColorUpdateRequest, CssVariable } from '@/lib/types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
