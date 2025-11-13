@@ -113,8 +113,8 @@ async function importGitHubRepository(
   const [, owner, repo] = urlMatch;
 
   // Get repository info using Octokit
-  const { createOctokit } = await import('@/lib/github/client');
-  const octokit = await createOctokit(userId);
+  const { createUserOctokit } = await import('@/lib/github/client');
+  const octokit = await createUserOctokit(userId);
 
   try {
     const { data: repoInfo } = await octokit.rest.repos.get({

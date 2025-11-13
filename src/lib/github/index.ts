@@ -4,7 +4,7 @@ import type {
   GitHubRepository,
 } from '@/lib/types/github';
 import crypto from 'crypto';
-import { createKosukeOctokit, createOctokit, getKosukeOrg } from './client';
+import { createKosukeOctokit, createUserOctokit, getKosukeOrg } from './client';
 
 export async function listUserRepositories(
   userId: string,
@@ -12,7 +12,7 @@ export async function listUserRepositories(
   perPage: number = 10,
   search: string = ''
 ): Promise<{ repositories: GitHubRepository[]; hasMore: boolean }> {
-  const octokit = await createOctokit(userId);
+  const octokit = await createUserOctokit(userId);
 
   let repositories: GitHubRepository[];
   let hasMore: boolean;

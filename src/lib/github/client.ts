@@ -16,7 +16,7 @@ export function getKosukeOrg(): string {
 /**
  * Create an authenticated Octokit client for a given Clerk user
  */
-export async function createOctokit(userId: string): Promise<Octokit> {
+export async function createUserOctokit(userId: string): Promise<Octokit> {
   const token = await getGitHubToken(userId);
   if (!token) {
     throw new Error('GitHub not connected');
