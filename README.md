@@ -28,7 +28,7 @@ Ensure you have the following tools installed and configured:
 - **nvm (Node Version Manager)** - Optional, only needed if running linting/tests locally
   - Install from [github.com/nvm-sh/nvm](https://github.com/nvm-sh/nvm)
   - The project includes a `.nvmrc` file to automatically use Node.js 22.20.0
-- **GitHub OAuth App** - For user authentication and accessing user repositories
+- **GitHub OAuth App** - For user authentication and accessing user repositories (import functionality)
   1. Go to [GitHub Developer Settings](https://github.com/settings/developers)
   2. Click **OAuth Apps** → **New OAuth App**
   3. Fill in the application details:
@@ -39,7 +39,7 @@ Ensure you have the following tools installed and configured:
   5. Copy the **Client ID** (you'll need this for Clerk setup)
   6. Click **Generate a new client secret** and copy it immediately (you'll need this for Clerk setup)
   7. Keep this tab open - you'll configure the callback URL after setting up Clerk
-- **GitHub App** - For Kosuke organization operations (creating repos, managing templates)
+- **GitHub App** - For Kosuke organization operations (creating repos, pull/push etc.)
   1. Go to your organization settings: `https://github.com/organizations/YOUR-ORG/settings/apps`
   2. Click **New GitHub App**
   3. Configure the app with required permissions:
