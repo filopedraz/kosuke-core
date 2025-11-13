@@ -76,12 +76,14 @@ bun run shadcn:check    # Check for available component updates
 - **TypeScript**: Validates types across entire codebase
 - **Tests**: Ensures functionality works as expected
 - **Knip**: Ensures no duplicate or unused code is pushed to production
+- **Build**: Ensure the application build is successful
 
 ```bash
 bun run lint       # Must pass with 0 errors
 bun run typecheck  # Must pass with 0 errors
 bun run test       # All tests must pass
 bun run knip       # Must pass with 0 errors
+bun run build      # Must build successfully
 ```
 
 These checks run in pre-commit hooks and CI/CD. Fix all issues before marking work complete.
