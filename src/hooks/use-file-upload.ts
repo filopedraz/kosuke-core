@@ -2,7 +2,7 @@ import type { AttachedImage } from '@/lib/types';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 // Accepted file types: images and PDFs
-const ACCEPTED_FILE_TYPES = [
+export const ACCEPTED_FILE_TYPES = [
   'image/jpeg',
   'image/jpg',
   'image/png',
@@ -10,6 +10,10 @@ const ACCEPTED_FILE_TYPES = [
   'image/webp',
   'application/pdf',
 ];
+
+// Generate accept attribute string for file input
+export const ACCEPTED_FILE_TYPES_ACCEPT = 'image/*,application/pdf';
+
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 // Hook for managing file upload and drag & drop functionality

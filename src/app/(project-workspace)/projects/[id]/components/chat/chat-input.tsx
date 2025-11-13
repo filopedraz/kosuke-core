@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 
 // Import types and hooks
-import { useFileUpload } from '@/hooks/use-file-upload';
+import { useFileUpload, ACCEPTED_FILE_TYPES_ACCEPT } from '@/hooks/use-file-upload';
 import type { ChatInputProps } from '@/lib/types';
 
 export default function ChatInput({
@@ -105,7 +105,7 @@ export default function ChatInput({
           <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10 pointer-events-none rounded-lg">
             <div className="flex flex-col items-center text-primary">
               <ImageIcon className="h-10 w-10 mb-2" />
-              <p className="text-sm font-medium">Drop image to attach</p>
+              <p className="text-sm font-medium">Drop image or PDF to attach</p>
             </div>
           </div>
         )}
@@ -158,7 +158,7 @@ export default function ChatInput({
             type="file"
             ref={fileInputRef}
             onChange={handleFileChange}
-            accept="image/*"
+            accept={ACCEPTED_FILE_TYPES_ACCEPT}
             className="hidden"
             id="image-upload"
           />
@@ -171,10 +171,10 @@ export default function ChatInput({
               className="h-8 w-8"
               disabled={isLoading}
               onClick={triggerFileInput}
-              title="Attach image (you can also paste or drag & drop)"
+              title="Attach image or PDF (you can also paste or drag & drop)"
             >
               <Paperclip className="h-5 w-5" />
-              <span className="sr-only">Attach image</span>
+              <span className="sr-only">Attach image or PDF</span>
             </Button>
 
             <Button

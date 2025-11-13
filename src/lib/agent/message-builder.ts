@@ -113,12 +113,6 @@ export function buildMessageParam(
       const documentBlock = createDocumentBlock(upload, base64Data);
       contentBlocks.push(documentBlock);
     }
-
-    // Always append a textual note with the public URL for traceability
-    contentBlocks.push({
-      type: 'text',
-      text: `Attachment URL: ${upload.fileUrl}`,
-    });
   }
 
   return {

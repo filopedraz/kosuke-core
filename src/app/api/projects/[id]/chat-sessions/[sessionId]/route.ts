@@ -435,8 +435,6 @@ export async function POST(
     // Build proper content blocks for Claude (text + image/document if present)
     const messageParam = buildMessageParam(messageContent, attachmentPayload);
 
-    console.log('📝 Message param:', JSON.stringify(messageParam, null, 2));
-
     // Create a ReadableStream from the agent's async generator
     const stream = new ReadableStream({
       async start(controller) {
