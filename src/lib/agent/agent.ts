@@ -10,6 +10,7 @@ import { GitOperations } from '@/lib/github/git-operations';
 import { sessionManager } from '@/lib/sessions';
 import type { AgentConfig, StreamEvent } from '@/lib/types/agent';
 import { SDKResultMessage } from '@anthropic-ai/claude-agent-sdk';
+import type { MessageParam } from '@anthropic-ai/sdk/resources';
 import { eq } from 'drizzle-orm';
 import { ClaudeService } from './claude-service';
 import { EventProcessor } from './event-processor';
@@ -52,7 +53,10 @@ export class Agent {
   /**
    * Run the agent and stream responses
    */
-  async *run(prompt: string, remoteId?: string | null): AsyncGenerator<StreamEvent> {
+  async *run(
+    message: MessageParam | string,
+    remoteId?: string | null
+  ): AsyncGenerator<StreamEvent> {
     console.log(`🤖 Processing request for project ${this.projectId}, session ${this.sessionId}`);
 
     const startTime = Date.now();
@@ -60,7 +64,7 @@ export class Agent {
 
     try {
       // Stream events from Claude Agent SDK
-      const sdkMessages = this.claudeService.runAgenticQuery(prompt, remoteId);
+      const sdkMessages = this.claudeService.runAgenticQuery(message, remoteId);
 
       for await (const message of sdkMessages) {
         // Capture remoteId from result message (only if we don't already have one)

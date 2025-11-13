@@ -1,5 +1,16 @@
 import type { AttachedImage } from '@/lib/types';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+
+// Accepted file types: images and PDFs
+const ACCEPTED_FILE_TYPES = [
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/gif',
+  'image/webp',
+  'application/pdf',
+];
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 // Hook for managing file upload and drag & drop functionality
 export function useFileUpload() {
@@ -8,32 +19,51 @@ export function useFileUpload() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
-  // Handle image attachment
-  const handleImageAttach = (file: File) => {
-    // Check file size (max 5MB)
-    const maxSize = 5 * 1024 * 1024; // 5MB
-    if (file.size > maxSize) {
-      alert('Image is too large. Maximum size is 5MB.');
+  // Check if file type is accepted
+  const isAcceptedFileType = (fileType: string): boolean => {
+    return ACCEPTED_FILE_TYPES.includes(fileType);
+  };
+
+  // Handle file attachment (images and PDFs)
+  const handleFileAttach = useCallback((file: File) => {
+    // Check file type
+    if (!isAcceptedFileType(file.type)) {
+      alert('File type not supported. Please upload an image (JPEG, PNG, GIF, WebP) or PDF.');
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = e => {
-      if (e.target?.result) {
-        setAttachedImage({
-          file,
-          previewUrl: e.target.result as string,
-        });
-      }
-    };
-    reader.readAsDataURL(file);
-  };
+    // Check file size (max 10MB)
+    if (file.size > MAX_FILE_SIZE) {
+      alert('File is too large. Maximum size is 10MB.');
+      return;
+    }
+
+    // For images, create a preview. For PDFs, use a placeholder
+    if (file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = e => {
+        if (e.target?.result) {
+          setAttachedImage({
+            file,
+            previewUrl: e.target.result as string,
+          });
+        }
+      };
+      reader.readAsDataURL(file);
+    } else if (file.type === 'application/pdf') {
+      // For PDFs, use a placeholder preview
+      setAttachedImage({
+        file,
+        previewUrl: '/pdf-icon.svg', // We'll use a PDF icon placeholder
+      });
+    }
+  }, []);
 
   // Handle file input change
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file && file.type.startsWith('image/')) {
-      handleImageAttach(file);
+    if (file) {
+      handleFileAttach(file);
     }
     // Reset the input so the same file can be selected again
     if (fileInputRef.current) {
@@ -59,7 +89,7 @@ export function useFileUpload() {
           if (item.type.indexOf('image') !== -1) {
             const file = item.getAsFile();
             if (file) {
-              handleImageAttach(file);
+              handleFileAttach(file);
               e.preventDefault();
               console.log('Image pasted from clipboard');
               break;
@@ -71,9 +101,9 @@ export function useFileUpload() {
 
     document.addEventListener('paste', handlePaste);
     return () => document.removeEventListener('paste', handlePaste);
-  }, []);
+  }, [handleFileAttach]);
 
-  // Add drag and drop support for images
+  // Add drag and drop support for images and PDFs
   useEffect(() => {
     const form = formRef.current;
     if (!form) return;
@@ -97,10 +127,8 @@ export function useFileUpload() {
 
       if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
         const file = e.dataTransfer.files[0];
-        if (file.type.startsWith('image/')) {
-          handleImageAttach(file);
-          console.log('Image dropped into chat input');
-        }
+        handleFileAttach(file);
+        console.log('File dropped into chat input');
       }
     };
 
@@ -113,7 +141,7 @@ export function useFileUpload() {
       form.removeEventListener('dragleave', handleDragLeave);
       form.removeEventListener('drop', handleDrop);
     };
-  }, []);
+  }, [handleFileAttach]);
 
   // Clear attachment (useful when message is sent)
   const clearAttachment = () => {
