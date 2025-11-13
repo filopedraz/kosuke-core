@@ -3,17 +3,6 @@ import { createAppAuth } from '@octokit/auth-app';
 import { Octokit } from '@octokit/rest';
 
 /**
- * Get Kosuke organization name
- */
-export function getKosukeOrg(): string {
-  const org = process.env.NEXT_PUBLIC_KOSUKE_ORG;
-  if (!org) {
-    throw new Error('NEXT_PUBLIC_KOSUKE_ORG not configured. Set it in environment variables.');
-  }
-  return org;
-}
-
-/**
  * Create an authenticated Octokit client for a given Clerk user
  */
 export async function createUserOctokit(userId: string): Promise<Octokit> {

@@ -4,7 +4,7 @@ import type {
   GitHubRepository,
 } from '@/lib/types/github';
 import crypto from 'crypto';
-import { createKosukeOctokit, createUserOctokit, getKosukeOrg } from './client';
+import { createKosukeOctokit, createUserOctokit } from './client';
 
 export async function listUserRepositories(
   userId: string,
@@ -76,7 +76,10 @@ export async function createRepositoryFromTemplate(
   request: CreateRepositoryFromTemplateRequest
 ): Promise<GitHubRepoResponse> {
   const octokit = createKosukeOctokit();
-  const kosukeOrg = getKosukeOrg();
+  const kosukeOrg = process.env.NEXT_PUBLIC_KOSUKE_ORG;
+  if (!kosukeOrg) {
+    throw new Error('NEXT_PUBLIC_KOSUKE_ORG not configured. Set it in environment variables.');
+  }
 
   // Parse template repository
   const templateRepo = request.templateRepo;
