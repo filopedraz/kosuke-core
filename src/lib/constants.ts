@@ -12,7 +12,7 @@ export const STORAGE_BASE_URL = IS_PRODUCTION
   ? process.env.VERCEL_URL
     ? `https://${process.env.VERCEL_URL}`
     : 'https://your-app.vercel.app'
-  : 'http://localhost:3000';
+  : process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
 // Git Settings
 export const SESSION_BRANCH_PREFIX = process.env.SESSION_BRANCH_PREFIX || 'kosuke/chat-';

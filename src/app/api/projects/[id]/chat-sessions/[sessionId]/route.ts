@@ -283,7 +283,7 @@ export async function POST(
     let contextFiles: string[] = [];
 
     if (contentType.includes('multipart/form-data')) {
-      // Process FormData request (for image uploads) - return JSON response
+      // Process FormData request (for image uploads)
       console.log('Processing multipart/form-data request');
       const formData = await processFormDataRequest(req, projectId);
       messageContent = formData.content;
@@ -292,31 +292,11 @@ export async function POST(
 
       if (formData.imageUrl) {
         console.log(`Image URL received: ${formData.imageUrl}`);
-        // Add image URL to message content as markdown link
-        messageContent = `${messageContent}\n\n[Attached Image](${formData.imageUrl})`;
+        // Add image URL to message content as markdown image
+        messageContent = `${messageContent}\n\n![Attached Image](${formData.imageUrl})`;
       }
-
-      // Save the user message to the database
-      await db.insert(chatMessages).values({
-        projectId,
-        chatSessionId: chatSession.id,
-        userId: userId,
-        content: messageContent,
-        role: 'user',
-        modelType: 'premium',
-      });
-
-      return new Response(
-        JSON.stringify({
-          success: true,
-          message: "Image message saved. Processing will be handled via webhooks."
-        }),
-        {
-          headers: { 'Content-Type': 'application/json' }
-        }
-      );
     } else {
-      // Process JSON request for text messages - use streaming proxy
+      // Process JSON request for text messages
       console.log('Processing JSON request for streaming');
       const body = await req.json();
       console.log('Request body:', JSON.stringify(body));
