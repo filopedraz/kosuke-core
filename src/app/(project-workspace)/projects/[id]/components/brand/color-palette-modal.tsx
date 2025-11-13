@@ -9,8 +9,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { colorToHex, formatColorName, groupColorsByCategory } from '@/lib/branding/color-utils';
 import { useEffect, useRef } from 'react';
-import { colorToHex, formatColorName, groupColorsByCategory } from './utils/color-utils';
 
 // Use the CssVariable type from a new types file
  interface CssVariable {

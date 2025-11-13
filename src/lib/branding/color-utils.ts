@@ -1,7 +1,7 @@
 import type { ColorVariable as BaseColorVariable } from '@/lib/types/branding';
 
 // Extend the base ColorVariable type to make scope optional for backward compatibility
- interface ColorVariable extends Omit<BaseColorVariable, 'scope'> {
+interface ColorVariable extends Omit<BaseColorVariable, 'scope'> {
   scope?: 'root' | 'dark' | 'light' | 'unknown';
   [key: string]: string | undefined;
 }
@@ -89,7 +89,12 @@ export function convertHslToCssColor(colorValue: string): string {
   }
 
   // If it's already a full CSS color, return it
-  if (colorValue.startsWith('hsl') || colorValue.startsWith('rgb') || colorValue.startsWith('#') || colorValue.startsWith('oklch')) {
+  if (
+    colorValue.startsWith('hsl') ||
+    colorValue.startsWith('rgb') ||
+    colorValue.startsWith('#') ||
+    colorValue.startsWith('oklch')
+  ) {
     return colorValue;
   }
 
@@ -121,29 +126,49 @@ export function hslToHex(h: number, s: number, l: number): string {
   l /= 100;
 
   const c = (1 - Math.abs(2 * l - 1)) * s;
-  const x = c * (1 - Math.abs((h / 60) % 2 - 1));
+  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
   const m = l - c / 2;
 
-  let r = 0, g = 0, b = 0;
+  let r = 0,
+    g = 0,
+    b = 0;
 
   if (0 <= h && h < 60) {
-    r = c; g = x; b = 0;
+    r = c;
+    g = x;
+    b = 0;
   } else if (60 <= h && h < 120) {
-    r = x; g = c; b = 0;
+    r = x;
+    g = c;
+    b = 0;
   } else if (120 <= h && h < 180) {
-    r = 0; g = c; b = x;
+    r = 0;
+    g = c;
+    b = x;
   } else if (180 <= h && h < 240) {
-    r = 0; g = x; b = c;
+    r = 0;
+    g = x;
+    b = c;
   } else if (240 <= h && h < 300) {
-    r = x; g = 0; b = c;
+    r = x;
+    g = 0;
+    b = c;
   } else if (300 <= h && h < 360) {
-    r = c; g = 0; b = x;
+    r = c;
+    g = 0;
+    b = x;
   }
 
   // Convert RGB to hex
-  const rHex = Math.round((r + m) * 255).toString(16).padStart(2, '0');
-  const gHex = Math.round((g + m) * 255).toString(16).padStart(2, '0');
-  const bHex = Math.round((b + m) * 255).toString(16).padStart(2, '0');
+  const rHex = Math.round((r + m) * 255)
+    .toString(16)
+    .padStart(2, '0');
+  const gHex = Math.round((g + m) * 255)
+    .toString(16)
+    .padStart(2, '0');
+  const bHex = Math.round((b + m) * 255)
+    .toString(16)
+    .padStart(2, '0');
 
   return `#${rHex}${gHex}${bHex}`.toUpperCase();
 }
@@ -151,7 +176,11 @@ export function hslToHex(h: number, s: number, l: number): string {
 /**
  * Convert OKLCH to RGB
  */
-function oklchToRgb(lightness: number, chroma: number, hue: number): { r: number; g: number; b: number } {
+function oklchToRgb(
+  lightness: number,
+  chroma: number,
+  hue: number
+): { r: number; g: number; b: number } {
   // Convert OKLCH to OK Lab
   const hRad = (hue * Math.PI) / 180;
   const aValue = chroma * Math.cos(hRad);
@@ -160,7 +189,7 @@ function oklchToRgb(lightness: number, chroma: number, hue: number): { r: number
   // Convert OK Lab to linear RGB using the OKLCH matrix
   const lms1 = lightness + 0.3963377774 * aValue + 0.2158037573 * bValue;
   const lms2 = lightness - 0.1055613458 * aValue - 0.0638541728 * bValue;
-  const lms3 = lightness - 0.0894841775 * aValue - 1.2914855480 * bValue;
+  const lms3 = lightness - 0.0894841775 * aValue - 1.291485548 * bValue;
 
   const lms1_3 = lms1 * lms1 * lms1;
   const lms2_3 = lms2 * lms2 * lms2;
@@ -168,13 +197,13 @@ function oklchToRgb(lightness: number, chroma: number, hue: number): { r: number
 
   const rValue = +4.0767416621 * lms1_3 - 3.3077115913 * lms2_3 + 0.2309699292 * lms3_3;
   const gValue = -1.2684380046 * lms1_3 + 2.6097574011 * lms2_3 - 0.3413193965 * lms3_3;
-  const bFinal = -0.0041960863 * lms1_3 - 0.7034186147 * lms2_3 + 1.7076147010 * lms3_3;
+  const bFinal = -0.0041960863 * lms1_3 - 0.7034186147 * lms2_3 + 1.707614701 * lms3_3;
 
   // Clamp and convert to 0-255 range
   return {
     r: Math.max(0, Math.min(255, Math.round(rValue * 255))),
     g: Math.max(0, Math.min(255, Math.round(gValue * 255))),
-    b: Math.max(0, Math.min(255, Math.round(bFinal * 255)))
+    b: Math.max(0, Math.min(255, Math.round(bFinal * 255))),
   };
 }
 
@@ -212,9 +241,7 @@ export function colorToHex(color: string): string {
 
     // If it's an HSL color in the format "h s% l%"
     if (/^\d+\s+\d+%\s+\d+%$/.test(color)) {
-      const [h, s, l] = color.split(/\s+/).map(part =>
-        parseFloat(part.replace('%', ''))
-      );
+      const [h, s, l] = color.split(/\s+/).map(part => parseFloat(part.replace('%', '')));
       return hslToHex(h, s, l);
     }
 
@@ -258,7 +285,9 @@ export function hexToHSL(hex: string): { h: number; s: number; l: number } {
   hex = hex.replace(/^#/, '');
 
   // Parse the hex values
-  let r = 0, g = 0, b = 0;
+  let r = 0,
+    g = 0,
+    b = 0;
   if (hex.length === 3) {
     r = parseInt(hex[0] + hex[0], 16) / 255;
     g = parseInt(hex[1] + hex[1], 16) / 255;
@@ -298,7 +327,8 @@ export function hexToHSL(hex: string): { h: number; s: number; l: number } {
  * Format a color name for display
  */
 export function formatColorName(name: string): string {
-  return name.replace(/^--/, '')
+  return name
+    .replace(/^--/, '')
     .split('-')
     .map(word => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
@@ -324,7 +354,7 @@ export function groupColorsByCategory<T extends ColorVariable>(colors: T[]): Rec
     'destructive',
     'sidebar',
     'chart',
-    'other'
+    'other',
   ];
 
   // Initialize categories
