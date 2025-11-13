@@ -8,7 +8,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
 
   // Don't render the navbar on project detail pages
-  const isProjectDetailPage = pathname.match(/\/projects\/\d+$/);
+  const isProjectDetailPage = pathname.match(/\/projects\/[a-f0-9-]+$/);
   const isOnboardingPage = pathname === '/onboarding';
 
   return (
