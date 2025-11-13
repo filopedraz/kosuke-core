@@ -92,12 +92,6 @@ jobs:
           ssh ${{ secrets.STAGE_SERVER_USER }}@${{ secrets.STAGE_SERVER_IP }} "cd /home/developer/kosuke-core && ./.github/scripts/generate-env.sh"
           echo "✅ Generated .env file on server"
 
-      - name: Update docker-compose.yml for staging
-        run: |
-          echo "🔧 Updating docker-compose.yml to use stage-latest tag..."
-          ssh ${{ secrets.STAGE_SERVER_USER }}@${{ secrets.STAGE_SERVER_IP }} "cd /home/developer/kosuke-core && sed -i 's|image: ghcr.io/kosuke-org/kosuke-core:latest|image: ghcr.io/kosuke-org/kosuke-core:stage-latest|g' docker-compose.yml"
-          echo "✅ Updated image tag to stage-latest"
-
       - name: Deploy to Staging Server
         id: deploy
         run: |
