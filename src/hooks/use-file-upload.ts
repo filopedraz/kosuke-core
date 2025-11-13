@@ -2,7 +2,7 @@ import type { AttachedImage } from '@/lib/types';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 // Accepted file types: images and PDFs
-export const ACCEPTED_FILE_TYPES = [
+const ACCEPTED_FILE_TYPES = [
   'image/jpeg',
   'image/jpg',
   'image/png',
