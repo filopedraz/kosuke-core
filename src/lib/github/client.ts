@@ -20,47 +20,37 @@ export async function getUserGitHubToken(userId: string): Promise<string | null>
     );
 
     if (!githubAccount) {
+      console.log(`No GitHub account found for user: ${userId}`);
       return null;
     }
 
     // Get the access token using Clerk's OAuth token endpoint
-    try {
-      const endpoint = `https://api.clerk.com/v1/users/${userId}/oauth_access_tokens/oauth_github`;
+    const endpoint = `https://api.clerk.com/v1/users/${userId}/oauth_access_tokens/oauth_github`;
 
-      const tokenResponse = await fetch(endpoint, {
-        headers: {
-          Authorization: `Bearer ${process.env.CLERK_SECRET_KEY}`,
-          'Content-Type': 'application/json',
-        },
-      });
+    const tokenResponse = await fetch(endpoint, {
+      headers: {
+        Authorization: `Bearer ${process.env.CLERK_SECRET_KEY}`,
+        'Content-Type': 'application/json',
+      },
+    });
 
-      if (tokenResponse.ok) {
-        const tokenData = await tokenResponse.json();
-
-        // Handle array response (Clerk returns an array of tokens)
-        let token = null;
-
-        if (Array.isArray(tokenData) && tokenData.length > 0) {
-          // Response is an array - take the first token
-          const tokenObj = tokenData[0];
-          token = tokenObj.token || tokenObj.access_token || tokenObj.oauth_access_token;
-        } else {
-          // Response is an object - try direct access
-          token = tokenData.token || tokenData.access_token || tokenData.oauth_access_token;
-        }
-
-        if (token) {
-          return token;
-        } else {
-          return null;
-        }
-      } else {
-        return null;
-      }
-    } catch {
+    if (!tokenResponse.ok) {
+      console.log(`Failed to get GitHub token for user: ${userId}`);
       return null;
     }
-  } catch {
+
+    const tokenData = await tokenResponse.json();
+
+    // Handle array response (Clerk returns an array of tokens)
+    if (Array.isArray(tokenData) && tokenData.length > 0) {
+      const tokenObj = tokenData[0];
+      return tokenObj.token || tokenObj.access_token || tokenObj.oauth_access_token || null;
+    }
+
+    // Handle object response
+    return tokenData.token || tokenData.access_token || tokenData.oauth_access_token || null;
+  } catch (error) {
+    console.error('Error fetching GitHub token:', error);
     return null;
   }
 }
@@ -90,7 +80,8 @@ export async function getUserGitHubInfo(userId: string): Promise<{
       githubId: githubAccount.externalId,
       connectedAt: new Date(githubAccount.verification?.expireAt || Date.now()),
     };
-  } catch {
+  } catch (error) {
+    console.error('Error fetching GitHub user info:', error);
     return null;
   }
 }
