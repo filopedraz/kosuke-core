@@ -63,7 +63,7 @@ export async function GET() {
  */
 async function createGitHubRepository(
   projectName: string,
-  projectId: number
+  projectId: string
 ) {
   const templateRepo = process.env.TEMPLATE_REPOSITORY;
   if (!templateRepo) {
@@ -104,7 +104,7 @@ async function createGitHubRepository(
 async function importGitHubRepository(
   userId: string,
   repositoryUrl: string,
-  projectId: number
+  projectId: string
 ) {
   // Parse repository URL to get owner and repo name
   const urlMatch = repositoryUrl.match(/github\.com[/:]([\w-]+)\/([\w.-]+?)(?:\.git)?$/);

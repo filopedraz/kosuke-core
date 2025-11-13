@@ -1,13 +1,13 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
+import type { ApiResponse } from '@/lib/api';
 import type {
   CreateEnvironmentVariableData,
-  UpdateEnvironmentVariableData,
   EnvironmentVariable,
+  UpdateEnvironmentVariableData,
 } from '@/lib/types/environment';
-import type { ApiResponse } from '@/lib/api';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
-export function useCreateEnvironmentVariable(projectId: number) {
+export function useCreateEnvironmentVariable(projectId: string) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -44,7 +44,7 @@ export function useCreateEnvironmentVariable(projectId: number) {
   });
 }
 
-export function useUpdateEnvironmentVariable(projectId: number) {
+export function useUpdateEnvironmentVariable(projectId: string) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -53,7 +53,7 @@ export function useUpdateEnvironmentVariable(projectId: number) {
       id,
       data,
     }: {
-      id: number;
+      id: string;
       data: UpdateEnvironmentVariableData;
     }): Promise<EnvironmentVariable> => {
       const response = await fetch(`/api/projects/${projectId}/environment/${id}`, {
@@ -87,12 +87,12 @@ export function useUpdateEnvironmentVariable(projectId: number) {
   });
 }
 
-export function useDeleteEnvironmentVariable(projectId: number) {
+export function useDeleteEnvironmentVariable(projectId: string) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (id: number): Promise<void> => {
+    mutationFn: async (id: string): Promise<void> => {
       const response = await fetch(`/api/projects/${projectId}/environment/${id}`, {
         method: 'DELETE',
       });

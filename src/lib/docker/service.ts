@@ -58,22 +58,22 @@ class DockerService {
   /**
    * Get container name for a project session
    */
-  private getContainerName(projectId: number, sessionId: string): string {
+  private getContainerName(projectId: string, sessionId: string): string {
     return `${this.config.previewContainerNamePrefix}${projectId}-${sessionId}`;
   }
 
   /**
    * Get host session path (absolute path on host machine for Docker-in-Docker)
    */
-  private getHostSessionPath(projectId: number, sessionId: string): string {
-    return join(this.hostProjectsDir, String(projectId), 'sessions', sessionId);
+  private getHostSessionPath(projectId: string, sessionId: string): string {
+    return join(this.hostProjectsDir, projectId, 'sessions', sessionId);
   }
 
   /**
    * Prepare container environment variables
    */
   private prepareContainerEnvironment(
-    projectId: number,
+    projectId: string,
     sessionId: string,
     envVars: Record<string, string> = {}
   ): string[] {
@@ -223,7 +223,7 @@ class DockerService {
    * Run container with retries (handles port conflicts)
    */
   private async runContainerWithRetries(
-    projectId: number,
+    projectId: string,
     sessionId: string,
     environment: string[],
     hostSessionPath: string,
@@ -321,7 +321,7 @@ class DockerService {
    * Start preview container for a project session
    */
   async startPreview(
-    projectId: number,
+    projectId: string,
     sessionId: string,
     envVars: Record<string, string> = {},
     userId: string
@@ -368,7 +368,7 @@ class DockerService {
   /**
    * Get preview status for a session
    */
-  async getPreviewStatus(projectId: number, sessionId: string): Promise<DockerContainerStatus> {
+  async getPreviewStatus(projectId: string, sessionId: string): Promise<DockerContainerStatus> {
     const containerName = this.getContainerName(projectId, sessionId);
     const container = await this.getContainerByName(containerName);
 
@@ -401,7 +401,7 @@ class DockerService {
   /**
    * Stop and remove preview container for a session
    */
-  async stopPreview(projectId: number, sessionId: string): Promise<void> {
+  async stopPreview(projectId: string, sessionId: string): Promise<void> {
     const containerName = this.getContainerName(projectId, sessionId);
     console.log(`Stopping preview container ${containerName}`);
 
@@ -437,7 +437,7 @@ class DockerService {
   /**
    * Check if a container is running for a session
    */
-  async isContainerRunning(projectId: number, sessionId: string): Promise<boolean> {
+  async isContainerRunning(projectId: string, sessionId: string): Promise<boolean> {
     const containerName = this.getContainerName(projectId, sessionId);
     const container = await this.getContainerByName(containerName);
     return Boolean(container && container.State?.Running);
@@ -446,7 +446,7 @@ class DockerService {
   /**
    * Restart a preview container for a session
    */
-  async restartPreviewContainer(projectId: number, sessionId: string): Promise<void> {
+  async restartPreviewContainer(projectId: string, sessionId: string): Promise<void> {
     const containerName = this.getContainerName(projectId, sessionId);
     console.log(`Restarting preview container ${containerName}`);
 
@@ -473,7 +473,7 @@ class DockerService {
    * Get all preview URLs for a project
    * Lists all containers for a project and extracts their preview URLs
    */
-  async getProjectPreviewUrls(projectId: number): Promise<PreviewUrlsResponse> {
+  async getProjectPreviewUrls(projectId: string): Promise<PreviewUrlsResponse> {
     console.log(`📋 Getting preview URLs for project ${projectId}`);
 
     try {
@@ -548,7 +548,7 @@ class DockerService {
 
           // Build preview URL object
           const previewUrl: PreviewUrl = {
-            id: this.hashString(containerName), // Generate consistent numeric ID from name
+            id: containerName, // Use container name as unique ID
             project_id: projectId,
             branch_name: branchName,
             subdomain: subdomain || '',
@@ -600,7 +600,7 @@ class DockerService {
    * Stop and remove all preview containers for a project
    * Used when archiving/deleting a project to clean up all associated containers
    */
-  async stopAllProjectPreviews(projectId: number): Promise<{ stopped: number; failed: number }> {
+  async stopAllProjectPreviews(projectId: string): Promise<{ stopped: number; failed: number }> {
     console.log(`Stopping all preview containers for project ${projectId}`);
 
     try {

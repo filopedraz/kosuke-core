@@ -14,9 +14,9 @@ import { NewChatDialog } from './new-chat-dialog';
 import { RenameSessionDialog } from './rename-session-dialog';
 
 interface ChatSidebarProps {
-  projectId: number;
-  activeChatSessionId: number | null;
-  onChatSessionChange: (sessionId: number) => void;
+  projectId: string;
+  activeChatSessionId: string | null;
+  onChatSessionChange: (sessionId: string) => void;
   className?: string;
 }
 

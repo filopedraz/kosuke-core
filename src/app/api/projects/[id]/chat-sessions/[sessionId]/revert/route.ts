@@ -15,12 +15,12 @@ import { NextRequest, NextResponse } from 'next/server';
  * Used for revert operation notifications
  */
 async function createSystemMessage(
-  projectId: number,
+  projectId: string,
   sessionId: string,
   userId: string,
   content: string,
   metadata?: Record<string, unknown>
-): Promise<number> {
+): Promise<string> {
   console.log(`💬 Creating system message for session ${sessionId}`);
 
   // Look up session integer ID from string session ID
@@ -68,13 +68,7 @@ export async function POST(
       return ApiErrorHandler.unauthorized();
     }
 
-    const { id, sessionId } = await params;
-    const projectId = parseInt(id);
-    const sessionIdNumber = parseInt(sessionId);
-
-    if (isNaN(projectId) || isNaN(sessionIdNumber)) {
-      return ApiErrorHandler.badRequest('Invalid project or session ID');
-    }
+    const { id: projectId, sessionId } = await params;
 
     const body: RevertToMessageRequest = await request.json();
 
@@ -93,7 +87,7 @@ export async function POST(
         and(
           eq(chatMessages.id, body.message_id),
           eq(chatMessages.projectId, projectId),
-          eq(chatMessages.chatSessionId, sessionIdNumber)
+          eq(chatMessages.chatSessionId, sessionId)
         )
       )
       .limit(1);
@@ -106,7 +100,7 @@ export async function POST(
     const [session] = await db
       .select()
       .from(chatSessions)
-      .where(eq(chatSessions.id, sessionIdNumber))
+      .where(eq(chatSessions.id, sessionId))
       .limit(1);
 
     if (!session) {

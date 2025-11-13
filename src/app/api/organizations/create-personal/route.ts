@@ -32,7 +32,9 @@ export async function POST(request: Request) {
     );
 
     if (existingPersonalOrg) {
-      // User already has a personal org, return it
+      // User already has a personal org, mark onboarding as complete and return it
+      await clerkService.markOnboardingComplete(userId);
+
       return NextResponse.json({
         success: true,
         data: {
@@ -50,6 +52,9 @@ export async function POST(request: Request) {
       maxAllowedMemberships: 1,
       isPersonal: true,
     });
+
+    // Mark onboarding as complete
+    await clerkService.markOnboardingComplete(userId);
 
     console.log(`✅ Created personal workspace for user: ${personalOrg.id} (${personalOrg.name})`);
 

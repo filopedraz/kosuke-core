@@ -13,7 +13,7 @@ import { join } from 'path';
  * Find globals.css file in session directory
  * Checks common locations: app/, src/, styles/, app/global.css
  */
-async function findGlobalsCss(projectId: number, sessionId: string): Promise<string | null> {
+async function findGlobalsCss(projectId: string, sessionId: string): Promise<string | null> {
   const sessionPath = sessionManager.getSessionPath(projectId, sessionId);
 
   // Common locations for globals.css
@@ -37,7 +37,7 @@ async function findGlobalsCss(projectId: number, sessionId: string): Promise<str
  * Extract existing CSS color variables from globals.css
  */
 export async function extractExistingColors(
-  projectId: number,
+  projectId: string,
   sessionId: string
 ): Promise<CssVariable[]> {
   try {
@@ -259,7 +259,7 @@ function validateOklch(value: string, name: string, mode: 'light' | 'dark'): voi
  * Update a single color variable in CSS content
  */
 export async function updateSingleColor(
-  projectId: number,
+  projectId: string,
   sessionId: string,
   name: string,
   value: string,
@@ -340,7 +340,7 @@ export async function updateSingleColor(
  * Apply multiple color variables to the session's globals.css file
  */
 export async function applyColorPalette(
-  projectId: number,
+  projectId: string,
   sessionId: string,
   colors: Array<CssVariable>
 ): Promise<{
@@ -407,7 +407,7 @@ export async function applyColorPalette(
  * Get font information from the session's layout files
  */
 export async function getSessionFonts(
-  projectId: number,
+  projectId: string,
   sessionId: string
 ): Promise<Array<{ name: string }>> {
   try {

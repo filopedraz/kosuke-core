@@ -14,11 +14,7 @@ export async function POST(
       return ApiErrorHandler.unauthorized();
     }
 
-    const { id, sessionId } = await params;
-    const projectId = parseInt(id);
-    if (isNaN(projectId)) {
-      return ApiErrorHandler.invalidProjectId();
-    }
+    const { id: projectId, sessionId } = await params;
 
     if (!sessionId) {
       return ApiErrorHandler.badRequest('Session ID is required');

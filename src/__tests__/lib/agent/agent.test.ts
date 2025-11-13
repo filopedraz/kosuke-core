@@ -55,10 +55,10 @@ jest.mock('@/lib/github/git-operations', () => ({
 
 describe('Agent Workflow Integration', () => {
   const mockConfig = {
-    projectId: 1,
+    projectId: '1',
     sessionId: 'test-session-123',
     githubToken: 'mock-token',
-    assistantMessageId: 100,
+    assistantMessageId: '100',
     userId: 'user-123',
   };
 
@@ -148,4 +148,3 @@ describe('Agent Workflow Integration', () => {
     });
   });
 });
-

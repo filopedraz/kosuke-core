@@ -14,7 +14,7 @@ export interface RouterAdapter {
   /**
    * Prepare container configuration for running a new container
    */
-  prepareRun(projectId: number, sessionId: string, containerName: string): RouteInfo;
+  prepareRun(projectId: string, sessionId: string, containerName: string): RouteInfo;
 
   /**
    * Extract URL from an existing container
@@ -46,11 +46,11 @@ export class PortRouterAdapter implements RouterAdapter {
   /**
    * Prepare container configuration for port-based routing
    */
-  prepareRun(projectId: number, sessionId: string): RouteInfo {
+  prepareRun(projectId: string, sessionId: string): RouteInfo {
     const hostPort = this.pickRandomPort();
 
     const labels = {
-      'kosuke.project_id': String(projectId),
+      'kosuke.project_id': projectId,
       'kosuke.session_id': sessionId,
       'kosuke.branch': sessionId,
     };
@@ -86,7 +86,7 @@ export class TraefikRouterAdapter implements RouterAdapter {
    * Generate subdomain for Traefik routing
    * Format: project-{id}-{sanitized-session}.{preview_base_domain}
    */
-  private generateSubdomain(projectId: number, sessionId: string): string {
+  private generateSubdomain(projectId: string, sessionId: string): string {
     const config = getDockerConfig();
 
     // Sanitize session ID for URL usage
@@ -114,7 +114,7 @@ export class TraefikRouterAdapter implements RouterAdapter {
   /**
    * Prepare container configuration for Traefik-based routing
    */
-  prepareRun(projectId: number, sessionId: string, containerName: string): RouteInfo {
+  prepareRun(projectId: string, sessionId: string, containerName: string): RouteInfo {
     // Session ID acts as branch name in our previews
     const branchName = sessionId;
     const projectDomain = this.generateSubdomain(projectId, branchName);
@@ -125,7 +125,7 @@ export class TraefikRouterAdapter implements RouterAdapter {
       [`traefik.http.routers.${containerName}.tls.certresolver`]: 'letsencrypt',
       [`traefik.http.services.${containerName}.loadbalancer.server.port`]: '3000',
       'traefik.docker.network': 'kosuke_network',
-      'kosuke.project_id': String(projectId),
+      'kosuke.project_id': projectId,
       'kosuke.session_id': sessionId,
       'kosuke.branch': branchName,
     };
@@ -152,7 +152,7 @@ export class TraefikRouterAdapter implements RouterAdapter {
 
     if (projectId && sessionId) {
       // Regenerate subdomain using same logic as prepareRun
-      const projectDomain = this.generateSubdomain(parseInt(projectId, 10), sessionId);
+      const projectDomain = this.generateSubdomain(projectId, sessionId);
       return `https://${projectDomain}`;
     }
 

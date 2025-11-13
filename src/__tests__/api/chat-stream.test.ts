@@ -22,7 +22,7 @@ jest.mock('@/lib/db/drizzle', () => ({
     query: {
       projects: {
         findFirst: jest.fn().mockResolvedValue({
-          id: 1,
+          id: '1',
           name: 'Test Project',
           createdBy: 'test-user-123',
           orgId: 'test-org-123',
@@ -33,7 +33,7 @@ jest.mock('@/lib/db/drizzle', () => ({
       from: jest.fn(() => ({
         where: jest.fn().mockResolvedValue([
           {
-            id: 1,
+            id: '1',
             name: 'Test Project',
             createdBy: 'test-user-123',
             orgId: 'test-org-123',
@@ -45,7 +45,7 @@ jest.mock('@/lib/db/drizzle', () => ({
       values: jest.fn(() => ({
         returning: jest.fn().mockResolvedValue([
           {
-            id: 1,
+            id: '1',
             content: 'Test message',
             role: 'user',
           },
@@ -119,11 +119,15 @@ describe('Chat Stream API', () => {
       expect(response.status).toBe(401);
     });
 
-    it('should return 400 for invalid project ID', async () => {
-      const invalidParams = Promise.resolve({ id: 'invalid', sessionId: 'test-session' });
+    it('should return 404 for non-existent project ID', async () => {
+      const invalidParams = Promise.resolve({ id: 'non-existent-uuid', sessionId: 'test-session' });
+
+      // Mock the database to return no project for this test only
+      const mockFindFirst = db.query.projects.findFirst as jest.Mock;
+      mockFindFirst.mockResolvedValueOnce(null);
 
       const request = new NextRequest(
-        'http://localhost/api/projects/invalid/chat-sessions/test-session',
+        'http://localhost/api/projects/non-existent-uuid/chat-sessions/test-session',
         {
           method: 'POST',
           body: JSON.stringify({ content: 'Test message' }),
@@ -131,7 +135,7 @@ describe('Chat Stream API', () => {
       );
 
       const response = await POST(request, { params: invalidParams });
-      expect(response.status).toBe(400);
+      expect(response.status).toBe(404);
     });
 
     it('should stream response for valid request', async () => {

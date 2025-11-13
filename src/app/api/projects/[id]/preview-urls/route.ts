@@ -16,12 +16,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       return ApiErrorHandler.unauthorized();
     }
 
-    const { id } = await params;
-    const projectId = parseInt(id);
-
-    if (isNaN(projectId)) {
-      return ApiErrorHandler.badRequest('Invalid project ID');
-    }
+    const { id: projectId } = await params;
 
     // Verify user has access to project through organization membership
     const { hasAccess } = await verifyProjectAccess(userId, projectId);

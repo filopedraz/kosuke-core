@@ -20,12 +20,7 @@ export async function GET(
       return ApiErrorHandler.unauthorized();
     }
 
-    const { id, sessionId } = await params;
-    const projectId = parseInt(id);
-
-    if (isNaN(projectId)) {
-      return ApiErrorHandler.badRequest('Invalid project ID');
-    }
+    const { id: projectId, sessionId } = await params;
 
     if (!sessionId) {
       return ApiErrorHandler.badRequest('Session ID is required');
@@ -78,12 +73,7 @@ export async function POST(
       return ApiErrorHandler.unauthorized();
     }
 
-    const { id, sessionId } = await params;
-    const projectId = parseInt(id);
-
-    if (isNaN(projectId)) {
-      return ApiErrorHandler.badRequest('Invalid project ID');
-    }
+    const { id: projectId, sessionId } = await params;
 
     if (!sessionId) {
       return ApiErrorHandler.badRequest('Session ID is required');

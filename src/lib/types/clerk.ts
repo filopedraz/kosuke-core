@@ -10,6 +10,7 @@ export interface ClerkUser {
   name: string | null;
   imageUrl: string;
   marketingEmails: boolean;
+  onboardingCompleted: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -29,4 +30,5 @@ export interface UpdateUserData {
   firstName?: string;
   lastName?: string;
   marketingEmails?: boolean;
+  onboardingCompleted?: boolean;
 }

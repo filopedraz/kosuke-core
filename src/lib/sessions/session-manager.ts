@@ -27,21 +27,21 @@ export class SessionManager {
   /**
    * Get the file system path for a session directory
    */
-  getSessionPath(projectId: number, sessionId: string): string {
-    return join(this.projectsBasePath, String(projectId), 'sessions', sessionId);
+  getSessionPath(projectId: string, sessionId: string): string {
+    return join(this.projectsBasePath, projectId, 'sessions', sessionId);
   }
 
   /**
    * Get the path to the main project directory
    */
-  private getMainProjectPath(projectId: number): string {
-    return join(this.projectsBasePath, String(projectId));
+  private getMainProjectPath(projectId: string): string {
+    return join(this.projectsBasePath, projectId);
   }
 
   /**
    * Validate that a session directory exists and is properly set up
    */
-  async validateSessionDirectory(projectId: number, sessionId: string): Promise<boolean> {
+  async validateSessionDirectory(projectId: string, sessionId: string): Promise<boolean> {
     const sessionPath = this.getSessionPath(projectId, sessionId);
 
     // Check if directory exists
@@ -97,14 +97,14 @@ export class SessionManager {
    * Create a session environment by cloning from the main project
    */
   private async createSessionEnvironment(
-    projectId: number,
+    projectId: string,
     sessionId: string,
     userId: string,
     baseBranch: string = 'main'
   ): Promise<string> {
     const mainProjectPath = this.getMainProjectPath(projectId);
     const sessionPath = this.getSessionPath(projectId, sessionId);
-    const sessionsDir = join(this.projectsBasePath, String(projectId), 'sessions');
+    const sessionsDir = join(this.projectsBasePath, projectId, 'sessions');
 
     console.log(`Creating session environment for ${sessionId} in project ${projectId}`);
 
@@ -182,7 +182,7 @@ export class SessionManager {
    * Ensure session environment exists, create if it doesn't
    */
   async ensureSessionEnvironment(
-    projectId: number,
+    projectId: string,
     sessionId: string,
     userId: string,
     baseBranch: string = 'main'
@@ -199,7 +199,7 @@ export class SessionManager {
    * Pull latest changes for a session branch from remote
    */
   async pullSessionBranch(
-    projectId: number,
+    projectId: string,
     sessionId: string,
     githubToken: string
   ): Promise<{

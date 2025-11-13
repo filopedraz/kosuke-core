@@ -20,11 +20,7 @@ export async function GET(
       return new NextResponse('Unauthorized', { status: 401 });
     }
 
-    const { id } = await Promise.resolve(params);
-    const projectId = Number(id);
-    if (isNaN(projectId)) {
-      return new NextResponse('Invalid project ID', { status: 400 });
-    }
+    const { id: projectId } = await Promise.resolve(params);
 
     const { hasAccess, project } = await verifyProjectAccess(userId, projectId);
 
