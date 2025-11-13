@@ -109,15 +109,7 @@ class DockerService {
       console.log(`Pulling preview image ${imageName}...`);
       try {
         // imageCreate takes a callback as first parameter and options as second
-        await client.imageCreate(
-          event => {
-            // Optionally log progress events
-            if (event.status) {
-              console.log(`Pull status: ${event.status}`);
-            }
-          },
-          { fromImage: imageName }
-        );
+        await client.imageCreate({ fromImage: imageName });
         console.log(`Successfully pulled preview image ${imageName}`);
       } catch (pullError) {
         throw new Error(
