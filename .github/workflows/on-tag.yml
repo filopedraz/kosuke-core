@@ -1,0 +1,128 @@
+name: Deploy to Production
+
+env:
+  DOCKER_BUILDKIT: 1
+  COMPOSE_DOCKER_CLI_BUILD: 1
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+concurrency:
+  group: 'production-${{ github.workflow }}'
+  cancel-in-progress: false
+
+jobs:
+  build-and-push:
+    name: Build and Push Docker Image (Production)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Create .env.build file
+        run: |
+          echo "📝 Creating .env.build file from .env.prod.public..."
+          cp .env.prod.public .env.build
+          echo "✅ .env.build file created"
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64
+          tags: |
+            ghcr.io/kosuke-org/kosuke-core:latest
+            ghcr.io/kosuke-org/kosuke-core:${{ steps.version.outputs.VERSION }}
+            ghcr.io/kosuke-org/kosuke-core:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy-production:
+    name: Deploy to Production Server
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Install SSH Client
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install openssh-client -y
+
+      - name: Set up SSH keys
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.PROD_SERVER_ID_RSA }}" > ~/.ssh/id_rsa
+          echo "StrictHostKeyChecking no" >> ~/.ssh/config
+          echo "ConnectTimeout 30" >> ~/.ssh/config
+          echo "ServerAliveInterval 60" >> ~/.ssh/config
+          echo "ServerAliveCountMax 3" >> ~/.ssh/config
+          chmod 400 ~/.ssh/config
+          chmod 600 ~/.ssh/id_rsa
+          chmod 700 ~/.ssh
+
+      - name: Pull latest code from tag
+        run: |
+          ssh ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_IP }} "cd /home/filippo/kosuke-core && git fetch --tags && git checkout ${{ steps.version.outputs.VERSION }}"
+
+      - name: Generate .env on server
+        run: |
+          echo "🔧 Generating .env file on production server..."
+          ssh ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_IP }} "cd /home/filippo/kosuke-core && ./.github/scripts/generate-env.sh"
+          echo "✅ Generated .env file on server"
+
+      - name: Deploy to Production Server
+        id: deploy
+        run: |
+          echo "🔐 Logging into GitHub Container Registry..."
+          ssh ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_IP }} "echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin"
+          echo "🐳 Pulling Docker image version ${{ steps.version.outputs.VERSION }}..."
+          ssh ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_IP }} "cd /home/filippo/kosuke-core/ && docker compose pull nextjs"
+          echo "🚢 Starting containers..."
+          ssh ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_IP }} "cd /home/filippo/kosuke-core/ && docker compose -f docker-compose.yml up -d"
+          echo "📊 Running database migrations..."
+          ssh ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_IP }} "cd /home/filippo/kosuke-core/ && docker compose -f docker-compose.yml exec nextjs npm run db:migrate"
+          echo "🧹 Cleaning up Docker resources..."
+          ssh ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_IP }} "docker system prune -af --volumes"
+          echo "✅ Production deployment completed successfully"
+
+      - name: Notify Slack - Success
+        if: success()
+        run: |
+          curl -X POST --data '{"text":"✅ Kosuke Production ${{ steps.version.outputs.VERSION }} Deployed Successfully - https://kosuke.ai"}' ${{ secrets.SLACK_DEV_CHANNEL_WEBHOOK_URL }}
+
+      - name: Notify Slack - Failure
+        if: failure()
+        run: |
+          curl -X POST --data "{\"text\":\"❌ Kosuke Production ${{ steps.version.outputs.VERSION }} Deployment Failed\nAction: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" ${{ secrets.SLACK_DEV_CHANNEL_WEBHOOK_URL }}
+

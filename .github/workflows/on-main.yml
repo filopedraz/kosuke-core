@@ -1,4 +1,4 @@
-name: Deploy to Development
+name: Deploy to Staging
 
 env:
   DOCKER_BUILDKIT: 1
@@ -10,12 +10,12 @@ on:
       - main
 
 concurrency:
-  group: 'main-production-${{ github.workflow }}'
+  group: 'main-staging-${{ github.workflow }}'
   cancel-in-progress: true
 
 jobs:
   build-and-push:
-    name: Build and Push Docker Image
+    name: Build and Push Docker Image (Staging)
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -30,8 +30,8 @@ jobs:
 
       - name: Create .env.build file
         run: |
-          echo "📝 Creating .env.build file from .env.prod..."
-          cp .env.prod.public .env.build
+          echo "📝 Creating .env.build file from .env.stage.public..."
+          cp .env.stage.public .env.build
           echo "✅ .env.build file created"
 
       - name: Log in to GitHub Container Registry
@@ -47,17 +47,20 @@ jobs:
           context: .
           push: true
           platforms: linux/amd64
-          tags: ghcr.io/kosuke-org/kosuke-core:${{ github.sha }},ghcr.io/kosuke-org/kosuke-core:latest
+          tags: |
+            ghcr.io/kosuke-org/kosuke-core:stage-latest
+            ghcr.io/kosuke-org/kosuke-core:stage-${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  deploy-production:
-    name: Deploy to Production
+  deploy-staging:
+    name: Deploy to Staging Server
     needs: build-and-push
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: read
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -70,7 +73,7 @@ jobs:
       - name: Set up SSH keys
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.PROD_SERVER_ID_RSA }}" > ~/.ssh/id_rsa
+          echo "${{ secrets.STAGE_SERVER_ID_RSA }}" > ~/.ssh/id_rsa
           echo "StrictHostKeyChecking no" >> ~/.ssh/config
           echo "ConnectTimeout 30" >> ~/.ssh/config
           echo "ServerAliveInterval 60" >> ~/.ssh/config
@@ -81,38 +84,41 @@ jobs:
 
       - name: Pull latest code from main branch
         run: |
-          ssh ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_IP }} "cd /home/filippo/kosuke-core && git fetch && git checkout ${{ github.ref_name }} && git pull"
+          ssh ${{ secrets.STAGE_SERVER_USER }}@${{ secrets.STAGE_SERVER_IP }} "cd /home/developer/kosuke-core && git fetch && git reset --hard origin/${{ github.ref_name }} && git checkout ${{ github.ref_name }}"
 
       - name: Generate .env on server
         run: |
-          echo "🔧 Generating .env file on production server..."
-
-          # Run the generate-env.sh script on the server
-          ssh ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_IP }} "cd /home/filippo/kosuke-core && ./.github/scripts/generate-env.sh"
-
+          echo "🔧 Generating .env file on staging server..."
+          ssh ${{ secrets.STAGE_SERVER_USER }}@${{ secrets.STAGE_SERVER_IP }} "cd /home/developer/kosuke-core && ./.github/scripts/generate-env.sh"
           echo "✅ Generated .env file on server"
 
-      - name: Deploy to Production Server
+      - name: Update docker-compose.yml for staging
+        run: |
+          echo "🔧 Updating docker-compose.yml to use stage-latest tag..."
+          ssh ${{ secrets.STAGE_SERVER_USER }}@${{ secrets.STAGE_SERVER_IP }} "cd /home/developer/kosuke-core && sed -i 's|image: ghcr.io/kosuke-org/kosuke-core:latest|image: ghcr.io/kosuke-org/kosuke-core:stage-latest|g' docker-compose.yml"
+          echo "✅ Updated image tag to stage-latest"
+
+      - name: Deploy to Staging Server
         id: deploy
         run: |
           echo "🔐 Logging into GitHub Container Registry..."
-          ssh ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_IP }} "echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin"
+          ssh ${{ secrets.STAGE_SERVER_USER }}@${{ secrets.STAGE_SERVER_IP }} "echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin"
           echo "🐳 Pulling latest Docker image..."
-          ssh ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_IP }} "cd /home/filippo/kosuke-core/ && docker compose pull nextjs"
+          ssh ${{ secrets.STAGE_SERVER_USER }}@${{ secrets.STAGE_SERVER_IP }} "cd /home/developer/kosuke-core/ && docker compose pull nextjs"
           echo "🚢 Starting containers..."
-          ssh ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_IP }} "cd /home/filippo/kosuke-core/ && docker compose -f docker-compose.yml up -d"
+          ssh ${{ secrets.STAGE_SERVER_USER }}@${{ secrets.STAGE_SERVER_IP }} "cd /home/developer/kosuke-core/ && docker compose -f docker-compose.yml up -d"
           echo "📊 Running database migrations..."
-          ssh ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_IP }} "cd /home/filippo/kosuke-core/ && docker compose -f docker-compose.yml exec nextjs npm run db:migrate"
+          ssh ${{ secrets.STAGE_SERVER_USER }}@${{ secrets.STAGE_SERVER_IP }} "cd /home/developer/kosuke-core/ && docker compose -f docker-compose.yml exec nextjs npm run db:migrate"
           echo "🧹 Cleaning up Docker resources..."
-          ssh ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_IP }} "docker system prune -af --volumes"
-          echo "✅ Deployment completed successfully"
+          ssh ${{ secrets.STAGE_SERVER_USER }}@${{ secrets.STAGE_SERVER_IP }} "docker system prune -af --volumes"
+          echo "✅ Staging deployment completed successfully"
 
       - name: Notify Slack - Success
         if: success()
         run: |
-          curl -X POST --data '{"text":"✅ Kosuke App Production Deployed Successfully"}' ${{ secrets.SLACK_DEV_CHANNEL_WEBHOOK_URL }}
+          curl -X POST --data '{"text":"✅ Kosuke Staging Deployed Successfully - https://stage.kosuke.ai"}' ${{ secrets.SLACK_DEV_CHANNEL_WEBHOOK_URL }}
 
       - name: Notify Slack - Failure
         if: failure()
         run: |
-          curl -X POST --data "{\"text\":\"❌ Kosuke App Production Deployment Failed\nAction: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" ${{ secrets.SLACK_DEV_CHANNEL_WEBHOOK_URL }}
+          curl -X POST --data "{\"text\":\"❌ Kosuke Staging Deployment Failed\nAction: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" ${{ secrets.SLACK_DEV_CHANNEL_WEBHOOK_URL }}
