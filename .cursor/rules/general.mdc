@@ -568,6 +568,207 @@ const query = useQuery<UserProfile, Error>({
 });
 ```
 
+### useSearchParams() Usage - MANDATORY
+
+**ALWAYS handle `useSearchParams()` properly to avoid static generation errors. Next.js requires Suspense boundaries for reactive search params, or use `location.search` for non-reactive access.**
+
+#### **The Problem**
+
+Using `useSearchParams()` in a page that's being statically generated causes build errors:
+
+```
+useSearchParams() should be wrapped in a suspense boundary at page "/terms"
+```
+
+#### **✅ WHEN TO USE location.search (Non-Reactive)**
+
+**Use `window.location.search` when query params are read-only and don't need to trigger re-renders:**
+
+- **One-time reads** - Reading query params for initial render only
+- **Static pages** - Public pages that are statically generated
+- **No reactivity needed** - Params don't change during component lifecycle
+- **Server-side compatible** - Works in both client and server components (with proper checks)
+
+```typescript
+// ✅ CORRECT - Use location.search for non-reactive access
+'use client';
+
+import { useEffect, useState } from 'react';
+
+export default function TermsPage() {
+  const [queryParam, setQueryParam] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Read query params once on mount
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      setQueryParam(params.get('ref'));
+    }
+  }, []);
+
+  return <div>Referral: {queryParam}</div>;
+}
+
+// ✅ CORRECT - Server Component with searchParams prop
+export default function TermsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ ref?: string }>;
+}) {
+  const params = await searchParams;
+  return <div>Referral: {params.ref}</div>;
+}
+```
+
+#### **✅ WHEN TO USE useSearchParams() with Suspense (Reactive)**
+
+**Use `useSearchParams()` wrapped in Suspense when query params need to be reactive:**
+
+- **Reactive updates** - Component needs to re-render when params change
+- **Dynamic filtering** - Search, pagination, or filtering based on URL params
+- **Real-time sync** - URL params sync with component state
+- **Client-side navigation** - Params change via Next.js router
+
+```typescript
+// ✅ CORRECT - Wrap useSearchParams() in Suspense
+'use client';
+
+import { Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
+
+function SearchContent() {
+  const searchParams = useSearchParams();
+  const query = searchParams.get('q') || '';
+
+  return <div>Search: {query}</div>;
+}
+
+export default function SearchPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <SearchContent />
+    </Suspense>
+  );
+}
+```
+
+#### **❌ WRONG - useSearchParams() without Suspense**
+
+```typescript
+// ❌ NO! This causes build errors on static pages
+'use client';
+
+import { useSearchParams } from 'next/navigation';
+
+export default function TermsPage() {
+  const searchParams = useSearchParams(); // ❌ Missing Suspense boundary
+  const ref = searchParams.get('ref');
+
+  return <div>Referral: {ref}</div>;
+}
+```
+
+#### **🔧 Decision Tree**
+
+**Do query params need to trigger re-renders when they change?**
+
+- ✅ **NO** (read-only, one-time) → Use `window.location.search` or `searchParams` prop (Server Components)
+- ✅ **YES** (reactive, dynamic) → Use `useSearchParams()` wrapped in `<Suspense>`
+
+**Examples:**
+
+- Terms/Privacy pages (static) → `location.search` or `searchParams` prop
+- Search results (dynamic) → `useSearchParams()` with Suspense
+- Filter pages (reactive) → `useSearchParams()` with Suspense
+- Analytics tracking (one-time) → `location.search`
+
+#### **🏗️ Best Practices**
+
+**Server Components (Recommended for Static Pages):**
+
+```typescript
+// ✅ BEST - Server Component with searchParams prop (no Suspense needed)
+export default async function TermsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ ref?: string }>;
+}) {
+  const params = await searchParams;
+  return <div>Referral: {params.ref || 'none'}</div>;
+}
+```
+
+**Client Components (Non-Reactive):**
+
+```typescript
+// ✅ GOOD - Client Component with location.search
+'use client';
+
+import { useEffect, useState } from 'react';
+
+export default function TermsPage() {
+  const [ref, setRef] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      setRef(params.get('ref'));
+    }
+  }, []);
+
+  return <div>Referral: {ref || 'none'}</div>;
+}
+```
+
+**Client Components (Reactive):**
+
+```typescript
+// ✅ GOOD - Client Component with Suspense
+'use client';
+
+import { Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
+
+function TermsContent() {
+  const searchParams = useSearchParams();
+  const ref = searchParams.get('ref');
+
+  return <div>Referral: {ref || 'none'}</div>;
+}
+
+export default function TermsPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <TermsContent />
+    </Suspense>
+  );
+}
+```
+
+**Always choose the simplest solution that meets your requirements. Prefer Server Components with `searchParams` prop for static pages.**
+
+#### **Knip Guidelines - MANDATORY**
+
+When fixing Knip errors:
+
+- ✅ **ONLY fix unused exports and imports** - Remove or mark as used
+- ✅ **Fix unused internal code** - Remove dead functions, variables, types
+- ✅ **Fix duplicate exports** - Consolidate or remove duplicates
+- ❌ **NEVER modify package.json** - Ignore dependency-related warnings
+- ❌ **NEVER add or remove packages** - Only fix code-level issues
+- ❌ **NEVER update dependencies** - Leave package versions unchanged
+
+```bash
+# ✅ CORRECT - Fix unused exports
+export const usedFunction = () => {}; // Keep
+// Remove: export const unusedFunction = () => {}; // Delete this
+
+# ❌ WRONG - Don't touch dependencies
+// Don't remove packages from package.json based on Knip warnings
+// Don't update package versions
+// Ignore "unlisted dependencies" warnings
+```
+
 ### File Upload & Storage (Vercel Blob)
 
 - **Configuration**: Use `./lib/storage.ts` utilities
