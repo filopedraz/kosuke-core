@@ -34,6 +34,8 @@ const knipConfig = {
     // TODO check if we should use these dependencies
     '@types/bcryptjs',
     '@types/marked',
+    // Types for global scripts loaded via CDN
+    '@types/cookiebot-sdk',
     // Dependencies used in build scripts or configuration
     '@eslint/eslintrc',
   ],

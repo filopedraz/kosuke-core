@@ -16,9 +16,14 @@ const nextConfig: NextConfig = {
   },
   images: {
     remotePatterns: [
+      // Digital Ocean Spaces
       {
         protocol: 'https',
-        hostname: '*.public.blob.vercel-storage.com',
+        hostname: '*.digitaloceanspaces.com',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.cdn.digitaloceanspaces.com',
       },
       {
         protocol: 'http',

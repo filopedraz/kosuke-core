@@ -46,7 +46,7 @@ async function saveUploadedImage(file: File, projectId: string): Promise<string>
   try {
     // Upload the file using the generic uploadFile function
     const imageUrl = await uploadFile(file, prefix);
-    console.log(`✅ Image uploaded to storage: ${imageUrl}`);
+    console.log(`⬆️ Image uploaded to storage: ${imageUrl}`);
     return imageUrl;
   } catch (error) {
     console.error('Error uploading image to storage:', error);
@@ -291,7 +291,7 @@ export async function POST(
       contextFiles = formData.contextFiles.map(f => f.content);
 
       if (formData.imageUrl) {
-        console.log(`Image URL received: ${formData.imageUrl}`);
+        console.log(`✅ Image URL received: ${formData.imageUrl}`);
         // Add image URL to message content as markdown image
         messageContent = `${messageContent}\n\n![Attached Image](${formData.imageUrl})`;
       }
@@ -326,7 +326,8 @@ export async function POST(
       }
     }
 
-    console.log(`Received message content: "${messageContent.substring(0, 50)}${messageContent.length > 50 ? '...' : ''}"`);
+    // console.log(`Received message content: "${messageContent.substring(0, 50)}${messageContent.length > 50 ? '...' : ''}"`);
+    console.log(`📝 Received message content: "${messageContent}"`);
 
     // Save user message immediately
     const [userMessage] = await db.insert(chatMessages).values({

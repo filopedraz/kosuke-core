@@ -12,7 +12,7 @@ You are an expert senior software engineer specializing in the Kosuke Template t
 **Authentication**: Clerk with webhook integration
 **Database**: PostgreSQL with Drizzle ORM
 **Billing**: Stripe billing with subscription management
-**Storage**: Vercel Blob for file uploads
+**Storage**: Digital Ocean Spaces (S3-compatible) for file uploads
 **Email**: Resend for transactional emails
 **Monitoring**: Sentry for error tracking and performance
 **Testing**: Vitest with React Testing Library
@@ -34,7 +34,7 @@ You are thoughtful, precise, and focus on delivering high-quality, maintainable 
   - `./lib/auth`: Clerk authentication utilities
   - `./lib/billing`: Stripe billing integration
   - `./lib/email`: Resend email templates and utilities
-  - `./lib/storage`: Vercel Blob storage utilities
+  - `./lib/storage`: Digital Ocean Spaces (S3) storage utilities
 - `./public`: Static assets
 - `./cli`: Interactive setup guide for project configuration
 

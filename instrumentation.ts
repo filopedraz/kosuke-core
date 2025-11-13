@@ -33,7 +33,13 @@ function validateEnvironmentVariables() {
     { key: 'PROJECTS_BASE_PATH', description: 'Base path for projects directory' },
     { key: 'SESSION_BRANCH_PREFIX', description: 'Git branch prefix for sessions' },
     { key: 'PROJECTS_DIR', description: 'Projects directory name' },
-    { key: 'UPLOADS_DIR', description: 'Uploads directory path' },
+
+    // Digital Ocean Spaces (Storage)
+    { key: 'S3_REGION', description: 'Digital Ocean Spaces region' },
+    { key: 'S3_ENDPOINT', description: 'Digital Ocean Spaces endpoint URL' },
+    { key: 'S3_BUCKET', description: 'Digital Ocean Spaces bucket name' },
+    { key: 'S3_ACCESS_KEY_ID', description: 'Digital Ocean Spaces access key' },
+    { key: 'S3_SECRET_ACCESS_KEY', description: 'Digital Ocean Spaces secret key' },
 
     // Domain Configuration
     { key: 'MAIN_DOMAIN', description: 'Main application domain' },
