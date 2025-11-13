@@ -10,6 +10,7 @@ import { createClerkClient } from '@clerk/nextjs/server';
 // Internal metadata types (not exported - hidden from consumers)
 interface UserPrivateMetadata {
   marketingEmails?: boolean;
+  onboardingCompleted?: boolean;
 }
 
 interface OrgPublicMetadata {
@@ -54,6 +55,7 @@ export class ClerkService {
       name: fullName || null,
       imageUrl: user.imageUrl,
       marketingEmails: privateMetadata.marketingEmails || false,
+      onboardingCompleted: privateMetadata.onboardingCompleted || false,
       createdAt: new Date(user.createdAt),
       updatedAt: new Date(user.updatedAt),
     };
@@ -91,6 +93,10 @@ export class ClerkService {
 
     if (data.marketingEmails !== undefined) {
       metadataUpdates.marketingEmails = data.marketingEmails;
+    }
+
+    if (data.onboardingCompleted !== undefined) {
+      metadataUpdates.onboardingCompleted = data.onboardingCompleted;
     }
 
     if (Object.keys(metadataUpdates).length > 0) {
@@ -138,6 +144,21 @@ export class ClerkService {
     const memberships = await this.client.users.getOrganizationMembershipList({ userId });
     const membership = memberships.data.find(m => m.organization.id === orgId);
     return membership?.role === 'org:admin';
+  }
+
+  /**
+   * Mark user onboarding as complete
+   */
+  async markOnboardingComplete(userId: string): Promise<void> {
+    await this.updateUser(userId, { onboardingCompleted: true });
+  }
+
+  /**
+   * Check if user has completed onboarding
+   */
+  async hasCompletedOnboarding(userId: string): Promise<boolean> {
+    const user = await this.getUser(userId);
+    return user.onboardingCompleted;
   }
 
   // ============================================
