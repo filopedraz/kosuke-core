@@ -39,7 +39,7 @@ type ErrorType = 'timeout' | 'parsing' | 'processing' | 'unknown';
 /**
  * Save an uploaded image to storage and return the URL
  */
-async function saveUploadedImage(file: File, projectId: number): Promise<string> {
+async function saveUploadedImage(file: File, projectId: string): Promise<string> {
   // Create a prefix to organize images by project
   const prefix = `chat-images/project-${projectId}`;
 
@@ -57,7 +57,7 @@ async function saveUploadedImage(file: File, projectId: number): Promise<string>
 /**
  * Process a FormData request and extract the content and image
  */
-async function processFormDataRequest(req: NextRequest, projectId: number): Promise<{
+async function processFormDataRequest(req: NextRequest, projectId: string): Promise<{
   content: string;
   includeContext: boolean;
   contextFiles: Array<{ name: string; content: string; }>;
@@ -99,11 +99,7 @@ export async function PUT(
       return ApiErrorHandler.unauthorized();
     }
 
-    const { id, sessionId } = await params;
-    const projectId = Number(id);
-    if (isNaN(projectId)) {
-      return ApiErrorHandler.invalidProjectId();
-    }
+    const { id: projectId, sessionId } = await params;
 
     // Verify user has access to project through organization membership
     const { hasAccess, project } = await verifyProjectAccess(userId, projectId);
@@ -171,11 +167,7 @@ export async function DELETE(
       return ApiErrorHandler.unauthorized();
     }
 
-    const { id, sessionId } = await params;
-    const projectId = Number(id);
-    if (isNaN(projectId)) {
-      return ApiErrorHandler.invalidProjectId();
-    }
+    const { id: projectId, sessionId } = await params;
 
     // Verify user has access to project through organization membership
     const { hasAccess, project } = await verifyProjectAccess(userId, projectId);
@@ -260,12 +252,7 @@ export async function POST(
     }
 
     // Await params to get the id and sessionId
-    const { id, sessionId } = await params;
-    const projectId = parseInt(id);
-
-    if (isNaN(projectId)) {
-      return ApiErrorHandler.invalidProjectId();
-    }
+    const { id: projectId, sessionId } = await params;
 
     // Verify user has access to project through organization membership
     const { hasAccess, project } = await verifyProjectAccess(userId, projectId);
@@ -396,7 +383,7 @@ export async function POST(
     let githubToken: string | null = null;
 
     try {
-      const kosukeOrg = process.env.NEXT_PUBLIC_KOSUKE_ORG;
+      const kosukeOrg = process.env.NEXT_PUBLIC_GITHUB_WORKSPACE;
       const isKosukeRepo = project.githubOwner === kosukeOrg;
 
       githubToken = isKosukeRepo

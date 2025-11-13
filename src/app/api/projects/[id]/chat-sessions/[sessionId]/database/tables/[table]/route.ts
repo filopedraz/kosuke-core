@@ -14,11 +14,7 @@ export async function GET(
       return ApiErrorHandler.unauthorized();
     }
 
-    const { id, sessionId, table } = await params;
-    const projectId = parseInt(id);
-    if (isNaN(projectId)) {
-      return ApiErrorHandler.invalidProjectId();
-    }
+    const { id: projectId, sessionId, table } = await params;
 
     if (!sessionId) {
       return ApiErrorHandler.badRequest('Session ID is required');

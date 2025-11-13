@@ -4,9 +4,9 @@ import { Archive, ChevronDown, ChevronRight } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
-    Collapsible,
-    CollapsibleContent,
-    CollapsibleTrigger,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import type { ChatSession } from '@/lib/types';
 import { ChatSessionItem } from './chat-session-item';
@@ -15,8 +15,8 @@ interface ChatArchivedSectionProps {
   archivedSessions: ChatSession[];
   showArchived: boolean;
   setShowArchived: (open: boolean) => void;
-  activeChatSessionId: number | null;
-  onChatSessionChange: (sessionId: number) => void;
+  activeChatSessionId: string | null;
+  onChatSessionChange: (sessionId: string) => void;
   onRename: (session: ChatSession) => void;
   onDuplicate: (session: ChatSession) => void | Promise<void>;
   onViewBranch: (session: ChatSession) => void;

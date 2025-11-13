@@ -21,12 +21,7 @@ export async function GET(
       return ApiErrorHandler.unauthorized();
     }
 
-    const { id, filepath } = await params;
-    const projectId = Number(id);
-
-    if (isNaN(projectId)) {
-      return ApiErrorHandler.invalidProjectId();
-    }
+    const { id: projectId, filepath } = await params;
 
     // Verify user has access to project through organization membership
     const { hasAccess } = await verifyProjectAccess(userId, projectId);

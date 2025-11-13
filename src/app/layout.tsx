@@ -133,6 +133,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
             src="https://plausible.io/js/script.js"
             strategy="beforeInteractive"
           />
+          <div id="clerk-captcha" />
           <Providers>
             <div className="flex flex-col min-h-dvh">
               <ErrorBoundary>

@@ -1,3 +1,4 @@
+import { clerkService } from '@/lib/clerk';
 import { clerkMiddleware, ClerkMiddlewareAuth, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -38,17 +39,31 @@ const isProtectedRoute = createRouteMatcher([
   '/organizations(.*)',
   '/onboarding',
 ]);
+const isOnboardingRoute = createRouteMatcher(['/onboarding']);
 const isRootRoute = createRouteMatcher(['/']);
 const isApiRoute = createRouteMatcher(['/api(.*)']);
 
 export const baseMiddleware = async (auth: ClerkMiddlewareAuth, req: NextRequest) => {
   if (isApiRoute(req)) return NextResponse.next();
 
-  const { isAuthenticated, redirectToSignIn } = await auth();
+  const { userId, redirectToSignIn } = await auth();
 
-  if (!isAuthenticated && !isPublicRoute(req)) return redirectToSignIn({ returnBackUrl: req.url });
+  if (!userId && !isPublicRoute(req)) return redirectToSignIn({ returnBackUrl: req.url });
 
-  if (isAuthenticated) {
+  if (userId) {
+    // Check if user has completed onboarding
+    const hasCompletedOnboarding = await clerkService.hasCompletedOnboarding(userId);
+
+    // If onboarding not completed and not on onboarding page, redirect to onboarding
+    if (!hasCompletedOnboarding && !isOnboardingRoute(req)) {
+      return NextResponse.redirect(new URL('/onboarding', req.url));
+    }
+
+    // If onboarding completed and on onboarding page, redirect to projects
+    if (hasCompletedOnboarding && isOnboardingRoute(req)) {
+      return NextResponse.redirect(new URL('/projects', req.url));
+    }
+
     if (isProtectedRoute(req)) return NextResponse.next();
     if (isPublicRoute(req) && !isRootRoute(req)) return NextResponse.next();
     return NextResponse.redirect(new URL(`/projects`, req.url));

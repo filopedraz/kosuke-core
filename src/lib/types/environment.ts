@@ -1,7 +1,7 @@
 // Environment Variable Types
 export interface EnvironmentVariable {
-  id: number;
-  projectId: number;
+  id: string;
+  projectId: string;
   key: string;
   value: string;
   isSecret: boolean;

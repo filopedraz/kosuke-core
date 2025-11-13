@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useState } from 'react';
 
 // Hook for managing chat error state and regeneration
-export function useChatState(projectId: number, sessionId?: string | null) {
+export function useChatState(projectId: string, sessionId?: string | null) {
   const queryClient = useQueryClient();
 
   // Error state

@@ -33,12 +33,7 @@ export async function GET(
       return ApiErrorHandler.unauthorized();
     }
 
-    const { id } = await params;
-    const projectId = Number(id);
-
-    if (isNaN(projectId)) {
-      return ApiErrorHandler.invalidProjectId();
-    }
+    const { id: projectId } = await params;
 
     // Verify user has access to project through organization membership
     const { hasAccess, project } = await verifyProjectAccess(userId, projectId);
@@ -68,12 +63,7 @@ export async function PATCH(
       return ApiErrorHandler.unauthorized();
     }
 
-    const { id } = await params;
-    const projectId = Number(id);
-
-    if (isNaN(projectId)) {
-      return ApiErrorHandler.invalidProjectId();
-    }
+    const { id: projectId } = await params;
 
     // Verify user has access to project through organization membership
     const { hasAccess, project, isOrgAdmin } = await verifyProjectAccess(userId, projectId);
@@ -121,12 +111,7 @@ export async function DELETE(
       return ApiErrorHandler.unauthorized();
     }
 
-    const { id } = await params;
-    const projectId = Number(id);
-
-    if (isNaN(projectId)) {
-      return ApiErrorHandler.invalidProjectId();
-    }
+    const { id: projectId } = await params;
 
     // Verify user has access to project through organization membership
     const { hasAccess, project, isOrgAdmin } = await verifyProjectAccess(userId, projectId);
@@ -187,7 +172,7 @@ export async function DELETE(
     // Step 3: Optionally delete the associated GitHub repository
     if (deleteRepo && project.githubOwner && project.githubRepoName) {
       try {
-        const kosukeOrg = process.env.NEXT_PUBLIC_KOSUKE_ORG;
+        const kosukeOrg = process.env.NEXT_PUBLIC_GITHUB_WORKSPACE;
         const isKosukeRepo = project.githubOwner === kosukeOrg;
 
         const github = isKosukeRepo

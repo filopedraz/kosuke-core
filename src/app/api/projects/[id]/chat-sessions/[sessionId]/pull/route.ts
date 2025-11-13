@@ -22,11 +22,7 @@ export async function POST(
       return ApiErrorHandler.unauthorized();
     }
 
-    const { id, sessionId } = await params;
-    const projectId = Number(id);
-    if (isNaN(projectId)) {
-      return ApiErrorHandler.badRequest('Invalid project ID');
-    }
+    const { id: projectId, sessionId } = await params;
 
     // Verify user has access to project through organization membership
     const { hasAccess, project } = await verifyProjectAccess(userId, projectId);
@@ -36,7 +32,7 @@ export async function POST(
     }
 
     // Get GitHub token based on project ownership (mandatory)
-    const kosukeOrg = process.env.NEXT_PUBLIC_KOSUKE_ORG;
+    const kosukeOrg = process.env.NEXT_PUBLIC_GITHUB_WORKSPACE;
     const isKosukeRepo = project.githubOwner === kosukeOrg;
 
     const githubToken = isKosukeRepo

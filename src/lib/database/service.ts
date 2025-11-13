@@ -27,7 +27,7 @@ export class DatabaseService {
   private dbName: string;
   private config: ConnectionConfig;
 
-  constructor(projectId: number, sessionId: string) {
+  constructor(projectId: string, sessionId: string) {
     if (!sessionId) {
       throw new Error('session_id is required for DatabaseService');
     }

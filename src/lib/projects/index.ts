@@ -24,7 +24,7 @@ export interface ProjectAccessResult {
  */
 export async function verifyProjectAccess(
   userId: string,
-  projectId: number
+  projectId: string
 ): Promise<ProjectAccessResult> {
   // Get the project
   const project = await db.query.projects.findFirst({

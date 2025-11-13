@@ -76,9 +76,11 @@ export async function createRepositoryFromTemplate(
   request: CreateRepositoryFromTemplateRequest
 ): Promise<GitHubRepoResponse> {
   const octokit = createKosukeOctokit();
-  const kosukeOrg = process.env.NEXT_PUBLIC_KOSUKE_ORG;
+  const kosukeOrg = process.env.NEXT_PUBLIC_GITHUB_WORKSPACE;
   if (!kosukeOrg) {
-    throw new Error('NEXT_PUBLIC_KOSUKE_ORG not configured. Set it in environment variables.');
+    throw new Error(
+      'NEXT_PUBLIC_GITHUB_WORKSPACE not configured. Set it in environment variables.'
+    );
   }
 
   // Parse template repository

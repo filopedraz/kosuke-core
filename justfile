@@ -23,7 +23,16 @@ install:
 
 migrate:
     @echo "Migrating database..."
-    @docker exec kosuke_nextjs npm run db:push
+    @docker exec kosuke_nextjs npm run db:migrate
 
 remove-previews:
     @docker rm -f $(docker ps -aq --filter "name=kosuke-preview")
+
+db-reset:
+    @echo "Dropping and recreating database..."
+    @docker compose -f docker-compose.local.yml down -v
+    @docker compose -f docker-compose.local.yml up -d
+    @echo "Waiting for PostgreSQL to be ready..."
+    @sleep 5
+    @docker exec kosuke_nextjs npm run db:migrate
+    @echo "Database reset complete!"

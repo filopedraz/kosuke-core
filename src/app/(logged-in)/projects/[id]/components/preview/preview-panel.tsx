@@ -24,7 +24,7 @@ import { cn } from '@/lib/utils';
 import DownloadingModal from './downloading-modal';
 
 interface PreviewPanelProps {
-  projectId: number;
+  projectId: string;
   projectName: string;
   sessionId: string;
   branch?: string;

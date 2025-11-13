@@ -24,13 +24,7 @@ export async function PUT(
       return ApiErrorHandler.unauthorized();
     }
 
-    const { id, varId } = await params;
-    const projectId = parseInt(id);
-    const variableId = parseInt(varId);
-
-    if (isNaN(projectId) || isNaN(variableId)) {
-      return ApiErrorHandler.badRequest('Invalid project ID or variable ID');
-    }
+    const { id: projectId, varId: variableId } = await params;
 
     // Parse request body
     const body = await request.json();
@@ -94,13 +88,7 @@ export async function DELETE(
       return ApiErrorHandler.unauthorized();
     }
 
-    const { id, varId } = await params;
-    const projectId = parseInt(id);
-    const variableId = parseInt(varId);
-
-    if (isNaN(projectId) || isNaN(variableId)) {
-      return ApiErrorHandler.badRequest('Invalid project ID or variable ID');
-    }
+    const { id: projectId, varId: variableId } = await params;
 
     // Verify user has access to project through organization membership
     const { hasAccess, isOrgAdmin } = await verifyProjectAccess(userId, projectId);
