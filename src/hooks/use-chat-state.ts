@@ -56,7 +56,7 @@ export function useChatState(projectId: string, sessionId?: string | null) {
   const regenerateMessage = useCallback(
     async (sendMessageFn: (content: string, options?: MessageOptions) => Promise<void>) => {
       // Only regenerate if we have a last user message
-      if (!lastUserMessage && !lastMessageOptions?.imageFile) {
+      if (!lastUserMessage && !lastMessageOptions?.attachments?.length) {
         console.warn('Cannot regenerate: No previous message to resend');
         return;
       }

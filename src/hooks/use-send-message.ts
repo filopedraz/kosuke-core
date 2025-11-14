@@ -35,12 +35,12 @@ const sendMessage = async (
       throw new Error('Session ID is required for sending messages');
     }
 
-    // Prepare request body - use FormData for image uploads, JSON for text
+    // Prepare request body - use FormData for file attachments, JSON for text only
     let requestBody: FormData | string;
     const requestHeaders: HeadersInit = {};
 
-    if (options?.imageFile) {
-      // For image uploads, use FormData
+    if (options?.attachments && options.attachments.length > 0) {
+      // For file uploads, use FormData
       const formData = new FormData();
       formData.append('content', content);
       formData.append('includeContext', options.includeContext ? 'true' : 'false');
@@ -49,7 +49,12 @@ const sendMessage = async (
         formData.append('contextFiles', JSON.stringify(options.contextFiles));
       }
 
-      formData.append('image', options.imageFile);
+      // Append all attachments
+      options.attachments.forEach((file, index) => {
+        formData.append(`attachment_${index}`, file);
+      });
+      formData.append('attachmentCount', String(options.attachments.length));
+
       requestBody = formData;
     } else {
       // For text messages, use JSON
@@ -480,6 +485,26 @@ export function useSendMessage(
 
       // Optimistically add the user message
       if (previousMessages) {
+        // Create optimistic attachment objects if files are present
+        const optimisticAttachments = await Promise.all(
+          (newMessage.options?.attachments || []).map(async (file, index) => {
+            // Create blob URL for the actual file (for opening/downloading)
+            const blobUrl = URL.createObjectURL(file);
+
+            return {
+              id: `temp-${Date.now()}-${index}`,
+              projectId,
+              filename: file.name,
+              storedFilename: file.name,
+              fileUrl: blobUrl, // Use blob URL so clicking opens the actual file
+              fileType: file.type.startsWith('image/') ? ('image' as const) : ('document' as const),
+              mediaType: file.type,
+              fileSize: file.size,
+              createdAt: new Date(),
+            };
+          })
+        );
+
         const userMessage = {
           id: Date.now(), // Temporary ID
           content: newMessage.content,
@@ -492,6 +517,7 @@ export function useSendMessage(
           tokensInput: 0,
           tokensOutput: 0,
           contextTokens: 0,
+          attachments: optimisticAttachments, // Add optimistic attachments
         };
 
         queryClient.setQueryData(

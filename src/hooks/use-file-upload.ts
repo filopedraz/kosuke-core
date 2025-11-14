@@ -15,10 +15,11 @@ const ACCEPTED_FILE_TYPES = [
 export const ACCEPTED_FILE_TYPES_ACCEPT = 'image/*,application/pdf';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_FILES = 10; // Maximum number of files allowed
 
-// Hook for managing file upload and drag & drop functionality
+// Hook for managing file upload and drag & drop functionality (supports multiple files)
 export function useFileUpload() {
-  const [attachedImage, setAttachedImage] = useState<AttachedImage | null>(null);
+  const [attachments, setAttachments] = useState<AttachedImage[]>([]);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
@@ -28,51 +29,81 @@ export function useFileUpload() {
     return ACCEPTED_FILE_TYPES.includes(fileType);
   }, []);
 
-  // Handle file attachment (images and PDFs)
+  // Handle file attachment (images and PDFs) - supports adding multiple files
   const handleFileAttach = useCallback(
-    (file: File) => {
+    (file: File, skipLimitCheck = false) => {
+      // Check max files limit (unless explicitly skipped for batch operations)
+      if (!skipLimitCheck && attachments.length >= MAX_FILES) {
+        alert(`Maximum ${MAX_FILES} files allowed. Please remove some files before adding more.`);
+        return false;
+      }
+
       // Check file type
       if (!isAcceptedFileType(file.type)) {
         alert('File type not supported. Please upload an image (JPEG, PNG, GIF, WebP) or PDF.');
-        return;
+        return false;
       }
 
       // Check file size (max 10MB)
       if (file.size > MAX_FILE_SIZE) {
         alert('File is too large. Maximum size is 10MB.');
-        return;
+        return false;
       }
 
       // For images, create a preview. For PDFs, use a placeholder
       if (file.type.startsWith('image/')) {
         const reader = new FileReader();
         reader.onload = e => {
-          if (e.target?.result) {
-            setAttachedImage({
-              file,
-              previewUrl: e.target.result as string,
-            });
+          const result = e.target?.result;
+          if (result) {
+            setAttachments(prev => [
+              ...prev,
+              {
+                file,
+                previewUrl: result as string,
+              },
+            ]);
           }
         };
         reader.readAsDataURL(file);
       } else if (file.type === 'application/pdf') {
-        // For PDFs, use a placeholder preview
-        // Note: Components displaying PDF previews should use <FileText> icon from lucide-react
-        setAttachedImage({
-          file,
-          previewUrl:
-            'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMTQgMkg2QzUuNDcgMiA1IDIuNDcgNSAzVjIxQzUgMjEuNTMgNS40NyAyMiA2IDIySDE4QzE4LjUzIDIyIDE5IDIxLjUzIDE5IDIxVjdMMTQgMloiIHN0cm9rZT0iY3VycmVudENvbG9yIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxwYXRoIGQ9Ik0xNCAyVjdIMTkiIHN0cm9rZT0iY3VycmVudENvbG9yIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjwvc3ZnPg==', // Base64-encoded FileText icon
-        });
+        // For PDFs, use PDF icon from public directory
+        setAttachments(prev => [
+          ...prev,
+          {
+            file,
+            previewUrl: '/pdf-icon.svg',
+          },
+        ]);
       }
+
+      return true;
     },
-    [isAcceptedFileType]
+    [isAcceptedFileType, attachments.length]
   );
 
-  // Handle file input change
+  // Handle file input change - supports multiple file selection
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      handleFileAttach(file);
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      const filesArray = Array.from(files);
+      const remainingSlots = MAX_FILES - attachments.length;
+
+      // Check if trying to add too many files
+      if (filesArray.length > remainingSlots) {
+        alert(
+          `You can only add ${remainingSlots} more file(s). Maximum ${MAX_FILES} files allowed.`
+        );
+        // Add only the files that fit within the limit
+        filesArray.slice(0, remainingSlots).forEach(file => {
+          handleFileAttach(file, true);
+        });
+      } else {
+        // Add all selected files
+        filesArray.forEach(file => {
+          handleFileAttach(file, true);
+        });
+      }
     }
     // Reset the input so the same file can be selected again
     if (fileInputRef.current) {
@@ -80,10 +111,10 @@ export function useFileUpload() {
     }
   };
 
-  // Remove attached image
-  const handleRemoveImage = () => {
-    setAttachedImage(null);
-  };
+  // Remove specific attachment by index
+  const handleRemoveAttachment = useCallback((index: number) => {
+    setAttachments(prev => prev.filter((_, i) => i !== index));
+  }, []);
 
   // Trigger file input
   const triggerFileInput = () => {
@@ -112,7 +143,7 @@ export function useFileUpload() {
     return () => document.removeEventListener('paste', handlePaste);
   }, [handleFileAttach]);
 
-  // Add drag and drop support for images and PDFs
+  // Add drag and drop support for images and PDFs - supports multiple files
   useEffect(() => {
     const form = formRef.current;
     if (!form) return;
@@ -135,9 +166,25 @@ export function useFileUpload() {
       setIsDraggingOver(false);
 
       if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
-        const file = e.dataTransfer.files[0];
-        handleFileAttach(file);
-        console.log('File dropped into chat input');
+        const filesArray = Array.from(e.dataTransfer.files);
+        const remainingSlots = MAX_FILES - attachments.length;
+
+        // Check if trying to add too many files
+        if (filesArray.length > remainingSlots) {
+          alert(
+            `You can only add ${remainingSlots} more file(s). Maximum ${MAX_FILES} files allowed.`
+          );
+          // Add only the files that fit within the limit
+          filesArray.slice(0, remainingSlots).forEach(file => {
+            handleFileAttach(file, true);
+          });
+        } else {
+          // Add all dropped files
+          filesArray.forEach(file => {
+            handleFileAttach(file, true);
+          });
+        }
+        console.log(`${Math.min(filesArray.length, remainingSlots)} file(s) added via drag & drop`);
       }
     };
 
@@ -150,16 +197,16 @@ export function useFileUpload() {
       form.removeEventListener('dragleave', handleDragLeave);
       form.removeEventListener('drop', handleDrop);
     };
-  }, [handleFileAttach]);
+  }, [handleFileAttach, attachments.length]);
 
-  // Clear attachment (useful when message is sent)
-  const clearAttachment = () => {
-    setAttachedImage(null);
-  };
+  // Clear all attachments (useful when message is sent)
+  const clearAttachments = useCallback(() => {
+    setAttachments([]);
+  }, []);
 
   return {
     // State
-    attachedImage,
+    attachments,
     isDraggingOver,
 
     // Refs
@@ -168,11 +215,11 @@ export function useFileUpload() {
 
     // Handlers
     handleFileChange,
-    handleRemoveImage,
+    handleRemoveAttachment,
     triggerFileInput,
-    clearAttachment,
+    clearAttachments,
 
     // Utilities
-    hasAttachment: !!attachedImage,
+    hasAttachments: attachments.length > 0,
   };
 }

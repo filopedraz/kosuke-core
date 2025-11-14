@@ -26,6 +26,7 @@ export interface ChatMessage {
   commitSha?: string; // NEW: Git commit SHA for revert functionality
   hasError?: boolean;
   errorType?: ErrorType;
+  attachments?: Attachment[];
   metadata?: {
     revertInfo?: { messageId: string; commitSha: string; timestamp: string };
     [key: string]: unknown;
@@ -39,7 +40,7 @@ export type ErrorType = 'timeout' | 'parsing' | 'processing' | 'unknown';
 export interface MessageOptions {
   includeContext?: boolean;
   contextFiles?: string[];
-  imageFile?: File;
+  attachments?: File[]; // Multiple file attachments (images and PDFs)
 }
 
 // API Response Types
@@ -54,6 +55,7 @@ export interface ApiChatMessage {
   tokensInput?: number;
   tokensOutput?: number;
   contextTokens?: number;
+  attachments?: Attachment[];
   metadata?: string;
 }
 
@@ -78,10 +80,11 @@ export interface ChatMessageProps {
   tokensInput?: number;
   tokensOutput?: number;
   contextTokens?: number;
-  commitSha?: string; // NEW: Git commit SHA for revert functionality
-  projectId?: string; // NEW: Project ID for revert operations
-  chatSessionId?: string; // NEW: Chat session ID for revert operations
-  sessionId?: string; // NEW: Session ID string for revert operations
+  commitSha?: string;
+  projectId?: string;
+  chatSessionId?: string;
+  sessionId?: string;
+  attachments?: Attachment[];
   metadata?: {
     revertInfo?: { messageId: string; commitSha: string; timestamp: string };
     [key: string]: unknown;
@@ -132,6 +135,20 @@ export interface AssistantResponse {
 export interface AttachedImage {
   file: File;
   previewUrl: string;
+}
+
+// Attachment metadata (from database)
+// Not exported - only used internally within chat types
+interface Attachment {
+  id: string;
+  projectId: string;
+  filename: string;
+  storedFilename: string;
+  fileUrl: string;
+  fileType: 'image' | 'document';
+  mediaType: string;
+  fileSize: number | null;
+  createdAt: Date;
 }
 
 // Streaming Event Types

@@ -70,7 +70,7 @@ async function processFormDataRequest(req: NextRequest, projectId: string): Prom
   content: string;
   includeContext: boolean;
   contextFiles: Array<{ name: string; content: string; }>;
-  attachment?: MessageAttachmentPayload;
+  attachments: MessageAttachmentPayload[];
 }> {
   const formData = await req.formData();
   const content = formData.get('content') as string || '';
@@ -78,19 +78,23 @@ async function processFormDataRequest(req: NextRequest, projectId: string): Prom
   const contextFilesStr = formData.get('contextFiles') as string || '[]';
   const contextFiles = JSON.parse(contextFilesStr);
 
-  // Process file if present (image or document)
-  const attachmentFile = formData.get('image') as File | null;
-  let attachment: MessageAttachmentPayload | undefined;
+  // Process all attachments (images and documents)
+  const attachments: MessageAttachmentPayload[] = [];
+  const attachmentCount = parseInt(formData.get('attachmentCount') as string || '0', 10);
 
-  if (attachmentFile) {
-    attachment = await saveUploadedFile(attachmentFile, projectId);
+  for (let i = 0; i < attachmentCount; i++) {
+    const attachmentFile = formData.get(`attachment_${i}`) as File | null;
+    if (attachmentFile) {
+      const attachment = await saveUploadedFile(attachmentFile, projectId);
+      attachments.push(attachment);
+    }
   }
 
   return {
     content,
     includeContext,
     contextFiles,
-    attachment,
+    attachments,
   };
 }
 
@@ -290,7 +294,7 @@ export async function POST(
     let messageContent: string;
     let includeContext = false;
     let contextFiles: string[] = [];
-    let attachmentPayload: MessageAttachmentPayload | undefined;
+    let attachmentPayloads: MessageAttachmentPayload[] = [];
 
     if (contentType.includes('multipart/form-data')) {
       // Process FormData request (for file uploads)
@@ -299,10 +303,13 @@ export async function POST(
       messageContent = formData.content;
       includeContext = formData.includeContext;
       contextFiles = formData.contextFiles.map(f => f.content);
-      attachmentPayload = formData.attachment;
+      attachmentPayloads = formData.attachments;
 
-      if (attachmentPayload) {
-        console.log(`⬆️ File uploaded: ${attachmentPayload.upload.fileUrl} (${attachmentPayload.upload.fileType})`);
+      if (attachmentPayloads.length > 0) {
+        console.log(`⬆️ ${attachmentPayloads.length} file(s) uploaded`);
+        attachmentPayloads.forEach((attachment, index) => {
+          console.log(`   [${index + 1}] ${attachment.upload.filename} (${attachment.upload.fileType})`);
+        });
       }
     } else {
       // Process JSON request for text messages
@@ -352,26 +359,28 @@ export async function POST(
 
     console.log(`✅ User message saved with ID: ${userMessage.id}`);
 
-    // Save attachment if present
-    if (attachmentPayload) {
-      const { upload: uploadResult } = attachmentPayload;
-      const [attachment] = await db.insert(attachments).values({
-        projectId,
-        filename: uploadResult.filename,
-        storedFilename: uploadResult.storedFilename,
-        fileUrl: uploadResult.fileUrl,
-        fileType: uploadResult.fileType,
-        mediaType: uploadResult.mediaType,
-        fileSize: uploadResult.fileSize,
-      }).returning();
+    // Save all attachments if present
+    if (attachmentPayloads.length > 0) {
+      for (const attachmentPayload of attachmentPayloads) {
+        const { upload: uploadResult } = attachmentPayload;
+        const [attachment] = await db.insert(attachments).values({
+          projectId,
+          filename: uploadResult.filename,
+          storedFilename: uploadResult.storedFilename,
+          fileUrl: uploadResult.fileUrl,
+          fileType: uploadResult.fileType,
+          mediaType: uploadResult.mediaType,
+          fileSize: uploadResult.fileSize,
+        }).returning();
 
-      // Link attachment to message
-      await db.insert(messageAttachments).values({
-        messageId: userMessage.id,
-        attachmentId: attachment.id,
-      });
+        // Link attachment to message
+        await db.insert(messageAttachments).values({
+          messageId: userMessage.id,
+          attachmentId: attachment.id,
+        });
 
-      console.log(`✅ Attachment saved and linked to message: ${attachment.id}`);
+        console.log(`✅ Attachment saved and linked to message: ${attachment.id}`);
+      }
     }
 
     // Create assistant message placeholder for streaming
@@ -439,7 +448,9 @@ export async function POST(
     console.log(`🚀 Starting agent stream for session ${chatSession.sessionId}`);
 
     // Build proper content blocks for Claude (text + image/document if present)
-    const messageParam = buildMessageParam(messageContent, attachmentPayload);
+    const messageParam = buildMessageParam(messageContent, attachmentPayloads);
+
+    console.log('messageParam', JSON.stringify(messageParam, null, 2));
 
     // Create a ReadableStream from the agent's async generator
     const stream = new ReadableStream({

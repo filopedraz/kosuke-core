@@ -68,11 +68,11 @@ export interface MessageAttachmentPayload {
 }
 
 /**
- * Build Claude MessageParam from text and optional attachment
+ * Build Claude MessageParam from text and optional attachments
  * Creates properly typed content blocks for images, documents, and text
  *
  * @param text - The text content of the message
- * @param attachment - Optional file attachment (image or PDF)
+ * @param attachments - Optional array of file attachments (images or PDFs)
  * @returns MessageParam with properly structured content blocks
  *
  * @example
@@ -80,16 +80,16 @@ export interface MessageAttachmentPayload {
  * buildMessageParam("Hello, Claude!");
  *
  * @example
- * // Text with image
- * buildMessageParam("Analyze this image", { upload: result, base64Data });
+ * // Text with single image
+ * buildMessageParam("Analyze this image", [{ upload: result, base64Data }]);
  *
  * @example
- * // Text with PDF document
- * buildMessageParam("Review this document", { upload: result, base64Data });
+ * // Text with multiple files
+ * buildMessageParam("Review these documents", [attachment1, attachment2]);
  */
 export function buildMessageParam(
   text: string,
-  attachment?: MessageAttachmentPayload
+  attachments?: MessageAttachmentPayload[]
 ): MessageParam {
   const contentBlocks: Array<TextBlockParam | ImageBlockParam | DocumentBlockParam> = [];
 
@@ -102,16 +102,18 @@ export function buildMessageParam(
     contentBlocks.push(textBlock);
   }
 
-  // Add image or document block if attachment present
-  if (attachment) {
-    const { upload, base64Data } = attachment;
+  // Add image or document blocks for all attachments
+  if (attachments && attachments.length > 0) {
+    for (const attachment of attachments) {
+      const { upload, base64Data } = attachment;
 
-    if (upload.fileType === 'image') {
-      const imageBlock = createImageBlock(upload, base64Data);
-      contentBlocks.push(imageBlock);
-    } else if (upload.fileType === 'document') {
-      const documentBlock = createDocumentBlock(upload, base64Data);
-      contentBlocks.push(documentBlock);
+      if (upload.fileType === 'image') {
+        const imageBlock = createImageBlock(upload, base64Data);
+        contentBlocks.push(imageBlock);
+      } else if (upload.fileType === 'document') {
+        const documentBlock = createDocumentBlock(upload, base64Data);
+        contentBlocks.push(documentBlock);
+      }
     }
   }
 
