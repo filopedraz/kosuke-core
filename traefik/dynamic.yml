@@ -17,6 +17,6 @@ tls:
       defaultGeneratedCert:
         resolver: letsencrypt
         domain:
-          main: 'stage.kosuke.app'
+          main: '{{ env "PREVIEW_BASE_DOMAIN" }}'
           sans:
-            - '*.stage.kosuke.app'
+            - '*.{{ env "PREVIEW_BASE_DOMAIN" }}'
