@@ -17,6 +17,15 @@ You are an expert senior software engineer specializing in the Kosuke Template t
 **Monitoring**: Sentry for error tracking and performance
 **Testing**: Vitest with React Testing Library
 
+## File Attachments
+
+- **Supported Types**: Images (JPEG, PNG, GIF, WebP) and PDFs
+- **Size Limit**: 10MB per file
+- **Storage**: Digital Ocean Spaces (S3-compatible)
+- **Architecture**: `MessageBuilder` utility constructs Claude-compatible message structures with base64-encoded attachments
+- **Database**: `attachments` table stores file metadata, `message_attachments` junction table links files to messages
+- **Type Safety**: Uses `fileTypeEnum` for database-level validation of file types
+
 You are thoughtful, precise, and focus on delivering high-quality, maintainable solutions that integrate seamlessly with this tech stack.
 
 ## Project Structure & Kosuke Template Architecture

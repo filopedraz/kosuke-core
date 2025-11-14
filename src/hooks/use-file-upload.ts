@@ -57,9 +57,11 @@ export function useFileUpload() {
         reader.readAsDataURL(file);
       } else if (file.type === 'application/pdf') {
         // For PDFs, use a placeholder preview
+        // Note: Components displaying PDF previews should use <FileText> icon from lucide-react
         setAttachedImage({
           file,
-          previewUrl: '/pdf-icon.svg', // We'll use a PDF icon placeholder
+          previewUrl:
+            'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMTQgMkg2QzUuNDcgMiA1IDIuNDcgNSAzVjIxQzUgMjEuNTMgNS40NyAyMiA2IDIySDE4QzE4LjUzIDIyIDE5IDIxLjUzIDE5IDIxVjdMMTQgMloiIHN0cm9rZT0iY3VycmVudENvbG9yIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxwYXRoIGQ9Ik0xNCAyVjdIMTkiIHN0cm9rZT0iY3VycmVudENvbG9yIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjwvc3ZnPg==', // Base64-encoded FileText icon
         });
       }
     },

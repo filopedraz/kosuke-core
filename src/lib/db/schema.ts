@@ -3,6 +3,7 @@ import {
   boolean,
   integer,
   jsonb,
+  pgEnum,
   pgTable,
   text,
   timestamp,
@@ -10,6 +11,10 @@ import {
   uuid,
   varchar,
 } from 'drizzle-orm/pg-core';
+
+// File type enum for attachments
+export const fileTypeEnum = pgEnum('file_type', ['image', 'document']);
+export type FileType = (typeof fileTypeEnum.enumValues)[number];
 
 export const projects = pgTable('projects', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -81,7 +86,7 @@ export const attachments = pgTable('attachments', {
   filename: text('filename').notNull(), // Original filename
   storedFilename: text('stored_filename').notNull(), // Sanitized filename in storage
   fileUrl: text('file_url').notNull(), // Full URL to the file
-  fileType: varchar('file_type', { length: 50 }).notNull(), // 'image' or 'document'
+  fileType: fileTypeEnum('file_type').notNull(), // 'image' or 'document' - database-level validation
   mediaType: varchar('media_type', { length: 100 }).notNull(), // MIME type: image/jpeg, image/png, application/pdf
   fileSize: integer('file_size'), // File size in bytes
   createdAt: timestamp('created_at').notNull().defaultNow(),

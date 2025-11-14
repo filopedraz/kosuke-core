@@ -1,4 +1,5 @@
 import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import type { FileType } from './db/schema';
 
 // S3 Client configuration for Digital Ocean Spaces
 // Used for both development and production environments
@@ -19,7 +20,7 @@ export interface UploadResult {
   fileUrl: string;
   filename: string; // Original filename
   storedFilename: string; // Sanitized filename used in storage
-  fileType: 'image' | 'document';
+  fileType: FileType; // Uses enum from schema for type consistency
   mediaType: string; // MIME type
   fileSize: number;
 }
@@ -48,7 +49,7 @@ function getFileUrl(filename: string): string {
 }
 
 // Determine file type from MIME type
-function getFileType(mediaType: string): 'image' | 'document' {
+function getFileType(mediaType: string): FileType {
   if (mediaType.startsWith('image/')) {
     return 'image';
   }
@@ -104,6 +105,8 @@ export async function uploadFile(
     return await uploadFileToS3(file, filename, fileBuffer);
   } catch (error) {
     console.error('Error uploading file:', error);
-    throw new Error('Failed to upload file');
+    throw new Error(
+      `Failed to upload file: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
   }
 }
