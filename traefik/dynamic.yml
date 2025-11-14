@@ -17,6 +17,6 @@ tls:
       defaultGeneratedCert:
         resolver: letsencrypt
         domain:
-          main: '${PREVIEW_BASE_DOMAIN}'
+          main: '{{ env "PREVIEW_BASE_DOMAIN" }}'
           sans:
-            - '*.${PREVIEW_BASE_DOMAIN}'
+            - '*.{{ env "PREVIEW_BASE_DOMAIN" }}'
