@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import type { AssistantBlock, ChatMessageProps, ContentBlock, ErrorType } from '@/lib/types';
 import { getFileName, processMessageContent } from '@/lib/utils/message-content';
 import AssistantResponse from './assistant-response';
+import ChatMessageAttachments from './chat-message-attachments';
 import { MessageRevertButton } from './message-revert-button';
 
 
@@ -237,7 +238,7 @@ export default function ChatMessage({
         ) : (
           // Render regular text/image content
           <div className={cn(
-              "prose prose-xs dark:prose-invert max-w-none text-sm [overflow-wrap:anywhere]",
+              "prose prose-xs dark:prose-invert max-w-none text-sm wrap-anywhere",
               !showAvatar && "mt-0", // Remove top margin for consecutive messages
               hasError && !isUser && "text-muted-foreground" // Muted text for error messages
             )}>
@@ -245,7 +246,7 @@ export default function ChatMessage({
                 part.type === 'text' ? (
                   // Render regular text content with line breaks
                   part.content.split('\n').map((line, j) => (
-                    <p key={`${i}-${j}`} className={line.trim() === '' ? 'h-4' : '[word-break:normal] [overflow-wrap:anywhere]'}>
+                    <p key={`${i}-${j}`} className={line.trim() === '' ? 'h-4' : '[word-break:normal] wrap-anywhere'}>
                       {line}
                     </p>
                   ))
@@ -261,7 +262,7 @@ export default function ChatMessage({
                     </div>
                     <div className="text-muted-foreground/70 text-xs leading-relaxed italic">
                       {part.content.split('\n').map((line, j) => (
-                        <p key={`thinking-${i}-${j}`} className={line.trim() === '' ? 'h-3' : '[word-break:normal] [overflow-wrap:anywhere]'}>
+                        <p key={`thinking-${i}-${j}`} className={line.trim() === '' ? 'h-3' : '[word-break:normal] wrap-anywhere'}>
                           {line}
                         </p>
                       ))}
@@ -272,7 +273,7 @@ export default function ChatMessage({
                 // Render image
                 <div key={i} className="my-2 inline-block max-w-[400px]">
                   <div className="flex items-center gap-3 bg-card rounded-md p-2 px-3 border border-border">
-                    <div className="relative w-12 h-12 rounded-sm bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
+                    <div className="relative w-12 h-12 rounded-sm bg-muted flex items-center justify-center overflow-hidden shrink-0">
                       <div
                         className="relative w-full h-full cursor-pointer"
                         onClick={() => window.open(part.content, '_blank')}
@@ -301,59 +302,7 @@ export default function ChatMessage({
 
             {/* Display attachments if present */}
             {attachments && attachments.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-3">
-                {attachments.map((attachment) => {
-                  const isImage = attachment.fileType === 'image';
-                  const isPDF = attachment.fileType === 'document';
-
-                  return (
-                    <div
-                      key={attachment.id}
-                      className="flex items-center gap-3 bg-card rounded-md p-2 px-3 border border-border max-w-[300px]"
-                    >
-                      <div className="relative w-12 h-12 rounded-sm bg-muted flex items-center justify-center overflow-hidden shrink-0">
-                        {isImage ? (
-                          <div
-                            className="relative w-full h-full cursor-pointer"
-                            onClick={() => window.open(attachment.fileUrl, '_blank')}
-                          >
-                            <Image
-                              src={attachment.fileUrl}
-                              alt={attachment.filename}
-                              fill
-                              className="object-cover"
-                              sizes="(max-width: 48px) 100vw, 48px"
-                            />
-                          </div>
-                        ) : isPDF ? (
-                          <div
-                            className="relative w-full h-full cursor-pointer flex items-center justify-center"
-                            onClick={() => window.open(attachment.fileUrl, '_blank')}
-                          >
-                            <Image
-                              src="/pdf-icon.svg"
-                              alt="PDF Document"
-                              width={48}
-                              height={48}
-                              className="object-contain"
-                            />
-                          </div>
-                        ) : null}
-                      </div>
-                      <div className="flex flex-col justify-center min-w-0 flex-1">
-                        <p className="text-card-foreground text-sm font-medium truncate">
-                          {attachment.filename}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {attachment.fileSize
-                            ? `${(attachment.fileSize / 1024).toFixed(1)}kB`
-                            : 'Unknown size'}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+              <ChatMessageAttachments attachments={attachments} />
             )}
           </div>
         )}

@@ -100,6 +100,15 @@ export interface ChatInputProps {
   className?: string;
 }
 
+export interface ChatInputAttachmentsProps {
+  attachments: AttachedImage[];
+  onRemoveAttachment: (index: number) => void;
+}
+
+export interface ChatMessageAttachmentsProps {
+  attachments: Attachment[];
+}
+
 export interface ChatInterfaceProps {
   projectId: string;
   className?: string;
@@ -138,8 +147,7 @@ export interface AttachedImage {
 }
 
 // Attachment metadata (from database)
-// Not exported - only used internally within chat types
-interface Attachment {
+export interface Attachment {
   id: string;
   projectId: string;
   filename: string;
