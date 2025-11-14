@@ -89,7 +89,7 @@ jobs:
       - name: Generate .env on server
         run: |
           echo "🔧 Generating .env file on staging server..."
-          ssh ${{ secrets.STAGE_SERVER_USER }}@${{ secrets.STAGE_SERVER_IP }} "cd /home/developer/kosuke-core && ./.github/scripts/generate-env.sh"
+          ssh ${{ secrets.STAGE_SERVER_USER }}@${{ secrets.STAGE_SERVER_IP }} "cd /home/developer/kosuke-core && ./.github/scripts/generate-env.sh staging"
           echo "✅ Generated .env file on server"
 
       - name: Deploy to Staging Server

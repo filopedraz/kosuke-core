@@ -98,7 +98,7 @@ jobs:
       - name: Generate .env on server
         run: |
           echo "🔧 Generating .env file on production server..."
-          ssh ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_IP }} "cd /home/filippo/kosuke-core && ./.github/scripts/generate-env.sh"
+          ssh ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_IP }} "cd /home/filippo/kosuke-core && ./.github/scripts/generate-env.sh production"
           echo "✅ Generated .env file on server"
 
       - name: Deploy to Production Server
