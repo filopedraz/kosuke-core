@@ -182,7 +182,7 @@ export default function ChatMessage({
         <Avatar className="h-8 w-8">
           {isUser ? (
             <>
-              <AvatarImage src={imageUrl || undefined} alt={displayName || 'User'} />
+              {imageUrl && <AvatarImage src={imageUrl} alt={displayName || 'User'} />}
               <AvatarFallback className="bg-primary text-primary-foreground">
                 {initials}
               </AvatarFallback>
