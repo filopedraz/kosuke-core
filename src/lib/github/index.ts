@@ -4,7 +4,7 @@ import type {
   GitHubRepository,
 } from '@/lib/types/github';
 import crypto from 'crypto';
-import { createKosukeOctokit, createOctokit, getKosukeOrg } from './client';
+import { createKosukeOctokit, createUserOctokit } from './client';
 
 export async function listUserRepositories(
   userId: string,
@@ -12,7 +12,7 @@ export async function listUserRepositories(
   perPage: number = 10,
   search: string = ''
 ): Promise<{ repositories: GitHubRepository[]; hasMore: boolean }> {
-  const octokit = await createOctokit(userId);
+  const octokit = await createUserOctokit(userId);
 
   let repositories: GitHubRepository[];
   let hasMore: boolean;
@@ -76,7 +76,12 @@ export async function createRepositoryFromTemplate(
   request: CreateRepositoryFromTemplateRequest
 ): Promise<GitHubRepoResponse> {
   const octokit = createKosukeOctokit();
-  const kosukeOrg = getKosukeOrg();
+  const kosukeOrg = process.env.NEXT_PUBLIC_GITHUB_WORKSPACE;
+  if (!kosukeOrg) {
+    throw new Error(
+      'NEXT_PUBLIC_GITHUB_WORKSPACE not configured. Set it in environment variables.'
+    );
+  }
 
   // Parse template repository
   const templateRepo = request.templateRepo;

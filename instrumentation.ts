@@ -28,6 +28,9 @@ function validateEnvironmentVariables() {
     // GitHub Configuration
     { key: 'TEMPLATE_REPOSITORY', description: 'GitHub template repository' },
     { key: 'PREVIEW_DEFAULT_IMAGE', description: 'Default Docker image for previews' },
+    { key: 'GITHUB_APP_ID', description: 'GitHub App ID for authentication' },
+    { key: 'GITHUB_APP_PRIVATE_KEY', description: 'GitHub App private key' },
+    { key: 'GITHUB_APP_INSTALLATION_ID', description: 'GitHub App installation ID' },
 
     // Projects & Sessions
     { key: 'PROJECTS_BASE_PATH', description: 'Base path for projects directory' },
@@ -49,10 +52,6 @@ function validateEnvironmentVariables() {
     // Ghost CMS
     { key: 'GHOST_ADMIN_API_KEY', description: 'Ghost CMS admin API key' },
     { key: 'SLACK_WEBHOOK_URL', description: 'Slack webhook URL for notifications' },
-
-    // Cloudflare (SSL)
-    { key: 'CLOUDFLARE_EMAIL', description: 'Cloudflare account email' },
-    { key: 'CLOUDFLARE_API_KEY', description: 'Cloudflare API key for DNS/SSL' },
 
     // Monitoring
     { key: 'SENTRY_AUTH_TOKEN', description: 'Sentry authentication token' },

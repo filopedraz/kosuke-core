@@ -28,7 +28,7 @@ Ensure you have the following tools installed and configured:
 - **nvm (Node Version Manager)** - Optional, only needed if running linting/tests locally
   - Install from [github.com/nvm-sh/nvm](https://github.com/nvm-sh/nvm)
   - The project includes a `.nvmrc` file to automatically use Node.js 22.20.0
-- **GitHub OAuth App** - For authentication and repository access
+- **GitHub OAuth App** - For user authentication and accessing user repositories (import functionality)
   1. Go to [GitHub Developer Settings](https://github.com/settings/developers)
   2. Click **OAuth Apps** → **New OAuth App**
   3. Fill in the application details:
@@ -39,12 +39,24 @@ Ensure you have the following tools installed and configured:
   5. Copy the **Client ID** (you'll need this for Clerk setup)
   6. Click **Generate a new client secret** and copy it immediately (you'll need this for Clerk setup)
   7. Keep this tab open - you'll configure the callback URL after setting up Clerk
+- **GitHub App** - For Kosuke organization operations (creating repos, pull/push etc.)
+  1. Go to your organization settings: `https://github.com/organizations/YOUR-ORG/settings/apps`
+  2. Click **New GitHub App**
+  3. Configure the app with required permissions:
+     - **Repository permissions**: Contents (Read & Write), Administration (Read & Write), Pull requests (Read & Write)
+     - **Organization permissions**: Members (Read-only)
+  4. Generate a private key (download the `.pem` file)
+  5. Install the app on your organization
+  6. Get your credentials and add to `.env`:
+     - `GITHUB_APP_ID` - Found on your app's settings page
+     - `GITHUB_APP_PRIVATE_KEY` - The private key content (format with `\n` for newlines)
+     - `GITHUB_APP_INSTALLATION_ID` - From the installation URL
 - **Clerk Account** - Authentication provider
   1. Sign up at [clerk.com](https://clerk.com)
-  2. Create a new application with **GitHub as the only login method**:
+  2. Create a new application:
      - Click **Create Application**
      - Enter your application name
-     - Under **Sign-in options**, select only **GitHub**
+     - Under **Sign-in options**, select **Email**, **Google** and **GitHub**
      - Click **Create Application**
   3. Configure **GitHub OAuth** in Clerk:
      - In your Clerk dashboard, go to **Configure** → **SSO Connections**
