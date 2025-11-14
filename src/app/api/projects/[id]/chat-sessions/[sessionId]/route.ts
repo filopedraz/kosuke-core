@@ -46,11 +46,8 @@ async function saveUploadedFile(file: File, projectId: string): Promise<MessageA
   const prefix = `attachments/project-${projectId}`;
 
   try {
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-
     // Upload the file using the generic uploadFile function
-    const uploadResult = await uploadFile(file, prefix, buffer);
+    const uploadResult = await uploadFile(file, prefix);
 
     return {
       upload: uploadResult,

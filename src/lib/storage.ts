@@ -1,6 +1,8 @@
+import type { PutObjectCommandInput } from '@aws-sdk/client-s3';
 import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { randomUUID } from 'node:crypto';
 import { extname } from 'node:path';
+import { Readable } from 'node:stream';
 import type { FileType } from './db/schema';
 
 // S3 Client configuration for Digital Ocean Spaces
@@ -65,17 +67,45 @@ function getFileType(mediaType: string): FileType {
   return 'document';
 }
 
-// Upload to Digital Ocean Spaces
+type PutObjectBody = NonNullable<PutObjectCommandInput['Body']>;
+
+// Convert the browser/File API stream into a Node.js readable stream for AWS SDK
+function createReadableStream(file: globalThis.File): Readable {
+  const webStream = file.stream();
+  const reader = webStream.getReader();
+
+  return Readable.from(
+    (async function* () {
+      try {
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) {
+            break;
+          }
+          if (value) {
+            yield value;
+          }
+        }
+      } finally {
+        reader.releaseLock();
+      }
+    })(),
+    { objectMode: false }
+  );
+}
+
+// Upload to Digital Ocean Spaces (supports streaming uploads to avoid buffering large files)
 async function uploadFileToS3(
   file: globalThis.File,
   filename: string,
-  buffer: Buffer
+  body: PutObjectBody
 ): Promise<UploadResult> {
   const command = new PutObjectCommand({
     Bucket: S3_BUCKET,
     Key: filename,
-    Body: buffer,
+    Body: body,
     ContentType: file.type,
+    ContentLength: file.size,
     ACL: 'public-read', // Make files publicly accessible
   });
 
@@ -96,18 +126,16 @@ async function uploadFileToS3(
  * Uploads files to Digital Ocean Spaces in both development and production
  * @param file File to upload
  * @param prefix Optional prefix for organizing files (e.g., 'documents/', 'images/')
- * @param buffer Optional precomputed Buffer to avoid re-reading the file
  * @returns Upload result with file metadata
  */
 export async function uploadFile(
   file: globalThis.File,
-  prefix: string = '',
-  buffer?: Buffer
+  prefix: string = ''
 ): Promise<UploadResult> {
   try {
     const filename = generateFilename(file.name, prefix);
-    const fileBuffer = buffer ?? Buffer.from(await file.arrayBuffer());
-    return await uploadFileToS3(file, filename, fileBuffer);
+    const fileBody: PutObjectBody = createReadableStream(file);
+    return await uploadFileToS3(file, filename, fileBody);
   } catch (error) {
     console.error('Error uploading file:', error);
     throw new Error(
