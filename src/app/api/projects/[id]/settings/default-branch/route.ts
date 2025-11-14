@@ -5,9 +5,8 @@ import { ApiErrorHandler } from '@/lib/api/errors';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db/drizzle';
 import { projects } from '@/lib/db/schema';
-import { getGitHubToken } from '@/lib/github/auth';
+import { createKosukeOctokit, createUserOctokit } from '@/lib/github/client';
 import { verifyProjectAccess } from '@/lib/projects';
-import { Octokit } from '@octokit/rest';
 import { eq } from 'drizzle-orm';
 // Schema for updating default branch
 const updateDefaultBranchSchema = z.object({
@@ -42,19 +41,19 @@ export async function GET(
     // Get available branches from GitHub if repository is connected
     if (project.githubOwner && project.githubRepoName) {
       try {
-        const githubToken = await getGitHubToken(userId);
-        if (githubToken) {
-          const github = new Octokit({
-            auth: githubToken,
-          });
+        const kosukeOrg = process.env.NEXT_PUBLIC_GITHUB_WORKSPACE;
+        const isKosukeRepo = project.githubOwner === kosukeOrg;
 
-          const { data: branches } = await github.rest.repos.listBranches({
-            owner: project.githubOwner,
-            repo: project.githubRepoName,
-          });
+        const github = isKosukeRepo
+          ? createKosukeOctokit()
+          : await createUserOctokit(userId);
 
-          availableBranches = branches.map(branch => branch.name);
-        }
+        const { data: branches } = await github.rest.repos.listBranches({
+          owner: project.githubOwner,
+          repo: project.githubRepoName,
+        });
+
+        availableBranches = branches.map(branch => branch.name);
       } catch (error) {
         console.warn('Failed to fetch GitHub branches:', error);
         // Continue without branches if GitHub fetch fails
@@ -112,19 +111,19 @@ export async function PUT(
     // Validate branch exists if GitHub repo is connected
     if (project.githubOwner && project.githubRepoName) {
       try {
-        const githubToken = await getGitHubToken(userId);
-        if (githubToken) {
-          const github = new Octokit({
-            auth: githubToken,
-          });
+        const kosukeOrg = process.env.NEXT_PUBLIC_GITHUB_WORKSPACE;
+        const isKosukeRepo = project.githubOwner === kosukeOrg;
 
-          // Check if branch exists
-          await github.rest.repos.getBranch({
-            owner: project.githubOwner,
-            repo: project.githubRepoName,
-            branch: default_branch,
-          });
-        }
+        const github = isKosukeRepo
+          ? createKosukeOctokit()
+          : await createUserOctokit(userId);
+
+        // Check if branch exists
+        await github.rest.repos.getBranch({
+          owner: project.githubOwner,
+          repo: project.githubRepoName,
+          branch: default_branch,
+        });
       } catch {
         return ApiErrorHandler.badRequest(`Branch '${default_branch}' not found in repository`);
       }

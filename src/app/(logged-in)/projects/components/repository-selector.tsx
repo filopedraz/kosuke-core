@@ -1,8 +1,9 @@
 'use client';
 
-import { Check, ChevronsUpDown, Lock } from 'lucide-react';
+import { Check, ChevronsUpDown, Info, Lock } from 'lucide-react';
 import { useState } from 'react';
 
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
   Command,
@@ -113,6 +114,22 @@ export function RepositorySelector({
               </div>
             )}
             </CommandGroup>
+            <div className="p-3 border-t">
+              <Alert className="py-2">
+                <Info className="h-4 w-4" />
+                <AlertDescription className="text-xs">
+                  Can&apos;t find your repository?{' '}
+                  <a
+                    href="https://github.com/settings/applications"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-medium underline underline-offset-4 hover:text-primary"
+                  >
+                    Grant Kosuke access to your organization
+                  </a>
+                </AlertDescription>
+              </Alert>
+            </div>
           </CommandList>
         </Command>
       </PopoverContent>

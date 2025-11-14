@@ -8,7 +8,7 @@ import { auth } from '@/lib/auth';
 import { db } from '@/lib/db/drizzle';
 import { projects } from '@/lib/db/schema';
 import { createRepositoryFromTemplate } from '@/lib/github';
-import { getGitHubToken } from '@/lib/github/auth';
+import { getUserGitHubToken } from '@/lib/github/client';
 import { GitOperations } from '@/lib/github/git-operations';
 
 // GitHub needs time to initialize repos after creation
@@ -80,12 +80,10 @@ async function createGitHubRepository(
   // Wait for GitHub to initialize the repository
   await new Promise(resolve => setTimeout(resolve, GITHUB_REPO_INIT_DELAY_MS));
 
-  // Clone the repository locally using Kosuke service token
+  // Clone the repository locally using GitHub App token
   try {
-    const kosukeToken = process.env.GITHUB_TOKEN;
-    if (!kosukeToken) {
-      throw new Error('GITHUB_TOKEN not configured');
-    }
+    const { getKosukeGitHubToken } = await import('@/lib/github/client');
+    const kosukeToken = await getKosukeGitHubToken();
     const gitOps = new GitOperations();
     await gitOps.cloneRepository(repoData.url, projectId, kosukeToken);
     console.log(`✅ Repository cloned successfully to project ${projectId}`);
@@ -115,8 +113,8 @@ async function importGitHubRepository(
   const [, owner, repo] = urlMatch;
 
   // Get repository info using Octokit
-  const { createOctokit } = await import('@/lib/github/client');
-  const octokit = await createOctokit(userId);
+  const { createUserOctokit } = await import('@/lib/github/client');
+  const octokit = await createUserOctokit(userId);
 
   try {
     const { data: repoInfo } = await octokit.rest.repos.get({
@@ -125,7 +123,7 @@ async function importGitHubRepository(
     });
 
     // Clone repository locally
-    const githubToken = await getGitHubToken(userId);
+    const githubToken = await getUserGitHubToken(userId);
     if (!githubToken) {
       throw new Error('GitHub token not found');
     }
@@ -190,7 +188,7 @@ export async function POST(request: NextRequest) {
 
     // Check GitHub connection for import
     if (github.type === 'import') {
-      const { getUserGitHubInfo } = await import('@/lib/github/auth');
+      const { getUserGitHubInfo } = await import('@/lib/github/client');
       const githubInfo = await getUserGitHubInfo(userId);
 
       if (!githubInfo) {
@@ -215,53 +213,48 @@ export async function POST(request: NextRequest) {
         })
         .returning();
 
-      try {
-        // Handle GitHub operations based on type
-        if (github.type === 'create') {
-          // Create in Kosuke org (no user GitHub required)
-          const repoData = await createGitHubRepository(
-            name, // Use project name
-            project.id
-          );
+      // Handle GitHub operations based on type
+      if (github.type === 'create') {
+        // Create in Kosuke org (no user GitHub required)
+        const repoData = await createGitHubRepository(
+          name, // Use project name
+          project.id
+        );
 
-          // Update project with GitHub info
-          const [updatedProject] = await tx
-            .update(projects)
-            .set({
-              githubRepoUrl: repoData.url,
-              githubOwner: repoData.owner, // 'Kosuke-Org'
-              githubRepoName: repoData.name,
-              lastGithubSync: new Date(),
-            })
-            .where(eq(projects.id, project.id))
-            .returning();
+        // Update project with GitHub info
+        const [updatedProject] = await tx
+          .update(projects)
+          .set({
+            githubRepoUrl: repoData.url,
+            githubOwner: repoData.owner, // 'Kosuke-Org'
+            githubRepoName: repoData.name,
+            lastGithubSync: new Date(),
+          })
+          .where(eq(projects.id, project.id))
+          .returning();
 
-          return updatedProject;
-        } else {
-          // Import mode - requires user GitHub connection
-          const { repoInfo } = await importGitHubRepository(
-            userId,
-            github.repositoryUrl!,
-            project.id
-          );
+        return updatedProject;
+      } else {
+        // Import mode - requires user GitHub connection
+        const { repoInfo } = await importGitHubRepository(
+          userId,
+          github.repositoryUrl!,
+          project.id
+        );
 
-          // Update project with GitHub info
-          const [updatedProject] = await tx
-            .update(projects)
-            .set({
-              githubRepoUrl: github.repositoryUrl,
-              githubOwner: repoInfo.owner, // User's GitHub username
-              githubRepoName: repoInfo.name,
-              lastGithubSync: new Date(),
-            })
-            .where(eq(projects.id, project.id))
-            .returning();
+        // Update project with GitHub info
+        const [updatedProject] = await tx
+          .update(projects)
+          .set({
+            githubRepoUrl: github.repositoryUrl,
+            githubOwner: repoInfo.owner, // User's GitHub username
+            githubRepoName: repoInfo.name,
+            lastGithubSync: new Date(),
+          })
+          .where(eq(projects.id, project.id))
+          .returning();
 
-          return updatedProject;
-        }
-      } catch (githubError) {
-        // If GitHub operation fails, the transaction will be rolled back
-        throw githubError;
+        return updatedProject;
       }
     });
 

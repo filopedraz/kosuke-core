@@ -2,7 +2,7 @@ import { ApiErrorHandler } from '@/lib/api/errors';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db/drizzle';
 import { chatMessages, chatSessions } from '@/lib/db/schema';
-import { getGitHubToken } from '@/lib/github/auth';
+import { getKosukeGitHubToken, getUserGitHubToken } from '@/lib/github/client';
 import { GitOperations } from '@/lib/github/git-operations';
 import { verifyProjectAccess } from '@/lib/projects';
 import { sessionManager } from '@/lib/sessions';
@@ -111,8 +111,14 @@ export async function POST(
       `🔄 Reverting project ${projectId} session ${session.sessionId} to commit ${message.commitSha.substring(0, 8)}`
     );
 
-    // Get user's GitHub token (required for pushing to remote)
-    const githubToken = await getGitHubToken(userId);
+    // Get GitHub token based on project ownership (required for pushing to remote)
+    const kosukeOrg = process.env.NEXT_PUBLIC_GITHUB_WORKSPACE;
+    const isKosukeRepo = kosukeOrg && project.githubOwner === kosukeOrg;
+
+    const githubToken = isKosukeRepo
+      ? await getKosukeGitHubToken()
+      : await getUserGitHubToken(userId);
+
     if (!githubToken) {
       return ApiErrorHandler.badRequest('GitHub not connected');
     }

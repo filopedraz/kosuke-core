@@ -8,7 +8,7 @@ import { db } from '@/lib/db/drizzle';
 import { projects } from '@/lib/db/schema';
 import { getDockerService } from '@/lib/docker';
 import { deleteDir, getProjectPath } from '@/lib/fs/operations';
-import { getGitHubToken } from '@/lib/github/auth';
+import { createKosukeOctokit, createUserOctokit } from '@/lib/github/client';
 import { verifyProjectAccess } from '@/lib/projects';
 import { eq } from 'drizzle-orm';
 
@@ -172,27 +172,22 @@ export async function DELETE(
     // Step 3: Optionally delete the associated GitHub repository
     if (deleteRepo && project.githubOwner && project.githubRepoName) {
       try {
-        const githubToken = await getGitHubToken(userId);
-        if (!githubToken) {
-          console.warn('GitHub token not found; skipping repository deletion');
-        } else {
-          const apiUrl = `https://api.github.com/repos/${project.githubOwner}/${project.githubRepoName}`;
-          const ghResponse = await fetch(apiUrl, {
-            method: 'DELETE',
-            headers: {
-              Authorization: `token ${githubToken}`,
-              Accept: 'application/vnd.github+json',
-            },
-          });
-          if (ghResponse.ok) {
-            console.log(`Deleted GitHub repository ${project.githubOwner}/${project.githubRepoName}`);
-          } else {
-            const errText = await ghResponse.text();
-            console.error('Failed to delete GitHub repository:', ghResponse.status, errText);
-          }
-        }
+        const kosukeOrg = process.env.NEXT_PUBLIC_GITHUB_WORKSPACE;
+        const isKosukeRepo = project.githubOwner === kosukeOrg;
+
+        const github = isKosukeRepo
+          ? createKosukeOctokit()
+          : await createUserOctokit(userId);
+
+        await github.rest.repos.delete({
+          owner: project.githubOwner,
+          repo: project.githubRepoName,
+        });
+
+        console.log(`Deleted GitHub repository ${project.githubOwner}/${project.githubRepoName}`);
       } catch (ghError) {
         console.error('Error deleting GitHub repository:', ghError);
+        // Continue with project deletion even if GitHub deletion fails
       }
     }
 
