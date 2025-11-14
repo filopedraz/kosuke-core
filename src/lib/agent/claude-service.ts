@@ -40,7 +40,7 @@ export class ClaudeService {
    * Supports both string prompts and MessageParam with content blocks
    */
   async *runAgenticQuery(
-    message: MessageParam | string,
+    message: MessageParam,
     remoteId?: string | null
   ): AsyncGenerator<SDKMessage> {
     console.log('🤖 Starting Claude Agent SDK query');

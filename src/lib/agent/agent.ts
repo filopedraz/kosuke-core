@@ -53,10 +53,7 @@ export class Agent {
   /**
    * Run the agent and stream responses
    */
-  async *run(
-    message: MessageParam | string,
-    remoteId?: string | null
-  ): AsyncGenerator<StreamEvent> {
+  async *run(message: MessageParam, remoteId?: string | null): AsyncGenerator<StreamEvent> {
     console.log(`🤖 Processing request for project ${this.projectId}, session ${this.sessionId}`);
 
     const startTime = Date.now();
