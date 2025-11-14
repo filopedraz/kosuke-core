@@ -48,6 +48,7 @@ RUN --mount=type=cache,target=/app/.next/cache \
 
 # Production image, copy all the files and run next
 FROM node:22.20.0-slim AS runner
+ARG DOCKER_GID=988
 WORKDIR /app
 
 # Install git and CA certificates for repository operations
