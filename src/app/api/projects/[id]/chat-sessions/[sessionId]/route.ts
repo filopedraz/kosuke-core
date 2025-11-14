@@ -308,7 +308,7 @@ export async function POST(
       if (attachmentPayloads.length > 0) {
         console.log(`⬆️ ${attachmentPayloads.length} file(s) uploaded`);
         attachmentPayloads.forEach((attachment, index) => {
-          console.log(`   [${index + 1}] ${attachment.upload.filename} (${attachment.upload.fileType})`);
+          console.log(`⬆️ Attachment [${index + 1}] uploaded: ${attachment.upload.fileUrl}`);
         });
       }
     } else {
