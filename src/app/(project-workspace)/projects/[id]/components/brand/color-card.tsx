@@ -22,7 +22,7 @@ import {
   formatColorName,
   hexToHSL,
   hslToHex
-} from './utils/color-utils';
+} from '@/lib/branding/color-utils';
 
 interface CssVariable {
   name: string;

@@ -5,9 +5,9 @@ import { ApiErrorHandler } from '@/lib/api/errors';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db/drizzle';
 import { chatSessions } from '@/lib/db/schema';
-import { getGitHubToken } from '@/lib/github/auth';
+import { createKosukeOctokit, createUserOctokit } from '@/lib/github/client';
 import { verifyProjectAccess } from '@/lib/projects';
-import { Octokit } from '@octokit/rest';
+import type { Octokit } from '@octokit/rest';
 import { desc, eq } from 'drizzle-orm';
 
 // Schema for creating a chat session
@@ -128,58 +128,60 @@ export async function GET(
     // Check and update merge status for sessions with GitHub branches
     if (project.githubOwner && project.githubRepoName) {
       try {
-        const githubToken = await getGitHubToken(userId);
-        if (githubToken) {
-          const github = new Octokit({ auth: githubToken });
+        const kosukeOrg = process.env.NEXT_PUBLIC_GITHUB_WORKSPACE;
+        const isKosukeRepo = project.githubOwner === kosukeOrg;
 
-          // Check merge status for sessions that have branches but no merge info yet
-          const sessionsToUpdate = sessions.filter(session =>
-            !!session.sessionId &&
-            !session.branchMergedAt // Only check if not already marked as merged
-          );
+        const github = isKosukeRepo
+          ? createKosukeOctokit()
+          : await createUserOctokit(userId);
 
-          // Process sessions in parallel but limit concurrency
-          const updatePromises = sessionsToUpdate.map(async (session) => {
-            try {
-              const mergeStatus = await checkBranchMergeStatus(
-                github,
-                project.githubOwner!,
-                project.githubRepoName!,
-                session.sessionId
-              );
+        // Check merge status for sessions that have branches but no merge info yet
+        const sessionsToUpdate = sessions.filter(session =>
+          !!session.sessionId &&
+          !session.branchMergedAt // Only check if not already marked as merged
+        );
 
-              if (mergeStatus.isMerged) {
-                // Update session in database with merge information
-                const [updatedSession] = await db
-                  .update(chatSessions)
-                  .set({
-                    branchMergedAt: mergeStatus.mergedAt ? new Date(mergeStatus.mergedAt) : null,
-                    branchMergedBy: mergeStatus.mergedBy,
-                    mergeCommitSha: mergeStatus.mergeCommitSha,
-                    pullRequestNumber: mergeStatus.pullRequestNumber,
-                    updatedAt: new Date(),
-                  })
-                  .where(eq(chatSessions.id, session.id))
-                  .returning();
+        // Process sessions in parallel but limit concurrency
+        const updatePromises = sessionsToUpdate.map(async (session) => {
+          try {
+            const mergeStatus = await checkBranchMergeStatus(
+              github,
+              project.githubOwner!,
+              project.githubRepoName!,
+              session.sessionId
+            );
 
-                return updatedSession;
-              }
-              return session;
-            } catch (error) {
-              console.error(`Error checking merge status for session ${session.id}:`, error);
-              return session; // Return original session if merge check fails
+            if (mergeStatus.isMerged) {
+              // Update session in database with merge information
+              const [updatedSession] = await db
+                .update(chatSessions)
+                .set({
+                  branchMergedAt: mergeStatus.mergedAt ? new Date(mergeStatus.mergedAt) : null,
+                  branchMergedBy: mergeStatus.mergedBy,
+                  mergeCommitSha: mergeStatus.mergeCommitSha,
+                  pullRequestNumber: mergeStatus.pullRequestNumber,
+                  updatedAt: new Date(),
+                })
+                .where(eq(chatSessions.id, session.id))
+                .returning();
+
+              return updatedSession;
             }
-          });
+            return session;
+          } catch (error) {
+            console.error(`Error checking merge status for session ${session.id}:`, error);
+            return session; // Return original session if merge check fails
+          }
+        });
 
-          // Wait for all updates to complete
-          const updatedSessions = await Promise.all(updatePromises);
+        // Wait for all updates to complete
+        const updatedSessions = await Promise.all(updatePromises);
 
-          // Replace sessions with updated versions
-          sessions = sessions.map(session => {
-            const updated = updatedSessions.find(u => u?.id === session.id);
-            return updated || session;
-          });
-        }
+        // Replace sessions with updated versions
+        sessions = sessions.map(session => {
+          const updated = updatedSessions.find(u => u?.id === session.id);
+          return updated || session;
+        });
       } catch (error) {
         console.error('Error checking merge status for sessions:', error);
         // Continue without merge status updates if GitHub integration fails
