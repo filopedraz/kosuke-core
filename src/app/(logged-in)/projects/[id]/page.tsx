@@ -1,5 +1,6 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import { notFound, useRouter, useSearchParams } from 'next/navigation';
 import { use, useEffect, useRef, useState } from 'react';
 
@@ -202,6 +203,41 @@ export default function ProjectPage({ params }: ProjectPageProps) {
   // Error handling
   if (projectError || !project) {
     notFound();
+  }
+
+  // Requirements gathering mode - show special view for requirements and in_development statuses
+  if (project.status === 'requirements' || project.status === 'in_development') {
+    const RequirementsView = dynamic(
+      () => import('./components/requirements/requirements-view'),
+      { ssr: false }
+    );
+
+    return (
+      <div className="flex flex-col h-screen w-full">
+        <Navbar
+          variant="project"
+          projectProps={{
+            projectName: project.name,
+            currentView: 'preview',
+            onViewChange: () => {}, // Disabled in requirements mode
+            onRefresh: () => window.location.reload(),
+            isChatCollapsed: false,
+            onToggleChat: () => {}, // Disabled in requirements mode
+            showSidebar: false,
+            onToggleSidebar: () => {}, // Disabled in requirements mode
+            activeChatSessionId: null,
+            onCreatePullRequest: undefined, // Disabled in requirements mode
+          }}
+        />
+        <div className="h-[calc(100vh-3.5rem)] w-full">
+          <RequirementsView
+            projectId={projectId}
+            projectName={project.name}
+            projectStatus={project.status as 'requirements' | 'in_development'}
+          />
+        </div>
+      </div>
+    );
   }
 
   // Handlers

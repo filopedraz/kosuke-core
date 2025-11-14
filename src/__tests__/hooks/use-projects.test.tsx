@@ -57,6 +57,7 @@ const mockProject: Project = {
   id: '1',
   name: 'Test Project',
   description: 'A test project',
+  status: 'active',
   orgId: 'org_123',
   createdBy: 'user_123',
   createdAt: new Date('2024-01-01'),
@@ -69,6 +70,8 @@ const mockProject: Project = {
   autoCommit: null,
   lastGithubSync: null,
   defaultBranch: 'main',
+  requirementsCompletedAt: null,
+  requirementsCompletedBy: null,
 };
 
 const mockProjects: Project[] = [mockProject];

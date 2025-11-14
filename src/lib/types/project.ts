@@ -1,3 +1,6 @@
+// Re-export database types
+export type { ProjectStatus } from '@/lib/db/schema';
+
 // Project Creation and Update Types
 export interface CreateProjectData {
   name: string;
@@ -5,6 +8,7 @@ export interface CreateProjectData {
   github: {
     type: 'create' | 'import';
     repositoryUrl?: string;
+    description?: string;
   };
 }
 

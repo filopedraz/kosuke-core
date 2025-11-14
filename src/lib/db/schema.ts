@@ -3,6 +3,7 @@ import {
   boolean,
   integer,
   jsonb,
+  pgEnum,
   pgTable,
   text,
   timestamp,
@@ -10,6 +11,13 @@ import {
   uuid,
   varchar,
 } from 'drizzle-orm/pg-core';
+
+// Project status enum
+export const projectStatusEnum = pgEnum('project_status', [
+  'requirements',
+  'in_development',
+  'active',
+]);
 
 export const projects = pgTable('projects', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -27,6 +35,10 @@ export const projects = pgTable('projects', {
   autoCommit: boolean('auto_commit').default(true),
   lastGithubSync: timestamp('last_github_sync'),
   defaultBranch: varchar('default_branch', { length: 100 }).default('main'),
+  // Requirements gathering workflow
+  status: projectStatusEnum('status').notNull().default('active'),
+  requirementsCompletedAt: timestamp('requirements_completed_at'),
+  requirementsCompletedBy: text('requirements_completed_by'),
 });
 
 export const chatSessions = pgTable('chat_sessions', {
@@ -155,12 +167,26 @@ export const projectIntegrations = pgTable(
   })
 );
 
+export const projectAuditLogs = pgTable('project_audit_logs', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  projectId: uuid('project_id')
+    .notNull()
+    .references(() => projects.id, { onDelete: 'cascade' }),
+  userId: text('user_id').notNull(), // Clerk user ID
+  action: text('action').notNull(), // 'status_changed', 'requirements_confirmed', 'marked_ready', etc.
+  previousValue: text('previous_value'), // JSON string for old state
+  newValue: text('new_value'), // JSON string for new state
+  metadata: jsonb('metadata'), // Additional context
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+
 export const projectsRelations = relations(projects, ({ many }) => ({
   chatMessages: many(chatMessages),
   chatSessions: many(chatSessions),
   diffs: many(diffs),
   commits: many(projectCommits),
   githubSyncSessions: many(githubSyncSessions),
+  auditLogs: many(projectAuditLogs),
 }));
 
 export const chatSessionsRelations = relations(chatSessions, ({ one, many }) => ({
@@ -225,8 +251,16 @@ export const projectIntegrationsRelations = relations(projectIntegrations, ({ on
   }),
 }));
 
+export const projectAuditLogsRelations = relations(projectAuditLogs, ({ one }) => ({
+  project: one(projects, {
+    fields: [projectAuditLogs.projectId],
+    references: [projects.id],
+  }),
+}));
+
 export type Project = typeof projects.$inferSelect;
 export type NewProject = typeof projects.$inferInsert;
+export type ProjectStatus = (typeof projectStatusEnum.enumValues)[number];
 export type ChatSession = typeof chatSessions.$inferSelect;
 export type NewChatSession = typeof chatSessions.$inferInsert;
 export type ChatMessage = typeof chatMessages.$inferSelect;
@@ -241,3 +275,5 @@ export type ProjectEnvironmentVariable = typeof projectEnvironmentVariables.$inf
 export type NewProjectEnvironmentVariable = typeof projectEnvironmentVariables.$inferInsert;
 export type ProjectIntegration = typeof projectIntegrations.$inferSelect;
 export type NewProjectIntegration = typeof projectIntegrations.$inferInsert;
+export type ProjectAuditLog = typeof projectAuditLogs.$inferSelect;
+export type NewProjectAuditLog = typeof projectAuditLogs.$inferInsert;

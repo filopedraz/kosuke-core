@@ -38,7 +38,9 @@ const isProtectedRoute = createRouteMatcher([
   '/settings(.*)',
   '/organizations(.*)',
   '/onboarding',
+  '/admin(.*)',
 ]);
+const isAdminRoute = createRouteMatcher(['/admin(.*)']);
 const isOnboardingRoute = createRouteMatcher(['/onboarding']);
 const isRootRoute = createRouteMatcher(['/']);
 const isApiRoute = createRouteMatcher(['/api(.*)']);
@@ -51,6 +53,17 @@ export const baseMiddleware = async (auth: ClerkMiddlewareAuth, req: NextRequest
   if (!userId && !isPublicRoute(req)) return redirectToSignIn({ returnBackUrl: req.url });
 
   if (userId) {
+    // Check super admin access for admin routes
+    if (isAdminRoute(req)) {
+      const { isSuperAdminByUserId } = await import('@/lib/admin/permissions');
+      const isAdmin = await isSuperAdminByUserId(userId);
+
+      if (!isAdmin) {
+        // Redirect non-admins to projects page
+        return NextResponse.redirect(new URL('/projects', req.url));
+      }
+    }
+
     // Check if user has completed onboarding
     const hasCompletedOnboarding = await clerkService.hasCompletedOnboarding(userId);
 
