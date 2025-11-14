@@ -1,4 +1,6 @@
 import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { randomUUID } from 'node:crypto';
+import { extname } from 'node:path';
 import type { FileType } from './db/schema';
 
 // S3 Client configuration for Digital Ocean Spaces
@@ -25,18 +27,21 @@ export interface UploadResult {
   fileSize: number;
 }
 
-// Generate unique filename with sanitization
+// Generate secure random filename using UUID
+// Preserves only the file extension for proper MIME type handling
+// Original filename is stored in database metadata for display purposes
 function generateFilename(originalName: string, prefix: string = ''): string {
-  const timestamp = Date.now();
   const sanitizedPrefix = prefix ? (prefix.endsWith('/') ? prefix : `${prefix}/`) : '';
 
-  // Sanitize filename: replace spaces with hyphens, remove special chars except dots, hyphens, underscores
-  const sanitizedName = originalName
-    .replace(/\s+/g, '-') // Replace spaces with hyphens
-    .replace(/[^a-zA-Z0-9._-]/g, '') // Remove special characters except . _ -
-    .toLowerCase(); // Convert to lowercase for consistency
+  // Extract file extension using Node.js path module (handles edge cases like .tar.gz, hidden files, etc.)
+  // Returns empty string if no extension exists
+  const extension = extname(originalName).toLowerCase();
 
-  return `${sanitizedPrefix}${timestamp}-${sanitizedName}`;
+  // Generate cryptographically random UUID
+  const uuid = randomUUID();
+
+  // Return UUID-based filename with extension: prefix/uuid.ext
+  return `${sanitizedPrefix}attachment-${uuid}${extension}`;
 }
 
 // Get Digital Ocean Spaces CDN URL
