@@ -39,6 +39,7 @@ type ErrorType = 'timeout' | 'parsing' | 'processing' | 'unknown';
 
 /**
  * Save an uploaded file (image or document) to storage
+ * Uses public URLs instead of base64 encoding for Claude API
  */
 async function saveUploadedFile(file: File, projectId: string): Promise<MessageAttachmentPayload> {
   // Create a prefix to organize files by project
@@ -51,11 +52,8 @@ async function saveUploadedFile(file: File, projectId: string): Promise<MessageA
     // Upload the file using the generic uploadFile function
     const uploadResult = await uploadFile(file, prefix, buffer);
 
-    const base64Data = buffer.toString('base64');
-
     return {
       upload: uploadResult,
-      base64Data,
     } satisfies MessageAttachmentPayload;
   } catch (error) {
     console.error('Error uploading file to storage:', error);

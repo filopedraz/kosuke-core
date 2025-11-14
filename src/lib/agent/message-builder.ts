@@ -6,15 +6,15 @@
 
 import type { UploadResult } from '@/lib/storage';
 import type {
-  Base64ImageSource,
-  Base64PDFSource,
   DocumentBlockParam,
   ImageBlockParam,
   MessageParam,
   TextBlockParam,
+  URLPDFSource,
 } from '@anthropic-ai/sdk/resources';
 
-type SupportedImageMediaType = Base64ImageSource['media_type'];
+// Supported image MIME types for Claude API
+type SupportedImageMediaType = 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';
 
 function isSupportedImageMediaType(mediaType: string): mediaType is SupportedImageMediaType {
   return (
@@ -25,10 +25,11 @@ function isSupportedImageMediaType(mediaType: string): mediaType is SupportedIma
   );
 }
 
-function createImageBlock(
-  upload: UploadResult,
-  base64Data: string
-): ImageBlockParam | TextBlockParam {
+/**
+ * Create an image block using URL source
+ * Claude will fetch the image from the public URL
+ */
+function createImageBlock(upload: UploadResult): ImageBlockParam | TextBlockParam {
   if (!isSupportedImageMediaType(upload.mediaType)) {
     return {
       type: 'text',
@@ -39,21 +40,20 @@ function createImageBlock(
   return {
     type: 'image',
     source: {
-      type: 'base64',
-      media_type: upload.mediaType,
-      data: base64Data,
+      type: 'url',
+      url: upload.fileUrl,
     },
   } satisfies ImageBlockParam;
 }
 
-function createDocumentBlock(
-  upload: UploadResult,
-  base64Data: string
-): DocumentBlockParam | TextBlockParam {
-  const source: Base64PDFSource = {
-    type: 'base64',
-    media_type: 'application/pdf',
-    data: base64Data,
+/**
+ * Create a document block using URL source
+ * Claude will fetch the PDF from the public URL
+ */
+function createDocumentBlock(upload: UploadResult): DocumentBlockParam {
+  const source: URLPDFSource = {
+    type: 'url',
+    url: upload.fileUrl,
   };
 
   return {
@@ -64,12 +64,13 @@ function createDocumentBlock(
 
 export interface MessageAttachmentPayload {
   upload: UploadResult;
-  base64Data: string;
+  // Note: base64Data is no longer needed - we use public URLs instead
 }
 
 /**
  * Build Claude MessageParam from text and optional attachments
  * Creates properly typed content blocks for images, documents, and text
+ * Uses public URLs for file attachments instead of base64 encoding
  *
  * @param text - The text content of the message
  * @param attachments - Optional array of file attachments (images or PDFs)
@@ -80,11 +81,11 @@ export interface MessageAttachmentPayload {
  * buildMessageParam("Hello, Claude!");
  *
  * @example
- * // Text with single image
- * buildMessageParam("Analyze this image", [{ upload: result, base64Data }]);
+ * // Text with single image (URL-based)
+ * buildMessageParam("Analyze this image", [{ upload: uploadResult }]);
  *
  * @example
- * // Text with multiple files
+ * // Text with multiple files (URL-based)
  * buildMessageParam("Review these documents", [attachment1, attachment2]);
  */
 export function buildMessageParam(
@@ -102,16 +103,16 @@ export function buildMessageParam(
     contentBlocks.push(textBlock);
   }
 
-  // Add image or document blocks for all attachments
+  // Add image or document blocks for all attachments using public URLs
   if (attachments && attachments.length > 0) {
     for (const attachment of attachments) {
-      const { upload, base64Data } = attachment;
+      const { upload } = attachment;
 
       if (upload.fileType === 'image') {
-        const imageBlock = createImageBlock(upload, base64Data);
+        const imageBlock = createImageBlock(upload);
         contentBlocks.push(imageBlock);
       } else if (upload.fileType === 'document') {
-        const documentBlock = createDocumentBlock(upload, base64Data);
+        const documentBlock = createDocumentBlock(upload);
         contentBlocks.push(documentBlock);
       }
     }
