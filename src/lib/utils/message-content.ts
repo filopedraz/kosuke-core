@@ -23,7 +23,7 @@ export const getFileName = (url: string): string => {
 };
 
 // Content part type for processed content
-export interface ContentPart {
+interface ContentPart {
   type: 'text' | 'image' | 'thinking';
   content: string;
   fileSize?: number; // Optional file size in bytes for images
