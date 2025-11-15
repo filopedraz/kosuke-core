@@ -113,7 +113,7 @@ just migrate
 - Add the variable in `.env.example`
 - If it is a `NEXT_PUBLIC` variable add it in `.env.prod.public`
 - If it is a server side variable with non-secret value add it in `.env.prod`
-- If it is a server side variable with secret value add it in `.env.prod` with the syntax `VARIABLE=${VARIABLE}`. Add the variable in Github kosuke-core repo. Settings > Secrets and Varibles > Actions > New Repository Secret
+- If it is a server side variable with secret value, add it in `.env.prod` with the syntax `VARIABLE=${VARIABLE}`. Then, add the variable in Github kosuke-core repo using the dedicated Github worflow: Actions > Add secret > Run workflow
 
 ## 🛡️ License
 
