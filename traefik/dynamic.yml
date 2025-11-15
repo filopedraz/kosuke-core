@@ -17,6 +17,6 @@ tls:
       defaultGeneratedCert:
         resolver: letsencrypt
         domain:
-          main: 'kosuke.app'
+          main: stage.kosuke.app
           sans:
-            - '*.kosuke.app'
+            - '*.stage.kosuke.app'
