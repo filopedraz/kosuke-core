@@ -5,6 +5,7 @@
 
 import { Agent } from '@/lib/agent';
 import { ClaudeService } from '@/lib/agent/claude-service';
+import { buildMessageParam } from '@/lib/agent/message-builder';
 import { sessionManager } from '@/lib/sessions';
 
 // Mock dependencies
@@ -71,7 +72,7 @@ describe('Agent Workflow Integration', () => {
       const agent = new Agent(mockConfig);
       const events = [];
 
-      for await (const event of agent.run('Test prompt')) {
+      for await (const event of agent.run(buildMessageParam('Test prompt'))) {
         events.push(event);
       }
 
@@ -87,7 +88,7 @@ describe('Agent Workflow Integration', () => {
 
       // Run the agent
       const events = [];
-      for await (const event of agent.run('Test prompt')) {
+      for await (const event of agent.run(buildMessageParam('Test prompt'))) {
         events.push(event);
       }
 
@@ -108,7 +109,7 @@ describe('Agent Workflow Integration', () => {
       const agent = new Agent(mockConfig);
       const events = [];
 
-      for await (const event of agent.run('Test prompt')) {
+      for await (const event of agent.run(buildMessageParam('Test prompt'))) {
         events.push(event);
       }
 
@@ -122,7 +123,7 @@ describe('Agent Workflow Integration', () => {
       const agent = new Agent(mockConfig);
 
       const events = [];
-      for await (const event of agent.run('Make changes')) {
+      for await (const event of agent.run(buildMessageParam('Make changes'))) {
         events.push(event);
       }
 
@@ -139,7 +140,7 @@ describe('Agent Workflow Integration', () => {
       const agent = new Agent(configWithoutToken);
 
       const events = [];
-      for await (const event of agent.run('Test prompt')) {
+      for await (const event of agent.run(buildMessageParam('Test prompt'))) {
         events.push(event);
       }
 
