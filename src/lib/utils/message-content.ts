@@ -23,9 +23,10 @@ export const getFileName = (url: string): string => {
 };
 
 // Content part type for processed content
-interface ContentPart {
+export interface ContentPart {
   type: 'text' | 'image' | 'thinking';
   content: string;
+  fileSize?: number; // Optional file size in bytes for images
 }
 
 // Function to process message content and extract image URLs and thinking blocks

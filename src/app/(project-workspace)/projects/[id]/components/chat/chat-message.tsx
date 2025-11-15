@@ -292,7 +292,7 @@ export default function ChatMessage({
                         {getFileName(part.content)}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        76.70kB
+                        {part.fileSize ? `${(part.fileSize / 1024).toFixed(1)}kB` : 'Unknown size'}
                       </p>
                     </div>
                   </div>
