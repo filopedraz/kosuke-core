@@ -217,8 +217,7 @@ export function HeroSection({ onApplyClick }: HeroSectionProps) {
               >
                 <Button
                   size="lg"
-                  variant="outline"
-                  className="w-full sm:w-auto px-6 sm:px-8 py-3"
+                  className="w-full sm:w-auto px-6 sm:px-8 py-3 bg-primary hover:bg-primary/90"
                   onClick={onApplyClick}
                 >
                   <Code2 className="mr-2 h-4 w-4" />

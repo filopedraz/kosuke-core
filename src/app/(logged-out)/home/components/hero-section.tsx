@@ -74,7 +74,7 @@ export function HeroSection() {
               <Button
                 asChild
                 size="lg"
-                className="px-6 sm:px-8 py-3 bg-primary hover:bg-primary/90"
+                className="w-full sm:w-auto px-6 sm:px-8 py-3  bg-primary hover:bg-primary/90"
               >
                 <Link
                   href="https://links.kosuke.ai/contact"
