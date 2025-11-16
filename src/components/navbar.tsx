@@ -68,7 +68,7 @@ type NavbarProps = {
 const solutions = [
   {
     title: 'Kosuke Platform',
-    href: '/',
+    href: '/solutions/kosuke-platform',
   },
   {
     title: 'Kosuke Engineers',
