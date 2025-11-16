@@ -1,47 +1,10 @@
 'use client';
 
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { MagicCard } from '@/components/ui/magic-card';
+import { Card, CardContent } from '@/components/ui/card';
 import { motion } from 'framer-motion';
 import { AlertTriangle, CreditCard, Lock } from 'lucide-react';
-import { useTheme } from 'next-themes';
-import { ReactNode } from 'react';
-
-const problems = [
-  {
-    icon: AlertTriangle,
-    title: 'Only for mockups',
-    description:
-      'It&apos;s good for functioning mockups, but when you need solid authentication and billing, these solutions don&apos;t even reach that point.',
-  },
-  {
-    icon: CreditCard,
-    title: 'No costs transparency',
-    description:
-      'Using Lovable credits is like going to the casino. You never know if it will fix the issue.',
-  },
-  {
-    icon: Lock,
-    title: 'Zero control',
-    description: 'You don&apos;t know what&apos;s going on and when it will break.',
-  },
-];
-
-const CardDecorator = ({ children }: { children: ReactNode }) => (
-  <div className="mask-radial-from-40% mask-radial-to-60% relative mx-auto size-36 duration-200 [--color-border:color-mix(in_oklab,var(--color-zinc-950)10%,transparent)] group-hover:[--color-border:color-mix(in_oklab,var(--color-zinc-950)20%,transparent)] dark:[--color-border:color-mix(in_oklab,var(--color-white)15%,transparent)] dark:group-hover:[--color-border:color-mix(in_oklab,var(--color-white)20%,transparent)]">
-    <div
-      aria-hidden
-      className="absolute inset-0 bg-[linear-gradient(to_right,var(--color-border)_1px,transparent_1px),linear-gradient(to_bottom,var(--color-border)_1px,transparent_1px)] bg-size-[24px_24px] dark:opacity-50"
-    />
-    <div className="bg-background absolute inset-0 m-auto flex size-12 items-center justify-center border-l border-t">
-      {children}
-    </div>
-  </div>
-);
 
 export function ProblemsSection() {
-  const { theme } = useTheme();
-
   return (
     <section className="py-12 sm:py-14 md:py-20 lg:py-24">
       <div className="container mx-auto px-8 sm:px-12 md:px-6">
@@ -61,37 +24,114 @@ export function ProblemsSection() {
             </p>
           </motion.div>
 
-          <div className="grid md:grid-cols-3 gap-6 *:text-center">
-            {problems.map((problem, index) => (
+          <div className="max-w-6xl mx-auto">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 sm:gap-6">
+              {/* Large featured problem card */}
               <motion.div
-                key={problem.title}
+                className="md:col-span-2 md:row-span-2"
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ duration: 0.6, delay: index * 0.1 }}
+                transition={{ duration: 0.6 }}
               >
-                <Card className="w-full border-none p-0 shadow-none h-full">
-                  <MagicCard
-                    gradientColor={theme === 'dark' ? '#262626' : '#D9D9D955'}
-                    gradientFrom="#EF4444"
-                    gradientTo="#DC2626"
-                    className="p-0 h-full"
-                  >
-                    <CardHeader className="pb-4">
-                      <CardDecorator>
-                        <problem.icon className="size-6 text-red-600" aria-hidden />
-                      </CardDecorator>
-                      <h3 className="mt-6 text-lg font-semibold">{problem.title}</h3>
-                    </CardHeader>
-                    <CardContent className="pb-6">
-                      <p className="text-sm text-muted-foreground leading-relaxed">
-                        {problem.description}
+                <Card className="h-full p-6 sm:p-8 bg-gradient-to-br from-red-500/10 to-red-500/5 border-red-500/20 hover:border-red-500/30 transition-all duration-300">
+                  <CardContent className="p-0 h-full flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center gap-3 mb-4 sm:mb-6">
+                        <div className="p-2 rounded-lg bg-red-500/20">
+                          <AlertTriangle className="h-5 w-5 sm:h-6 sm:w-6 text-red-600" />
+                        </div>
+                        <h3 className="text-lg sm:text-xl font-semibold">Only for mockups</h3>
+                      </div>
+                      <p className="text-sm sm:text-base text-muted-foreground font-sans mb-4 sm:mb-6 leading-relaxed">
+                        It&apos;s good for functioning mockups, but when you need solid
+                        authentication and billing, these solutions don&apos;t even reach that
+                        point.
                       </p>
-                    </CardContent>
-                  </MagicCard>
+                    </div>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between text-red-600">
+                        <span>Auth</span>
+                        <span>Limited</span>
+                      </div>
+                      <div className="flex justify-between text-red-600">
+                        <span>Billing</span>
+                        <span>Missing</span>
+                      </div>
+                      <div className="flex justify-between text-red-600">
+                        <span>Production</span>
+                        <span>Not Ready</span>
+                      </div>
+                    </div>
+                  </CardContent>
                 </Card>
               </motion.div>
-            ))}
+
+              {/* No costs transparency */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, delay: 0.1 }}
+              >
+                <Card className="h-full p-4 sm:p-6 bg-card/50 border-red-500/20 hover:bg-card/80 transition-all duration-300">
+                  <CardContent className="p-0">
+                    <div className="flex items-center gap-2 mb-3 sm:mb-4">
+                      <CreditCard className="h-4 w-4 sm:h-5 sm:w-5 text-red-600" />
+                      <h3 className="text-base sm:text-lg font-semibold">No transparency</h3>
+                    </div>
+                    <p className="text-sm text-muted-foreground font-sans">
+                      Using Lovable credits is like going to the casino. You never know if it will
+                      fix the issue.
+                    </p>
+                  </CardContent>
+                </Card>
+              </motion.div>
+
+              {/* Zero control */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+              >
+                <Card className="h-full p-4 sm:p-6 bg-card/50 border-red-500/20 hover:bg-card/80 transition-all duration-300">
+                  <CardContent className="p-0">
+                    <div className="flex items-center gap-2 mb-3 sm:mb-4">
+                      <Lock className="h-4 w-4 sm:h-5 sm:w-5 text-red-600" />
+                      <h3 className="text-base sm:text-lg font-semibold">Zero control</h3>
+                    </div>
+                    <p className="text-sm text-muted-foreground font-sans">
+                      You don&apos;t know what&apos;s going on and when it will break.
+                    </p>
+                  </CardContent>
+                </Card>
+              </motion.div>
+
+              {/* Bottom spanning card */}
+              <motion.div
+                className="md:col-span-2"
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, delay: 0.3 }}
+              >
+                <Card className="h-full p-4 sm:p-6 bg-gradient-to-r from-red-500/10 to-red-500/5 border-red-500/20 hover:border-red-500/30 transition-all duration-300">
+                  <CardContent className="p-0">
+                    <div className="flex items-center gap-2 mb-3 sm:mb-4">
+                      <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 text-red-600" />
+                      <h3 className="text-base sm:text-lg font-semibold">
+                        Built for demos, not deployment
+                      </h3>
+                    </div>
+                    <p className="text-sm text-muted-foreground font-sans">
+                      No testing, no code reviews, no best practices. These platforms optimize for
+                      speed over quality—leaving you with technical debt before you even launch.
+                    </p>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            </div>
           </div>
         </div>
       </div>

@@ -1,10 +1,10 @@
 'use client';
 
-import { NewHeroSection } from '@/app/(logged-out)/home/components/new-hero-section';
-import { OnPremiseCTA } from '@/app/(logged-out)/home/components/on-premise-cta';
+import { CTASection } from '@/app/(logged-out)/home/components/cta-section';
+import { FAQSection } from '@/app/(logged-out)/home/components/faq-section';
+import { NewHeroSection } from '@/app/(logged-out)/home/components/hero-section';
 import { ProblemsSection } from '@/app/(logged-out)/home/components/problems-section';
 import { SolutionsGridSection } from '@/app/(logged-out)/home/components/solutions-grid-section';
-import { StartupProgramCTA } from '@/app/(logged-out)/home/components/startup-program-cta';
 import { useEffect } from 'react';
 
 export function Home() {
@@ -39,11 +39,11 @@ export function Home() {
       {/* Solutions Grid */}
       <SolutionsGridSection />
 
-      {/* Startup Program CTA */}
-      <StartupProgramCTA />
+      {/* CTA Section */}
+      <CTASection />
 
-      {/* On-Premise CTA */}
-      <OnPremiseCTA />
+      {/* FAQ Section */}
+      <FAQSection />
     </div>
   );
 }
