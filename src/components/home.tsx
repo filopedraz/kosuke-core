@@ -2,9 +2,10 @@
 
 import { CTASection } from '@/app/(logged-out)/home/components/cta-section';
 import { FAQSection } from '@/app/(logged-out)/home/components/faq-section';
-import { NewHeroSection } from '@/app/(logged-out)/home/components/hero-section';
+import { HeroSection } from '@/app/(logged-out)/home/components/hero-section';
 import { ProblemsSection } from '@/app/(logged-out)/home/components/problems-section';
 import { SolutionsGridSection } from '@/app/(logged-out)/home/components/solutions-grid-section';
+
 import { useEffect } from 'react';
 
 export function Home() {
@@ -31,7 +32,7 @@ export function Home() {
       </div>
 
       {/* Hero Section */}
-      <NewHeroSection />
+      <HeroSection />
 
       {/* Problems Section */}
       <ProblemsSection />

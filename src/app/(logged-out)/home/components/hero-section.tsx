@@ -7,7 +7,7 @@ import { motion } from 'framer-motion';
 import { Sparkles } from 'lucide-react';
 import Link from 'next/link';
 
-export function NewHeroSection() {
+export function HeroSection() {
   return (
     <section className="pt-12 sm:pt-14 md:pt-16 lg:pt-20 pb-12 sm:pb-14 md:pb-20 lg:pb-32">
       <div className="container mx-auto px-8 sm:px-12 md:px-6">
@@ -52,7 +52,7 @@ export function NewHeroSection() {
             <h1 className="text-3xl sm:text-[2rem] md:text-4xl lg:text-6xl font-bold leading-tight sm:leading-tight tracking-tight">
               Your technical{' '}
               <AuroraText colors={['#10B981', '#22c55e', '#34D399', '#059669']}>
-                cofounder
+                co-founder
               </AuroraText>
               <br />
               for the 0 to 1.
