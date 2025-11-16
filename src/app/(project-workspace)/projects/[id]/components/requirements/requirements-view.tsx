@@ -2,10 +2,11 @@
 
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Textarea } from '@/components/ui/textarea';
-import { CheckCircle2, Loader2, Send } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { CheckCircle2, Loader2 } from 'lucide-react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 import {
   Dialog,
   DialogContent,
@@ -13,95 +14,260 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { marked } from 'marked';
 import { useRouter } from 'next/navigation';
+import { useUser } from '@clerk/nextjs';
+import ChatInput from '../chat/chat-input';
+import ChatMessage from '../chat/chat-message';
+import MarkdownPreview from './markdown-preview';
+import type { ContentBlock, AssistantBlock } from '@/lib/types';
 
 interface RequirementsViewProps {
   projectId: string;
   projectName: string;
   projectStatus: 'requirements' | 'in_development';
+  isChatCollapsed?: boolean;
+}
+
+interface RequirementsMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content?: string;
+  blocks?: Array<{ type: string; content: string }>;
+  timestamp: Date;
 }
 
 export default function RequirementsView({
   projectId,
   projectName: _projectName,
   projectStatus,
+  isChatCollapsed = false,
 }: RequirementsViewProps) {
-  const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [docsContent, setDocsContent] = useState('');
-  const [conversationHistory, setConversationHistory] = useState<
-    Array<{ role: 'user' | 'assistant'; content: string }>
-  >([]);
+  const [messages, setMessages] = useState<RequirementsMessage[]>([]);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [streamingBlocks, setStreamingBlocks] = useState<ContentBlock[]>([]);
+  const [_streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
   const { toast } = useToast();
   const router = useRouter();
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
-  // Fetch initial docs content
+  // User data from Clerk
+  const { user: clerkUser, isLoaded } = useUser();
+  const [user, setUser] = useState<{
+    name?: string;
+    email?: string;
+    imageUrl?: string;
+  } | null>(null);
+
+  // Set user data when Clerk user is loaded
   useEffect(() => {
-    const fetchDocs = async () => {
-      try {
-        const response = await fetch(`/api/projects/${projectId}/requirements`);
-        if (!response.ok) throw new Error('Failed to fetch requirements');
+    if (isLoaded && clerkUser) {
+      setUser({
+        name: clerkUser.fullName || undefined,
+        email: clerkUser.emailAddresses[0]?.emailAddress || '',
+        imageUrl: clerkUser.imageUrl || undefined,
+      });
+    }
+  }, [isLoaded, clerkUser]);
 
-        const data = await response.json();
-        setDocsContent(data.data.docs);
+  // Fetch initial docs content and messages
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchData = async () => {
+      try {
+        // Fetch docs
+        const docsResponse = await fetch(`/api/projects/${projectId}/requirements`);
+        if (docsResponse.ok && isMounted) {
+          const docsData = await docsResponse.json();
+          setDocsContent(docsData.data.docs);
+        }
+
+        // Fetch message history
+        const messagesResponse = await fetch(`/api/projects/${projectId}/requirements/messages`);
+        if (messagesResponse.ok && isMounted) {
+          const messagesData = await messagesResponse.json();
+          setMessages(
+            messagesData.data.messages.map((msg: RequirementsMessage) => ({
+              ...msg,
+              timestamp: new Date(msg.timestamp),
+            }))
+          );
+        }
       } catch (error) {
-        console.error('Error fetching docs:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to load requirements document',
-          variant: 'destructive',
-        });
+        console.error('Error fetching requirements data:', error);
+        if (isMounted) {
+          toast({
+            title: 'Error',
+            description: 'Failed to load requirements data',
+            variant: 'destructive',
+          });
+        }
       }
     };
 
-    fetchDocs();
-  }, [projectId, toast]);
+    fetchData();
 
-  const handleSendMessage = async () => {
-    if (!message.trim() || isLoading) return;
+    return () => {
+      isMounted = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId]); // Removed toast from dependencies to prevent infinite loop
 
-    const userMessage = message.trim();
-    setMessage('');
-    setIsLoading(true);
-
-    // Add user message to conversation
-    setConversationHistory(prev => [...prev, { role: 'user', content: userMessage }]);
-
-    try {
-      const response = await fetch(`/api/projects/${projectId}/requirements`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: userMessage }),
-      });
-
-      if (!response.ok) throw new Error('Failed to send message');
-
-      const data = await response.json();
-
-      // Add assistant response to conversation
-      setConversationHistory(prev => [
-        ...prev,
-        { role: 'assistant', content: data.data.response },
-      ]);
-
-      // Update docs content
-      if (data.data.docs) {
-        setDocsContent(data.data.docs);
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    const scrollTimeout = setTimeout(() => {
+      if (messagesEndRef.current) {
+        messagesEndRef.current.scrollIntoView({
+          behavior: 'smooth',
+          block: 'end',
+        });
       }
-    } catch (error) {
-      console.error('Error sending message:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to send message',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsLoading(false);
+    }, 100);
+
+    return () => clearTimeout(scrollTimeout);
+  }, [messages, streamingBlocks]);
+
+  const handleSendMessage = useCallback(
+    async (content: string) => {
+      if (!content.trim() || isLoading || projectStatus === 'in_development') return;
+
+      setIsLoading(true);
+      setIsStreaming(true);
+      setStreamingBlocks([]);
+      setStreamingMessageId(null);
+
+      // Create abort controller for this request
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
+      try {
+        const response = await fetch(`/api/projects/${projectId}/requirements/messages`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content }),
+          signal: controller.signal,
+        });
+
+        if (!response.ok) throw new Error('Failed to send message');
+
+        // Get assistant message ID from headers
+        const assistantMessageId = response.headers.get('X-Assistant-Message-Id') || '';
+        setStreamingMessageId(assistantMessageId);
+
+        // Handle streaming response
+        if (!response.body) {
+          throw new Error('No response body');
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        // Create initial text block for streaming
+        const textBlock: ContentBlock = {
+          id: `block-0`,
+          index: 0,
+          type: 'text',
+          content: '',
+          status: 'streaming',
+          timestamp: new Date(),
+        };
+        setStreamingBlocks([textBlock]);
+
+        while (true) {
+          const { done, value } = await reader.read();
+
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6);
+
+              if (data === '[DONE]') {
+                // Streaming complete
+                setIsStreaming(false);
+                setStreamingBlocks([]);
+                setStreamingMessageId(null);
+
+                // Refresh messages from server
+                const messagesResponse = await fetch(
+                  `/api/projects/${projectId}/requirements/messages`
+                );
+                if (messagesResponse.ok) {
+                  const messagesData = await messagesResponse.json();
+                  setMessages(
+                    messagesData.data.messages.map((msg: RequirementsMessage) => ({
+                      ...msg,
+                      timestamp: new Date(msg.timestamp),
+                    }))
+                  );
+                }
+                continue;
+              }
+
+              try {
+                const event = JSON.parse(data);
+
+                if (event.type === 'content_block_delta' && event.text) {
+                  // Update streaming text block
+                  setStreamingBlocks(prevBlocks => {
+                    const updatedBlocks = [...prevBlocks];
+                    const block = updatedBlocks[0];
+                    if (block && block.type === 'text') {
+                      block.content += event.text;
+                    }
+                    return updatedBlocks;
+                  });
+                } else if (event.type === 'error') {
+                  throw new Error(event.message || 'Streaming error');
+                }
+              } catch (e) {
+                console.error('Error parsing SSE data:', e);
+              }
+            }
+          }
+        }
+      } catch (error: unknown) {
+        if (error instanceof Error && error.name === 'AbortError') {
+          console.log('Stream cancelled by user');
+        } else {
+          console.error('Error sending message:', error);
+          toast({
+            title: 'Error',
+            description: 'Failed to send message',
+            variant: 'destructive',
+          });
+        }
+      } finally {
+        setIsLoading(false);
+        setIsStreaming(false);
+        setStreamingBlocks([]);
+        setStreamingMessageId(null);
+        abortControllerRef.current = null;
+      }
+    },
+    [projectId, toast, isLoading, projectStatus]
+  );
+
+  const handleCancelStream = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
     }
-  };
+    setIsStreaming(false);
+    setIsLoading(false);
+    setStreamingBlocks([]);
+    setStreamingMessageId(null);
+  }, []);
 
   const handleConfirmRequirements = async () => {
     setIsConfirming(true);
@@ -136,87 +302,175 @@ export default function RequirementsView({
     }
   };
 
-  const parseMarkdown = (content: string) => {
-    return marked.parse(content, { async: false }) as string;
-  };
+  // Convert messages to enhanced format for display
+  const enhancedMessages = useMemo(() => {
+    return messages.map((message, index) => {
+      let showAvatar = true;
+
+      if (index > 0) {
+        const prevMessage = messages[index - 1];
+        if (prevMessage && prevMessage.role === message.role) {
+          showAvatar = false;
+        }
+      }
+
+      // Convert blocks to AssistantBlock format (ChatMessage expects AssistantBlock[])
+      const assistantBlocks: AssistantBlock[] =
+        message.blocks?.map(block => {
+          if (block.type === 'text') {
+            return {
+              type: 'text' as const,
+              content: block.content,
+            };
+          } else if (block.type === 'thinking') {
+            return {
+              type: 'thinking' as const,
+              content: block.content,
+            };
+          } else {
+            // tool type
+            return {
+              type: 'tool' as const,
+              name: 'tool',
+              input: {},
+              result: block.content,
+              status: 'completed' as const,
+            };
+          }
+        }) || [];
+
+      return {
+        ...message,
+        showAvatar,
+        blocks: assistantBlocks,
+      };
+    });
+  }, [messages]);
 
   return (
     <>
-      <div className="flex h-full">
+      <div className={cn('flex h-full', isChatCollapsed && 'overflow-hidden')}>
         {/* Left side - Chat Interface */}
-        <div className="flex-1 flex flex-col border-r">
-          {/* Header */}
-          <div className="border-b p-4">
-            <h2 className="text-lg font-semibold">Requirements Gathering</h2>
-            <p className="text-sm text-muted-foreground">
-              Chat with AI to build your project requirements
-            </p>
-          </div>
-
-          {/* Conversation Area */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {conversationHistory.length === 0 ? (
-              <Card className="p-6 text-center">
-                <p className="text-muted-foreground">
-                  Start by describing your project idea. I&apos;ll help you build comprehensive
-                  requirements through conversation.
-                </p>
-              </Card>
-            ) : (
-              conversationHistory.map((msg, index) => (
-                <div
-                  key={index}
-                  className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                >
-                  <Card
-                    className={`p-4 max-w-[80%] ${
-                      msg.role === 'user'
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted'
-                    }`}
-                  >
-                    <p className="whitespace-pre-wrap">{msg.content}</p>
+        <div
+          className={cn(
+            'h-full overflow-hidden flex flex-col',
+            isChatCollapsed ? 'w-0 opacity-0' : 'w-full sm:w-1/4 md:w-1/4 lg:w-1/4'
+          )}
+          style={{
+            visibility: isChatCollapsed ? 'hidden' : 'visible',
+            display: isChatCollapsed ? 'none' : 'flex',
+          }}
+        >
+          <ScrollArea className="flex-1 overflow-y-auto">
+            <div className="flex flex-col">
+              {messages.length === 0 && !isStreaming ? (
+                <div className="flex items-center justify-center h-32 p-6">
+                  <Card className="p-6 text-center max-w-2xl">
+                    <p className="text-muted-foreground">
+                      Start by describing your project idea. I&apos;ll help you build comprehensive
+                      requirements through conversation.
+                    </p>
                   </Card>
                 </div>
-              ))
-            )}
-          </div>
+              ) : (
+                <>
+                  {enhancedMessages.map(message => (
+                    <ChatMessage
+                      key={message.id}
+                      id={message.id}
+                      content={message.content || ''}
+                      blocks={message.blocks}
+                      role={message.role}
+                      timestamp={message.timestamp}
+                      user={
+                        user
+                          ? {
+                              name: user.name || undefined,
+                              email: user.email,
+                              imageUrl: user.imageUrl || undefined,
+                            }
+                          : undefined
+                      }
+                      showAvatar={message.showAvatar}
+                    />
+                  ))}
 
-          {/* Input Area */}
-          <div className="border-t p-4">
-            <div className="flex gap-2">
-              <Textarea
-                value={message}
-                onChange={e => setMessage(e.target.value)}
-                placeholder="Describe your project or answer questions..."
-                className="flex-1 resize-none"
-                rows={3}
-                onKeyDown={e => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSendMessage();
-                  }
-                }}
-                disabled={isLoading || projectStatus === 'in_development'}
-              />
-              <Button
-                onClick={handleSendMessage}
-                disabled={!message.trim() || isLoading || projectStatus === 'in_development'}
-                size="icon"
-                className="h-auto"
-              >
-                {isLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Send className="h-4 w-4" />
-                )}
-              </Button>
+                  {/* Streaming assistant response */}
+                  {isStreaming && streamingBlocks.length > 0 && (
+                    <div className="animate-in fade-in-0 duration-300">
+                      <div className="flex w-full max-w-[95%] mx-auto gap-3 p-4" role="listitem">
+                        {/* Avatar */}
+                        <div className="relative flex items-center justify-center h-8 w-8">
+                          <div className="bg-muted border-primary rounded-md flex items-center justify-center h-full w-full">
+                            <svg
+                              viewBox="0 0 24 24"
+                              fill="currentColor"
+                              className="h-6 w-6 text-primary"
+                            >
+                              <circle
+                                cx="12"
+                                cy="12"
+                                r="10"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                fill="none"
+                              />
+                            </svg>
+                          </div>
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-1 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <h4>AI Assistant</h4>
+                            <time className="text-xs text-muted-foreground">now</time>
+                          </div>
+
+                          {/* Streaming text */}
+                          {streamingBlocks[0] && streamingBlocks[0].content ? (
+                            <div className="prose prose-sm dark:prose-invert max-w-none">
+                              <p className="whitespace-pre-wrap">{streamingBlocks[0].content}</p>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <div className="flex space-x-1">
+                                <div className="w-2 h-2 bg-primary rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                                <div className="w-2 h-2 bg-primary rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                                <div className="w-2 h-2 bg-primary rounded-full animate-bounce"></div>
+                              </div>
+                              <span className="animate-pulse">Processing request...</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+
+              <div ref={messagesEndRef} className="pb-6" />
             </div>
+          </ScrollArea>
+
+          <div className="px-4 pb-0 relative">
+            <ChatInput
+              onSendMessage={handleSendMessage}
+              isLoading={isLoading}
+              isStreaming={isStreaming}
+              onStop={handleCancelStream}
+              placeholder="Describe your project or answer questions..."
+              className="chat-input"
+            />
           </div>
         </div>
 
         {/* Right side - Docs Preview */}
-        <div className="flex-1 flex flex-col">
+        <div
+          className={cn(
+            'h-full flex-col overflow-hidden border rounded-md border-border',
+            isChatCollapsed ? 'w-full' : 'hidden md:flex sm:w-3/4 md:w-3/4 lg:w-3/4'
+          )}
+        >
           {/* Header with Confirm Button */}
           <div className="border-b p-4 flex items-center justify-between">
             <div>
@@ -238,14 +492,7 @@ export default function RequirementsView({
           </div>
 
           {/* Preview Content */}
-          <div className="flex-1 overflow-y-auto p-6">
-            <Card className="p-6">
-              <div
-                className="prose prose-sm dark:prose-invert max-w-none"
-                dangerouslySetInnerHTML={{ __html: parseMarkdown(docsContent) }}
-              />
-            </Card>
-          </div>
+          <MarkdownPreview content={docsContent} className="flex-1" />
         </div>
       </div>
 
@@ -261,8 +508,8 @@ export default function RequirementsView({
           </DialogHeader>
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Nice, see you in a couple of days when completed. You will get notified by email
-              when the project has been completed.
+              Nice, see you in a couple of days when completed. You will get notified by email when
+              the project has been completed.
             </p>
             <div className="flex gap-2 justify-end">
               <Button
@@ -283,4 +530,3 @@ export default function RequirementsView({
     </>
   );
 }
-

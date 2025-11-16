@@ -85,6 +85,18 @@ export const chatMessages = pgTable('chat_messages', {
   metadata: jsonb('metadata'), // NEW: System message metadata (e.g., revert info)
 });
 
+export const requirementsMessages = pgTable('requirements_messages', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  projectId: uuid('project_id')
+    .references(() => projects.id, { onDelete: 'cascade' })
+    .notNull(),
+  userId: text('user_id'), // Clerk user ID
+  role: varchar('role', { length: 20 }).notNull(), // 'user' or 'assistant'
+  content: text('content'), // For user messages (nullable for assistant messages)
+  blocks: jsonb('blocks'), // For assistant message blocks (text, thinking, tools)
+  timestamp: timestamp('timestamp').notNull().defaultNow(),
+});
+
 export const diffs = pgTable('diffs', {
   id: uuid('id').defaultRandom().primaryKey(),
   projectId: uuid('project_id')
@@ -187,6 +199,7 @@ export const projectsRelations = relations(projects, ({ many }) => ({
   commits: many(projectCommits),
   githubSyncSessions: many(githubSyncSessions),
   auditLogs: many(projectAuditLogs),
+  requirementsMessages: many(requirementsMessages),
 }));
 
 export const chatSessionsRelations = relations(chatSessions, ({ one, many }) => ({
@@ -258,6 +271,13 @@ export const projectAuditLogsRelations = relations(projectAuditLogs, ({ one }) =
   }),
 }));
 
+export const requirementsMessagesRelations = relations(requirementsMessages, ({ one }) => ({
+  project: one(projects, {
+    fields: [requirementsMessages.projectId],
+    references: [projects.id],
+  }),
+}));
+
 export type Project = typeof projects.$inferSelect;
 export type NewProject = typeof projects.$inferInsert;
 export type ProjectStatus = (typeof projectStatusEnum.enumValues)[number];
@@ -277,3 +297,5 @@ export type ProjectIntegration = typeof projectIntegrations.$inferSelect;
 export type NewProjectIntegration = typeof projectIntegrations.$inferInsert;
 export type ProjectAuditLog = typeof projectAuditLogs.$inferSelect;
 export type NewProjectAuditLog = typeof projectAuditLogs.$inferInsert;
+export type RequirementsMessage = typeof requirementsMessages.$inferSelect;
+export type NewRequirementsMessage = typeof requirementsMessages.$inferInsert;

@@ -61,6 +61,10 @@ type NavbarProps = {
     // Floating toggle functionality
     showSidebar?: boolean;
     onToggleSidebar?: () => void;
+    // NEW: Disable tabs for requirements mode
+    disableTabs?: boolean;
+    // NEW: Hide back button for requirements mode
+    hideBackButton?: boolean;
   };
   className?: string;
 };
@@ -392,17 +396,19 @@ export default function Navbar({
 
               {/* Floating toggle button positioned to the left of collapse toggle */}
               {/* Only show toggle when in chat interface (showSidebar is false) */}
-              {projectProps.onToggleSidebar && !projectProps.showSidebar && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={projectProps.onToggleSidebar}
-                  aria-label="Back to Sessions"
-                  title="Back to Sessions"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                </Button>
-              )}
+              {projectProps.onToggleSidebar &&
+                !projectProps.showSidebar &&
+                !projectProps.hideBackButton && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={projectProps.onToggleSidebar}
+                    aria-label="Back to Sessions"
+                    title="Back to Sessions"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                  </Button>
+                )}
 
               {/* Toggle button positioned at the right edge of chat width */}
               {projectProps.onToggleChat && (
@@ -434,8 +440,14 @@ export default function Navbar({
                   <Button
                     variant={projectProps.currentView === 'preview' ? 'secondary' : 'ghost'}
                     size="sm"
-                    className="rounded-none px-3 h-8"
-                    onClick={() => projectProps.onViewChange('preview')}
+                    className={cn(
+                      'rounded-none px-3 h-8',
+                      projectProps.disableTabs && 'opacity-50 cursor-not-allowed'
+                    )}
+                    onClick={() =>
+                      !projectProps.disableTabs && projectProps.onViewChange('preview')
+                    }
+                    disabled={projectProps.disableTabs}
                   >
                     <Eye className="h-4 w-4 mr-1" />
                     Preview
@@ -443,8 +455,12 @@ export default function Navbar({
                   <Button
                     variant={projectProps.currentView === 'code' ? 'secondary' : 'ghost'}
                     size="sm"
-                    className="rounded-none px-3 h-8"
-                    onClick={() => projectProps.onViewChange('code')}
+                    className={cn(
+                      'rounded-none px-3 h-8',
+                      projectProps.disableTabs && 'opacity-50 cursor-not-allowed'
+                    )}
+                    onClick={() => !projectProps.disableTabs && projectProps.onViewChange('code')}
+                    disabled={projectProps.disableTabs}
                   >
                     <Code className="h-4 w-4 mr-1" />
                     Code
@@ -452,8 +468,14 @@ export default function Navbar({
                   <Button
                     variant={projectProps.currentView === 'branding' ? 'secondary' : 'ghost'}
                     size="sm"
-                    className="rounded-none px-3 h-8"
-                    onClick={() => projectProps.onViewChange('branding')}
+                    className={cn(
+                      'rounded-none px-3 h-8',
+                      projectProps.disableTabs && 'opacity-50 cursor-not-allowed'
+                    )}
+                    onClick={() =>
+                      !projectProps.disableTabs && projectProps.onViewChange('branding')
+                    }
+                    disabled={projectProps.disableTabs}
                   >
                     <Sparkles className="h-4 w-4 mr-1" />
                     Branding
@@ -461,8 +483,14 @@ export default function Navbar({
                   <Button
                     variant={projectProps.currentView === 'settings' ? 'secondary' : 'ghost'}
                     size="sm"
-                    className="rounded-none px-3 h-8"
-                    onClick={() => projectProps.onViewChange('settings')}
+                    className={cn(
+                      'rounded-none px-3 h-8',
+                      projectProps.disableTabs && 'opacity-50 cursor-not-allowed'
+                    )}
+                    onClick={() =>
+                      !projectProps.disableTabs && projectProps.onViewChange('settings')
+                    }
+                    disabled={projectProps.disableTabs}
                   >
                     <Settings className="h-4 w-4 mr-1" />
                     Settings
@@ -470,8 +498,14 @@ export default function Navbar({
                   <Button
                     variant={projectProps.currentView === 'database' ? 'secondary' : 'ghost'}
                     size="sm"
-                    className="rounded-none px-3 h-8"
-                    onClick={() => projectProps.onViewChange('database')}
+                    className={cn(
+                      'rounded-none px-3 h-8',
+                      projectProps.disableTabs && 'opacity-50 cursor-not-allowed'
+                    )}
+                    onClick={() =>
+                      !projectProps.disableTabs && projectProps.onViewChange('database')
+                    }
+                    disabled={projectProps.disableTabs}
                   >
                     <Database className="h-4 w-4 mr-1" />
                     Database
