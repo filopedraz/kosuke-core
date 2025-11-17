@@ -7,8 +7,6 @@ const nextConfig: NextConfig = {
   experimental: {
     externalDir: true,
     webpackMemoryOptimizations: true,
-    // @ts-expect-error - instrumentationHook is not yet in type definitions but works at runtime
-    instrumentationHook: true,
   },
   typescript: {
     ignoreBuildErrors: true,

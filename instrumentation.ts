@@ -79,10 +79,6 @@ function validateEnvironmentVariables() {
 }
 
 export async function register() {
-  console.log('📍 instrumentation.register() called');
-  console.log('NEXT_RUNTIME:', process.env.NEXT_RUNTIME);
-  console.log('NODE_ENV:', process.env.NODE_ENV);
-
   // Validate environment variables on server startup
   if (process.env.NEXT_RUNTIME === 'nodejs') {
     validateEnvironmentVariables();
