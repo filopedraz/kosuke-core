@@ -48,8 +48,8 @@ jobs:
           push: true
           platforms: linux/amd64
           tags: |
-            ghcr.io/kosuke-org/kosuke-core:stage-latest
-            ghcr.io/kosuke-org/kosuke-core:stage-${{ github.sha }}
+            ghcr.io/kosuke-org/kosuke-core-stage:latest
+            ghcr.io/kosuke-org/kosuke-core-stage:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -98,11 +98,11 @@ jobs:
           echo "🔐 Logging into GitHub Container Registry..."
           ssh ${{ secrets.STAGE_SERVER_USER }}@${{ secrets.STAGE_SERVER_IP }} "echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin"
           echo "🐳 Pulling latest Docker image..."
-          ssh ${{ secrets.STAGE_SERVER_USER }}@${{ secrets.STAGE_SERVER_IP }} "cd /home/developer/kosuke-core/ && docker compose pull nextjs"
+          ssh ${{ secrets.STAGE_SERVER_USER }}@${{ secrets.STAGE_SERVER_IP }} "cd /home/developer/kosuke-core/ && docker compose -f docker-compose.yml -f docker-compose.stage.yml pull nextjs"
           echo "🚢 Starting containers..."
-          ssh ${{ secrets.STAGE_SERVER_USER }}@${{ secrets.STAGE_SERVER_IP }} "cd /home/developer/kosuke-core/ && docker compose -f docker-compose.yml up -d"
+          ssh ${{ secrets.STAGE_SERVER_USER }}@${{ secrets.STAGE_SERVER_IP }} "cd /home/developer/kosuke-core/ && docker compose -f docker-compose.yml -f docker-compose.stage.yml up -d"
           echo "📊 Running database migrations..."
-          ssh ${{ secrets.STAGE_SERVER_USER }}@${{ secrets.STAGE_SERVER_IP }} "cd /home/developer/kosuke-core/ && docker compose -f docker-compose.yml exec nextjs npm run db:migrate"
+          ssh ${{ secrets.STAGE_SERVER_USER }}@${{ secrets.STAGE_SERVER_IP }} "cd /home/developer/kosuke-core/ && docker compose -f docker-compose.yml -f docker-compose.stage.yml exec nextjs npm run db:migrate"
           echo "🧹 Cleaning up Docker resources..."
           ssh ${{ secrets.STAGE_SERVER_USER }}@${{ secrets.STAGE_SERVER_IP }} "docker system prune -af --volumes"
           echo "✅ Staging deployment completed successfully"

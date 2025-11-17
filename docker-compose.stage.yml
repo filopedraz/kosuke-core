@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  traefik:
+    volumes:
+      - ./traefik/traefik.stage.yml:/etc/traefik/traefik.yml:ro
+      - ./traefik/dynamic.stage.yml:/etc/traefik/dynamic.yml:ro
+
+  nextjs:
+    # Pulling staging image instead of building locally
+    image: ghcr.io/kosuke-org/kosuke-core-stage:latest
+    environment:
+      # Accept self-signed certificates from Traefik (staging uses self-signed certs)
+      - NODE_TLS_REJECT_UNAUTHORIZED=0
+

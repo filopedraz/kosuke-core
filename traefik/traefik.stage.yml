@@ -31,17 +31,19 @@ certificatesResolvers:
     acme:
       email: filippo.pedrazzini@joandko.io
       storage: /certs/acme.json
+      caServer: https://acme-staging-v02.api.letsencrypt.org/directory
       dnsChallenge:
         provider: cloudflare
         delayBeforeCheck: 10
         resolvers:
           - '1.1.1.1:53'
           - '8.8.8.8:53'
-        # Supports both kosuke.ai and kosuke.app domains
+        # Supports both stage.kosuke.ai and stage.kosuke.app domains
 
 log:
-  level: INFO
+  level: DEBUG
   filePath: '/var/log/traefik.log'
 
 accessLog:
   filePath: '/var/log/access.log'
+
