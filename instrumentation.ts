@@ -80,19 +80,11 @@ function validateEnvironmentVariables() {
 
 export async function register() {
   // Validate environment variables on server startup
-  if (process.env.NEXT_RUNTIME === 'nodejs') {
-    validateEnvironmentVariables();
-  }
+  validateEnvironmentVariables();
 
   // Only initialize Sentry in production
   if (process.env.NODE_ENV === 'production') {
-    if (process.env.NEXT_RUNTIME === 'nodejs') {
-      await import('./sentry.server.config');
-    }
-
-    if (process.env.NEXT_RUNTIME === 'edge') {
-      await import('./sentry.edge.config');
-    }
+    await import('./sentry.server.config');
   }
 }
 
