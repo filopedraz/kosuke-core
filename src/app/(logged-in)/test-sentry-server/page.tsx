@@ -1,8 +1,16 @@
 import { Button } from '@/components/ui/button';
+import * as Sentry from '@sentry/nextjs';
 
 async function triggerServerError() {
   'use server';
-  throw new Error('🧪 Test Sentry error from server action - check Slack notification');
+  try {
+    throw new Error('🧪 Test Sentry error from server action - check Slack notification');
+  } catch (error) {
+    // Manually capture for server actions
+    Sentry.captureException(error);
+    await Sentry.flush(2000);
+    throw error;
+  }
 }
 
 export default function TestServerSentryPage() {
