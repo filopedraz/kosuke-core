@@ -21,22 +21,22 @@ const ogImageSquare = `${baseUrl}/opengraph-image-square.jpg`;
 // Set NEXT_PUBLIC_ENABLE_INDEXING=true in production environment only
 const enableIndexing = process.env.NEXT_PUBLIC_ENABLE_INDEXING === 'true';
 
-const title = 'Kosuke - Reframing Vibe Coding';
+const title = 'Kosuke - Your Technical Co-founder for the 0 to 1';
 const description =
-  'Combine AI speed with engineering rigor to help you build faster and ship production-ready products.';
+  'Stop settling for broken demos. We deliver production-ready software combining AI speed with engineering expertise, so you can launch your startup with confidence.';
 
 export const metadata: Metadata = {
   title,
   description,
   keywords: [
-    'AI web development',
-    'web project builder',
-    'AI coding assistant',
-    'web development tools',
+    'technical cofounder',
+    'MVP development',
+    'startup software development',
+    'production-ready software',
     'AI-powered development',
-    'web application builder',
-    'coding assistant',
-    'development platform',
+    'founder software',
+    '0 to 1 development',
+    'startup technical partner',
   ],
   authors: [{ name: 'Kosuke Team' }],
   creator: 'Kosuke',
@@ -62,13 +62,13 @@ export const metadata: Metadata = {
         url: ogImage,
         width: 1200,
         height: 630,
-        alt: 'Kosuke - AI-Powered Web Development',
+        alt: 'Kosuke - Your Technical Cofounder for the 0 to 1',
       },
       {
         url: ogImageSquare,
         width: 500,
         height: 500,
-        alt: 'Kosuke - AI-Powered Web Development',
+        alt: 'Kosuke - Your Technical Cofounder for the 0 to 1',
       },
     ],
   },

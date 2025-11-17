@@ -15,6 +15,7 @@ const isPublicRoute = createRouteMatcher([
   '/customers',
   '/pricing',
   '/customers/:path*',
+  '/solutions/kosuke-platform',
   '/solutions/ship-with-engineers',
   '/solutions/enabling-collaboration',
   '/solutions/on-premise',

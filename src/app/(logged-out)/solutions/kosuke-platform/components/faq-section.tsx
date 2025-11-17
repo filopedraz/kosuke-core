@@ -20,7 +20,8 @@ export function FAQSection() {
               Frequently Asked Questions
             </h2>
             <p className="text-base sm:text-lg text-muted-foreground max-w-3xl mx-auto font-sans px-2">
-              Everything you need to know about working with Kosuke as your technical cofounder.
+              Discover quick and comprehensive answers to common questions about our platform,
+              services, and features.
             </p>
           </div>
 
@@ -51,9 +52,7 @@ export function FAQSection() {
             <p className="text-muted-foreground text-sm sm:text-base mt-6 px-4 sm:px-8">
               Can&apos;t find what you&apos;re looking for? Contact our{' '}
               <Link
-                href="https://links.kosuke.ai/contact"
-                target="_blank"
-                rel="noopener noreferrer"
+                href="mailto:filippo.pedrazzini@joandko.io"
                 className="text-primary font-medium hover:underline"
               >
                 customer support team
