@@ -7,6 +7,7 @@ import { sessionManager } from '@/lib/sessions';
 import type { DockerContainerStatus, RouteInfo } from '@/lib/types/docker';
 import type { PreviewUrl, PreviewUrlsResponse } from '@/lib/types/preview-urls';
 import { DockerClient, type ContainerCreateRequest } from '@docker/node-sdk';
+import https from 'https';
 import { join } from 'path';
 import { getDockerConfig, validateDockerConfig } from './config';
 import { PortRouterAdapter, TraefikRouterAdapter, type RouterAdapter } from './router-adapters';
@@ -302,10 +303,21 @@ class DockerService {
     const timeoutId = setTimeout(() => controller.abort(), timeout);
 
     try {
-      const response = await fetch(healthUrl, {
+      // STAGING: Accept self-signed certificates during health checks
+      // TODO: Remove this when using production Let's Encrypt certificates
+      const fetchOptions: RequestInit = {
         signal: controller.signal,
         method: 'GET',
-      });
+      };
+
+      if (healthUrl.startsWith('https://')) {
+        const httpsAgent = new https.Agent({
+          rejectUnauthorized: false,
+        });
+        Object.assign(fetchOptions, { agent: httpsAgent });
+      }
+
+      const response = await fetch(healthUrl, fetchOptions);
 
       console.log(`Health check response: ${response.ok}`);
 
