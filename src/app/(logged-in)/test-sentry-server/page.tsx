@@ -4,11 +4,22 @@ import * as Sentry from '@sentry/nextjs';
 async function triggerServerError() {
   'use server';
   try {
+    // Check if Sentry is even initialized
+    const client = Sentry.getClient();
+    const dsn = client?.getOptions().dsn;
+    console.log('🔍 Sentry client:', client ? 'EXISTS' : 'NOT FOUND');
+    console.log('🔍 Sentry DSN:', dsn || 'NOT SET');
+
     throw new Error('🧪 Test Sentry error from server action - check Slack notification');
   } catch (error) {
-    // Manually capture for server actions
-    Sentry.captureException(error);
-    await Sentry.flush(2000);
+    console.log('🧪 Capturing server error...');
+    const eventId = Sentry.captureException(error);
+    console.log('✓ Event ID:', eventId);
+
+    console.log('⏳ Flushing to Sentry...');
+    const flushed = await Sentry.flush(5000);
+    console.log('✅ Flush result:', flushed);
+
     throw error;
   }
 }
