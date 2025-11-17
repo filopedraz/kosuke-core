@@ -29,7 +29,7 @@ providers:
 certificatesResolvers:
   letsencrypt:
     acme:
-      email: filippo.pedrazzini@kosuke.ai
+      email: filippo.pedrazzini@joandko.io
       storage: /certs/acme.json
       dnsChallenge:
         provider: cloudflare
