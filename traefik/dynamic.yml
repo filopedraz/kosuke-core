@@ -7,12 +7,12 @@ tls:
   # This dramatically speeds up preview startup by eliminating per-subdomain cert generation
   # Temporarily disabled - corrupted cert file
   # Traefik will auto-generate from ACME instead
-  # certificates:
-  #   # Wildcard certificate for *.kosuke.app (preview subdomains)
-  #   - certFile: /certs/wildcard-kosuke-app.crt
-  #     keyFile: /certs/wildcard-kosuke-app.key
-  #     stores:
-  #       - default
+  certificates:
+    # Wildcard certificate for *.kosuke.app (preview subdomains)
+    - certFile: /certs/wildcard-kosuke-app.crt
+      keyFile: /certs/wildcard-kosuke-app.key
+      stores:
+        - default
 
   stores:
     default:
