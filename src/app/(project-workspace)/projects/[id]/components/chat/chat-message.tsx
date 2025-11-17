@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import type { AssistantBlock, ChatMessageProps, ContentBlock, ErrorType } from '@/lib/types';
 import { getFileName, processMessageContent } from '@/lib/utils/message-content';
 import AssistantResponse from './assistant-response';
+import ChatMessageAttachments from './chat-message-attachments';
 import { MessageRevertButton } from './message-revert-button';
 
 
@@ -32,6 +33,7 @@ export default function ChatMessage({
   chatSessionId,
   sessionId,
   metadata,
+  attachments,
 }: ChatMessageProps) {
   const isUser = role === 'user';
   const isSystem = role === 'system';
@@ -182,7 +184,7 @@ export default function ChatMessage({
         <Avatar className="h-8 w-8">
           {isUser ? (
             <>
-              <AvatarImage src={imageUrl || undefined} alt={displayName || 'User'} />
+              {imageUrl && <AvatarImage src={imageUrl} alt={displayName || 'User'} />}
               <AvatarFallback className="bg-primary text-primary-foreground">
                 {initials}
               </AvatarFallback>
@@ -236,7 +238,7 @@ export default function ChatMessage({
         ) : (
           // Render regular text/image content
           <div className={cn(
-              "prose prose-xs dark:prose-invert max-w-none text-sm [overflow-wrap:anywhere]",
+              "prose prose-xs dark:prose-invert max-w-none text-sm wrap-anywhere",
               !showAvatar && "mt-0", // Remove top margin for consecutive messages
               hasError && !isUser && "text-muted-foreground" // Muted text for error messages
             )}>
@@ -244,7 +246,7 @@ export default function ChatMessage({
                 part.type === 'text' ? (
                   // Render regular text content with line breaks
                   part.content.split('\n').map((line, j) => (
-                    <p key={`${i}-${j}`} className={line.trim() === '' ? 'h-4' : '[word-break:normal] [overflow-wrap:anywhere]'}>
+                    <p key={`${i}-${j}`} className={line.trim() === '' ? 'h-4' : '[word-break:normal] wrap-anywhere'}>
                       {line}
                     </p>
                   ))
@@ -260,7 +262,7 @@ export default function ChatMessage({
                     </div>
                     <div className="text-muted-foreground/70 text-xs leading-relaxed italic">
                       {part.content.split('\n').map((line, j) => (
-                        <p key={`thinking-${i}-${j}`} className={line.trim() === '' ? 'h-3' : '[word-break:normal] [overflow-wrap:anywhere]'}>
+                        <p key={`thinking-${i}-${j}`} className={line.trim() === '' ? 'h-3' : '[word-break:normal] wrap-anywhere'}>
                           {line}
                         </p>
                       ))}
@@ -271,7 +273,7 @@ export default function ChatMessage({
                 // Render image
                 <div key={i} className="my-2 inline-block max-w-[400px]">
                   <div className="flex items-center gap-3 bg-card rounded-md p-2 px-3 border border-border">
-                    <div className="relative w-12 h-12 rounded-sm bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
+                    <div className="relative w-12 h-12 rounded-sm bg-muted flex items-center justify-center overflow-hidden shrink-0">
                       <div
                         className="relative w-full h-full cursor-pointer"
                         onClick={() => window.open(part.content, '_blank')}
@@ -290,13 +292,18 @@ export default function ChatMessage({
                         {getFileName(part.content)}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        76.70kB
+                        {part.fileSize ? `${(part.fileSize / 1024).toFixed(1)}kB` : 'Unknown size'}
                       </p>
                     </div>
                   </div>
                 </div>
               )
             ))}
+
+            {/* Display attachments if present */}
+            {attachments && attachments.length > 0 && (
+              <ChatMessageAttachments attachments={attachments} />
+            )}
           </div>
         )}
 

@@ -8,6 +8,13 @@
       "when": 1762960634746,
       "tag": "0000_soft_wolf_cub",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1763094804706,
+      "tag": "0001_medical_dragon_man",
+      "breakpoints": true
     }
   ]
 }

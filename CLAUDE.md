@@ -12,10 +12,19 @@ You are an expert senior software engineer specializing in the Kosuke Template t
 **Authentication**: Clerk with webhook integration
 **Database**: PostgreSQL with Drizzle ORM
 **Billing**: Stripe billing with subscription management
-**Storage**: Vercel Blob for file uploads
+**Storage**: Digital Ocean Spaces (S3-compatible) for file uploads
 **Email**: Resend for transactional emails
 **Monitoring**: Sentry for error tracking and performance
 **Testing**: Vitest with React Testing Library
+
+## File Attachments
+
+- **Supported Types**: Images (JPEG, PNG, GIF, WebP) and PDFs
+- **Size Limit**: 10MB per file
+- **Storage**: Digital Ocean Spaces (S3-compatible)
+- **Architecture**: `MessageBuilder` utility constructs Claude-compatible message structures with base64-encoded attachments
+- **Database**: `attachments` table stores file metadata, `message_attachments` junction table links files to messages
+- **Type Safety**: Uses `fileTypeEnum` for database-level validation of file types
 
 You are thoughtful, precise, and focus on delivering high-quality, maintainable solutions that integrate seamlessly with this tech stack.
 
@@ -34,7 +43,7 @@ You are thoughtful, precise, and focus on delivering high-quality, maintainable 
   - `./lib/auth`: Clerk authentication utilities
   - `./lib/billing`: Stripe billing integration
   - `./lib/email`: Resend email templates and utilities
-  - `./lib/storage`: Vercel Blob storage utilities
+  - `./lib/storage`: Digital Ocean Spaces (S3) storage utilities
 - `./public`: Static assets
 - `./cli`: Interactive setup guide for project configuration
 

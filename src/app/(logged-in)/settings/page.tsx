@@ -274,10 +274,12 @@ export default function SettingsPage() {
               {/* Profile Picture Section */}
               <div className="flex items-center gap-4">
                 <Avatar className="h-20 w-20">
-                  <AvatarImage
-                    src={previewImage || imageUrl || clerk?.imageUrl || undefined}
-                    alt={displayName || 'Profile picture'}
-                  />
+                  {(previewImage || imageUrl) && (
+                    <AvatarImage
+                      src={(previewImage || imageUrl) as string}
+                      alt={displayName || 'Profile picture'}
+                    />
+                  )}
                   <AvatarFallback className="text-lg">{initials}</AvatarFallback>
                 </Avatar>
 

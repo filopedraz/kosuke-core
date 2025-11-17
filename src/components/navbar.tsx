@@ -68,7 +68,7 @@ type NavbarProps = {
 const solutions = [
   {
     title: 'Kosuke Platform',
-    href: '/',
+    href: '/solutions/kosuke-platform',
   },
   {
     title: 'Kosuke Engineers',
@@ -123,7 +123,7 @@ export default function Navbar({
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-8 w-8 rounded-md p-0">
                 <Avatar className="h-8 w-8 cursor-pointer transition-all">
-                  <AvatarImage src={imageUrl || undefined} alt={displayName || 'User'} />
+                  {imageUrl && <AvatarImage src={imageUrl} alt={displayName || 'User'} />}
                   <AvatarFallback className="bg-primary text-primary-foreground">
                     {initials}
                   </AvatarFallback>

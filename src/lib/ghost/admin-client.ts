@@ -7,7 +7,7 @@ interface GhostMemberPayload {
   email: string;
   name?: string;
   labels?: Array<{ name: string }>;
-  subscribed?: string;
+  subscribed?: boolean;
   newsletters?: Array<{ id?: string }>;
 }
 
@@ -56,7 +56,7 @@ export async function subscribeToNewsletter(
       email,
       name: name || undefined,
       labels: [{ name: 'website-subscriber' }],
-      subscribed: 'true',
+      subscribed: true,
       newsletters: [],
     };
     await client.members.add(memberPayload as unknown as Parameters<typeof client.members.add>[0]);

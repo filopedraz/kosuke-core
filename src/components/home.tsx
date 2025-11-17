@@ -1,17 +1,14 @@
 'use client';
 
-import { HowItWorksSection } from '@/app/(logged-out)/home/components/how-it-works-section';
 import { CTASection } from '@/app/(logged-out)/home/components/cta-section';
 import { FAQSection } from '@/app/(logged-out)/home/components/faq-section';
-import { FeaturesBentoGrid } from '@/app/(logged-out)/home/components/features-bento-grid';
 import { HeroSection } from '@/app/(logged-out)/home/components/hero-section';
-import { PrivateAlphaModal } from '@/app/(logged-out)/home/components/private-alpha-modal';
-import { ReviewsMarquee } from '@/app/(logged-out)/home/components/reviews-marquee';
-import { useEffect, useState } from 'react';
+import { ProblemsSection } from '@/app/(logged-out)/home/components/problems-section';
+import { SolutionsGridSection } from '@/app/(logged-out)/home/components/solutions-grid-section';
+
+import { useEffect } from 'react';
 
 export function Home() {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-
   useEffect(() => {
     // Scroll to top on mount
     window.scrollTo(0, 0);
@@ -35,25 +32,19 @@ export function Home() {
       </div>
 
       {/* Hero Section */}
-      <HeroSection onApplyClick={() => setIsModalOpen(true)} />
+      <HeroSection />
 
-      {/* Core Features */}
-      <HowItWorksSection />
+      {/* Problems Section */}
+      <ProblemsSection />
 
-      {/* Bento Grid Features */}
-      <FeaturesBentoGrid />
+      {/* Solutions Grid */}
+      <SolutionsGridSection />
 
-      {/* Private Alpha CTA */}
-      <CTASection onApplyClick={() => setIsModalOpen(true)} />
-
-      {/* Reviews Section */}
-      <ReviewsMarquee />
+      {/* CTA Section */}
+      <CTASection />
 
       {/* FAQ Section */}
       <FAQSection />
-
-      {/* Private Alpha Modal */}
-      <PrivateAlphaModal open={isModalOpen} onOpenChange={setIsModalOpen} />
     </div>
   );
 }

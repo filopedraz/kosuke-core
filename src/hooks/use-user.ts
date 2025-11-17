@@ -180,9 +180,14 @@ export function useUser(): UseUserReturn {
     return createEnhancedUser(userProfile, clerkUser as unknown as ClerkUser_SDK);
   }, [userProfile, clerkUser]);
 
+  // Update the imageUrl computation to check hasImage
   const imageUrl = useMemo(() => {
-    return userProfile?.imageUrl || clerkUser?.imageUrl || null;
-  }, [userProfile?.imageUrl, clerkUser?.imageUrl]);
+    // If user has a custom image, use it; otherwise return null to show initials
+    if (clerkUser?.hasImage) {
+      return userProfile?.imageUrl || clerkUser?.imageUrl || null;
+    }
+    return null;
+  }, [userProfile?.imageUrl, clerkUser?.imageUrl, clerkUser?.hasImage]);
 
   const displayName = useMemo(() => {
     if (enhancedUser) return enhancedUser.displayName;
