@@ -23,6 +23,8 @@ const isPublicRoute = createRouteMatcher([
   // Sentry monitoring tunnel (must be public for error reporting)
   '/monitoring',
   '/monitoring(.*)',
+  // Sentry test page
+  '/test-sentry-ui',
   // SEO and metadata routes
   '/robots.txt',
   '/sitemap.xml',
