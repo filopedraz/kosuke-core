@@ -31,6 +31,7 @@ certificatesResolvers:
     acme:
       email: filippo.pedrazzini@joandko.io
       storage: /certs/acme.json
+      caServer: https://acme-staging-v02.api.letsencrypt.org/directory
       dnsChallenge:
         provider: cloudflare
         delayBeforeCheck: 10
