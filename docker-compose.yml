@@ -44,10 +44,14 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        DOCKER_GID: 989  # Match your host's DOCKER_GID
+        DOCKER_GID: 989 # Match your host's DOCKER_GID
     container_name: kosuke_nextjs
     env_file:
       - .env
+    environment:
+      # STAGING: Accept self-signed certificates from Traefik
+      # TODO: Remove when using production Let's Encrypt certificates
+      - NODE_TLS_REJECT_UNAUTHORIZED=0
     volumes:
       - ./projects:/app/projects:cached
       - /var/run/docker.sock:/var/run/docker.sock
