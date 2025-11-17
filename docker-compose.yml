@@ -40,7 +40,11 @@ services:
       - kosuke_network
 
   nextjs:
-    image: ghcr.io/kosuke-org/kosuke-core:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        DOCKER_GID: 989  # Match your host's DOCKER_GID
     container_name: kosuke_nextjs
     env_file:
       - .env
