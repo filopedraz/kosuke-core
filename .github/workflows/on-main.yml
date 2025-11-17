@@ -45,6 +45,8 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
+          build-args: |
+            DOCKER_GID=989
           push: true
           platforms: linux/amd64
           tags: |
