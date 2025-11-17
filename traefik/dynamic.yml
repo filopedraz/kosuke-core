@@ -5,8 +5,6 @@
 tls:
   # Request wildcard certificate for all preview subdomains
   # This dramatically speeds up preview startup by eliminating per-subdomain cert generation
-  # Temporarily disabled - corrupted cert file
-  # Traefik will auto-generate from ACME instead
   certificates:
     # Wildcard certificate for *.kosuke.app (preview subdomains)
     - certFile: /certs/wildcard-kosuke-app.crt
