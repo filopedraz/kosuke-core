@@ -15,7 +15,6 @@ if (dsn && isProduction) {
     tracesSampleRate: 1.0,
     maxBreadcrumbs: 50,
     attachStacktrace: true,
-    environment: process.env.NODE_ENV,
   });
   console.log('✅ Sentry (Edge) initialized');
 } else {
