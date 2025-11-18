@@ -1,3 +1,4 @@
 ./projects/
 
-!.env.example
+!.env.local
+!.env.prod

@@ -23,7 +23,6 @@ function validateEnvironmentVariables() {
 
     // Docker Configuration
     { key: 'HOST_WORKSPACE_DIR', description: 'Host workspace directory path' },
-    { key: 'DOCKER_HOST', description: 'Docker host socket path' },
 
     // GitHub Configuration
     { key: 'TEMPLATE_REPOSITORY', description: 'GitHub template repository' },
@@ -45,22 +44,6 @@ function validateEnvironmentVariables() {
     { key: 'S3_SECRET_ACCESS_KEY', description: 'Digital Ocean Spaces secret key' },
 
     // Domain Configuration
-    { key: 'MAIN_DOMAIN', description: 'Main application domain' },
-    { key: 'PREVIEW_BASE_DOMAIN', description: 'Base domain for preview deployments' },
-    { key: 'TRAEFIK_ENABLED', description: 'Enable Traefik reverse proxy' },
-    { key: 'ROUTER_MODE', description: 'Router mode (traefik or direct)' },
-    { key: 'PREVIEW_PORT_RANGE_START', description: 'Preview port range start' },
-    { key: 'PREVIEW_PORT_RANGE_END', description: 'Preview port range end' },
-    { key: 'PREVIEW_HEALTH_PATH', description: 'Preview health check path' },
-    { key: 'PREVIEW_NETWORK', description: 'Docker network for previews' },
-    { key: 'PREVIEW_CONTAINER_NAME_PREFIX', description: 'Docker container name prefix' },
-
-    // Ghost CMS
-    { key: 'GHOST_ADMIN_API_KEY', description: 'Ghost CMS admin API key' },
-    { key: 'SLACK_WEBHOOK_URL', description: 'Slack webhook URL for notifications' },
-
-    // Monitoring
-    { key: 'SENTRY_AUTH_TOKEN', description: 'Sentry authentication token' },
   ];
 
   const missingVars = requiredEnvVars.filter(({ key }) => !process.env[key]);
