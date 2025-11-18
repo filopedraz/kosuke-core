@@ -17,7 +17,7 @@ type Failure<E> = {
   error: E;
 };
 
-export type Result<T, E = Error> = Success<T> | Failure<E>;
+type Result<T, E = Error> = Success<T> | Failure<E>;
 
 /**
  * Wraps an async operation in a try-catch and returns a Result object
