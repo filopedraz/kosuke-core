@@ -4,11 +4,26 @@ import * as Sentry from '@sentry/nextjs';
 async function triggerServerError() {
   'use server';
   try {
+    // Debug: Check what env vars are available at runtime
+    console.log('🔍 Sentry initialization check (Server Action):');
+    console.log('  NODE_ENV:', process.env.NODE_ENV);
+    console.log(
+      '  NEXT_PUBLIC_SENTRY_DSN:',
+      process.env.NEXT_PUBLIC_SENTRY_DSN ? 'SET' : 'NOT SET'
+    );
+    console.log('  SENTRY_DSN:', process.env.SENTRY_DSN ? 'SET' : 'NOT SET');
+    console.log(
+      '  All SENTRY env keys:',
+      Object.keys(process.env)
+        .filter(k => k.includes('SENTRY'))
+        .join(', ')
+    );
+
     // Check if Sentry is even initialized
     const client = Sentry.getClient();
     const dsn = client?.getOptions().dsn;
     console.log('🔍 Sentry client:', client ? 'EXISTS' : 'NOT FOUND');
-    console.log('🔍 Sentry DSN:', dsn || 'NOT SET');
+    console.log('🔍 DSN from client:', dsn || 'NOT SET');
 
     throw new Error('🧪 Test Sentry error from server action - check Slack notification');
   } catch (error) {
