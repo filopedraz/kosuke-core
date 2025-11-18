@@ -79,12 +79,23 @@ function validateEnvironmentVariables() {
 }
 
 export async function register() {
+  console.log('📊 Instrumentation register() called');
+
   // Validate environment variables on server startup
   validateEnvironmentVariables();
 
   // Only initialize Sentry in production
+  console.log('📊 NODE_ENV:', process.env.NODE_ENV);
   if (process.env.NODE_ENV === 'production') {
-    await import('./sentry.server.config');
+    console.log('📊 Importing Sentry server config...');
+    try {
+      await import('./sentry.server.config');
+      console.log('✅ Sentry server config loaded');
+      const client = Sentry.getClient();
+      console.log('✅ Sentry client after import:', client ? 'INITIALIZED' : 'NOT FOUND');
+    } catch (error) {
+      console.error('❌ Failed to load Sentry server config:', error);
+    }
   }
 }
 

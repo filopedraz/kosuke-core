@@ -4,12 +4,26 @@
 
 import * as Sentry from '@sentry/nextjs';
 
+console.log('🔧 sentry.server.config.ts loaded');
+console.log('  NODE_ENV:', process.env.NODE_ENV);
+console.log('  NEXT_PUBLIC_SENTRY_DSN:', process.env.NEXT_PUBLIC_SENTRY_DSN ? 'SET' : 'NOT SET');
+
 // Only initialize Sentry in production
 if (process.env.NODE_ENV === 'production') {
-  Sentry.init({
-    dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
-    tracesSampleRate: 1.0,
-    maxBreadcrumbs: 50,
-    attachStacktrace: true,
-  });
+  const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
+  if (dsn) {
+    console.log('🚀 Initializing Sentry with DSN');
+    Sentry.init({
+      dsn,
+      tracesSampleRate: 1.0,
+      maxBreadcrumbs: 50,
+      attachStacktrace: true,
+      debug: true,
+    });
+    console.log('✅ Sentry initialized successfully');
+  } else {
+    console.error('❌ NEXT_PUBLIC_SENTRY_DSN is not set, skipping Sentry initialization');
+  }
+} else {
+  console.log('⏭️  Skipping Sentry initialization (NODE_ENV is not production)');
 }
