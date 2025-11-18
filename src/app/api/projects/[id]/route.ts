@@ -128,13 +128,12 @@ export async function DELETE(
 
     // Read delete options from request body (optional)
     let deleteRepo = false;
-    const { data: bodyData, error: bodyError } = await tryCatch(request.json());
+    const { data: bodyData } = await tryCatch(request.json());
 
-    if (!bodyError && bodyData) {
+    if (bodyData) {
       deleteRepo = Boolean(bodyData.deleteRepo);
     }
-    // If error, no body provided; keep defaults
-
+    
     // Step 1: Stop all preview containers for this project before file deletion
     console.log(`Stopping all preview containers for project ${projectId} before deletion`);
     const dockerService = getDockerService();

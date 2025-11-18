@@ -12,12 +12,12 @@ type Success<T> = {
   error: null;
 };
 
-type Failure<E> = {
+type Failure = {
   data: null;
-  error: E;
+  error: Error;
 };
 
-type Result<T, E = Error> = Success<T> | Failure<E>;
+type Result<T> = Success<T> | Failure;
 
 /**
  * Wraps an async operation in a try-catch and returns a Result object
@@ -32,12 +32,15 @@ type Result<T, E = Error> = Success<T> | Failure<E>;
  * console.log('User:', data);
  * ```
  */
-export async function tryCatch<T, E = Error>(promise: Promise<T>): Promise<Result<T, E>> {
+export async function tryCatch<T>(promise: Promise<T>): Promise<Result<T>> {
   try {
     const data = await promise;
     return { data, error: null };
   } catch (error) {
-    return { data: null, error: error as E };
+    return {
+      data: null,
+      error: error instanceof Error ? error : new Error(String(error)),
+    };
   }
 }
 
@@ -54,11 +57,14 @@ export async function tryCatch<T, E = Error>(promise: Promise<T>): Promise<Resul
  * console.log('Parsed:', data);
  * ```
  */
-export function tryCatchSync<T, E = Error>(fn: () => T): Result<T, E> {
+export function tryCatchSync<T>(fn: () => T): Result<T> {
   try {
     const data = fn();
     return { data, error: null };
   } catch (error) {
-    return { data: null, error: error as E };
+    return {
+      data: null,
+      error: error instanceof Error ? error : new Error(String(error)),
+    };
   }
 }
