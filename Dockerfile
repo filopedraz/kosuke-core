@@ -24,8 +24,6 @@ COPY --from=deps /app/bun.lock ./bun.lock
 # Copy only the necessary files for the build
 COPY next.config.* .
 COPY sentry*.config.* .
-COPY instrumentation.ts ./
-COPY instrumentation-client.ts ./
 COPY tsconfig.json .
 COPY tailwind.config.* .
 COPY postcss.config.* .
@@ -78,8 +76,6 @@ COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nextjs:nodejs /app/drizzle.config.* ./
 COPY --from=builder --chown=nextjs:nodejs /app/src/middleware.ts ./middleware.ts
 COPY --from=builder --chown=nextjs:nodejs /app/sentry*.config.* ./
-COPY --from=builder --chown=nextjs:nodejs /app/instrumentation.ts ./
-COPY --from=builder --chown=nextjs:nodejs /app/instrumentation-client.ts ./
 COPY --from=builder --chown=nextjs:nodejs /app/src/lib ./lib
 
 USER nextjs
