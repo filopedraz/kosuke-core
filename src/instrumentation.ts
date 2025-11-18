@@ -1,13 +1,4 @@
 import * as Sentry from '@sentry/nextjs';
-import fs from 'fs';
-
-// Verify this file is being executed
-try {
-  fs.writeFileSync('/tmp/instrumentation-loaded.txt', `Loaded at ${new Date().toISOString()}`);
-  console.log('✅ instrumentation.ts file loaded and executed');
-} catch (e) {
-  console.error('❌ Failed to write instrumentation marker:', e);
-}
 
 /**
  * Validates required environment variables at runtime startup
@@ -97,7 +88,7 @@ export async function register() {
   if (process.env.NEXT_PUBLIC_SENTRY_DSN && process.env.NODE_ENV === 'production') {
     console.log('📊 Initializing Sentry...');
     try {
-      await import('./sentry.server.config');
+      await import('../sentry.server.config');
       console.log('✅ Sentry ready');
     } catch (error) {
       console.error('❌ Sentry init failed:', error);
