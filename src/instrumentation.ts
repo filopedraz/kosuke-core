@@ -1,4 +1,13 @@
 import * as Sentry from '@sentry/nextjs';
+import fs from 'fs';
+
+// Verify this file is being executed
+try {
+  fs.writeFileSync('/tmp/instrumentation-loaded.txt', `Loaded at ${new Date().toISOString()}`);
+  console.log('✅ instrumentation.ts file loaded and executed');
+} catch (e) {
+  console.error('❌ Failed to write instrumentation marker:', e);
+}
 
 /**
  * Validates required environment variables at runtime startup
