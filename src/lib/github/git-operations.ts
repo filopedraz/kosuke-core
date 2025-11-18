@@ -5,6 +5,7 @@
  */
 
 import type { CommitOptions, GitChangesSummary, GitHubCommit } from '@/lib/types/agent';
+import { tryCatch } from '@/lib/utils/try-catch';
 import { existsSync, rmSync } from 'fs';
 import { join } from 'path';
 import simpleGit, { type SimpleGit } from 'simple-git';
@@ -40,14 +41,17 @@ export class GitOperations {
       await simpleGit().clone(authenticatedUrl, projectPath);
 
       // After clone, sanitize remote URL to remove token
-      try {
-        const git = simpleGit(projectPath);
-        const sanitizedRepoUrl = this.sanitizeRepoUrl(repoUrl);
-        await git.remote(['set-url', 'origin', sanitizedRepoUrl]);
-        console.log('🔒 Sanitized remote URL to remove credentials');
-      } catch (sanitizeError) {
+      const git = simpleGit(projectPath);
+      const sanitizedRepoUrl = this.sanitizeRepoUrl(repoUrl);
+      const { error: sanitizeError } = await tryCatch(
+        git.remote(['set-url', 'origin', sanitizedRepoUrl])
+      );
+
+      if (sanitizeError) {
         // Non-fatal if we cannot sanitize
         console.warn('⚠️ Failed to sanitize remote URL after clone:', sanitizeError);
+      } else {
+        console.log('🔒 Sanitized remote URL to remove credentials');
       }
 
       console.log(`✅ Successfully cloned repository to project ${projectId}`);
@@ -270,21 +274,29 @@ export class GitOperations {
       // Temporarily update remote URL for push
       await git.remote(['set-url', 'origin', authenticatedUrl]);
 
-      try {
-        // Try to push; create upstream if needed
-        try {
-          await git.push('origin', branchName);
-          console.log(`⬆️ Pushed to branch: ${branchName}`);
-        } catch {
-          // Branch might not exist on remote, create it with upstream
-          await git.push('origin', branchName, ['--set-upstream']);
-          console.log(`⬆️ Created and pushed new branch: ${branchName}`);
+      // Try to push; create upstream if needed
+      const { error: pushError } = await tryCatch(git.push('origin', branchName));
+
+      if (pushError) {
+        // Branch might not exist on remote, create it with upstream
+        const { error: upstreamError } = await tryCatch(
+          git.push('origin', branchName, ['--set-upstream'])
+        );
+
+        if (upstreamError) {
+          // Restore original URL before throwing
+          await git.remote(['set-url', 'origin', originalUrl]);
+          throw upstreamError;
         }
-      } finally {
-        // Always restore original URL
-        await git.remote(['set-url', 'origin', originalUrl]);
-        console.log('🔄 Restored original remote URL');
+
+        console.log(`⬆️ Created and pushed new branch: ${branchName}`);
+      } else {
+        console.log(`⬆️ Pushed to branch: ${branchName}`);
       }
+
+      // Always restore original URL
+      await git.remote(['set-url', 'origin', originalUrl]);
+      console.log('🔄 Restored original remote URL');
     } catch (error) {
       console.error('❌ Error pushing to remote:', error);
       throw new Error(
@@ -424,15 +436,18 @@ export class GitOperations {
       // Temporarily set authenticated URL
       await git.remote(['set-url', 'origin', authenticatedUrl]);
 
-      try {
-        // Force push to remote branch
-        console.log(`📤 Force pushing to remote branch ${currentBranch}...`);
-        await git.push(['origin', currentBranch, '--force']);
-        console.log(`✅ Successfully pushed revert to remote`);
-      } finally {
-        // Always restore original URL
-        await git.remote(['set-url', 'origin', originalUrl]);
+      // Force push to remote branch
+      console.log(`📤 Force pushing to remote branch ${currentBranch}...`);
+      const { error: pushError } = await tryCatch(git.push(['origin', currentBranch, '--force']));
+
+      // Always restore original URL
+      await git.remote(['set-url', 'origin', originalUrl]);
+
+      if (pushError) {
+        throw pushError;
       }
+
+      console.log(`✅ Successfully pushed revert to remote`);
 
       console.log(`✅ Successfully reverted to commit ${commitSha.substring(0, 8)}`);
       return true;
