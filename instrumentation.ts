@@ -84,17 +84,14 @@ export async function register() {
   // Validate environment variables on server startup
   validateEnvironmentVariables();
 
-  // Only initialize Sentry in production
-  console.log('📊 NODE_ENV:', process.env.NODE_ENV);
-  if (process.env.NODE_ENV === 'production') {
-    console.log('📊 Importing Sentry server config...');
+  // Initialize Sentry in production if DSN is available
+  if (process.env.NEXT_PUBLIC_SENTRY_DSN && process.env.NODE_ENV === 'production') {
+    console.log('📊 Initializing Sentry...');
     try {
       await import('./sentry.server.config');
-      console.log('✅ Sentry server config loaded');
-      const client = Sentry.getClient();
-      console.log('✅ Sentry client after import:', client ? 'INITIALIZED' : 'NOT FOUND');
+      console.log('✅ Sentry ready');
     } catch (error) {
-      console.error('❌ Failed to load Sentry server config:', error);
+      console.error('❌ Sentry init failed:', error);
     }
   }
 }
