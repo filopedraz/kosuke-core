@@ -6,6 +6,7 @@ import path from 'path';
 import { ApiErrorHandler } from '@/lib/api/errors';
 import { auth } from '@/lib/auth';
 import { verifyProjectAccess } from '@/lib/projects';
+import { tryCatch } from '@/lib/utils/try-catch';
 
 /**
  * GET /api/projects/[id]/files/public/[...filepath]
@@ -34,33 +35,44 @@ export async function GET(
     // Construct the file path inside the project's public directory
     const filePath = path.join(process.cwd(), 'projects', projectId.toString(), 'public', ...filepath);
 
-    // Check if the file exists
-    try {
-      await fs.access(filePath);
-    } catch {
+    // Check if the file exists in public directory
+    const { error: publicAccessError } = await tryCatch(fs.access(filePath));
+
+    if (publicAccessError) {
       console.error(`Public file not found: ${filePath}`);
 
       // Also try looking in the root directory as fallback
       const rootFilePath = path.join(process.cwd(), 'projects', projectId.toString(), ...filepath);
 
-      try {
-        await fs.access(rootFilePath);
-        const fileContent = await fs.readFile(rootFilePath);
-        const contentType = mime.lookup(rootFilePath) || 'application/octet-stream';
+      const { error: rootAccessError } = await tryCatch(fs.access(rootFilePath));
 
-        return new NextResponse(fileContent, {
-          headers: {
-            'Content-Type': contentType,
-            'Cache-Control': 'public, max-age=31536000', // Cache for 1 year
-          },
-        });
-      } catch {
+      if (rootAccessError) {
         return ApiErrorHandler.notFound('File not found in public directory');
       }
+
+      // File found in root, read it
+      const { data: fileContent, error: readError } = await tryCatch(fs.readFile(rootFilePath));
+
+      if (readError) {
+        return ApiErrorHandler.notFound('File not found in public directory');
+      }
+
+      const contentType = mime.lookup(rootFilePath) || 'application/octet-stream';
+
+      return new NextResponse(fileContent, {
+        headers: {
+          'Content-Type': contentType,
+          'Cache-Control': 'public, max-age=31536000', // Cache for 1 year
+        },
+      });
     }
 
-    // Read the file
-    const fileContent = await fs.readFile(filePath);
+    // Read the file from public directory
+    const { data: fileContent, error: readError } = await tryCatch(fs.readFile(filePath));
+
+    if (readError) {
+      return ApiErrorHandler.notFound('File not found or cannot be read');
+    }
 
     // Determine the content type
     const contentType = mime.lookup(filePath) || 'application/octet-stream';
