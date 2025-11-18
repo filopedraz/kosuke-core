@@ -7,11 +7,13 @@ import * as Sentry from '@sentry/nextjs';
 
 const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
 
-console.log('🚀 Initializing Sentry (Edge)');
-Sentry.init({
+const sentryOptions: Sentry.EdgeOptions = {
   dsn,
   tracesSampleRate: 1.0,
   maxBreadcrumbs: 50,
   attachStacktrace: true,
-});
+};
+
+console.log('🚀 Initializing Sentry (Edge)');
+Sentry.init(sentryOptions);
 console.log('✅ Sentry (Edge) initialized');
