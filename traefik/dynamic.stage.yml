@@ -1,0 +1,23 @@
+# Dynamic configuration for Traefik (Staging)
+# This file overrides dynamic.yml for staging environment
+
+# TLS Configuration
+tls:
+  # Request wildcard certificate for all preview subdomains
+  # This dramatically speeds up preview startup by eliminating per-subdomain cert generation
+  certificates:
+    # Wildcard certificate for *.stage.kosuke.app (preview subdomains)
+    - certFile: /certs/wildcard-stage-kosuke-app.crt
+      keyFile: /certs/wildcard-stage-kosuke-app.key
+      stores:
+        - default
+
+  stores:
+    default:
+      defaultGeneratedCert:
+        resolver: letsencrypt
+        domain:
+          main: stage.kosuke.app
+          sans:
+            - '*.stage.kosuke.app'
+

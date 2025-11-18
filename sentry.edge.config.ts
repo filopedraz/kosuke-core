@@ -6,9 +6,11 @@
 import * as Sentry from '@sentry/nextjs';
 
 const dsn = process.env.SENTRY_DSN;
+const environment = process.env.SENTRY_ENVIRONMENT || 'development';
 
 const sentryOptions: Sentry.EdgeOptions = {
   dsn,
+  environment,
   tracesSampleRate: 1.0,
   maxBreadcrumbs: 50,
   attachStacktrace: true,

@@ -15,6 +15,7 @@ RUN --mount=type=cache,target=/root/.bun/install/cache \
 
 # Rebuild the source code only when needed
 FROM base AS builder
+ARG DOCKER_GID=988
 WORKDIR /app
 
 COPY --from=deps /app/node_modules ./node_modules
@@ -46,6 +47,7 @@ RUN --mount=type=cache,target=/app/.next/cache \
 
 # Production image, copy all the files and run next
 FROM node:22.20.0-slim AS runner
+ARG DOCKER_GID=988
 WORKDIR /app
 
 # Install git and CA certificates for repository operations
@@ -60,7 +62,7 @@ RUN npm install -g @anthropic-ai/claude-code
 
 RUN \
     groupadd --system --gid 1001 nodejs && \
-    groupadd --gid 988 docker && \
+    groupadd --gid ${DOCKER_GID} docker && \
     useradd --system --uid 1001 --gid nodejs --create-home nextjs && \
     usermod -aG docker nextjs && \
     mkdir -p .next projects /home/nextjs/.claude && \
