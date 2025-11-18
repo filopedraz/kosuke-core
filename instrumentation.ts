@@ -44,6 +44,14 @@ function validateEnvironmentVariables() {
     { key: 'S3_SECRET_ACCESS_KEY', description: 'Digital Ocean Spaces secret key' },
 
     // Domain Configuration
+    { key: 'MAIN_DOMAIN', description: 'Main application domain' },
+    { key: 'PREVIEW_BASE_DOMAIN', description: 'Base domain for preview deployments' },
+    { key: 'TRAEFIK_ENABLED', description: 'Enable Traefik reverse proxy' },
+    { key: 'PREVIEW_PORT_RANGE_START', description: 'Preview port range start' },
+    { key: 'PREVIEW_PORT_RANGE_END', description: 'Preview port range end' },
+    { key: 'PREVIEW_HEALTH_PATH', description: 'Preview health check path' },
+    { key: 'PREVIEW_NETWORK', description: 'Docker network for previews' },
+    { key: 'PREVIEW_CONTAINER_NAME_PREFIX', description: 'Docker container name prefix' },
   ];
 
   const missingVars = requiredEnvVars.filter(({ key }) => !process.env[key]);
