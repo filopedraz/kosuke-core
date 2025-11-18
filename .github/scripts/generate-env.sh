@@ -3,15 +3,14 @@
 # ============================================================================
 # Environment File Generator
 # ============================================================================
-# This script generates .env from .env.prod template and .secrets file
-# Run on the server to create/update production .env file
+# This script generates .env from environment template and .secrets file
+# Usage: ./generate-env.sh [staging|production]
 # ============================================================================
 
 set -e
 
 # Get repository root (2 levels up from .github/scripts/)
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-ENV_PROD_FILE="$REPO_ROOT/.env.prod"
 SECRETS_FILE="$REPO_ROOT/.secrets"
 ENV_OUTPUT_FILE="$REPO_ROOT/.env"
 BACKUP_DIR="$REPO_ROOT/env_backups"
@@ -20,14 +19,39 @@ echo "🔧 Environment File Generator"
 echo "=============================="
 echo ""
 
-# Check if .env.prod exists
-if [ ! -f "$ENV_PROD_FILE" ]; then
-  echo "❌ ERROR: .env.prod template file not found"
-  echo "Expected location: $ENV_PROD_FILE"
+# Get environment from argument
+if [ -z "$1" ]; then
+  echo "❌ ERROR: Environment argument required"
+  echo "Usage: $0 [staging|production]"
   exit 1
 fi
 
-echo "✅ Found .env.prod template"
+ENVIRONMENT="$1"
+
+# Determine template file based on environment
+case "$ENVIRONMENT" in
+  staging)
+    ENV_TEMPLATE_FILE="$REPO_ROOT/.env.stage"
+    echo "🎯 STAGING environment (.env.stage)"
+    ;;
+  production)
+    ENV_TEMPLATE_FILE="$REPO_ROOT/.env.prod"
+    echo "🎯 PRODUCTION environment (.env.prod)"
+    ;;
+  *)
+    echo "❌ ERROR: Invalid environment '$ENVIRONMENT'"
+    echo "Expected: staging or production"
+    exit 1
+    ;;
+esac
+
+# Check if template exists
+if [ ! -f "$ENV_TEMPLATE_FILE" ]; then
+  echo "❌ ERROR: Template file not found: $ENV_TEMPLATE_FILE"
+  exit 1
+fi
+
+echo "✅ Found $ENV_TEMPLATE_FILE template"
 
 # Check if .secrets exists
 if [ ! -f "$SECRETS_FILE" ]; then
@@ -62,11 +86,12 @@ echo "✅ Loaded secrets from .secrets"
 echo ""
 echo "🔨 Generating .env file..."
 
-# Use envsubst to replace variables in .env.prod
-envsubst < "$ENV_PROD_FILE" > "$ENV_OUTPUT_FILE"
+# Use envsubst to replace variables in template
+envsubst < "$ENV_TEMPLATE_FILE" > "$ENV_OUTPUT_FILE"
 
 echo "✅ Generated .env file successfully"
 echo ""
 echo "📍 Location: $ENV_OUTPUT_FILE"
+echo "🌍 Environment: $ENVIRONMENT"
 echo "🎉 Done!"
 

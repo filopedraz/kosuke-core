@@ -4,12 +4,17 @@
 
 import * as Sentry from '@sentry/nextjs';
 
-// Only initialize Sentry in production
-if (process.env.NODE_ENV === 'production') {
-  Sentry.init({
-    dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
-    tracesSampleRate: 1,
-    enableLogs: false,
-    debug: false,
-  });
-}
+const dsn = process.env.SENTRY_DSN;
+const environment = process.env.SENTRY_ENVIRONMENT || 'development';
+
+const sentryOptions: Sentry.NodeOptions = {
+  dsn,
+  environment,
+  tracesSampleRate: 1.0,
+  maxBreadcrumbs: 50,
+  attachStacktrace: true,
+};
+
+console.log('🚀 Initializing Sentry');
+Sentry.init(sentryOptions);
+console.log('✅ Sentry initialized');
