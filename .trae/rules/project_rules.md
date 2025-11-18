@@ -1248,6 +1248,71 @@ Before deploying:
 5. **Sitemap**: Visit `/sitemap.xml` and verify all pages listed
 6. **Robots**: Visit `/robots.txt` and verify blocking rules
 
+### GitHub Actions Workflow Notifications - MANDATORY
+
+**When creating new GitHub Actions workflows, ALWAYS add Slack notifications for success and failure outcomes.**
+
+#### **✅ WHEN TO ADD Slack Notifications**
+
+- **Custom workflows on main branch** - Any new workflow created for project-specific automation that runs on the main branch (e.g., `on-main.yml`)
+- **Deployment workflows** - Release, build, or deployment pipelines
+- **Automated operations** - Scheduled jobs, syncs, or maintenance tasks
+- **Release workflows** - Version updates, releases, or publishing
+
+#### **❌ WHEN NOT TO ADD Slack Notifications**
+
+- **CI workflows** - `ci.yml` and similar PR/commit checks (handled separately via GitHub Actions settings)
+- **Claude workflows** - `claude.yml` workflow (AI automation tool)
+- **PR/Review workflows** - Code quality checks running on every pull request (too noisy)
+- **Local development workflows** - Developer-only testing workflows
+
+#### **🔧 Implementation Pattern**
+
+**Always add both success and failure notifications at the end of critical jobs:**
+
+```yaml
+- name: Notify Slack - Success
+  if: success()
+  run: |
+    curl -X POST --data '{"text":"✅ Workflow Name Completed Successfully\nDetails: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"}' ${{ secrets.SLACK_DEV_CHANNEL_WEBHOOK_URL }}
+
+- name: Notify Slack - Failure
+  if: failure()
+  run: |
+    curl -X POST --data "{\"text\":\"❌ Workflow Name Failed\nAction: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" ${{ secrets.SLACK_DEV_CHANNEL_WEBHOOK_URL }}
+```
+
+#### **🏗️ Best Practices**
+
+**Include relevant information in success messages:**
+
+- Release workflows → Link to GitHub release page
+- Deployment workflows → Link to deployed environment
+- Sync workflows → Link to action run for visibility
+- Always include action run link for debugging
+
+**Use consistent emoji indicators:**
+
+- ✅ Success
+- ❌ Failure
+- 🔄 In Progress (optional, for long-running jobs)
+
+**Minimal, focused notifications:**
+
+- Only notify for workflows that require team visibility
+- Don't notify on routine CI checks (too noisy)
+- Include direct link to GitHub Actions run: `https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}`
+
+#### **🔑 Required Secrets**
+
+Use `SLACK_DEV_CHANNEL_WEBHOOK_URL` secret for notifications:
+
+- Secret must be configured in GitHub repository settings
+- Never hardcode webhook URLs in workflow files
+- Applies to custom workflows on main branch only
+
+**Rationale:** Ensures team visibility into custom automated workflows, enabling quick response to failures and tracking deployment progress without overwhelming with routine CI noise.
+
 ### Quick Setup Checklist for New Features
 
 1. **Database Changes**: Update schema → `bun run db:generate` → `bun run db:migrate`
