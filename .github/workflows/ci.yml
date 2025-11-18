@@ -31,7 +31,7 @@ jobs:
         run: bun install
 
       - name: Copy environment variables
-        run: cp .env.example .env
+        run: cp .env.local .env
 
       - name: Start Docker services
         run: docker compose up -d postgres

@@ -10,7 +10,7 @@ Create environment file and update it with the required secret variables.
 
 ```bash
 # Setup environment files
-cp .env.example .env
+cp .env.local .env
 ```
 
 Ensure you have the following tools installed and configured:
