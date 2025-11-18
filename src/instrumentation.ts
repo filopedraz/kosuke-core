@@ -87,7 +87,7 @@ export async function register() {
   }
 
   // Initialize Sentry in production if DSN is available
-  if (process.env.NEXT_PUBLIC_SENTRY_DSN && process.env.NODE_ENV === 'production') {
+  if (process.env.SENTRY_DSN && process.env.NODE_ENV === 'production') {
     console.log('📊 Initializing Sentry...');
     try {
       if (process.env.NEXT_RUNTIME === 'nodejs') {
