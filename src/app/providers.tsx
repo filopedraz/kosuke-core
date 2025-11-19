@@ -24,7 +24,7 @@ export default function Providers({ children }: ProvidersProps) {
       })
   );
 
-  const enablePostHog = process.env.NODE_ENV === 'production';
+  const enablePostHog = process.env.NEXT_PUBLIC_POSTHOG_ENABLED !== 'false';
 
   return (
     <QueryClientProvider client={queryClient}>
