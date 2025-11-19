@@ -21,9 +21,6 @@ const ogImageSquare = `${baseUrl}/opengraph-image-square.jpg`;
 // Set NEXT_PUBLIC_ENABLE_INDEXING=true in production environment only
 const enableIndexing = process.env.NEXT_PUBLIC_ENABLE_INDEXING === 'true';
 
-// Only enable analytics/consent scripts in production
-const isProd = process.env.NEXT_PUBLIC_ENVIRONMENT === 'production';
-
 const title = 'Kosuke - Your Technical Co-founder for the 0 to 1';
 const description =
   'Stop settling for broken demos. We deliver production-ready software combining AI speed with engineering expertise, so you can launch your startup with confidence.';
@@ -112,7 +109,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
     <ClerkThemeProvider>
       <html lang="en" className={`${inter.variable} dark antialiased`} suppressHydrationWarning>
         <body className="min-h-dvh bg-background text-foreground overflow-x-hidden font-sans">
-          {isProd && (
+          {process.env.NEXT_PUBLIC_COOKIEBOT_ENABLED !== 'false' && (
             <Script
               id="Cookiebot"
               src="https://consent.cookiebot.com/uc.js"
@@ -121,7 +118,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
               strategy="beforeInteractive"
             />
           )}
-          {isProd && (
+          {process.env.NEXT_PUBLIC_PLAUSIBLE_ENABLED !== 'false' && (
             <Script
               defer
               data-domain="kosuke.ai"

@@ -5,7 +5,8 @@ import * as Sentry from '@sentry/nextjs';
  * This runs after build but before the application serves requests
  */
 function validateEnvironmentVariables() {
-  const isProd = process.env.ENVIRONMENT === 'production';
+  const ghostEnabled = process.env.GHOST_ADMIN_API_KEY_ENABLED !== 'false';
+  const slackEnabled = process.env.SLACK_WEBHOOK_URL_ENABLED !== 'false';
 
   const requiredEnvVars = [
     // Database
@@ -60,12 +61,12 @@ function validateEnvironmentVariables() {
     // Monitoring
     { key: 'SENTRY_AUTH_TOKEN', description: 'Sentry authentication token' },
 
-    // Production only
-    ...(isProd
-      ? [
-          { key: 'GHOST_ADMIN_API_KEY', description: 'Ghost CMS admin API key' },
-          { key: 'SLACK_WEBHOOK_URL', description: 'Slack webhook URL for notifications' },
-        ]
+    // Conditionally required based on feature flags
+    ...(ghostEnabled
+      ? [{ key: 'GHOST_ADMIN_API_KEY', description: 'Ghost CMS admin API key' }]
+      : []),
+    ...(slackEnabled
+      ? [{ key: 'SLACK_WEBHOOK_URL', description: 'Slack webhook URL for notifications' }]
       : []),
   ];
 
