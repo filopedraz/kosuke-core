@@ -2,14 +2,25 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
-import { Copy, Rocket } from 'lucide-react';
+import { CheckCircle2, Copy, Rocket } from 'lucide-react';
 import Link from 'next/link';
-import { use } from 'react';
+import { use, useState } from 'react';
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useMarkProjectReady } from '@/hooks/use-admin-projects';
 import { useToast } from '@/hooks/use-toast';
 import type { ProjectStatus } from '@/lib/types/project';
 
@@ -33,6 +44,7 @@ export default function AdminProjectDetailPage({
 }) {
   const { id } = use(params);
   const { toast } = useToast();
+  const [markReadyDialogOpen, setMarkReadyDialogOpen] = useState(false);
 
   // Fetch single project
   const { data: projects, isLoading } = useQuery<AdminProject[]>({
@@ -46,6 +58,9 @@ export default function AdminProjectDetailPage({
   });
 
   const project = projects?.find(p => p.id === id);
+
+  // Mark project as ready mutation
+  const markReadyMutation = useMarkProjectReady();
 
   const handleDeploy = () => {
     toast({
@@ -80,6 +95,15 @@ export default function AdminProjectDetailPage({
         });
       }
     );
+  };
+
+  const handleMarkReady = () => {
+    if (!project) return;
+    markReadyMutation.mutate(project.id, {
+      onSuccess: () => {
+        setMarkReadyDialogOpen(false);
+      },
+    });
   };
 
   const getStatusBadge = (status: ProjectStatus) => {
@@ -224,8 +248,43 @@ export default function AdminProjectDetailPage({
               View Project Workspace
             </Link>
           </Button>
+
+          {project.status === 'in_development' && (
+            <Button
+              variant="default"
+              className="w-full justify-start"
+              onClick={() => setMarkReadyDialogOpen(true)}
+              disabled={markReadyMutation.isPending}
+            >
+              <CheckCircle2 className="h-4 w-4 mr-2" />
+              {markReadyMutation.isPending ? 'Processing...' : 'Mark as Active'}
+            </Button>
+          )}
         </CardContent>
       </Card>
+
+      {/* Mark as Ready Confirmation Dialog */}
+      <AlertDialog open={markReadyDialogOpen} onOpenChange={setMarkReadyDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Mark Project as Active?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will transition the project from &quot;In Development&quot; to &quot;Active&quot; status.
+              Email notifications will be sent to all organization members informing them that the
+              project is ready to use.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={markReadyMutation.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleMarkReady}
+              disabled={markReadyMutation.isPending}
+            >
+              {markReadyMutation.isPending ? 'Processing...' : 'Mark as Active'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

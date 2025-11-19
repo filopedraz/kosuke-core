@@ -49,7 +49,7 @@ const cliLogSchema = z.object({
 });
 
 /**
- * POST /api/cli-logs
+ * POST /api/cli/logs
  * Endpoint for kosuke-cli to log command executions
  * Uses BullMQ queue for async processing
  */
@@ -60,7 +60,7 @@ export async function POST(request: Request) {
     const expectedKey = process.env.KOSUKE_CLI_API_KEY;
 
     if (!expectedKey) {
-      console.error('[API /cli-logs] KOSUKE_CLI_API_KEY not configured');
+      console.error('[API /cli/logs] KOSUKE_CLI_API_KEY not configured');
       return new NextResponse(JSON.stringify({ error: 'Server configuration error' }), {
         status: 500,
         headers: { 'Content-Type': 'application/json' },
@@ -68,7 +68,7 @@ export async function POST(request: Request) {
     }
 
     if (!apiKey || apiKey !== expectedKey) {
-      console.warn('[API /cli-logs] Invalid API key attempt');
+      console.warn('[API /cli/logs] Invalid API key attempt');
       return new NextResponse(JSON.stringify({ error: 'Invalid API key' }), {
         status: 403,
         headers: { 'Content-Type': 'application/json' },
@@ -83,7 +83,7 @@ export async function POST(request: Request) {
     const job = await addCliLogJob(validatedData);
 
     console.log(
-      `[API /cli-logs] ✅ Queued log for project ${validatedData.projectId}: ${validatedData.command}`
+      `[API /cli/logs] ✅ Queued log for project ${validatedData.projectId}: ${validatedData.command}`
     );
 
     return new NextResponse(
@@ -95,7 +95,7 @@ export async function POST(request: Request) {
     );
   } catch (error) {
     if (error instanceof z.ZodError) {
-      console.error('[API /cli-logs] Validation error:', error.issues);
+      console.error('[API /cli/logs] Validation error:', error.issues);
       return new NextResponse(
         JSON.stringify({
           error: 'Invalid request data',
@@ -105,7 +105,7 @@ export async function POST(request: Request) {
       );
     }
 
-    console.error('[API /cli-logs] Error queueing log:', error);
+    console.error('[API /cli/logs] Error queueing log:', error);
     return new NextResponse(
       JSON.stringify({
         error: 'Failed to queue log request',

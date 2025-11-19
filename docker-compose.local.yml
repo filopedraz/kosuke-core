@@ -41,6 +41,7 @@ services:
       - .env
     depends_on:
       - postgres
+      - redis
     networks:
       - kosuke_network
     restart: unless-stopped
@@ -54,6 +55,29 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.local
+    container_name: kosuke_worker
+    volumes:
+      - .:/app:cached
+      - /app/node_modules
+      - /app/.next
+      - ./projects:/app/projects:cached
+      # Mount local kosuke-cli for development
+      # after building the package with npm run build
+      - ../kosuke-cli:/app/node_modules/@kosuke-ai/cli:cached
+    env_file:
+      - .env
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - kosuke_network
+    restart: unless-stopped
+    command: npx tsx --watch -r dotenv/config worker.ts
 
 volumes:
   postgres_data:

@@ -73,6 +73,21 @@ services:
       - postgres
       - redis
 
+  worker:
+    image: ghcr.io/kosuke-org/kosuke-core:latest
+    container_name: kosuke_worker
+    env_file:
+      - .env
+    volumes:
+      - ./projects:/app/projects:cached
+    networks:
+      - kosuke_network
+    restart: unless-stopped
+    depends_on:
+      - postgres
+      - redis
+    command: npx tsx -r dotenv/config worker.ts
+
   portainer:
     image: portainer/portainer-ce:latest
     container_name: kosuke_portainer
