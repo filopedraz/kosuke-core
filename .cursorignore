@@ -1,4 +1,7 @@
 ./projects/
 
 !.env.local
+!.env.stage
+!.env.stage.public
 !.env.prod
+!.env.prod.public

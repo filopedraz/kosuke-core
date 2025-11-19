@@ -5,9 +5,10 @@ import * as Sentry from '@sentry/nextjs';
  * This runs after build but before the application serves requests
  */
 function validateEnvironmentVariables() {
+  const sentryEnabled = process.env.SENTRY_ENABLED !== 'false';
+  const cloudflareEnabled = process.env.CLOUDFLARE_ENABLED !== 'false';
   const ghostEnabled = process.env.GHOST_ADMIN_API_KEY_ENABLED !== 'false';
   const slackEnabled = process.env.SLACK_WEBHOOK_URL_ENABLED !== 'false';
-  const sentryEnabled = process.env.SENTRY_ENABLED !== 'false';
 
   const requiredEnvVars = [
     // Database
@@ -57,12 +58,16 @@ function validateEnvironmentVariables() {
     { key: 'PREVIEW_NETWORK', description: 'Docker network for previews' },
     { key: 'PREVIEW_CONTAINER_NAME_PREFIX', description: 'Docker container name prefix' },
 
-    // Monitoring
+    // Conditionally required based on feature flags
     ...(sentryEnabled
       ? [{ key: 'SENTRY_AUTH_TOKEN', description: 'Sentry authentication token' }]
       : []),
-
-    // Conditionally required based on feature flags
+    ...(cloudflareEnabled
+      ? [
+          { key: 'CLOUDFLARE_EMAIL', description: 'Cloudflare email' },
+          { key: 'CLOUDFLARE_API_KEY', description: 'Cloudflare API key' },
+        ]
+      : []),
     ...(ghostEnabled
       ? [{ key: 'GHOST_ADMIN_API_KEY', description: 'Ghost CMS admin API key' }]
       : []),
