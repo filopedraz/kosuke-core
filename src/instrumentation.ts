@@ -5,6 +5,10 @@ import * as Sentry from '@sentry/nextjs';
  * This runs after build but before the application serves requests
  */
 function validateEnvironmentVariables() {
+  const ghostEnabled = process.env.GHOST_ADMIN_API_KEY_ENABLED !== 'false';
+  const slackEnabled = process.env.SLACK_WEBHOOK_URL_ENABLED !== 'false';
+  const sentryEnabled = process.env.SENTRY_ENABLED !== 'false';
+
   const requiredEnvVars = [
     // Database
     { key: 'POSTGRES_URL', description: 'PostgreSQL database connection URL' },
@@ -52,6 +56,19 @@ function validateEnvironmentVariables() {
     { key: 'PREVIEW_HEALTH_PATH', description: 'Preview health check path' },
     { key: 'PREVIEW_NETWORK', description: 'Docker network for previews' },
     { key: 'PREVIEW_CONTAINER_NAME_PREFIX', description: 'Docker container name prefix' },
+
+    // Monitoring
+    ...(sentryEnabled
+      ? [{ key: 'SENTRY_AUTH_TOKEN', description: 'Sentry authentication token' }]
+      : []),
+
+    // Conditionally required based on feature flags
+    ...(ghostEnabled
+      ? [{ key: 'GHOST_ADMIN_API_KEY', description: 'Ghost CMS admin API key' }]
+      : []),
+    ...(slackEnabled
+      ? [{ key: 'SLACK_WEBHOOK_URL', description: 'Slack webhook URL for notifications' }]
+      : []),
   ];
 
   const missingVars = requiredEnvVars.filter(({ key }) => !process.env[key]);
