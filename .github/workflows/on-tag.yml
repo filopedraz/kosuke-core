@@ -50,7 +50,7 @@ jobs:
         with:
           context: .
           build-args: |
-            DOCKER_GID=989
+            DOCKER_GID=988
           push: true
           platforms: linux/amd64
           tags: |
