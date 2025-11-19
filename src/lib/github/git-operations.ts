@@ -9,8 +9,15 @@ import { existsSync, rmSync } from 'fs';
 import { join } from 'path';
 import simpleGit, { type SimpleGit } from 'simple-git';
 
-const SESSION_BRANCH_PREFIX = process.env.SESSION_BRANCH_PREFIX || 'kosuke/chat-';
-const PROJECTS_BASE_PATH = process.env.PROJECTS_BASE_PATH || './projects';
+const SESSION_BRANCH_PREFIX = process.env.SESSION_BRANCH_PREFIX!;
+if (!SESSION_BRANCH_PREFIX) {
+  throw new Error('SESSION_BRANCH_PREFIX environment variable is required');
+}
+
+const PROJECTS_BASE_PATH = process.env.PROJECTS_BASE_PATH!;
+if (!PROJECTS_BASE_PATH) {
+  throw new Error('PROJECTS_BASE_PATH environment variable is required');
+}
 
 /**
  * Git Operations Service

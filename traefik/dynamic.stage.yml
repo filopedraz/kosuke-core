@@ -20,4 +20,3 @@ tls:
           main: stage.kosuke.app
           sans:
             - '*.stage.kosuke.app'
-

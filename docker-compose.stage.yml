@@ -7,4 +7,3 @@ services:
 
   nextjs:
     image: ghcr.io/kosuke-org/kosuke-core-stage:latest
-
