@@ -5,6 +5,8 @@ import * as Sentry from '@sentry/nextjs';
  * This runs after build but before the application serves requests
  */
 function validateEnvironmentVariables() {
+  const isProd = process.env.ENVIRONMENT === 'production';
+
   const requiredEnvVars = [
     // Database
     { key: 'POSTGRES_URL', description: 'PostgreSQL database connection URL' },
@@ -55,12 +57,16 @@ function validateEnvironmentVariables() {
     { key: 'PREVIEW_NETWORK', description: 'Docker network for previews' },
     { key: 'PREVIEW_CONTAINER_NAME_PREFIX', description: 'Docker container name prefix' },
 
-    // Ghost CMS
-    { key: 'GHOST_ADMIN_API_KEY', description: 'Ghost CMS admin API key' },
-    { key: 'SLACK_WEBHOOK_URL', description: 'Slack webhook URL for notifications' },
-
     // Monitoring
     { key: 'SENTRY_AUTH_TOKEN', description: 'Sentry authentication token' },
+
+    // Production only
+    ...(isProd
+      ? [
+          { key: 'GHOST_ADMIN_API_KEY', description: 'Ghost CMS admin API key' },
+          { key: 'SLACK_WEBHOOK_URL', description: 'Slack webhook URL for notifications' },
+        ]
+      : []),
   ];
 
   const missingVars = requiredEnvVars.filter(({ key }) => !process.env[key]);

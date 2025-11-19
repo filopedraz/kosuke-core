@@ -33,6 +33,8 @@ jobs:
           echo "📝 Creating .env.build file from .env.stage.public..."
           cp .env.stage.public .env.build
           echo "✅ .env.build file created"
+          echo "📋 Contents of .env.build:"
+          cat .env.build
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
@@ -46,7 +48,7 @@ jobs:
         with:
           context: .
           build-args: |
-            DOCKER_GID=989
+            DOCKER_GID=988
           push: true
           platforms: linux/amd64
           tags: |
