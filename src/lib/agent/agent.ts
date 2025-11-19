@@ -9,6 +9,7 @@ import { chatMessages } from '@/lib/db/schema';
 import { GitOperations } from '@/lib/github/git-operations';
 import { sessionManager } from '@/lib/sessions';
 import type { AgentConfig, StreamEvent } from '@/lib/types/agent';
+import { tryCatch } from '@/lib/utils/try-catch';
 import { SDKResultMessage } from '@anthropic-ai/claude-agent-sdk';
 import type { MessageParam } from '@anthropic-ai/sdk/resources';
 import { eq } from 'drizzle-orm';
@@ -114,8 +115,12 @@ export class Agent {
       // Commit changes to GitHub if token is available
       let commitSha: string | null = null;
       if (this.gitOperations && this.githubToken) {
-        try {
-          const commit = await this.commitSessionChanges();
+        const { data: commit, error: commitError } = await tryCatch(this.commitSessionChanges());
+
+        if (commitError) {
+          console.error(`⚠️ Failed to commit changes (non-fatal):`, commitError);
+          // Continue without commit - still update database with message content
+        } else {
           commitSha = commit?.sha || null;
 
           if (commitSha) {
@@ -123,9 +128,6 @@ export class Agent {
           } else {
             console.log(`ℹ️ No changes to commit`);
           }
-        } catch (error) {
-          console.error(`⚠️ Failed to commit changes (non-fatal):`, error);
-          // Continue without commit
         }
       } else {
         console.log(`ℹ️ Skipping GitHub commit: no token available`);

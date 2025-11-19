@@ -1,4 +1,5 @@
 import { PROJECTS_DIR } from '@/lib/constants';
+import { tryCatch } from '@/lib/utils/try-catch';
 import { promises as fs } from 'fs';
 import path from 'path';
 
@@ -138,34 +139,44 @@ async function readDirectoryRecursive(basePath: string, relativePath: string): P
           continue;
         }
 
-        try {
-          const stats = await fs.stat(fullPath);
-          const children = await readDirectoryRecursive(basePath, itemPath);
+        const { data: stats, error: statError } = await tryCatch(fs.stat(fullPath));
 
-          files.push({
-            name: item.name,
-            type: 'directory',
-            path: itemPath,
-            lastModified: stats.mtime,
-            children,
-          });
-        } catch (error) {
-          console.warn(`Skipping directory ${itemPath}:`, error);
+        if (statError) {
+          console.warn(`Skipping directory ${itemPath}:`, statError);
+          continue;
         }
+
+        const { data: children, error: childError } = await tryCatch(
+          readDirectoryRecursive(basePath, itemPath)
+        );
+
+        if (childError) {
+          console.warn(`Skipping directory children ${itemPath}:`, childError);
+          continue;
+        }
+
+        files.push({
+          name: item.name,
+          type: 'directory',
+          path: itemPath,
+          lastModified: stats.mtime,
+          children: children || [],
+        });
       } else if (item.isFile()) {
-        try {
-          const stats = await fs.stat(fullPath);
+        const { data: stats, error: statError } = await tryCatch(fs.stat(fullPath));
 
-          files.push({
-            name: item.name,
-            type: 'file',
-            path: itemPath,
-            size: stats.size,
-            lastModified: stats.mtime,
-          });
-        } catch (error) {
-          console.warn(`Skipping file ${itemPath}:`, error);
+        if (statError) {
+          console.warn(`Skipping file ${itemPath}:`, statError);
+          continue;
         }
+
+        files.push({
+          name: item.name,
+          type: 'file',
+          path: itemPath,
+          size: stats.size,
+          lastModified: stats.mtime,
+        });
       }
     }
 

@@ -8,6 +8,7 @@ import { db } from '@/lib/db/drizzle';
 import { chatSessions } from '@/lib/db/schema';
 import { createKosukeOctokit, createUserOctokit } from '@/lib/github/client';
 import { verifyProjectAccess } from '@/lib/projects';
+import { tryCatch } from '@/lib/utils/try-catch';
 import { and, eq } from 'drizzle-orm';
 
 // Schema for creating pull request
@@ -76,55 +77,53 @@ export async function POST(
     const prTitle = title || `Updates from chat session: ${session.title}`;
     const prDescription = description || `Automated changes from Kosuke chat session: ${session.title}\n\nSession ID: ${sessionId}`;
 
-    try {
-      // Get GitHub client based on project ownership
-      const kosukeOrg = process.env.NEXT_PUBLIC_GITHUB_WORKSPACE;
-      const isKosukeRepo = project.githubOwner === kosukeOrg;
+    // Get GitHub client based on project ownership
+    const kosukeOrg = process.env.NEXT_PUBLIC_GITHUB_WORKSPACE;
+    const isKosukeRepo = project.githubOwner === kosukeOrg;
 
-      const github = isKosukeRepo
-        ? createKosukeOctokit()
-        : await createUserOctokit(userId);
+    const github = isKosukeRepo
+      ? createKosukeOctokit()
+      : await createUserOctokit(userId);
 
-      // Check if source branch exists
-      try {
-        await github.rest.repos.getBranch({
-          owner: project.githubOwner,
-          repo: project.githubRepoName,
-          branch: sourceBranch,
-        });
-      } catch {
-        return ApiErrorHandler.badRequest(`Source branch '${sourceBranch}' not found. Make sure the chat session has made changes and committed them.`);
-      }
+    // Check if source branch exists
+    const { error: sourceBranchError } = await tryCatch(
+      github.rest.repos.getBranch({
+        owner: project.githubOwner,
+        repo: project.githubRepoName,
+        branch: sourceBranch,
+      })
+    );
 
-      // Check if target branch exists
-      try {
-        await github.rest.repos.getBranch({
-          owner: project.githubOwner,
-          repo: project.githubRepoName,
-          branch: targetBranch,
-        });
-      } catch {
-        return ApiErrorHandler.badRequest(`Target branch '${targetBranch}' not found`);
-      }
-
-      // Generate GitHub PR creation URL
-      const encodedTitle = encodeURIComponent(prTitle);
-      const encodedBody = encodeURIComponent(prDescription);
-
-      const githubPrUrl = `https://github.com/${project.githubOwner}/${project.githubRepoName}/compare/${targetBranch}...${sourceBranch}?quick_pull=1&title=${encodedTitle}&body=${encodedBody}`;
-
-      return NextResponse.json({
-        pull_request_url: githubPrUrl,
-        source_branch: sourceBranch,
-        target_branch: targetBranch,
-        title: prTitle,
-        success: true,
-      });
-
-    } catch (error: unknown) {
-      console.error('Error preparing pull request:', error);
-      return ApiErrorHandler.handle(error);
+    if (sourceBranchError) {
+      return ApiErrorHandler.badRequest(`Source branch '${sourceBranch}' not found. Make sure the chat session has made changes and committed them.`);
     }
+
+    // Check if target branch exists
+    const { error: targetBranchError } = await tryCatch(
+      github.rest.repos.getBranch({
+        owner: project.githubOwner,
+        repo: project.githubRepoName,
+        branch: targetBranch,
+      })
+    );
+
+    if (targetBranchError) {
+      return ApiErrorHandler.badRequest(`Target branch '${targetBranch}' not found`);
+    }
+
+    // Generate GitHub PR creation URL
+    const encodedTitle = encodeURIComponent(prTitle);
+    const encodedBody = encodeURIComponent(prDescription);
+
+    const githubPrUrl = `https://github.com/${project.githubOwner}/${project.githubRepoName}/compare/${targetBranch}...${sourceBranch}?quick_pull=1&title=${encodedTitle}&body=${encodedBody}`;
+
+    return NextResponse.json({
+      pull_request_url: githubPrUrl,
+      source_branch: sourceBranch,
+      target_branch: targetBranch,
+      title: prTitle,
+      success: true,
+    });
   } catch (error) {
     console.error('Error in pull request creation:', error);
     return ApiErrorHandler.handle(error);

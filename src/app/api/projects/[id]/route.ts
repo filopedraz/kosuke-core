@@ -10,6 +10,7 @@ import { getDockerService } from '@/lib/docker';
 import { deleteDir, getProjectPath } from '@/lib/fs/operations';
 import { createKosukeOctokit, createUserOctokit } from '@/lib/github/client';
 import { verifyProjectAccess } from '@/lib/projects';
+import { tryCatch } from '@/lib/utils/try-catch';
 import { eq } from 'drizzle-orm';
 
 // Schema for updating a project
@@ -127,19 +128,24 @@ export async function DELETE(
 
     // Read delete options from request body (optional)
     let deleteRepo = false;
-    try {
-      const body = await request.json();
-      deleteRepo = Boolean(body?.deleteRepo);
-    } catch {
-      // No body provided; keep defaults
+    const { data: bodyData } = await tryCatch(request.json());
+
+    if (bodyData) {
+      deleteRepo = Boolean(bodyData.deleteRepo);
     }
-
+    
     // Step 1: Stop all preview containers for this project before file deletion
-    try {
-      console.log(`Stopping all preview containers for project ${projectId} before deletion`);
-      const dockerService = getDockerService();
-      const cleanupResult = await dockerService.stopAllProjectPreviews(projectId);
+    console.log(`Stopping all preview containers for project ${projectId} before deletion`);
+    const dockerService = getDockerService();
+    const { data: cleanupResult, error: previewError } = await tryCatch(
+      dockerService.stopAllProjectPreviews(projectId)
+    );
 
+    if (previewError) {
+      // Log but continue - we still want to proceed even if stopping previews fails
+      console.error(`Error stopping preview containers for project ${projectId}:`, previewError);
+      console.log(`Continuing with project deletion despite preview cleanup failure`);
+    } else {
       console.log(
         `Preview cleanup completed for project ${projectId}: ` +
         `${cleanupResult.stopped} stopped, ${cleanupResult.failed} failed`
@@ -151,43 +157,42 @@ export async function DELETE(
           `Manual cleanup may be required.`
         );
       }
-    } catch (previewError) {
-      // Log but continue - we still want to proceed even if stopping previews fails
-      console.error(`Error stopping preview containers for project ${projectId}:`, previewError);
-      console.log(`Continuing with project deletion despite preview cleanup failure`);
     }
 
     // Step 2: Delete project files after containers are stopped
     const projectDir = getProjectPath(projectId);
     let filesWarning = null;
 
-    try {
-      await deleteDir(projectDir);
-      console.log(`Successfully deleted project directory: ${projectDir}`);
-    } catch (dirError) {
+    const { error: dirError } = await tryCatch(deleteDir(projectDir));
+
+    if (dirError) {
       console.error(`Error deleting project directory: ${projectDir}`, dirError);
       filesWarning = "Project deleted but some files could not be removed";
+    } else {
+      console.log(`Successfully deleted project directory: ${projectDir}`);
     }
 
     // Step 3: Optionally delete the associated GitHub repository
     if (deleteRepo && project.githubOwner && project.githubRepoName) {
-      try {
-        const kosukeOrg = process.env.NEXT_PUBLIC_GITHUB_WORKSPACE;
-        const isKosukeRepo = project.githubOwner === kosukeOrg;
+      const kosukeOrg = process.env.NEXT_PUBLIC_GITHUB_WORKSPACE;
+      const isKosukeRepo = project.githubOwner === kosukeOrg;
 
-        const github = isKosukeRepo
-          ? createKosukeOctokit()
-          : await createUserOctokit(userId);
+      const github = isKosukeRepo
+        ? createKosukeOctokit()
+        : await createUserOctokit(userId);
 
-        await github.rest.repos.delete({
+      const { error: ghError } = await tryCatch(
+        github.rest.repos.delete({
           owner: project.githubOwner,
           repo: project.githubRepoName,
-        });
+        })
+      );
 
-        console.log(`Deleted GitHub repository ${project.githubOwner}/${project.githubRepoName}`);
-      } catch (ghError) {
+      if (ghError) {
         console.error('Error deleting GitHub repository:', ghError);
         // Continue with project deletion even if GitHub deletion fails
+      } else {
+        console.log(`Deleted GitHub repository ${project.githubOwner}/${project.githubRepoName}`);
       }
     }
 

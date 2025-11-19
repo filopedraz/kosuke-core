@@ -1634,6 +1634,83 @@ const itemValues = [
 ];
 ```
 
+## Go-Style Error Handling
+
+**Use `tryCatch` and `tryCatchSync` from `@/lib/utils/try-catch` to avoid nested try-catch blocks.**
+
+#### **The Problem with Nested Try-Catch**
+
+Nested try-catch blocks lead to:
+
+- Deep indentation and poor readability
+- Hidden error flows
+- Difficulty tracking which catch handles which error
+- Implicit error handling that can be missed
+
+#### **✅ WHEN TO USE tryCatch/tryCatchSync**
+
+- **Nested error handling** - Replace nested try-catch blocks
+- **Multiple sequential operations** - Chain operations with explicit error checks
+- **Non-fatal errors** - Operations that should continue on error
+- **Error recovery** - When you need to handle errors differently per operation
+- **Cleaner flow** - Linear code flow instead of nested blocks
+
+#### **❌ WHEN NOT TO USE tryCatch/tryCatchSync**
+
+- **Top-level route handlers** - Keep simple try-catch for API routes
+- **Single operation** - No nesting, simple error propagation
+- **Need finally blocks** - When cleanup logic is required
+- **Performance critical paths** - Minimal overhead, but consider if microseconds matter
+
+#### **🔧 Implementation Patterns**
+
+**✅ CORRECT - Linear flow with tryCatch:**
+
+```typescript
+import { tryCatch } from '@/lib/utils/try-catch';
+
+async function processData() {
+  try {
+    // Check and get source branch data
+    const { data: sourceBranch, error: sourceError } = await tryCatch(
+      github.rest.repos.getBranch({ owner, repo, branch: 'main' })
+    );
+    if (sourceError) return ApiErrorHandler.badRequest('Source not found');
+
+    // Check and get target branch data
+    const { data: targetBranch, error: targetError } = await tryCatch(
+      github.rest.repos.getBranch({ owner, repo, branch: 'develop' })
+    );
+    if (targetError) return ApiErrorHandler.badRequest('Target not found');
+
+    // Use the data from both operations
+    return processSuccess(sourceBranch, targetBranch);
+  } catch (error) {
+    return ApiErrorHandler.handle(error);
+  }
+}
+```
+
+**❌ WRONG - Nested try-catch:**
+
+```typescript
+try {
+  try {
+    await checkSourceBranch();
+  } catch (error) {
+    return ApiErrorHandler.badRequest('Source not found');
+  }
+
+  try {
+    await checkTargetBranch();
+  } catch (error) {
+    return ApiErrorHandler.badRequest('Target not found');
+  }
+} catch (error) {
+  return handleError(error);
+}
+```
+
 ## Code Style and Structure
 
 - Write concise, technical TypeScript code with accurate examples

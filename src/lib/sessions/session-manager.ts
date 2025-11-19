@@ -4,6 +4,7 @@
  */
 
 import { clerkService } from '@/lib/clerk';
+import { tryCatch } from '@/lib/utils/try-catch';
 import { existsSync, mkdirSync, rmSync } from 'fs';
 import { join, resolve } from 'path';
 import simpleGit, { type SimpleGit } from 'simple-git';
@@ -145,19 +146,22 @@ export class SessionManager {
       }
 
       // Checkout base branch
-      try {
-        await sessionGit.checkout(baseBranch);
-      } catch (error) {
-        console.warn(`Could not checkout ${baseBranch}, staying on current branch:`, error);
+      const { error: checkoutError } = await tryCatch(sessionGit.checkout(baseBranch));
+
+      if (checkoutError) {
+        console.warn(`Could not checkout ${baseBranch}, staying on current branch:`, checkoutError);
       }
 
       // Create session branch
       const sessionBranchName = `${SESSION_BRANCH_PREFIX}${sessionId}`;
-      try {
-        await sessionGit.checkoutLocalBranch(sessionBranchName);
+      const { error: branchError } = await tryCatch(
+        sessionGit.checkoutLocalBranch(sessionBranchName)
+      );
+
+      if (branchError) {
+        console.warn(`Could not create session branch ${sessionBranchName}:`, branchError);
+      } else {
         console.log(`✅ Created session branch: ${sessionBranchName}`);
-      } catch (error) {
-        console.warn(`Could not create session branch ${sessionBranchName}:`, error);
       }
 
       await this.configureGitIdentity(sessionGit, userId);
@@ -245,20 +249,25 @@ export class SessionManager {
       // Temporarily set authenticated URL
       await git.remote(['set-url', 'origin', authenticatedUrl]);
 
-      try {
-        // Fetch from remote
-        await git.fetch('origin', sessionBranchName);
-        console.log(`✅ Fetched ${sessionBranchName} from remote`);
-      } finally {
-        // Always restore original URL
-        await git.remote(['set-url', 'origin', originalUrl]);
+      // Fetch from remote
+      const { error: fetchError } = await tryCatch(git.fetch('origin', sessionBranchName));
+
+      // Always restore original URL
+      await git.remote(['set-url', 'origin', originalUrl]);
+
+      if (fetchError) {
+        throw new Error(
+          `Failed to fetch from remote: ${fetchError instanceof Error ? fetchError.message : 'Unknown error'}`
+        );
       }
+
+      console.log(`✅ Fetched ${sessionBranchName} from remote`);
 
       // Check if remote branch exists
       const remoteBranch = `origin/${sessionBranchName}`;
-      try {
-        await git.revparse([remoteBranch]);
-      } catch {
+      const { error: revparseError } = await tryCatch(git.revparse([remoteBranch]));
+
+      if (revparseError) {
         console.log(`⚠️ Remote branch ${sessionBranchName} doesn't exist, no changes to pull`);
         return {
           success: true,
@@ -282,12 +291,15 @@ export class SessionManager {
       // Count commits pulled
       let commitsPulled = 0;
       if (currentCommit !== newCommit) {
-        try {
-          const log = await git.log({ from: currentCommit, to: newCommit });
-          commitsPulled = log.total;
-        } catch {
+        const { data: log, error: logError } = await tryCatch(
+          git.log({ from: currentCommit, to: newCommit })
+        );
+
+        if (logError) {
           // If log fails, assume at least 1 commit was pulled
           commitsPulled = 1;
+        } else {
+          commitsPulled = log.total;
         }
       }
 
