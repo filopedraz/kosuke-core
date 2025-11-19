@@ -4,6 +4,7 @@ import type { NextConfig } from 'next';
 const nextConfig: NextConfig = {
   serverExternalPackages: ['@docker/node-sdk'],
   output: 'standalone',
+  poweredByHeader: false,
   experimental: {
     externalDir: true,
     webpackMemoryOptimizations: true,
