@@ -1,4 +1,4 @@
-import { relations } from 'drizzle-orm';
+import { relations, sql } from 'drizzle-orm';
 import {
   boolean,
   integer,
@@ -17,6 +17,18 @@ export const projectStatusEnum = pgEnum('project_status', [
   'requirements',
   'in_development',
   'active',
+]);
+
+// CLI log status enum
+export const cliLogStatusEnum = pgEnum('cli_log_status', ['success', 'error', 'cancelled']);
+
+// CLI log command enum
+export const cliLogCommandEnum = pgEnum('cli_log_command', [
+  'ship',
+  'test',
+  'review',
+  'getcode',
+  'tickets',
 ]);
 
 export const projects = pgTable('projects', {
@@ -200,6 +212,7 @@ export const projectsRelations = relations(projects, ({ many }) => ({
   githubSyncSessions: many(githubSyncSessions),
   auditLogs: many(projectAuditLogs),
   requirementsMessages: many(requirementsMessages),
+  cliLogs: many(cliLogs),
 }));
 
 export const chatSessionsRelations = relations(chatSessions, ({ one, many }) => ({
@@ -278,6 +291,71 @@ export const requirementsMessagesRelations = relations(requirementsMessages, ({ 
   }),
 }));
 
+export const cliLogs = pgTable(
+  'cli_logs',
+  {
+    // Identifiers
+    id: uuid('id').defaultRandom().primaryKey(),
+    projectId: uuid('project_id')
+      .references(() => projects.id, { onDelete: 'cascade' })
+      .notNull(),
+    orgId: text('org_id'), // Clerk org ID
+    userId: text('user_id'), // Clerk user ID
+
+    // Command Info
+    command: cliLogCommandEnum('command').notNull(),
+    commandArgs: jsonb('command_args'),
+
+    // Execution Status
+    status: cliLogStatusEnum('status').notNull(),
+    errorMessage: text('error_message'),
+
+    // Token Usage & Cost
+    tokensInput: integer('tokens_input').notNull(),
+    tokensOutput: integer('tokens_output').notNull(),
+    tokensCacheCreation: integer('tokens_cache_creation').default(0),
+    tokensCacheRead: integer('tokens_cache_read').default(0),
+    cost: varchar('cost', { length: 20 }).notNull(), // Stored as string to avoid decimal precision issues
+
+    // Performance
+    executionTimeMs: integer('execution_time_ms').notNull(),
+    inferenceTimeMs: integer('inference_time_ms'),
+
+    // Command-Specific Results
+    fixesApplied: integer('fixes_applied'),
+    testsRun: integer('tests_run'),
+    testsPassed: integer('tests_passed'),
+    testsFailed: integer('tests_failed'),
+    iterations: integer('iterations'),
+    filesModified: jsonb('files_modified'), // Array of file paths
+
+    // Metadata
+    cliVersion: varchar('cli_version', { length: 50 }),
+    metadata: jsonb('metadata'),
+
+    // Timestamps
+    startedAt: timestamp('started_at').notNull(),
+    completedAt: timestamp('completed_at').notNull(),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+  },
+  table => ({
+    // Indexes for performance
+    projectIdIdx: sql`CREATE INDEX IF NOT EXISTS idx_cli_logs_project_id ON ${table} (${table.projectId})`,
+    orgIdIdx: sql`CREATE INDEX IF NOT EXISTS idx_cli_logs_org_id ON ${table} (${table.orgId})`,
+    userIdIdx: sql`CREATE INDEX IF NOT EXISTS idx_cli_logs_user_id ON ${table} (${table.userId})`,
+    commandIdx: sql`CREATE INDEX IF NOT EXISTS idx_cli_logs_command ON ${table} (${table.command})`,
+    statusIdx: sql`CREATE INDEX IF NOT EXISTS idx_cli_logs_status ON ${table} (${table.status})`,
+    startedAtIdx: sql`CREATE INDEX IF NOT EXISTS idx_cli_logs_started_at ON ${table} (${table.startedAt} DESC)`,
+  })
+);
+
+export const cliLogsRelations = relations(cliLogs, ({ one }) => ({
+  project: one(projects, {
+    fields: [cliLogs.projectId],
+    references: [projects.id],
+  }),
+}));
+
 export type Project = typeof projects.$inferSelect;
 export type NewProject = typeof projects.$inferInsert;
 export type ProjectStatus = (typeof projectStatusEnum.enumValues)[number];
@@ -299,3 +377,7 @@ export type ProjectAuditLog = typeof projectAuditLogs.$inferSelect;
 export type NewProjectAuditLog = typeof projectAuditLogs.$inferInsert;
 export type RequirementsMessage = typeof requirementsMessages.$inferSelect;
 export type NewRequirementsMessage = typeof requirementsMessages.$inferInsert;
+export type CliLog = typeof cliLogs.$inferSelect;
+export type NewCliLog = typeof cliLogs.$inferInsert;
+export type CliLogStatus = (typeof cliLogStatusEnum.enumValues)[number];
+export type CliLogCommand = (typeof cliLogCommandEnum.enumValues)[number];

@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { ArrowLeft, Database, MessageSquare, ScrollText } from 'lucide-react';
+import { Activity, ArrowLeft, Database, MessageSquare, ScrollText } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -51,6 +51,12 @@ export function AdminSidebar({ ...props }: React.ComponentProps<typeof Sidebar>)
         url: '/admin/logs',
         icon: ScrollText,
         isActive: pathname?.startsWith('/admin/logs'),
+      },
+      {
+        title: 'Jobs',
+        url: '/admin/jobs',
+        icon: Activity,
+        isActive: pathname?.startsWith('/admin/jobs'),
       },
     ],
     [pathname]
