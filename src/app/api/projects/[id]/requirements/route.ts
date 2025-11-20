@@ -44,21 +44,10 @@ export async function GET(
       );
     }
 
-    // For now, return mock docs content
+    // For now, return empty docs content until actual requirements are generated
     // TODO: Integrate with actual git repository once we have the project path
-    const docsContent = `# ${project.name} - Requirements
-
-*This document is being built through AI-powered requirements gathering.*
-
-## Project Overview
-(To be determined through conversation)
-
-## Core Features
-(To be determined through conversation)
-
-## Technical Requirements
-(To be determined through conversation)
-`;
+    // TODO: Read from actual docs.md file when kosuke-cli integration is complete
+    const docsContent = '';
 
     return NextResponse.json({
       success: true,

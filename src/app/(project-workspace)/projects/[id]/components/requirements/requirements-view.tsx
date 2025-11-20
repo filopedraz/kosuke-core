@@ -1,8 +1,13 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { CheckCircle2, Loader2 } from 'lucide-react';
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
@@ -363,89 +368,76 @@ export default function RequirementsView({
         >
           <ScrollArea className="flex-1 overflow-y-auto">
             <div className="flex flex-col">
-              {messages.length === 0 && !isStreaming ? (
-                <div className="flex items-center justify-center h-32 p-6">
-                  <Card className="p-6 text-center max-w-2xl">
-                    <p className="text-muted-foreground">
-                      Start by describing your project idea. I&apos;ll help you build comprehensive
-                      requirements through conversation.
-                    </p>
-                  </Card>
-                </div>
-              ) : (
-                <>
-                  {enhancedMessages.map(message => (
-                    <ChatMessage
-                      key={message.id}
-                      id={message.id}
-                      content={message.content || ''}
-                      blocks={message.blocks}
-                      role={message.role}
-                      timestamp={message.timestamp}
-                      user={
-                        user
-                          ? {
-                              name: user.name || undefined,
-                              email: user.email,
-                              imageUrl: user.imageUrl || undefined,
-                            }
-                          : undefined
-                      }
-                      showAvatar={message.showAvatar}
-                    />
-                  ))}
+              {enhancedMessages.map(message => (
+                <ChatMessage
+                  key={message.id}
+                  id={message.id}
+                  content={message.content || ''}
+                  blocks={message.blocks}
+                  role={message.role}
+                  timestamp={message.timestamp}
+                  user={
+                    user
+                      ? {
+                          name: user.name || undefined,
+                          email: user.email,
+                          imageUrl: user.imageUrl || undefined,
+                        }
+                      : undefined
+                  }
+                  showAvatar={message.showAvatar}
+                />
+              ))}
 
-                  {/* Streaming assistant response */}
-                  {isStreaming && streamingBlocks.length > 0 && (
-                    <div className="animate-in fade-in-0 duration-300">
-                      <div className="flex w-full max-w-[95%] mx-auto gap-3 p-4" role="listitem">
-                        {/* Avatar */}
-                        <div className="relative flex items-center justify-center h-8 w-8">
-                          <div className="bg-muted border-primary rounded-md flex items-center justify-center h-full w-full">
-                            <svg
-                              viewBox="0 0 24 24"
-                              fill="currentColor"
-                              className="h-6 w-6 text-primary"
-                            >
-                              <circle
-                                cx="12"
-                                cy="12"
-                                r="10"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                fill="none"
-                              />
-                            </svg>
-                          </div>
-                        </div>
-
-                        {/* Content */}
-                        <div className="flex-1 space-y-2">
-                          <div className="flex items-center justify-between">
-                            <h4>AI Assistant</h4>
-                            <time className="text-xs text-muted-foreground">now</time>
-                          </div>
-
-                          {/* Streaming text */}
-                          {streamingBlocks[0] && streamingBlocks[0].content ? (
-                            <div className="prose prose-sm dark:prose-invert max-w-none">
-                              <p className="whitespace-pre-wrap">{streamingBlocks[0].content}</p>
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <div className="flex space-x-1">
-                                <div className="w-2 h-2 bg-primary rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-                                <div className="w-2 h-2 bg-primary rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-                                <div className="w-2 h-2 bg-primary rounded-full animate-bounce"></div>
-                              </div>
-                              <span className="animate-pulse">Processing request...</span>
-                            </div>
-                          )}
-                        </div>
+              {/* Streaming assistant response */}
+              {isStreaming && streamingBlocks.length > 0 && (
+                <div className="animate-in fade-in-0 duration-300">
+                  <div className="flex w-full max-w-[95%] mx-auto gap-3 p-4" role="listitem">
+                    {/* Avatar */}
+                    <div className="relative flex items-center justify-center h-8 w-8">
+                      <div className="bg-muted border-primary rounded-md flex items-center justify-center h-full w-full">
+                        <svg
+                          viewBox="0 0 24 24"
+                          fill="currentColor"
+                          className="h-6 w-6 text-primary"
+                        >
+                          <circle
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            fill="none"
+                          />
+                        </svg>
                       </div>
                     </div>
-                  )}
-                </>
+
+                    {/* Content */}
+                    <div className="flex-1 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <h4>AI Assistant</h4>
+                        <time className="text-xs text-muted-foreground">now</time>
+                      </div>
+
+                      {/* Streaming text */}
+                      {streamingBlocks[0] && streamingBlocks[0].content ? (
+                        <div className="prose prose-sm dark:prose-invert max-w-none">
+                          <p className="whitespace-pre-wrap">{streamingBlocks[0].content}</p>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <div className="flex space-x-1">
+                            <div className="w-2 h-2 bg-primary rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                            <div className="w-2 h-2 bg-primary rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                            <div className="w-2 h-2 bg-primary rounded-full animate-bounce"></div>
+                          </div>
+                          <span className="animate-pulse">Processing request...</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
               )}
 
               <div ref={messagesEndRef} className="pb-6" />
@@ -478,10 +470,26 @@ export default function RequirementsView({
               <p className="text-sm text-muted-foreground">Live preview of docs.md</p>
             </div>
             {projectStatus === 'requirements' && (
-              <Button onClick={() => setShowConfirmModal(true)} disabled={isConfirming}>
-                <CheckCircle2 className="h-4 w-4 mr-2" />
-                Confirm Requirements
-              </Button>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span tabIndex={0}>
+                      <Button
+                        onClick={() => setShowConfirmModal(true)}
+                        disabled={isConfirming || !docsContent}
+                      >
+                        <CheckCircle2 className="h-4 w-4 mr-2" />
+                        Confirm Requirements
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  {!docsContent && (
+                    <TooltipContent>
+                      <p>Continue the conversation to generate requirements before confirming</p>
+                    </TooltipContent>
+                  )}
+                </Tooltip>
+              </TooltipProvider>
             )}
             {projectStatus === 'in_development' && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">

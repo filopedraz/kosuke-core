@@ -41,11 +41,34 @@ export async function GET(
     }
 
     // Fetch conversation history from database
-    const messages = await db
+    let messages = await db
       .select()
       .from(requirementsMessages)
       .where(eq(requirementsMessages.projectId, projectId))
       .orderBy(requirementsMessages.timestamp);
+
+    // If no messages exist, create an initial assistant message
+    if (messages.length === 0) {
+      const initialMessage = await db
+        .insert(requirementsMessages)
+        .values({
+          projectId,
+          userId,
+          role: 'assistant',
+          content: null,
+          blocks: [
+            {
+              type: 'text',
+              content:
+                "Start by describing your project idea. I'll help you build comprehensive requirements through conversation.",
+            },
+          ],
+          timestamp: new Date(),
+        })
+        .returning();
+
+      messages = initialMessage;
+    }
 
     return NextResponse.json({
       success: true,
