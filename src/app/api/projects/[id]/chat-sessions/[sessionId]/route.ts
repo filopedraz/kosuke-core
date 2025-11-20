@@ -11,7 +11,6 @@ import { getDockerService } from '@/lib/docker';
 import { deleteDir } from '@/lib/fs/operations';
 import { getKosukeGitHubToken, getUserGitHubToken } from '@/lib/github/client';
 import { verifyProjectAccess } from '@/lib/projects';
-import { sessionManager } from '@/lib/sessions';
 import { uploadFile } from '@/lib/storage';
 import { and, eq } from 'drizzle-orm';
 
@@ -217,6 +216,7 @@ export async function DELETE(
     }
 
     // Step 2: Delete session files after container is stopped
+    const { sessionManager } = await import('@/lib/sessions');
     const sessionPath = sessionManager.getSessionPath(projectId, sessionId);
     let filesWarning = null;
 
@@ -415,7 +415,8 @@ export async function POST(
     }
 
     // Validate session directory exists
-    const sessionValid = await sessionManager.validateSessionDirectory(projectId, chatSession.sessionId);
+    const { sessionManager: sm } = await import('@/lib/sessions');
+    const sessionValid = await sm.validateSessionDirectory(projectId, chatSession.sessionId);
 
     if (!sessionValid) {
       return new Response(

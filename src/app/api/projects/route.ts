@@ -9,7 +9,6 @@ import { db } from '@/lib/db/drizzle';
 import { projects } from '@/lib/db/schema';
 import { createRepositoryFromTemplate } from '@/lib/github';
 import { getUserGitHubToken } from '@/lib/github/client';
-import { GitOperations } from '@/lib/github/git-operations';
 
 // GitHub needs time to initialize repos after creation
 const GITHUB_REPO_INIT_DELAY_MS = 10_000; // 10 seconds
@@ -83,6 +82,7 @@ async function createGitHubRepository(
   // Clone the repository locally using GitHub App token
   try {
     const { getKosukeGitHubToken } = await import('@/lib/github/client');
+    const { GitOperations } = await import('@/lib/github/git-operations');
     const kosukeToken = await getKosukeGitHubToken();
     const gitOps = new GitOperations();
     await gitOps.cloneRepository(repoData.url, projectId, kosukeToken);
@@ -128,6 +128,7 @@ async function importGitHubRepository(
       throw new Error('GitHub token not found');
     }
 
+    const { GitOperations } = await import('@/lib/github/git-operations');
     const gitOps = new GitOperations();
     const projectPath = await gitOps.cloneRepository(repositoryUrl, projectId, githubToken);
 
