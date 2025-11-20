@@ -35,8 +35,9 @@ services:
       - ./projects:/app/projects:cached
       - /var/run/docker.sock:/var/run/docker.sock
       # Mount local kosuke-cli for development
-      # after building the package with npm run build
       - ../kosuke-cli:/app/node_modules/@kosuke-ai/cli:cached
+      # Volume for kosuke-cli dependencies (installed via entrypoint)
+      - kosuke_cli_node_modules:/app/node_modules/@kosuke-ai/cli/node_modules
     env_file:
       - .env
     depends_on:
@@ -67,8 +68,9 @@ services:
       - /app/.next
       - ./projects:/app/projects:cached
       # Mount local kosuke-cli for development
-      # after building the package with npm run build
       - ../kosuke-cli:/app/node_modules/@kosuke-ai/cli:cached
+      # Volume for kosuke-cli dependencies (installed via entrypoint)
+      - kosuke_cli_node_modules:/app/node_modules/@kosuke-ai/cli/node_modules
     env_file:
       - .env
     depends_on:
@@ -82,6 +84,7 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  kosuke_cli_node_modules:
 
 networks:
   kosuke_network:

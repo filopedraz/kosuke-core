@@ -1,9 +1,9 @@
-import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db/drizzle';
 import { projectAuditLogs, projects } from '@/lib/db/schema';
+import { verifyProjectAccess } from '@/lib/projects';
+import { auth } from '@clerk/nextjs/server';
 import { eq } from 'drizzle-orm';
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyProjectAccess } from '@/lib/projects';
 import { z } from 'zod';
 
 const requirementsMessageSchema = z.object({
@@ -44,10 +44,21 @@ export async function GET(
       );
     }
 
-    // For now, return empty docs content until actual requirements are generated
-    // TODO: Integrate with actual git repository once we have the project path
-    // TODO: Read from actual docs.md file when kosuke-cli integration is complete
-    const docsContent = '';
+    // Read actual docs.md file from project directory
+    let docsContent = '';
+    try {
+      const fs = await import('fs/promises');
+      const path = await import('path');
+      // Use the Docker-mounted projects directory
+      const projectPath = `/app/projects/${projectId}`;
+      const docsPath = path.join(projectPath, 'docs.md');
+      docsContent = await fs.readFile(docsPath, 'utf-8');
+      console.log(`✅ Read docs.md for project ${projectId}`);
+    } catch (_error) {
+      // docs.md doesn't exist yet - return empty content
+      console.log(`ℹ️  docs.md not found for project ${projectId} - requirements gathering in progress`);
+      docsContent = '';
+    }
 
     return NextResponse.json({
       success: true,

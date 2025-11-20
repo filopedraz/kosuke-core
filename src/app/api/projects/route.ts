@@ -6,11 +6,10 @@ import { ApiErrorHandler } from '@/lib/api/errors';
 import { ApiResponseHandler } from '@/lib/api/responses';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db/drizzle';
-import { projects, projectAuditLogs } from '@/lib/db/schema';
+import { projectAuditLogs, projects } from '@/lib/db/schema';
 import { createRepositoryFromTemplate } from '@/lib/github';
 import { getUserGitHubToken } from '@/lib/github/client';
 import { GitOperations } from '@/lib/github/git-operations';
-import { initializeDocsFile } from '@/lib/kosuke-cli/requirements';
 
 // GitHub needs time to initialize repos after creation
 const GITHUB_REPO_INIT_DELAY_MS = 10_000; // 10 seconds
@@ -89,15 +88,8 @@ async function createGitHubRepository(
     await gitOps.cloneRepository(repoData.url, projectId, kosukeToken);
     console.log(`✅ Repository cloned successfully to project ${projectId}`);
 
-    // Create initial docs.md file for requirements gathering
-    try {
-      const projectPath = `/tmp/kosuke-projects/${projectId}`;
-      await initializeDocsFile(projectPath);
-      console.log(`✅ Created docs.md for project ${projectId}`);
-    } catch (docsError) {
-      console.error('Failed to create docs.md:', docsError);
-      // Don't throw - we can create it later
-    }
+    // Note: docs.md will be created during requirements gathering conversation
+    // Not creating it here to keep the project in a clean state
   } catch (cloneError) {
     console.error('Repository created but failed to clone locally:', cloneError);
     // Don't throw - repository was created successfully

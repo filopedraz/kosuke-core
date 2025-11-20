@@ -1,9 +1,9 @@
-import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db/drizzle';
 import { requirementsMessages } from '@/lib/db/schema';
+import { verifyProjectAccess } from '@/lib/projects';
+import { auth } from '@clerk/nextjs/server';
 import { eq } from 'drizzle-orm';
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyProjectAccess } from '@/lib/projects';
 import { z } from 'zod';
 
 const sendMessageSchema = z.object({
@@ -150,46 +150,58 @@ export async function POST(
       })
       .returning();
 
+    // Get conversation history to check if this is the first request
+    const messageHistory = await db
+      .select()
+      .from(requirementsMessages)
+      .where(eq(requirementsMessages.projectId, projectId))
+      .orderBy(requirementsMessages.timestamp);
+
+    // Count non-initial messages (exclude the default welcome message)
+    const isFirstUserMessage = messageHistory.filter(m => m.role === 'user').length <= 1;
+
     // Create a streaming response
     const stream = new ReadableStream({
       async start(controller) {
         try {
-          // TODO: Integrate with kosuke-cli for actual requirements gathering
-          // For now, provide a mock streaming response
+          const { runRequirementsGathering } = await import('@/lib/kosuke-cli/requirements');
 
-          // Simulate streaming text response
-          const mockResponse = `Based on your message: "${content}"
+          // Use the Docker-mounted projects directory
+          const projectPath = `/app/projects/${projectId}`;
 
-I understand you'd like to build a project. Let me help you refine the requirements.
+          // Ensure project directory exists before running requirements gathering
+          const fs = await import('fs/promises');
+          await fs.mkdir(projectPath, { recursive: true });
+          console.log(`✅ Created/verified project directory: ${projectPath}`);
 
-**Current Understanding:**
-- Project Name: ${project.name}
-- Initial Concept: ${content}
+          let fullResponse = '';
 
-**Questions to refine requirements:**
-1. What is the primary goal of this project?
-2. Who are the target users?
-3. What are the must-have features for v1?
-4. Are there any technical constraints or preferences?
+          // Run requirements gathering with kosuke-cli
+          const result = await runRequirementsGathering({
+            projectPath,
+            projectId,
+            projectName: project.name,
+            userMessage: content,
+            isFirstRequest: isFirstUserMessage,
+            onStream: (text: string) => {
+              // Stream the text to client
+              fullResponse += text;
+              const event = {
+                type: 'content_block_delta',
+                index: 0,
+                delta_type: 'text_delta',
+                text: text,
+              };
+              controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify(event)}\n\n`));
+            },
+          });
 
-Please provide more details so I can help build a comprehensive requirements document.`;
-
-          // Stream the response in chunks to simulate real streaming
-          const words = mockResponse.split(' ');
-
-          for (let i = 0; i < words.length; i++) {
-            const event = {
-              type: 'content_block_delta',
-              index: 0,
-              delta_type: 'text_delta',
-              text: words[i] + (i < words.length - 1 ? ' ' : ''),
-            };
-
-            controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify(event)}\n\n`));
-
-            // Small delay to simulate streaming
-            await new Promise(resolve => setTimeout(resolve, 50));
+          if (!result.success) {
+            throw new Error(result.error || 'Requirements gathering failed');
           }
+
+          // Use the full response from result
+          const finalResponse = result.response || fullResponse;
 
           // Update assistant message in database with complete response
           await db
@@ -198,16 +210,26 @@ Please provide more details so I can help build a comprehensive requirements doc
               blocks: [
                 {
                   type: 'text',
-                  content: mockResponse,
+                  content: finalResponse,
                 },
               ],
             })
             .where(eq(requirementsMessages.id, assistantMessage.id));
 
+          // If docs.md was created, update the project's requirements status
+          if (result.docs) {
+            console.log(`✅ docs.md created for project ${projectId}`);
+            // Note: The PATCH endpoint will handle the final confirmation
+          }
+
           // Send completion marker
           controller.enqueue(
             new TextEncoder().encode(
-              `data: ${JSON.stringify({ type: 'message_complete' })}\n\n`
+              `data: ${JSON.stringify({
+                type: 'message_complete',
+                hasDocsMd: !!result.docs,
+                tokenUsage: result.tokenUsage,
+              })}\n\n`
             )
           );
           controller.enqueue(new TextEncoder().encode('data: [DONE]\n\n'));

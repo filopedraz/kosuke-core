@@ -8,63 +8,115 @@ import 'server-only';
 interface RequirementsOptions {
   projectPath: string;
   projectId: string;
+  projectName: string;
   userMessage: string;
-  existingDocs?: string;
-  onUpdate?: (docs: string) => Promise<void>;
+  sessionId?: string | null;
+  conversationHistory?: string[];
+  isFirstRequest?: boolean;
+  onStream?: (text: string) => void;
 }
 
 interface RequirementsResult {
   success: boolean;
+  response: string;
+  sessionId?: string;
   docs?: string;
   error?: string;
   tokenUsage?: {
     input: number;
     output: number;
+    cacheCreation: number;
+    cacheRead: number;
   };
 }
 
+// Type definition for kosuke-cli requirementsCore function
+interface KosukeCoreModule {
+  requirementsCore?: (options: {
+    workspaceRoot: string;
+    userMessage: string;
+    sessionId?: string | null;
+    isFirstRequest?: boolean;
+    onStream?: (text: string) => void;
+  }) => Promise<{
+    success: boolean;
+    response: string;
+    sessionId: string;
+    docsCreated: boolean;
+    docsContent?: string;
+    tokenUsage: {
+      input: number;
+      output: number;
+      cacheCreation: number;
+      cacheRead: number;
+    };
+    error?: string;
+  }>;
+}
+
 /**
- * Run requirements gathering using Kosuke CLI
+ * Run requirements gathering using Kosuke CLI requirementsCore
  * This function is called from the API route with user messages
  */
-async function _runRequirementsGathering(
-  _options: RequirementsOptions
+export async function runRequirementsGathering(
+  options: RequirementsOptions
 ): Promise<RequirementsResult> {
+  const { projectPath, userMessage, sessionId = null, isFirstRequest = false, onStream } = options;
+
   try {
-    // Validate ANTHROPIC_API_KEY is present
-    if (!process.env.ANTHROPIC_API_KEY) {
-      throw new Error('ANTHROPIC_API_KEY environment variable is required');
+    // Debug logging for environment
+    console.log('🔍 [Requirements] process.env.PATH:', process.env.PATH);
+    console.log('🔍 [Requirements] Current working directory:', process.cwd());
+
+    // Ensure PATH is set in environment (fix for Docker spawn issues)
+    if (!process.env.PATH) {
+      console.warn('⚠️ [Requirements] PATH not set, adding default');
+      process.env.PATH = '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin';
     }
 
-    // TODO: Implement the actual integration once we have access to the CLI
-    // The CLI is designed for interactive terminal use, so we'll need to:
-    // 1. Extract the core logic
-    // 2. Make it work programmatically
-    // 3. Return the docs.md content
+    // Import requirementsCore from kosuke-cli
+    // Note: TypeScript may not recognize this locally, but it exists in the Docker-mounted volume
+    const kosukeModule = (await import('@kosuke-ai/cli')) as KosukeCoreModule;
+    const requirementsCore = kosukeModule.requirementsCore;
 
-    try {
-      // Import kosuke CLI - this will work when locally mounted via docker-compose
-      // @ts-expect-error - Package may not be installed during development
-      const { requirementsCommand } = await import('@kosuke-ai/cli');
-      console.log('Kosuke CLI loaded successfully:', requirementsCommand);
+    console.log('✅ [Requirements] requirementsCore loaded successfully');
 
-      // TODO: Call the CLI with proper parameters once we understand the API
-      return {
-        success: false,
-        error: 'Kosuke CLI integration in progress - CLI loaded but integration not complete',
-      };
-    } catch (importError) {
-      console.warn('Kosuke CLI not available:', importError);
-      return {
-        success: false,
-        error:
-          'Kosuke CLI not available. Mount local CLI via docker-compose.local.yml or install package.',
-      };
+    if (!requirementsCore) {
+      throw new Error(
+        'requirementsCore not found in kosuke-cli. Ensure kosuke-cli is built and mounted correctly.'
+      );
     }
+
+    // Call requirementsCore with proper options
+    const result = await requirementsCore({
+      workspaceRoot: projectPath,
+      userMessage,
+      sessionId,
+      isFirstRequest,
+      onStream,
+    });
+
+    if (!result.success) {
+      throw new Error(result.error || 'Requirements gathering failed');
+    }
+
+    return {
+      success: true,
+      response: result.response,
+      sessionId: result.sessionId,
+      docs: result.docsContent,
+      tokenUsage: {
+        input: result.tokenUsage.input,
+        output: result.tokenUsage.output,
+        cacheCreation: result.tokenUsage.cacheCreation,
+        cacheRead: result.tokenUsage.cacheRead,
+      },
+    };
   } catch (error) {
     console.error('Error running requirements gathering:', error);
     return {
       success: false,
+      response: '',
       error: error instanceof Error ? error.message : 'Unknown error occurred',
     };
   }
@@ -72,8 +124,9 @@ async function _runRequirementsGathering(
 
 /**
  * Initialize docs.md file in the repository
+ * This should only be called during requirements gathering, not project creation
  */
-export async function initializeDocsFile(projectPath: string): Promise<boolean> {
+async function _initializeDocsFile(projectPath: string, initialContent?: string): Promise<boolean> {
   try {
     const fs = await import('fs/promises');
     const path = await import('path');
@@ -85,12 +138,11 @@ export async function initializeDocsFile(projectPath: string): Promise<boolean> 
       await fs.access(docsPath);
       return true; // File already exists
     } catch {
-      // File doesn't exist, create it
-      await fs.writeFile(
-        docsPath,
-        `# Project Requirements\n\n*This document will be populated through our AI-powered requirements gathering process.*\n`,
-        'utf-8'
-      );
+      // File doesn't exist, create it with provided content or default
+      const content =
+        initialContent ||
+        `# Project Requirements\n\n*Generated through AI-powered requirements gathering.*\n`;
+      await fs.writeFile(docsPath, content, 'utf-8');
       return true;
     }
   } catch (error) {
