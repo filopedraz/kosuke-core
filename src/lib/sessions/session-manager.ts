@@ -8,25 +8,27 @@ import { existsSync, mkdirSync, rmSync } from 'fs';
 import { join, resolve } from 'path';
 import simpleGit, { type SimpleGit } from 'simple-git';
 
-const PROJECTS_BASE_PATH = process.env.PROJECTS_BASE_PATH!;
-if (!PROJECTS_BASE_PATH) {
-  throw new Error('PROJECTS_BASE_PATH environment variable is required');
-}
-
-const SESSION_BRANCH_PREFIX = process.env.SESSION_BRANCH_PREFIX!;
-if (!SESSION_BRANCH_PREFIX) {
-  throw new Error('SESSION_BRANCH_PREFIX environment variable is required');
-}
-
 /**
  * Session Manager
  * Provides utilities for session directory management
  */
 export class SessionManager {
   private projectsBasePath: string;
+  private sessionBranchPrefix: string;
 
   constructor() {
-    this.projectsBasePath = resolve(PROJECTS_BASE_PATH);
+    const projectsBasePath = process.env.PROJECTS_BASE_PATH;
+    if (!projectsBasePath) {
+      throw new Error('PROJECTS_BASE_PATH environment variable is required');
+    }
+
+    const sessionBranchPrefix = process.env.SESSION_BRANCH_PREFIX;
+    if (!sessionBranchPrefix) {
+      throw new Error('SESSION_BRANCH_PREFIX environment variable is required');
+    }
+
+    this.projectsBasePath = resolve(projectsBasePath);
+    this.sessionBranchPrefix = sessionBranchPrefix;
     console.log('🔧 SessionManager initialized');
     console.log(`📁 Projects base path: ${this.projectsBasePath}`);
   }
@@ -159,7 +161,7 @@ export class SessionManager {
       }
 
       // Create session branch
-      const sessionBranchName = `${SESSION_BRANCH_PREFIX}${sessionId}`;
+      const sessionBranchName = `${this.sessionBranchPrefix}${sessionId}`;
       try {
         await sessionGit.checkoutLocalBranch(sessionBranchName);
         console.log(`✅ Created session branch: ${sessionBranchName}`);
@@ -219,7 +221,7 @@ export class SessionManager {
     branch_name: string;
   }> {
     const sessionPath = this.getSessionPath(projectId, sessionId);
-    const sessionBranchName = `${SESSION_BRANCH_PREFIX}${sessionId}`;
+    const sessionBranchName = `${this.sessionBranchPrefix}${sessionId}`;
 
     console.log(`📥 Pulling session branch ${sessionBranchName} for project ${projectId}`);
 
