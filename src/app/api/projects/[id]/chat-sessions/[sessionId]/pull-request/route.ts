@@ -16,11 +16,6 @@ const createPullRequestSchema = z.object({
   target_branch: z.string().optional(),
 });
 
-const SESSION_BRANCH_PREFIX = process.env.SESSION_BRANCH_PREFIX;
-if (!SESSION_BRANCH_PREFIX) {
-  throw new Error('SESSION_BRANCH_PREFIX environment variable is required');
-}
-
 /**
  * POST /api/projects/[id]/chat-sessions/[sessionId]/pull-request
  * Create pull request from chat session branch
@@ -30,6 +25,11 @@ export async function POST(
   { params }: { params: Promise<{ id: string; sessionId: string }> }
 ) {
   try {
+    const sessionBranchPrefix = process.env.SESSION_BRANCH_PREFIX;
+    if (!sessionBranchPrefix) {
+      throw new Error('SESSION_BRANCH_PREFIX environment variable is required');
+    }
+
     const { userId } = await auth();
     if (!userId) {
       return ApiErrorHandler.unauthorized();
@@ -75,7 +75,7 @@ export async function POST(
     const { title, description, target_branch } = parseResult.data;
 
     // Set defaults
-    const sourceBranch = `${SESSION_BRANCH_PREFIX}${session.sessionId}`;
+    const sourceBranch = `${sessionBranchPrefix}${session.sessionId}`;
     const targetBranch = target_branch || project.defaultBranch || 'main';
     const prTitle = title || `Updates from chat session: ${session.title}`;
     const prDescription = description || `Automated changes from Kosuke chat session: ${session.title}\n\nSession ID: ${sessionId}`;
