@@ -432,8 +432,8 @@ export async function POST(
 
     console.log(`✅ Session environment validated for session ${chatSession.sessionId}`);
 
-    // Initialize Agent with session configuration
-    const agent = new Agent({
+    // Initialize Agent with session configuration using factory method
+    const agent = await Agent.create({
       projectId,
       sessionId: chatSession.sessionId,
       githubToken,
