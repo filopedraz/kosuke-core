@@ -3,7 +3,6 @@
  * Manages Docker containers for preview environments
  */
 
-import { sessionManager } from '@/lib/sessions';
 import type { DockerContainerStatus, RouteInfo } from '@/lib/types/docker';
 import type { PreviewUrl, PreviewUrlsResponse } from '@/lib/types/preview-urls';
 import { DockerClient, type ContainerCreateRequest } from '@docker/node-sdk';
@@ -341,6 +340,7 @@ class DockerService {
     }
 
     // Ensure session directory exists (create if needed)
+    const { sessionManager } = await import('@/lib/sessions');
     await sessionManager.ensureSessionEnvironment(projectId, sessionId, userId);
 
     // Reuse existing running container if possible
