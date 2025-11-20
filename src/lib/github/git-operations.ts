@@ -9,27 +9,35 @@ import { existsSync, rmSync } from 'fs';
 import { join } from 'path';
 import simpleGit, { type SimpleGit } from 'simple-git';
 
-const SESSION_BRANCH_PREFIX = process.env.SESSION_BRANCH_PREFIX!;
-if (!SESSION_BRANCH_PREFIX) {
-  throw new Error('SESSION_BRANCH_PREFIX environment variable is required');
-}
-
-const PROJECTS_BASE_PATH = process.env.PROJECTS_BASE_PATH!;
-if (!PROJECTS_BASE_PATH) {
-  throw new Error('PROJECTS_BASE_PATH environment variable is required');
-}
-
 /**
  * Git Operations Service
  * Provides Git functionality for session-based development
  */
 export class GitOperations {
+  private projectsBasePath: string;
+  private sessionBranchPrefix: string;
+
+  constructor() {
+    const projectsBasePath = process.env.PROJECTS_BASE_PATH;
+    if (!projectsBasePath) {
+      throw new Error('PROJECTS_BASE_PATH environment variable is required');
+    }
+
+    const sessionBranchPrefix = process.env.SESSION_BRANCH_PREFIX;
+    if (!sessionBranchPrefix) {
+      throw new Error('SESSION_BRANCH_PREFIX environment variable is required');
+    }
+
+    this.projectsBasePath = projectsBasePath;
+    this.sessionBranchPrefix = sessionBranchPrefix;
+  }
+
   /**
    * Clone a GitHub repository to the local project directory
    */
   async cloneRepository(repoUrl: string, projectId: string, githubToken: string): Promise<string> {
     try {
-      const projectPath = join(PROJECTS_BASE_PATH, projectId);
+      const projectPath = join(this.projectsBasePath, projectId);
 
       // Remove existing project directory if it exists
       if (existsSync(projectPath)) {
@@ -100,7 +108,7 @@ export class GitOperations {
 
     try {
       const git = simpleGit(options.sessionPath);
-      const branchName = `${SESSION_BRANCH_PREFIX}${options.sessionId}`;
+      const branchName = `${this.sessionBranchPrefix}${options.sessionId}`;
 
       // Detect changes before doing anything
       const changes = await this.detectChanges(git);
@@ -245,9 +253,9 @@ export class GitOperations {
 
     if (filesChanged.length <= 3) {
       const fileSummary = filesChanged.join(', ');
-      return `${SESSION_BRANCH_PREFIX}${timestamp}: Modified ${fileSummary} (chat: ${sessionId.substring(0, 8)})`;
+      return `${this.sessionBranchPrefix}${timestamp}: Modified ${fileSummary} (chat: ${sessionId.substring(0, 8)})`;
     } else {
-      return `${SESSION_BRANCH_PREFIX}${timestamp}: Modified ${filesChanged.length} files (chat: ${sessionId.substring(0, 8)})`;
+      return `${this.sessionBranchPrefix}${timestamp}: Modified ${filesChanged.length} files (chat: ${sessionId.substring(0, 8)})`;
     }
   }
 
