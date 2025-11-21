@@ -18,7 +18,7 @@ echo "📦 Dependencies installed"
 
 # Run database migrations/push schema
 echo "🗄️ Setting up database schema..."
-bun run db:push
+bun run db:reset
 
 # Execute the command passed to docker run
 echo "🚀 Starting application..."
