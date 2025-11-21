@@ -1,7 +1,7 @@
 <svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
 <g clip-path="url(#clip0_7743_5314)">
 <g filter="url(#filter0_d_7743_5314)">
-<rect width="1024" height="1024" fill="url(#paint0_linear_7743_5314)"/>
+<rect width="1024" height="1024" fill="url(#paint0_radial_7743_5314)"/>
 </g>
 <g filter="url(#filter1_di_7743_5314)">
 <path d="M512.5 189C687.175 189 830 332.854 830 511.826C830 690.799 687.175 834.652 512.5 834.652C337.825 834.652 195 690.799 195 511.826C195 332.854 337.825 189 512.5 189Z" stroke="white" stroke-width="100"/>
@@ -34,10 +34,10 @@
 <feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.5 0"/>
 <feBlend mode="normal" in2="shape" result="effect2_innerShadow_7743_5314"/>
 </filter>
-<linearGradient id="paint0_linear_7743_5314" x1="512" y1="0" x2="512" y2="1024" gradientUnits="userSpaceOnUse">
-<stop stop-color="#2C2C30"/>
-<stop offset="1" stop-color="#0A0A0A"/>
-</linearGradient>
+<radialGradient id="paint0_radial_7743_5314" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(512 1002.8) rotate(-90) scale(882.955)">
+<stop stop-color="#707070"/>
+<stop offset="1"/>
+</radialGradient>
 <clipPath id="clip0_7743_5314">
 <rect width="1024" height="1024" rx="200" fill="white"/>
 </clipPath>
