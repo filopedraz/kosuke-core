@@ -10,7 +10,7 @@ interface RequirementsOptions {
   projectId: string;
   projectName: string;
   userMessage: string;
-  sessionId?: string | null;
+  sessionId?: string | null; // Claude Agent SDK session ID for conversation continuity
   conversationHistory?: string[];
   isFirstRequest?: boolean;
   onStream?: (text: string) => void;
@@ -62,6 +62,9 @@ export async function runRequirementsGathering(
   options: RequirementsOptions
 ): Promise<RequirementsResult> {
   const { projectPath, userMessage, sessionId = null, isFirstRequest = false, onStream } = options;
+
+  console.log(`🔍 [Requirements] Session ID: ${sessionId || 'NEW SESSION'}`);
+  console.log(`🔍 [Requirements] Is first request: ${isFirstRequest}`);
 
   try {
     // Debug logging for environment

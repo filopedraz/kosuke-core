@@ -29,6 +29,13 @@
       "when": 1763547863119,
       "tag": "0003_goofy_katie_power",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1763709209867,
+      "tag": "0004_same_magus",
+      "breakpoints": true
     }
   ]
 }

@@ -1,5 +1,5 @@
 import { db } from '@/lib/db/drizzle';
-import { requirementsMessages } from '@/lib/db/schema';
+import { projects, requirementsMessages } from '@/lib/db/schema';
 import { verifyProjectAccess } from '@/lib/projects';
 import { auth } from '@clerk/nextjs/server';
 import { eq } from 'drizzle-orm';
@@ -182,6 +182,7 @@ export async function POST(
             projectId,
             projectName: project.name,
             userMessage: content,
+            sessionId: project.requirementsSessionId || null, // Pass existing session ID for context continuity
             isFirstRequest: isFirstUserMessage,
             onStream: (text: string) => {
               // Stream the text to client
@@ -215,6 +216,15 @@ export async function POST(
               ],
             })
             .where(eq(requirementsMessages.id, assistantMessage.id));
+
+          // Persist the session ID for conversation continuity
+          if (result.sessionId) {
+            await db
+              .update(projects)
+              .set({ requirementsSessionId: result.sessionId })
+              .where(eq(projects.id, projectId));
+            console.log(`✅ Persisted session ID for project ${projectId}`);
+          }
 
           // If docs.md was created, update the project's requirements status
           if (result.docs) {

@@ -1,0 +1,1 @@
+ALTER TABLE "projects" ADD COLUMN "requirements_session_id" varchar(255);

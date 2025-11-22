@@ -141,6 +141,15 @@ export default function RequirementsView({
     async (content: string) => {
       if (!content.trim() || isLoading || projectStatus === 'in_development') return;
 
+      // Optimistically add user message to UI immediately
+      const optimisticUserMessage: RequirementsMessage = {
+        id: `temp-user-${Date.now()}`,
+        role: 'user',
+        content,
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, optimisticUserMessage]);
+
       setIsLoading(true);
       setIsStreaming(true);
       setStreamingBlocks([]);
@@ -242,6 +251,9 @@ export default function RequirementsView({
           }
         }
       } catch (error: unknown) {
+        // Remove optimistic message on error
+        setMessages(prev => prev.filter(m => m.id !== optimisticUserMessage.id));
+
         if (error instanceof Error && error.name === 'AbortError') {
           console.log('Stream cancelled by user');
         } else {

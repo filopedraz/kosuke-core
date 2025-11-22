@@ -51,6 +51,7 @@ export const projects = pgTable('projects', {
   status: projectStatusEnum('status').notNull().default('active'),
   requirementsCompletedAt: timestamp('requirements_completed_at'),
   requirementsCompletedBy: text('requirements_completed_by'),
+  requirementsSessionId: varchar('requirements_session_id', { length: 255 }), // Claude Agent SDK session ID for context persistence
 });
 
 export const chatSessions = pgTable('chat_sessions', {

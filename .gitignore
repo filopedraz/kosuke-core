@@ -63,3 +63,6 @@ projects/*/
 
 # lighthouse reports
 *.report.html
+
+# kosuke-cli package directory (not src/lib/kosuke-cli)
+/kosuke-cli/
