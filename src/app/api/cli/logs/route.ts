@@ -43,6 +43,26 @@ const cliLogSchema = z.object({
   cliVersion: z.string().optional(),
   metadata: z.record(z.string(), z.unknown()).optional(),
 
+  // Conversation Data (full capture for tickets/requirements commands)
+  conversationMessages: z
+    .array(
+      z.object({
+        role: z.enum(['user', 'assistant']),
+        content: z.string(),
+        timestamp: z.string().datetime(),
+        toolCalls: z
+          .array(
+            z.object({
+              name: z.string(),
+              input: z.any(),
+              output: z.any().optional(),
+            })
+          )
+          .optional(),
+      })
+    )
+    .optional(),
+
   // Timestamps
   startedAt: z.string().datetime(),
   completedAt: z.string().datetime(),

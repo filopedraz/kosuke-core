@@ -3,6 +3,25 @@ import type { CliLog, CliLogCommand, CliLogStatus } from '@/lib/db/schema';
 export type { CliLog, CliLogCommand, CliLogStatus };
 
 /**
+ * Tool call data in conversation messages
+ */
+interface ConversationToolCall {
+  name: string;
+  input: Record<string, unknown>;
+  output?: string | Record<string, unknown>;
+}
+
+/**
+ * Conversation message data
+ */
+export interface ConversationMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: string;
+  toolCalls?: ConversationToolCall[];
+}
+
+/**
  * Statistics for CLI logs dashboard
  */
 export interface CliLogStats {

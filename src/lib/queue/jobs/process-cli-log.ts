@@ -1,6 +1,5 @@
 import { db } from '@/lib/db/drizzle';
 import { cliLogs } from '@/lib/db/schema';
-import { checkCostAlerts, formatCostAlert } from '@/lib/cli-logs/cost-alerts';
 
 import type { CliLogJobData } from '../queues/cli-logs';
 
@@ -43,6 +42,7 @@ export async function processCliLog(data: CliLogJobData): Promise<{
         testsFailed: data.testsFailed,
         iterations: data.iterations,
         filesModified: data.filesModified,
+        conversationMessages: data.conversationMessages,
         cliVersion: data.cliVersion,
         metadata: data.metadata,
         startedAt: new Date(data.startedAt),
@@ -51,21 +51,6 @@ export async function processCliLog(data: CliLogJobData): Promise<{
       .returning({ id: cliLogs.id });
 
     console.log('[JOB] ✅ CLI log processed successfully:', inserted.id);
-
-    // Check cost alerts (fire-and-forget)
-    checkCostAlerts(data.projectId)
-      .then(({ exceeded, alerts }) => {
-        if (exceeded) {
-          console.warn('[JOB] 🚨 Cost threshold exceeded for project:', data.projectId);
-          alerts.forEach(alert => {
-            console.warn(formatCostAlert(alert));
-          });
-          // TODO: Send email/Slack notification here
-        }
-      })
-      .catch(err => {
-        console.error('[JOB] ⚠️ Error checking cost alerts:', err);
-      });
 
     return {
       success: true,

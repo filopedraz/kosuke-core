@@ -1,11 +1,9 @@
 'use client';
 
-import * as React from 'react';
 import { Activity, ArrowLeft, Database, MessageSquare, ScrollText } from 'lucide-react';
-import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useTheme } from 'next-themes';
+import * as React from 'react';
 
 import { NavUser } from '@/components/nav-user';
 import {
@@ -29,8 +27,6 @@ interface NavItem {
 
 export function AdminSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
-  const { theme, systemTheme } = useTheme();
-  const currentTheme = theme === 'system' ? systemTheme : theme;
 
   const navItems: NavItem[] = React.useMemo(
     () => [
@@ -66,14 +62,8 @@ export function AdminSidebar({ ...props }: React.ComponentProps<typeof Sidebar>)
     <Sidebar variant="inset" {...props}>
       <SidebarHeader>
         <div className="flex items-center gap-3 px-4 py-2">
-          <div className="relative h-8 w-8">
-            <Image
-              src={currentTheme === 'dark' ? '/logo-dark.svg' : '/logo.svg'}
-              alt="Kosuke Logo"
-              width={32}
-              height={32}
-              className="object-contain"
-            />
+          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary">
+            <span className="text-sm font-semibold text-primary-foreground">K</span>
           </div>
           <div className="flex flex-col">
             <span className="text-sm font-semibold">Admin Panel</span>

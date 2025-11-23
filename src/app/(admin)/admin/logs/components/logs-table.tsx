@@ -1,7 +1,6 @@
 'use client';
 
 import { format } from 'date-fns';
-import { Eye } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -62,19 +61,22 @@ export function LogsTable({
               <TableHead className="text-right">Cost</TableHead>
               <TableHead className="text-right">Tokens</TableHead>
               <TableHead className="text-right">Duration</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {logs.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
+                <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
                   No logs found
                 </TableCell>
               </TableRow>
             ) : (
               logs.map(log => (
-                <TableRow key={log.id}>
+                <TableRow
+                  key={log.id}
+                  className="cursor-pointer hover:bg-muted/50 transition-colors"
+                  onClick={() => onLogClick(log)}
+                >
                   <TableCell className="font-mono text-sm">
                     {format(new Date(log.startedAt), 'MMM dd, HH:mm:ss')}
                   </TableCell>
@@ -102,11 +104,6 @@ export function LogsTable({
                   </TableCell>
                   <TableCell className="text-right font-mono text-sm">
                     {(log.executionTimeMs / 1000).toFixed(1)}s
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button variant="ghost" size="sm" onClick={() => onLogClick(log)}>
-                      <Eye className="h-4 w-4" />
-                    </Button>
                   </TableCell>
                 </TableRow>
               ))

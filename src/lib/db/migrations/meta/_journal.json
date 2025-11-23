@@ -36,6 +36,13 @@
       "when": 1763709209867,
       "tag": "0004_same_magus",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1763903272168,
+      "tag": "0005_shocking_red_hulk",
+      "breakpoints": true
     }
   ]
 }

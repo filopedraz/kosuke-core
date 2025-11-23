@@ -45,6 +45,18 @@ export interface CliLogJobData {
   cliVersion?: string;
   metadata?: Record<string, unknown>;
 
+  // Conversation Data (full capture for tickets/requirements commands)
+  conversationMessages?: Array<{
+    role: 'user' | 'assistant';
+    content: string;
+    timestamp: string;
+    toolCalls?: Array<{
+      name: string;
+      input: Record<string, unknown>;
+      output?: string | Record<string, unknown>;
+    }>;
+  }>;
+
   // Timestamps
   startedAt: string; // ISO 8601
   completedAt: string; // ISO 8601

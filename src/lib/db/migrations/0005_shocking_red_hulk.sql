@@ -1,0 +1,1 @@
+ALTER TABLE "cli_logs" ADD COLUMN "conversation_messages" jsonb;

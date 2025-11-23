@@ -334,6 +334,9 @@ export const cliLogs = pgTable(
     cliVersion: varchar('cli_version', { length: 50 }),
     metadata: jsonb('metadata'),
 
+    // Conversation Data (full capture for tickets/requirements commands)
+    conversationMessages: jsonb('conversation_messages'), // Array of { role, content, timestamp, toolCalls }
+
     // Timestamps
     startedAt: timestamp('started_at').notNull(),
     completedAt: timestamp('completed_at').notNull(),
