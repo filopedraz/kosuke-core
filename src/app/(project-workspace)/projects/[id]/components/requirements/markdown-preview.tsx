@@ -1,10 +1,9 @@
 'use client';
 
-import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
 import { marked } from 'marked';
 import { useMemo } from 'react';
-import { cn } from '@/lib/utils';
 
 interface MarkdownPreviewProps {
   content: string;
@@ -32,13 +31,13 @@ export default function MarkdownPreview({ content, className }: MarkdownPreviewP
   }
 
   return (
-    <ScrollArea className={className}>
-      <Card className="p-6 m-6">
+    <ScrollArea className={cn('h-full', className)}>
+      <div className="p-6">
         <div
-          className="prose prose-sm dark:prose-invert max-w-none"
+          className="prose prose-sm dark:prose-invert max-w-none w-full"
           dangerouslySetInnerHTML={{ __html: htmlContent }}
         />
-      </Card>
+      </div>
     </ScrollArea>
   );
 }

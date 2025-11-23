@@ -1,3 +1,4 @@
+import type Anthropic from '@anthropic-ai/sdk';
 import 'server-only';
 
 /**
@@ -10,8 +11,7 @@ interface RequirementsOptions {
   projectId: string;
   projectName: string;
   userMessage: string;
-  sessionId?: string | null; // Claude Agent SDK session ID for conversation continuity
-  conversationHistory?: string[];
+  previousMessages?: Anthropic.MessageParam[]; // Full conversation history in Anthropic format
   isFirstRequest?: boolean;
   onStream?: (text: string) => void;
 }
@@ -19,7 +19,7 @@ interface RequirementsOptions {
 interface RequirementsResult {
   success: boolean;
   response: string;
-  sessionId?: string;
+  messages: Anthropic.MessageParam[]; // Updated message history after this interaction
   docs?: string;
   error?: string;
   tokenUsage?: {
@@ -35,13 +35,13 @@ interface KosukeCoreModule {
   requirementsCore?: (options: {
     workspaceRoot: string;
     userMessage: string;
-    sessionId?: string | null;
+    previousMessages?: Anthropic.MessageParam[];
     isFirstRequest?: boolean;
     onStream?: (text: string) => void;
   }) => Promise<{
     success: boolean;
     response: string;
-    sessionId: string;
+    messages: Anthropic.MessageParam[]; // Full message history
     docsCreated: boolean;
     docsContent?: string;
     tokenUsage: {
@@ -61,9 +61,15 @@ interface KosukeCoreModule {
 export async function runRequirementsGathering(
   options: RequirementsOptions
 ): Promise<RequirementsResult> {
-  const { projectPath, userMessage, sessionId = null, isFirstRequest = false, onStream } = options;
+  const {
+    projectPath,
+    userMessage,
+    previousMessages = [],
+    isFirstRequest = false,
+    onStream,
+  } = options;
 
-  console.log(`🔍 [Requirements] Session ID: ${sessionId || 'NEW SESSION'}`);
+  console.log(`🔍 [Requirements] Previous messages: ${previousMessages.length}`);
   console.log(`🔍 [Requirements] Is first request: ${isFirstRequest}`);
 
   try {
@@ -94,7 +100,7 @@ export async function runRequirementsGathering(
     const result = await requirementsCore({
       workspaceRoot: projectPath,
       userMessage,
-      sessionId,
+      previousMessages,
       isFirstRequest,
       onStream,
     });
@@ -106,7 +112,7 @@ export async function runRequirementsGathering(
     return {
       success: true,
       response: result.response,
-      sessionId: result.sessionId,
+      messages: result.messages, // Return updated message history
       docs: result.docsContent,
       tokenUsage: {
         input: result.tokenUsage.input,
@@ -120,6 +126,7 @@ export async function runRequirementsGathering(
     return {
       success: false,
       response: '',
+      messages: previousMessages, // Return original messages on error
       error: error instanceof Error ? error.message : 'Unknown error occurred',
     };
   }

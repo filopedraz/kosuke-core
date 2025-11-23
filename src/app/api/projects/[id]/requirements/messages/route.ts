@@ -1,6 +1,7 @@
 import { db } from '@/lib/db/drizzle';
-import { projects, requirementsMessages } from '@/lib/db/schema';
+import { requirementsMessages } from '@/lib/db/schema';
 import { verifyProjectAccess } from '@/lib/projects';
+import type Anthropic from '@anthropic-ai/sdk';
 import { auth } from '@clerk/nextjs/server';
 import { eq } from 'drizzle-orm';
 import { NextRequest, NextResponse } from 'next/server';
@@ -9,6 +10,59 @@ import { z } from 'zod';
 const sendMessageSchema = z.object({
   content: z.string().min(1, 'Message content is required'),
 });
+
+/**
+ * Type for message blocks from database
+ */
+interface MessageBlock {
+  type: string;
+  content: string;
+}
+
+/**
+ * Convert database messages to Anthropic MessageParam format
+ * This preserves the full conversation history for Claude
+ */
+function convertToAnthropicMessages(
+  dbMessages: Array<{
+    role: string;
+    content: string | null;
+    blocks: unknown;
+  }>
+): Anthropic.MessageParam[] {
+  const anthropicMessages: Anthropic.MessageParam[] = [];
+
+  for (const msg of dbMessages) {
+    if (msg.role === 'user') {
+      // User messages use content field
+      if (msg.content) {
+        anthropicMessages.push({
+          role: 'user',
+          content: msg.content,
+        });
+      }
+    } else if (msg.role === 'assistant') {
+      // Assistant messages use blocks (JSONB field, needs type assertion)
+      const blocks = msg.blocks as MessageBlock[] | null | undefined;
+      if (blocks && Array.isArray(blocks) && blocks.length > 0) {
+        // Convert blocks to text content
+        const textContent = blocks
+          .filter(b => b.type === 'text')
+          .map(b => b.content)
+          .join('\n');
+
+        if (textContent) {
+          anthropicMessages.push({
+            role: 'assistant',
+            content: textContent,
+          });
+        }
+      }
+    }
+  }
+
+  return anthropicMessages;
+}
 
 /**
  * GET /api/projects/[id]/requirements/messages
@@ -150,15 +204,40 @@ export async function POST(
       })
       .returning();
 
-    // Get conversation history to check if this is the first request
+    // Get conversation history (excluding the just-added user message and assistant placeholder)
     const messageHistory = await db
       .select()
       .from(requirementsMessages)
       .where(eq(requirementsMessages.projectId, projectId))
       .orderBy(requirementsMessages.timestamp);
 
-    // Count non-initial messages (exclude the default welcome message)
-    const isFirstUserMessage = messageHistory.filter(m => m.role === 'user').length <= 1;
+    // Filter out the welcome message and current interaction
+    const previousDbMessages = messageHistory.filter(m => {
+      // Exclude assistant placeholder
+      if (m.id === assistantMessage.id) return false;
+
+      // Exclude initial welcome message (assistant with no content)
+      if (m.role === 'assistant' && m.content === null) {
+        const blocks = m.blocks as MessageBlock[] | null | undefined;
+        if (!blocks || !Array.isArray(blocks) || blocks.length === 0) {
+          return false;
+        }
+      }
+
+      // Exclude the current user message
+      if (m.role === 'user' && m.content === content) return false;
+
+      return true;
+    });
+
+    // Convert to Anthropic format for Claude
+    const previousMessages = convertToAnthropicMessages(previousDbMessages);
+
+    // Count user messages to determine if this is the first real request
+    const isFirstUserMessage = previousDbMessages.filter(m => m.role === 'user').length === 0;
+
+    console.log(`📋 [API] Previous messages for context: ${previousMessages.length}`);
+    console.log(`📋 [API] Is first user message: ${isFirstUserMessage}`);
 
     // Create a streaming response
     const stream = new ReadableStream({
@@ -182,7 +261,7 @@ export async function POST(
             projectId,
             projectName: project.name,
             userMessage: content,
-            sessionId: project.requirementsSessionId || null, // Pass existing session ID for context continuity
+            previousMessages, // Pass conversation history in Anthropic format
             isFirstRequest: isFirstUserMessage,
             onStream: (text: string) => {
               // Stream the text to client
@@ -217,14 +296,7 @@ export async function POST(
             })
             .where(eq(requirementsMessages.id, assistantMessage.id));
 
-          // Persist the session ID for conversation continuity
-          if (result.sessionId) {
-            await db
-              .update(projects)
-              .set({ requirementsSessionId: result.sessionId })
-              .where(eq(projects.id, projectId));
-            console.log(`✅ Persisted session ID for project ${projectId}`);
-          }
+          console.log(`✅ Saved assistant response for project ${projectId}`);
 
           // If docs.md was created, update the project's requirements status
           if (result.docs) {

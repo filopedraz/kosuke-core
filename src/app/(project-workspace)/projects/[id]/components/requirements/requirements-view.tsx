@@ -471,12 +471,12 @@ export default function RequirementsView({
         {/* Right side - Docs Preview */}
         <div
           className={cn(
-            'h-full flex-col overflow-hidden border rounded-md border-border',
+            'h-full flex flex-col border rounded-md border-border',
             isChatCollapsed ? 'w-full' : 'hidden md:flex sm:w-3/4 md:w-3/4 lg:w-3/4'
           )}
         >
           {/* Header with Confirm Button */}
-          <div className="border-b p-4 flex items-center justify-between">
+          <div className="border-b p-4 flex items-center justify-between shrink-0">
             <div>
               <h2 className="text-lg font-semibold">Requirements Document</h2>
               <p className="text-sm text-muted-foreground">Live preview of docs.md</p>
@@ -512,7 +512,7 @@ export default function RequirementsView({
           </div>
 
           {/* Preview Content */}
-          <MarkdownPreview content={docsContent} className="flex-1" />
+          <MarkdownPreview content={docsContent} className="flex-1 overflow-hidden" />
         </div>
       </div>
 
