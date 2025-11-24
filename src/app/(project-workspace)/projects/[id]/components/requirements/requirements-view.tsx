@@ -26,7 +26,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ChatInput from '../chat/chat-input';
 import ChatMessage from '../chat/chat-message';
 import MarkdownPreview from './markdown-preview';
-import SnakeGame from './snake-game';
+import SlotMachine from './slot-machine';
 
 interface RequirementsViewProps {
   projectId: string;
@@ -495,7 +495,7 @@ export default function RequirementsView({
             <h3 className="text-sm font-medium">
               {currentStatus === 'requirements' && 'Requirements Document'}
               {currentStatus === 'in_development' &&
-                (viewMode === 'game' ? 'Snake Game' : 'Requirements Document')}
+                (viewMode === 'game' ? 'Slot Machine' : 'Requirements Document')}
             </h3>
             {currentStatus === 'requirements' && (
               <TooltipProvider>
@@ -548,7 +548,7 @@ export default function RequirementsView({
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p>Play Snake Game</p>
+                        <p>Play Slot Machine</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -601,7 +601,7 @@ export default function RequirementsView({
                 </p>
               </div>
               <div className="flex-1">
-                <SnakeGame />
+                <SlotMachine />
               </div>
             </div>
           )}
