@@ -120,10 +120,11 @@ export default function RootLayout({ children }: RootLayoutProps) {
           )}
           {process.env.NEXT_PUBLIC_PLAUSIBLE_ENABLED !== 'false' && (
             <Script
-              defer
+              id="plausible"
               data-domain="kosuke.ai"
+              data-cookiebot-accept="marketing"
               src="https://plausible.io/js/script.js"
-              strategy="beforeInteractive"
+              strategy="afterInteractive"
             />
           )}
           <div id="clerk-captcha" />
