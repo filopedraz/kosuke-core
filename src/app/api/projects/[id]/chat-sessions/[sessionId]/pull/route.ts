@@ -56,14 +56,10 @@ export async function POST(
     if (pullResult.changed && pullResult.commits_pulled > 0) {
       try {
         const previewService = getPreviewService();
-        const isRunning = await previewService.isPreviewRunning(projectId, sessionId);
-
-        if (isRunning) {
-          console.log(`Restarting container to apply ${pullResult.commits_pulled} new commit(s)`);
-          await previewService.restartPreview(projectId, sessionId);
-          containerRestarted = true;
-          console.log('✅ Container restarted successfully');
-        }
+        console.log(`Restarting container to apply ${pullResult.commits_pulled} new commit(s)`);
+        await previewService.restartPreview(projectId, sessionId);
+        containerRestarted = true;
+        console.log('✅ Container restarted successfully');
       } catch (restartError) {
         // Log but don't fail - pull was successful
         console.error('Failed to restart container after pull:', restartError);

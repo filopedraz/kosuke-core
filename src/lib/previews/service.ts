@@ -573,25 +573,6 @@ class PreviewService {
   }
 
   /**
-   * Check if preview is running
-   */
-  async isPreviewRunning(projectId: string, sessionId: string): Promise<boolean> {
-    try {
-      const containerSessionPath = this.getContainerSessionPath(projectId, sessionId);
-
-      const kosukeConfig = await readKosukeConfig(containerSessionPath);
-      const { services } = kosukeConfig.preview;
-      const entrypointEntry = getEntrypointService(services);
-
-      const containerName = this.getContainerName(projectId, sessionId, entrypointEntry.name);
-      const container = await this.getContainerByName(containerName);
-      return Boolean(container && container.State?.Running);
-    } catch {
-      return false;
-    }
-  }
-
-  /**
    * Get all preview URLs for a project (for backward compatibility)
    */
   async getProjectPreviewUrls(projectId: string): Promise<PreviewUrlsResponse> {
