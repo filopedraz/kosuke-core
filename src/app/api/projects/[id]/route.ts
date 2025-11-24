@@ -6,9 +6,9 @@ import { ApiResponseHandler } from '@/lib/api/responses';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db/drizzle';
 import { projects } from '@/lib/db/schema';
-import { getPreviewService } from '@/lib/docker';
 import { deleteDir, getProjectPath } from '@/lib/fs/operations';
 import { createKosukeOctokit, createUserOctokit } from '@/lib/github/client';
+import { getPreviewService } from '@/lib/previews';
 import { verifyProjectAccess } from '@/lib/projects';
 import { eq } from 'drizzle-orm';
 

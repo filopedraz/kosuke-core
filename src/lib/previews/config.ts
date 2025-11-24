@@ -1,15 +1,14 @@
 /**
- * Docker Configuration
- * Loads Docker-related settings from environment variables
+ * Preview Configuration
+ * Loads Preview-related settings from environment variables
  */
 
-import type { DockerConfig } from '@/lib/types/docker';
-import type { RouterMode } from '@/lib/types/docker';
+import type { PreviewConfig, RouterMode } from '@/lib/types/docker';
 
 /**
- * Get Docker configuration from environment variables
+ * Get Preview configuration from environment variables
  */
-export function getDockerConfig(): DockerConfig {
+export function getPreviewConfig(): PreviewConfig {
   // Preview image settings
   const bunPreviewImage = process.env.PREVIEW_BUN_IMAGE;
   if (!bunPreviewImage) {
@@ -25,6 +24,9 @@ export function getDockerConfig(): DockerConfig {
   const previewPortRangeEnd = parseInt(process.env.PREVIEW_PORT_RANGE_END ?? '', 10);
   if (isNaN(previewPortRangeStart) || isNaN(previewPortRangeEnd)) {
     throw new Error('PREVIEW_PORT_RANGE_START and PREVIEW_PORT_RANGE_END must be valid numbers');
+  }
+  if (previewPortRangeStart >= previewPortRangeEnd) {
+    throw new Error('PREVIEW_PORT_RANGE_START must be less than PREVIEW_PORT_RANGE_END');
   }
 
   // Router configuration
@@ -104,17 +106,4 @@ export function getDockerConfig(): DockerConfig {
     postgresUser,
     postgresPassword,
   };
-}
-
-/**
- * Validate Docker configuration
- */
-export function validateDockerConfig(config: DockerConfig): void {
-  if (!config.hostWorkspaceDir) {
-    throw new Error('HOST_WORKSPACE_DIR is required');
-  }
-
-  if (config.previewPortRangeStart >= config.previewPortRangeEnd) {
-    throw new Error('PREVIEW_PORT_RANGE_START must be less than PREVIEW_PORT_RANGE_END');
-  }
 }

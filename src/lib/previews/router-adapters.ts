@@ -5,7 +5,7 @@
 
 import type { RouteInfo } from '@/lib/types/docker';
 import type { ContainerInspectResponse } from '@docker/node-sdk';
-import { getDockerConfig } from './config';
+import { getPreviewConfig } from './config';
 
 /**
  * Base interface for router adapters
@@ -87,7 +87,7 @@ export class TraefikRouterAdapter implements RouterAdapter {
    * Format: project-{id}-{sanitized-session}.{preview_base_domain}
    */
   private generateSubdomain(projectId: string, sessionId: string): string {
-    const config = getDockerConfig();
+    const config = getPreviewConfig();
 
     // Sanitize session ID for URL usage
     let sanitizedSession = sessionId.toLowerCase().replace(/[^a-z0-9-]/g, '-');

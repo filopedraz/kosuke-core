@@ -1,6 +1,6 @@
 import { ApiErrorHandler } from '@/lib/api/errors';
 import { auth } from '@/lib/auth';
-import { getPreviewService } from '@/lib/docker';
+import { getPreviewService } from '@/lib/previews';
 import { verifyProjectAccess } from '@/lib/projects';
 import { NextRequest, NextResponse } from 'next/server';
 

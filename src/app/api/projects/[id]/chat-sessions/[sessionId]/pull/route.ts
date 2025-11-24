@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { ApiErrorHandler } from '@/lib/api/errors';
 import { auth } from '@/lib/auth';
-import { getPreviewService } from '@/lib/docker';
 import { getKosukeGitHubToken, getUserGitHubToken } from '@/lib/github/client';
+import { getPreviewService } from '@/lib/previews';
 import { verifyProjectAccess } from '@/lib/projects';
 
 /**

@@ -3,17 +3,17 @@
  * Manages Docker containers for preview environments
  */
 
-import type { StorageConnectionInfo } from '@/lib/docker/database';
+import type { StorageConnectionInfo } from '@/lib/previews/storages';
 import type { DockerContainerStatus, RouteInfo } from '@/lib/types/docker';
 import type { KosukeConfig, ServiceConfig } from '@/lib/types/kosuke-config';
 import { getEntrypointService } from '@/lib/types/kosuke-config';
 import type { PreviewUrl, PreviewUrlsResponse } from '@/lib/types/preview-urls';
 import { DockerClient, type ContainerCreateRequest } from '@docker/node-sdk';
 import { join } from 'path';
-import { getDockerConfig, validateDockerConfig } from './config';
+import { getPreviewConfig } from './config';
 import { buildEnviornment, readKosukeConfig } from './config-reader';
-import { createPreviewStorages, dropPreviewStorages } from './database';
 import { PortRouterAdapter, TraefikRouterAdapter, type RouterAdapter } from './router-adapters';
+import { createPreviewStorages, dropPreviewStorages } from './storages';
 
 class PreviewService {
   private client: DockerClient | null = null;
@@ -22,8 +22,7 @@ class PreviewService {
   private hostProjectsDir: string;
 
   constructor() {
-    this.config = getDockerConfig();
-    validateDockerConfig(this.config);
+    this.config = getPreviewConfig();
 
     this.hostProjectsDir = join(this.config.hostWorkspaceDir, 'projects');
 

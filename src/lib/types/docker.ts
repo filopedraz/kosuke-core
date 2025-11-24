@@ -30,7 +30,7 @@ export interface DockerContainerStatus {
 /**
  * Docker service configuration
  */
-export interface DockerConfig {
+export interface PreviewConfig {
   // Preview image settings
   bunPreviewImage: string;
   pythonPreviewImage: string;
