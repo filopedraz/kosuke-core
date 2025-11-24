@@ -1,6 +1,6 @@
 'use client';
 
-import { Activity, ArrowLeft, Database, MessageSquare, ScrollText } from 'lucide-react';
+import { Activity, ArrowLeft, Building2, Database, MessageSquare, ScrollText } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import * as React from 'react';
@@ -31,6 +31,12 @@ export function AdminSidebar({ ...props }: React.ComponentProps<typeof Sidebar>)
   const navItems: NavItem[] = React.useMemo(
     () => [
       {
+        title: 'Organizations',
+        url: '/admin/organizations',
+        icon: Building2,
+        isActive: pathname?.startsWith('/admin/organizations'),
+      },
+      {
         title: 'Projects',
         url: '/admin/projects',
         icon: Database,
@@ -43,7 +49,7 @@ export function AdminSidebar({ ...props }: React.ComponentProps<typeof Sidebar>)
         isActive: pathname?.startsWith('/admin/chat-sessions'),
       },
       {
-        title: 'Logs',
+        title: 'LLM Logs',
         url: '/admin/logs',
         icon: ScrollText,
         isActive: pathname?.startsWith('/admin/logs'),

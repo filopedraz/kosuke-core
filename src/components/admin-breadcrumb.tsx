@@ -1,8 +1,5 @@
 'use client';
 
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -11,12 +8,17 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
+import { useQuery } from '@tanstack/react-query';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
 // Define human-readable names for routes
 const routeNames: Record<string, string> = {
+  organizations: 'Organizations',
   projects: 'Projects',
   'chat-sessions': 'Chat Sessions',
-  logs: 'Logs',
+  logs: 'LLM Logs',
+  jobs: 'Jobs',
 };
 
 interface AdminProject {
@@ -27,6 +29,11 @@ interface AdminProject {
 interface AdminChatSession {
   id: string;
   title: string;
+}
+
+interface AdminOrganization {
+  id: string;
+  name: string;
 }
 
 export function AdminBreadcrumb() {
@@ -65,6 +72,19 @@ export function AdminBreadcrumb() {
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
+  // Fetch organization name if we're on an organization detail page
+  const { data: organizationData } = useQuery<{ organization: AdminOrganization }>({
+    queryKey: ['admin-organization-breadcrumb', itemId],
+    queryFn: async () => {
+      const response = await fetch(`/api/admin/organizations/${itemId}`);
+      if (!response.ok) throw new Error('Failed to fetch organization');
+      const result = await response.json();
+      return result.data;
+    },
+    enabled: mainSection === 'organizations' && !!itemId,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+
   // Don't show breadcrumbs for root admin page
   if (pathSegments.length === 0) {
     return null;
@@ -92,6 +112,8 @@ export function AdminBreadcrumb() {
         (s: AdminChatSession) => s.id === itemId
       );
       itemName = chatSession?.title || itemId;
+    } else if (mainSection === 'organizations' && organizationData?.organization) {
+      itemName = organizationData.organization.name || itemId;
     }
 
     breadcrumbItems.push({

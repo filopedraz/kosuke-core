@@ -17,6 +17,7 @@ export * from './docker';
 export * from './ghost';
 export * from './github';
 export * from './infrastructure';
+export * from './organization';
 export * from './preview';
 export * from './preview-urls';
 export * from './project';

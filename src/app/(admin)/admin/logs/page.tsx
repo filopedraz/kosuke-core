@@ -74,9 +74,9 @@ export default function AdminLogsPage() {
     <div className="space-y-6">
       {/* Page Header */}
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">CLI Logs</h1>
+        <h1 className="text-3xl font-bold tracking-tight">LLM Logs</h1>
         <p className="text-muted-foreground mt-2">
-          Monitor all kosuke-cli command executions and performance metrics
+          Monitor all LLM executions from CLI and platform with performance metrics
         </p>
       </div>
 
