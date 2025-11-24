@@ -11,7 +11,7 @@ import { createRepositoryFromTemplate } from '@/lib/github';
 import { getUserGitHubToken } from '@/lib/github/client';
 
 // GitHub needs time to initialize repos after creation
-const GITHUB_REPO_INIT_DELAY_MS = 10_000; // 2 minutes
+const GITHUB_REPO_INIT_DELAY_MS = 10_000; // 10 seconds
 
 // Schema for project creation with GitHub integration
 const createProjectSchema = z.object({

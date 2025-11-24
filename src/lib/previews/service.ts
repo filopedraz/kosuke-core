@@ -1,6 +1,6 @@
 /**
- * Docker Service
- * Manages Docker containers for preview environments
+ * Preview Service
+ * Manages preview containers for preview environments
  */
 
 import type { StorageConnectionInfo } from '@/lib/previews/storages';
