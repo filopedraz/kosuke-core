@@ -56,7 +56,6 @@ export interface DockerConfig {
   hostWorkspaceDir: string;
 
   // Domain settings (for Traefik)
-  mainDomain: string;
   previewBaseDomain: string;
 
   // PostgreSQL settings

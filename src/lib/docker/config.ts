@@ -59,10 +59,6 @@ export function getDockerConfig(): DockerConfig {
   }
 
   // Domain settings (for Traefik)
-  const mainDomain = process.env.MAIN_DOMAIN;
-  if (!mainDomain) {
-    throw new Error('MAIN_DOMAIN environment variable is required');
-  }
   const previewBaseDomain = process.env.PREVIEW_BASE_DOMAIN;
   if (!previewBaseDomain) {
     throw new Error('PREVIEW_BASE_DOMAIN environment variable is required');
@@ -101,7 +97,6 @@ export function getDockerConfig(): DockerConfig {
     previewNetwork,
     previewContainerNamePrefix,
     hostWorkspaceDir,
-    mainDomain,
     previewBaseDomain,
     postgresHost,
     postgresPort,

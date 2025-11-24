@@ -53,7 +53,6 @@ function validateEnvironmentVariables() {
     { key: 'S3_SECRET_ACCESS_KEY', description: 'Digital Ocean Spaces secret key' },
 
     // Domain Configuration
-    { key: 'MAIN_DOMAIN', description: 'Main application domain' },
     { key: 'PREVIEW_BASE_DOMAIN', description: 'Base domain for preview deployments' },
     { key: 'TRAEFIK_ENABLED', description: 'Enable Traefik reverse proxy' },
     { key: 'PREVIEW_PORT_RANGE_START', description: 'Preview port range start' },
