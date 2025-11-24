@@ -20,3 +20,25 @@ tls:
           main: kosuke.app
           sans:
             - '*.kosuke.app'
+http:
+  middlewares:
+    main:
+      headers:
+        contentSecurityPolicy: "default-src 'self'; script-src 'self' https://*.clerk.accounts.dev https://challenges.cloudflare.com https://plausible.io https://us-assets.i.posthog.com https://*.cookiebot.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.public.blob.vercel-storage.com https://lh3.googleusercontent.com https://avatar.vercel.sh https://ghost.kosuke.io https://images.unsplash.com https://static.ghost.org https://img.clerk.com; font-src 'self' data:; connect-src 'self' https://*.clerk.accounts.dev https://clerk-telemetry.com https://*.sentry.io wss://*.clerk.accounts.dev https://plausible.io https://us.i.posthog.com https://ghost.kosuke.io; worker-src 'self' blob:; frame-src 'self' https://*.kosuke.app https://challenges.cloudflare.com https://*.clerk.accounts.dev; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests;"
+        strictTransportSecurity: 'max-age=63072000; includeSubDomains; preload'
+        forceSTSHeader: true
+        stsIncludeSubdomains: true
+        stsPreload: true
+        stsSeconds: 63072000
+
+        frameDeny: true
+        contentTypeNosniff: true
+        referrerPolicy: 'strict-origin-when-cross-origin'
+        browserXssFilter: true
+
+        customResponseHeaders:
+          Cross-Origin-Opener-Policy: 'same-origin'
+          Cross-Origin-Embedder-Policy: 'credentialless'
+          Cross-Origin-Resource-Policy: 'same-origin'
+          Permissions-Policy: 'camera=(), microphone=(), geolocation=(), interest-cohort=()'
+          X-Powered-By: ''
