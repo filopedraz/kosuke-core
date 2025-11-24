@@ -27,10 +27,14 @@ function validateEnvironmentVariables() {
 
     // GitHub Configuration
     { key: 'TEMPLATE_REPOSITORY', description: 'GitHub template repository' },
-    { key: 'PREVIEW_DEFAULT_IMAGE', description: 'Default Docker image for previews' },
     { key: 'GITHUB_APP_ID', description: 'GitHub App ID for authentication' },
     { key: 'GITHUB_APP_PRIVATE_KEY', description: 'GitHub App private key' },
     { key: 'GITHUB_APP_INSTALLATION_ID', description: 'GitHub App installation ID' },
+
+    // Preview Configuration
+    { key: 'PREVIEW_BUN_IMAGE', description: 'Docker image for Bun preview containers' },
+    { key: 'PREVIEW_PYTHON_IMAGE', description: 'Docker image for Python preview containers' },
+    { key: 'PREVIEW_RESEND_API_KEY', description: 'Resend API key for preview environments' },
 
     // Projects & Sessions
     { key: 'PROJECTS_BASE_PATH', description: 'Base path for projects directory' },

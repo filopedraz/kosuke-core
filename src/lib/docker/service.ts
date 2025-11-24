@@ -3,12 +3,17 @@
  * Manages Docker containers for preview environments
  */
 
+import type { StorageConnectionInfo } from '@/lib/docker/database';
 import { sessionManager } from '@/lib/sessions';
 import type { DockerContainerStatus, RouteInfo } from '@/lib/types/docker';
+import type { KosukeConfig, ServiceConfig } from '@/lib/types/kosuke-config';
+import { getEntrypointService } from '@/lib/types/kosuke-config';
 import type { PreviewUrl, PreviewUrlsResponse } from '@/lib/types/preview-urls';
 import { DockerClient, type ContainerCreateRequest } from '@docker/node-sdk';
 import { join } from 'path';
 import { getDockerConfig, validateDockerConfig } from './config';
+import { buildEnviornment, readKosukeConfig } from './config-reader';
+import { createPreviewStorages, dropPreviewStorages } from './database';
 import { PortRouterAdapter, TraefikRouterAdapter, type RouterAdapter } from './router-adapters';
 
 class DockerService {
@@ -56,37 +61,55 @@ class DockerService {
   }
 
   /**
-   * Get container name for a project session
+   * Get container name for a service
    */
-  private getContainerName(projectId: string, sessionId: string): string {
-    return `${this.config.previewContainerNamePrefix}${projectId}-${sessionId}`;
+  private getContainerName(projectId: string, sessionId: string, serviceName: string): string {
+    return `${this.config.previewContainerNamePrefix}${projectId}-${sessionId}-${serviceName}`;
   }
 
   /**
-   * Get host session path (absolute path on host machine for Docker-in-Docker)
+   * Get host session path (absolute path on host machine for Docker volume mounts)
    */
   private getHostSessionPath(projectId: string, sessionId: string): string {
     return join(this.hostProjectsDir, projectId, 'sessions', sessionId);
   }
 
   /**
-   * Prepare container environment variables
+   * Get container session path (path inside this Next.js container)
    */
-  private prepareContainerEnvironment(
+  private getContainerSessionPath(projectId: string, sessionId: string): string {
+    return join(process.cwd(), 'projects', projectId, 'sessions', sessionId);
+  }
+
+  /**
+   * Get service-specific host path
+   */
+  private getHostServicePath(
     projectId: string,
     sessionId: string,
-    envVars: Record<string, string> = {}
-  ): string[] {
-    const postgresUrl =
-      `postgres://${this.config.postgresUser}:${this.config.postgresPassword}` +
-      `@${this.config.postgresHost}:${this.config.postgresPort}` +
-      `/kosuke_project_${projectId}_session_${sessionId}`;
+    serviceDirectory: string
+  ): string {
+    const sessionPath = this.getHostSessionPath(projectId, sessionId);
+    return join(sessionPath, serviceDirectory);
+  }
 
+  /**
+   * Prepare environment variables for a service container
+   */
+  private prepareServiceEnvironment(
+    configEnv: Record<string, string>,
+    userEnvVars: Record<string, string>,
+    serviceUrls: Record<string, string>,
+    externalConnectionUrls: Record<string, string>,
+    storageUrls: Record<string, string>
+  ): string[] {
+    // Priority: storageUrls > externalConnectionUrls > serviceUrls > userEnvVars > configEnv
     const environment = {
-      NODE_ENV: 'development',
-      PORT: '3000',
-      POSTGRES_URL: postgresUrl,
-      ...envVars,
+      ...configEnv,
+      ...userEnvVars,
+      ...serviceUrls,
+      ...externalConnectionUrls,
+      ...storageUrls,
     };
 
     // Convert to Docker format: ["KEY=value", ...]
@@ -94,11 +117,25 @@ class DockerService {
   }
 
   /**
+   * Get preview image name for service type
+   */
+  private getPreviewImage(serviceType: string): string {
+    switch (serviceType) {
+      case 'bun':
+        return this.config.bunPreviewImage;
+      case 'python':
+        return this.config.pythonPreviewImage;
+      default:
+        throw new Error(`Unsupported service type: ${serviceType}`);
+    }
+  }
+
+  /**
    * Ensure preview image is available (pull if needed)
    */
-  private async ensurePreviewImage(): Promise<void> {
+  private async ensurePreviewImage(serviceType: string): Promise<void> {
+    const imageName = this.getPreviewImage(serviceType);
     const client = await this.ensureClient();
-    const imageName = this.config.previewDefaultImage;
 
     try {
       console.log(`Checking preview image ${imageName}`);
@@ -108,7 +145,6 @@ class DockerService {
       // Image not found, need to pull
       console.log(`Pulling preview image ${imageName}...`);
       try {
-        // imageCreate takes a callback as first parameter and options as second
         await client.imageCreate({ fromImage: imageName });
         console.log(`Successfully pulled preview image ${imageName}`);
       } catch (pullError) {
@@ -134,80 +170,54 @@ class DockerService {
   }
 
   /**
-   * Check if container is running and healthy
+   * Get anonymous volumes for a service type
    */
-  private async getExistingContainerUrlOrRemove(containerName: string): Promise<string | null> {
-    const container = await this.getContainerByName(containerName);
-    if (!container) {
-      return null;
+  private getAnonymousVolumes(serviceType: string): Record<string, object> {
+    switch (serviceType) {
+      case 'bun':
+        return {
+          '/app/node_modules': {},
+          '/app/.next': {},
+        };
+      case 'python':
+        return {
+          '/app/__pycache__': {},
+        };
+      default:
+        return {};
     }
-
-    // If running, try to get URL
-    if (container.State?.Running) {
-      const url = this.adapter.getContainerUrl(container);
-      if (url) {
-        console.log(`Reusing existing container ${containerName} with URL ${url}`);
-        return url;
-      }
-    }
-
-    // Try to restart once
-    try {
-      const client = await this.ensureClient();
-      console.log(`Attempting to restart container ${containerName}`);
-      await client.containerRestart(containerName);
-
-      // Wait a bit for restart
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      const reloadedContainer = await this.getContainerByName(containerName);
-      if (reloadedContainer?.State?.Running) {
-        const url = this.adapter.getContainerUrl(reloadedContainer);
-        if (url) {
-          console.log(`Successfully restarted container ${containerName}`);
-          return url;
-        }
-      }
-    } catch (error) {
-      console.log(`Failed to restart container ${containerName}:`, error);
-    }
-
-    // Force remove to allow clean recreate
-    try {
-      const client = await this.ensureClient();
-      console.log(`Removing stale container ${containerName}`);
-      await client.containerDelete(containerName, { force: true });
-    } catch (error) {
-      console.log(`Failed to remove container ${containerName}:`, error);
-    }
-
-    return null;
   }
 
   /**
-   * Create container configuration based on router adapter
+   * Create container configuration
    */
   private createContainerConfig(
+    serviceType: string,
     environment: string[],
-    hostSessionPath: string,
-    routeInfo: RouteInfo
+    hostServicePath: string,
+    routeInfo?: RouteInfo
   ): ContainerCreateRequest {
+    const imageName = this.getPreviewImage(serviceType);
+    const anonymousVolumes = this.getAnonymousVolumes(serviceType);
+
     const baseHostConfig = {
-      Binds: [`${hostSessionPath}:/app:rw`],
+      Binds: [`${hostServicePath}:/app:rw`],
       NetworkMode: this.config.previewNetwork,
       AutoRemove: false,
     };
 
     const config: ContainerCreateRequest = {
-      Image: this.config.previewDefaultImage,
+      Image: imageName,
       Env: environment,
-      Labels: routeInfo.labels,
+      Labels: routeInfo?.labels,
       WorkingDir: '/app',
       HostConfig: baseHostConfig,
+      // Exclude dependency, cache, and build directories from bind mount (use anonymous volumes) to improve performance
+      Volumes: anonymousVolumes,
     };
 
-    // Add port bindings for port mode
-    if (this.config.routerMode === 'port' && routeInfo.port) {
+    // Add port bindings for port mode (only for entrypoint service)
+    if (this.config.routerMode === 'port' && routeInfo?.port) {
       config.HostConfig = {
         ...baseHostConfig,
         PortBindings: {
@@ -220,70 +230,279 @@ class DockerService {
   }
 
   /**
-   * Run container with retries (handles port conflicts)
+   * Start a single service container
    */
-  private async runContainerWithRetries(
+  private async startServiceContainer(
     projectId: string,
     sessionId: string,
+    serviceName: string,
+    service: ServiceConfig,
     environment: string[],
-    hostSessionPath: string,
-    containerName: string
-  ): Promise<string> {
-    await this.ensurePreviewImage();
+    routeInfo?: RouteInfo
+  ): Promise<string | null> {
+    const containerName = this.getContainerName(projectId, sessionId, serviceName);
+    const hostServicePath = this.getHostServicePath(projectId, sessionId, service.directory);
+
+    // Ensure image is available
+    await this.ensurePreviewImage(service.type);
 
     const client = await this.ensureClient();
-    let lastError: Error | null = null;
 
-    for (let attempt = 1; attempt <= 3; attempt++) {
-      const routeInfo = this.adapter.prepareRun(projectId, sessionId, containerName);
-      console.log(
-        `Attempt ${attempt}/3 to start preview container ${containerName} ` +
-          `${routeInfo.port ? `on port ${routeInfo.port}` : 'with Traefik'}`
+    console.log(
+      `Starting service ${serviceName} (${service.type}) as ${containerName}` +
+        `${routeInfo ? ` with URL ${routeInfo.url}` : ' (internal only)'}`
+    );
+
+    try {
+      const config = this.createContainerConfig(
+        service.type,
+        environment,
+        hostServicePath,
+        routeInfo
       );
 
+      // Create and start container
+      const createResponse = await client.containerCreate(config, { name: containerName });
+      await client.containerStart(createResponse.Id);
+
+      console.log(`✅ Successfully started service ${serviceName}`);
+      return routeInfo?.url || null;
+    } catch (error) {
+      console.error(`Failed to start service ${serviceName}:`, error);
+      // Clean up any partially created container
       try {
-        const config = this.createContainerConfig(environment, hostSessionPath, routeInfo);
-
-        // Create and start container - pass name as option, not in body
-        const createResponse = await client.containerCreate(config, { name: containerName });
-        await client.containerStart(createResponse.Id);
-
-        console.log(`Successfully started container ${containerName}`);
-        return routeInfo.url;
-      } catch (error: unknown) {
-        lastError = error as Error;
-        const message = error instanceof Error ? error.message : String(error);
-
-        const isPortConflict =
-          message.includes('port is already allocated') ||
-          message.includes('address already in use') ||
-          message.includes('Bind for 0.0.0.0');
-
-        // Clean up any partially created container
-        try {
-          await client.containerDelete(containerName, { force: true });
-        } catch {
-          // Ignore cleanup errors
-        }
-
-        if (isPortConflict && attempt < 3 && this.config.routerMode === 'port') {
-          console.warn(`Port conflict for ${containerName}. Retrying with a new port...`);
-          await new Promise(resolve => setTimeout(resolve, 200));
-          continue;
-        }
-
-        console.error(
-          `Failed to start preview container ${containerName} on attempt ${attempt}:`,
-          message
-        );
-        break;
+        await client.containerDelete(containerName, { force: true });
+      } catch {
+        // Ignore cleanup errors
       }
+      throw error;
+    }
+  }
+
+  /**
+   * Build storage URLs for all services
+   * All services get all storage connection URLs
+   */
+  private extractStorageEnvVariables(
+    storageConnections: Record<string, StorageConnectionInfo>,
+    storages: Record<string, { type: string; connection_variable: string }>
+  ): Record<string, string> {
+    const storageUrls: Record<string, string> = {};
+
+    for (const [storageKey, storageConfig] of Object.entries(storages)) {
+      const connectionInfo = storageConnections[storageKey];
+      if (!connectionInfo) {
+        console.warn(`Storage ${storageKey} was not created`);
+        continue;
+      }
+
+      storageUrls[storageConfig.connection_variable] = connectionInfo.url;
     }
 
-    if (lastError) {
-      throw lastError;
+    return storageUrls;
+  }
+
+  /**
+   * Get default port for a service type
+   */
+  private getServiceDefaultPort(serviceType: string): number {
+    switch (serviceType) {
+      case 'bun':
+        return 3000;
+      case 'python':
+        return 8000;
+      default:
+        return 3000;
     }
-    throw new Error('Failed to start preview container due to unknown error');
+  }
+
+  /**
+   * Build service connection URLs for inter-service communication
+   * All services get connection URLs to all other services
+   */
+  private extractServiceConnectionUrls(
+    projectId: string,
+    sessionId: string,
+    services: Record<string, ServiceConfig>
+  ): Record<string, string> {
+    const serviceUrls: Record<string, string> = {};
+
+    for (const [serviceName, serviceConfig] of Object.entries(services)) {
+      if (!serviceConfig.connection_variable) {
+        continue;
+      }
+
+      const containerName = this.getContainerName(projectId, sessionId, serviceName);
+      const defaultPort = this.getServiceDefaultPort(serviceConfig.type);
+      const connectionUrl = `http://${containerName}:${defaultPort}`;
+
+      serviceUrls[serviceConfig.connection_variable] = connectionUrl;
+      console.log(`Service connection: ${serviceConfig.connection_variable} = ${connectionUrl}`);
+    }
+
+    return serviceUrls;
+  }
+
+  /**
+   * Start preview for a multi-service project
+   */
+  async startPreview(
+    projectId: string,
+    sessionId: string,
+    userEnvVars: Record<string, string> = {},
+    userId: string
+  ): Promise<string> {
+    console.log(`Starting multi-service preview for project ${projectId} session ${sessionId}`);
+
+    // Check Docker availability
+    try {
+      const client = await this.ensureClient();
+      await client.systemPing();
+    } catch (error) {
+      console.error('Docker is not available:', error);
+      throw new Error('Docker is not available');
+    }
+
+    // Ensure session directory exists (create and clone repo if needed)
+    await sessionManager.ensureSessionEnvironment(projectId, sessionId, userId);
+
+    // Get container path to session directory (for reading config files)
+    const containerSessionPath = this.getContainerSessionPath(projectId, sessionId);
+
+    // Read kosuke.config.json from cloned repo
+    const kosukeConfig = await readKosukeConfig(containerSessionPath);
+
+    // Process special __KSK__ values in environment
+    const configEnv = kosukeConfig.preview.environment
+      ? buildEnviornment(kosukeConfig.preview.environment)
+      : {};
+
+    // Create storages
+    console.log('Creating preview storages...');
+    const client = await this.ensureClient();
+    const storageConnections = await createPreviewStorages(
+      projectId,
+      sessionId,
+      kosukeConfig,
+      client,
+      this.config.previewNetwork
+    );
+
+    // Extract storage URLs (all services get all storages)
+    const storageEnvVars = kosukeConfig.preview.storages
+      ? this.extractStorageEnvVariables(storageConnections, kosukeConfig.preview.storages)
+      : {};
+
+    // Extract service connection URLs (all services get URLs to all other services)
+    const serviceConnectionUrls = this.extractServiceConnectionUrls(
+      projectId,
+      sessionId,
+      kosukeConfig.preview.services
+    );
+
+    // Find entrypoint service (throws if not found)
+    const entrypointEntry = getEntrypointService(kosukeConfig);
+
+    // Prepare route info ONCE for entrypoint service
+    const entrypointContainerName = this.getContainerName(
+      projectId,
+      sessionId,
+      entrypointEntry.name
+    );
+    const entrypointRouteInfo = this.adapter.prepareRun(
+      projectId,
+      sessionId,
+      entrypointContainerName
+    );
+
+    // Generate external URL for entrypoint service (if it has external_connection_variable)
+    const externalConnectionEnvVars: Record<string, string> = {};
+    if (entrypointEntry.config.external_connection_variable) {
+      externalConnectionEnvVars[entrypointEntry.config.external_connection_variable] =
+        entrypointRouteInfo.url;
+      console.log(
+        `External connection: ${entrypointEntry.config.external_connection_variable} = ${entrypointRouteInfo.url}`
+      );
+    }
+
+    // Start all services simultaneously
+    const servicePromises: Promise<{ serviceName: string; url: string | null }>[] = [];
+
+    for (const [serviceName, serviceConfig] of Object.entries(kosukeConfig.preview.services)) {
+      const isEntrypoint = serviceConfig.is_entrypoint === true;
+
+      // Prepare environment: configEnv < userEnvVars < serviceConnectionUrls < externalConnectionEnvVars < storageEnvVars
+      const environment = this.prepareServiceEnvironment(
+        configEnv,
+        userEnvVars,
+        serviceConnectionUrls,
+        externalConnectionEnvVars,
+        storageEnvVars
+      );
+
+      // Start service (pass entrypoint route info if this is the entrypoint)
+      const startServicePromise = this.startServiceContainer(
+        projectId,
+        sessionId,
+        serviceName,
+        serviceConfig,
+        environment,
+        isEntrypoint ? entrypointRouteInfo : undefined
+      ).then(url => ({ serviceName, url }));
+
+      servicePromises.push(startServicePromise);
+    }
+
+    // Wait for all services to start
+    try {
+      const results = await Promise.all(servicePromises);
+
+      // Find entrypoint URL
+      const entrypointResult = results.find(r => r.serviceName === entrypointEntry.name);
+      if (!entrypointResult || !entrypointResult.url) {
+        throw new Error('Failed to start entrypoint service');
+      }
+
+      console.log(`✅ Multi-service preview started successfully at ${entrypointResult.url}`);
+      return entrypointResult.url;
+    } catch (error) {
+      console.error('Failed to start some services, cleaning up...');
+      // Cleanup on failure
+      await this.stopPreview(projectId, sessionId, kosukeConfig);
+      throw error;
+    }
+  }
+
+  /**
+   * Get preview status for entrypoint service
+   */
+  async getPreviewStatus(projectId: string, sessionId: string): Promise<DockerContainerStatus> {
+    try {
+      // Get container session path and read config
+      const containerSessionPath = this.getContainerSessionPath(projectId, sessionId);
+
+      const kosukeConfig = await readKosukeConfig(containerSessionPath);
+      const entrypointEntry = getEntrypointService(kosukeConfig);
+
+      const containerName = this.getContainerName(projectId, sessionId, entrypointEntry.name);
+      const container = await this.getContainerByName(containerName);
+
+      if (!container || !container.State?.Running) {
+        return { running: false, url: null, is_responding: false };
+      }
+
+      const url = this.adapter.getContainerUrl(container);
+      if (!url) {
+        return { running: true, url: null, is_responding: false };
+      }
+
+      const isResponding = await this.checkContainerHealth(url);
+
+      return { running: true, url, is_responding: isResponding };
+    } catch (error) {
+      console.error('Error getting preview status:', error);
+      return { running: false, url: null, is_responding: false };
+    }
   }
 
   /**
@@ -307,171 +526,89 @@ class DockerService {
         method: 'GET',
       });
 
-      console.log(`Health check response: ${response.ok}`);
-
       clearTimeout(timeoutId);
       return response.ok;
-    } catch (error) {
-      console.log(`Health check failed for ${healthUrl}:`, error);
+    } catch {
+      console.log(`Health check failed for ${healthUrl}`);
       return false;
     }
   }
 
   /**
-   * Start preview container for a project session
+   * Stop and remove all service containers for a preview
    */
-  async startPreview(
+  async stopPreview(
     projectId: string,
     sessionId: string,
-    envVars: Record<string, string> = {},
-    userId: string
-  ): Promise<string> {
-    const containerName = this.getContainerName(projectId, sessionId);
-    console.log(
-      `Starting preview for project ${projectId} session ${sessionId} as ${containerName}`
-    );
+    kosukeConfig?: KosukeConfig
+  ): Promise<void> {
+    console.log(`Stopping multi-service preview for project ${projectId} session ${sessionId}`);
 
-    // Check Docker availability
-    try {
-      const client = await this.ensureClient();
-      await client.systemPing();
-    } catch (error) {
-      console.error('Docker is not available:', error);
-      throw new Error('Docker is not available');
-    }
-
-    // Ensure session directory exists (create if needed)
-    await sessionManager.ensureSessionEnvironment(projectId, sessionId, userId);
-
-    // Reuse existing running container if possible
-    const existingUrl = await this.getExistingContainerUrlOrRemove(containerName);
-    if (existingUrl) {
-      return existingUrl;
-    }
-
-    // Create new container
-    const hostSessionPath = this.getHostSessionPath(projectId, sessionId);
-    const environment = this.prepareContainerEnvironment(projectId, sessionId, envVars);
-
-    const url = await this.runContainerWithRetries(
-      projectId,
-      sessionId,
-      environment,
-      hostSessionPath,
-      containerName
-    );
-
-    console.log(`Preview started successfully at ${url}`);
-    return url;
-  }
-
-  /**
-   * Get preview status for a session
-   */
-  async getPreviewStatus(projectId: string, sessionId: string): Promise<DockerContainerStatus> {
-    const containerName = this.getContainerName(projectId, sessionId);
-    const container = await this.getContainerByName(containerName);
-
-    if (!container || !container.State?.Running) {
-      return {
-        running: false,
-        url: null,
-        is_responding: false,
-      };
-    }
-
-    const url = this.adapter.getContainerUrl(container);
-    if (!url) {
-      return {
-        running: true,
-        url: null,
-        is_responding: false,
-      };
-    }
-
-    const isResponding = await this.checkContainerHealth(url);
-
-    return {
-      running: true,
-      url,
-      is_responding: isResponding,
-    };
-  }
-
-  /**
-   * Stop and remove preview container for a session
-   */
-  async stopPreview(projectId: string, sessionId: string): Promise<void> {
-    const containerName = this.getContainerName(projectId, sessionId);
-    console.log(`Stopping preview container ${containerName}`);
-
-    const container = await this.getContainerByName(containerName);
-    if (!container) {
-      console.log(`Container ${containerName} not found, nothing to stop`);
-      return;
+    // If config not provided, try to read it
+    if (!kosukeConfig) {
+      try {
+        const containerSessionPath = this.getContainerSessionPath(projectId, sessionId);
+        kosukeConfig = await readKosukeConfig(containerSessionPath);
+      } catch (error) {
+        console.error('Failed to read kosuke.config.json for cleanup:', error);
+        // Continue with best-effort cleanup
+      }
     }
 
     const client = await this.ensureClient();
 
-    // Stop container with timeout (suppress errors)
-    try {
-      console.log(`Stopping container ${containerName}...`);
-      await client.containerStop(containerName, { timeout: 5 });
-      console.log(`Container ${containerName} stopped successfully`);
-    } catch (error) {
-      console.log(`Failed to stop container ${containerName}:`, error);
-      // Continue to removal even if stop fails
+    // Stop all service containers
+    if (kosukeConfig) {
+      for (const serviceName of Object.keys(kosukeConfig.preview.services)) {
+        const containerName = this.getContainerName(projectId, sessionId, serviceName);
+
+        try {
+          await client.containerStop(containerName, { timeout: 5 });
+          console.log(`Stopped service ${serviceName}`);
+        } catch (error) {
+          console.log(`Failed to stop service ${serviceName}:`, error);
+        }
+
+        try {
+          await client.containerDelete(containerName, { force: true });
+          console.log(`Removed service ${serviceName}`);
+        } catch (error) {
+          console.log(`Failed to remove service ${serviceName}:`, error);
+        }
+      }
+
+      // Drop storages (including Redis containers)
+      try {
+        const client = await this.ensureClient();
+        await dropPreviewStorages(projectId, sessionId, kosukeConfig, client);
+      } catch (error) {
+        console.error('Failed to drop preview storages:', error);
+      }
     }
 
-    // Remove container forcefully (suppress errors)
-    try {
-      console.log(`Removing container ${containerName}...`);
-      await client.containerDelete(containerName, { force: true });
-      console.log(`Container ${containerName} removed successfully`);
-    } catch (error) {
-      console.log(`Failed to remove container ${containerName}:`, error);
-      // Ignore removal errors
-    }
+    console.log(`✅ Multi-service preview stopped`);
   }
 
   /**
-   * Check if a container is running for a session
+   * Check if preview is running
    */
   async isContainerRunning(projectId: string, sessionId: string): Promise<boolean> {
-    const containerName = this.getContainerName(projectId, sessionId);
-    const container = await this.getContainerByName(containerName);
-    return Boolean(container && container.State?.Running);
-  }
-
-  /**
-   * Restart a preview container for a session
-   */
-  async restartPreviewContainer(projectId: string, sessionId: string): Promise<void> {
-    const containerName = this.getContainerName(projectId, sessionId);
-    console.log(`Restarting preview container ${containerName}`);
-
-    const container = await this.getContainerByName(containerName);
-    if (!container) {
-      console.warn(`Container ${containerName} not found, cannot restart`);
-      throw new Error(`Container not found: ${containerName}`);
-    }
-
-    const client = await this.ensureClient();
-
     try {
-      await client.containerRestart(containerName);
-      console.log(`✅ Container ${containerName} restarted successfully`);
-    } catch (error) {
-      console.error(`❌ Failed to restart container ${containerName}:`, error);
-      throw new Error(
-        `Failed to restart container: ${error instanceof Error ? error.message : 'Unknown error'}`
-      );
+      const containerSessionPath = this.getContainerSessionPath(projectId, sessionId);
+
+      const kosukeConfig = await readKosukeConfig(containerSessionPath);
+      const entrypointEntry = getEntrypointService(kosukeConfig);
+
+      const containerName = this.getContainerName(projectId, sessionId, entrypointEntry.name);
+      const container = await this.getContainerByName(containerName);
+      return Boolean(container && container.State?.Running);
+    } catch {
+      return false;
     }
   }
 
   /**
-   * Get all preview URLs for a project
-   * Lists all containers for a project and extracts their preview URLs
+   * Get all preview URLs for a project (for backward compatibility)
    */
   async getProjectPreviewUrls(projectId: string): Promise<PreviewUrlsResponse> {
     console.log(`📋 Getting preview URLs for project ${projectId}`);
@@ -480,60 +617,55 @@ class DockerService {
       const client = await this.ensureClient();
       const namePrefix = `${this.config.previewContainerNamePrefix}${projectId}-`;
 
-      // List all containers (running and stopped)
       const allContainers = await client.containerList({ all: true });
-
-      // Filter containers by name prefix
       const projectContainers = allContainers.filter(container => {
         const name = container.Names?.[0]?.replace(/^\//, '') || '';
         return name.startsWith(namePrefix);
       });
 
-      console.log(`Found ${projectContainers.length} container(s) for project ${projectId}`);
+      // Group containers by session
+      const sessionContainers = new Map<string, typeof projectContainers>();
+
+      for (const container of projectContainers) {
+        const containerName = container.Names?.[0]?.replace(/^\//, '') || '';
+        // Extract session ID: prefix-projectId-sessionId-serviceName
+        const parts = containerName.replace(namePrefix, '').split('-');
+        const sessionId = parts[0]; // First part after projectId
+
+        if (!sessionContainers.has(sessionId)) {
+          sessionContainers.set(sessionId, []);
+        }
+        sessionContainers.get(sessionId)!.push(container);
+      }
 
       const previewUrls: PreviewUrl[] = [];
 
-      for (const container of projectContainers) {
+      // For each session, find entrypoint container
+      for (const [sessionId, containers] of sessionContainers.entries()) {
         try {
-          const containerName = container.Names?.[0]?.replace(/^\//, '') || '';
+          // Find entrypoint container (would need to inspect labels or config)
+          // For now, use first running container
+          const runningContainer = containers.find(c => c.State === 'running');
+          const containerToUse = runningContainer || containers[0];
 
-          // Get full container details for URL resolution
+          if (!containerToUse) continue;
+
+          const containerName = containerToUse.Names?.[0]?.replace(/^\//, '') || '';
           const containerDetails = await client.containerInspect(containerName);
-
-          // Resolve URL using router adapter
           const fullUrl = this.adapter.getContainerUrl(containerDetails);
 
-          if (!fullUrl) {
-            console.warn(`Could not resolve URL for container: ${containerName}`);
-            continue;
-          }
+          if (!fullUrl) continue;
 
-          // Extract labels
           const labels = containerDetails.Config?.Labels || {};
+          const branchName = labels['kosuke.branch'] || labels['kosuke.session_id'] || sessionId;
 
-          // Get branch name from labels, or parse from container name
-          let branchName = labels['kosuke.branch'] || labels['kosuke.session_id'];
-          if (!branchName) {
-            // Fallback: parse from container name (format: prefix-projectId-sessionId)
-            const nameParts = containerName
-              .replace(this.config.previewContainerNamePrefix, '')
-              .split('-');
-            if (nameParts.length >= 2) {
-              branchName = nameParts.slice(1).join('-'); // Everything after projectId
-            } else {
-              branchName = containerName;
-            }
-          }
-
-          // Extract subdomain from URL
           let subdomain: string | null = null;
           if (fullUrl.startsWith('https://')) {
             const domain = fullUrl.replace('https://', '').split('/')[0];
-            subdomain = domain.split('.')[0]; // First part of domain
+            subdomain = domain.split('.')[0];
           }
 
-          // Map Docker status to TypeScript status type
-          const rawStatus = container.State || 'unknown';
+          const rawStatus = containerToUse.State || 'unknown';
           let containerStatus: 'running' | 'stopped' | 'error';
           if (rawStatus === 'running') {
             containerStatus = 'running';
@@ -543,12 +675,10 @@ class DockerService {
             containerStatus = 'error';
           }
 
-          // Get created timestamp
           const createdAt = containerDetails.Created || new Date().toISOString();
 
-          // Build preview URL object
-          const previewUrl: PreviewUrl = {
-            id: containerName, // Use container name as unique ID
+          previewUrls.push({
+            id: containerName,
             project_id: projectId,
             branch_name: branchName,
             subdomain: subdomain || '',
@@ -556,17 +686,12 @@ class DockerService {
             container_status: containerStatus,
             ssl_enabled: fullUrl.startsWith('https://'),
             created_at: createdAt,
-            last_accessed: null, // Not tracked yet
-          };
-
-          previewUrls.push(previewUrl);
+            last_accessed: null,
+          });
         } catch (error) {
-          console.warn(`Failed to process container:`, error);
-          // Continue with other containers
+          console.warn(`Failed to process session ${sessionId}:`, error);
         }
       }
-
-      console.log(`✅ Found ${previewUrls.length} preview URL(s) for project ${projectId}`);
 
       return {
         preview_urls: previewUrls,
@@ -574,7 +699,6 @@ class DockerService {
       };
     } catch (error) {
       console.error(`❌ Error getting preview URLs for project ${projectId}:`, error);
-      // Return empty response on error to maintain interface compatibility
       return {
         preview_urls: [],
         total_count: 0,
@@ -583,69 +707,33 @@ class DockerService {
   }
 
   /**
-   * Generate a consistent numeric hash from a string
-   * Used to create stable IDs for preview URLs
-   */
-  private hashString(str: string): number {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      const char = str.charCodeAt(i);
-      hash = (hash << 5) - hash + char;
-      hash = hash & hash; // Convert to 32-bit integer
-    }
-    return Math.abs(hash);
-  }
-
-  /**
-   * Stop and remove all preview containers for a project
-   * Used when archiving/deleting a project to clean up all associated containers
+   * Stop all previews for a project
    */
   async stopAllProjectPreviews(projectId: string): Promise<{ stopped: number; failed: number }> {
-    console.log(`Stopping all preview containers for project ${projectId}`);
+    console.log(`Stopping all previews for project ${projectId}`);
 
     try {
       const client = await this.ensureClient();
       const namePrefix = `${this.config.previewContainerNamePrefix}${projectId}-`;
 
-      // List all containers (running and stopped)
       const allContainers = await client.containerList({ all: true });
-
-      // Filter containers by name prefix
       const projectContainers = allContainers.filter(container => {
         const name = container.Names?.[0]?.replace(/^\//, '') || '';
         return name.startsWith(namePrefix);
       });
 
-      if (projectContainers.length === 0) {
-        console.log(`No preview containers found for project ${projectId}`);
-        return { stopped: 0, failed: 0 };
-      }
-
-      console.log(`Found ${projectContainers.length} container(s) for project ${projectId}`);
-
       let stopped = 0;
       let failed = 0;
 
-      // Stop and remove each container
       for (const container of projectContainers) {
         const containerName =
           container.Names?.[0]?.replace(/^\//, '') || container.Id?.substring(0, 12) || 'unknown';
 
         try {
-          // Stop container if running
           if (container.State === 'running') {
-            try {
-              await client.containerStop(containerName, { timeout: 5 });
-              console.log(`Stopped container ${containerName}`);
-            } catch (stopError) {
-              console.log(`Failed to stop container ${containerName}:`, stopError);
-              // Continue to removal
-            }
+            await client.containerStop(containerName, { timeout: 5 });
           }
-
-          // Remove container
           await client.containerDelete(containerName, { force: true });
-          console.log(`Removed container ${containerName}`);
           stopped++;
         } catch (error) {
           console.error(`Failed to stop/remove container ${containerName}:`, error);
@@ -657,6 +745,47 @@ class DockerService {
       return { stopped, failed };
     } catch (error) {
       console.error(`Error stopping project previews for project ${projectId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Restart all service containers for a preview
+   */
+  async restartPreviewContainer(projectId: string, sessionId: string): Promise<void> {
+    console.log(`Restarting preview for project ${projectId} session ${sessionId}`);
+
+    try {
+      // Read kosuke.config.json to get all services
+      const containerSessionPath = this.getContainerSessionPath(projectId, sessionId);
+      const kosukeConfig = await readKosukeConfig(containerSessionPath);
+
+      const client = await this.ensureClient();
+      let restarted = 0;
+      let failed = 0;
+
+      // Restart all service containers
+      for (const serviceName of Object.keys(kosukeConfig.preview.services)) {
+        const containerName = this.getContainerName(projectId, sessionId, serviceName);
+
+        try {
+          console.log(`Restarting service ${serviceName}...`);
+          await client.containerRestart(containerName, { timeout: 10 });
+          console.log(`✅ Restarted service ${serviceName}`);
+          restarted++;
+        } catch (error) {
+          console.error(`❌ Failed to restart service ${serviceName}:`, error);
+          failed++;
+        }
+      }
+
+      console.log(`Preview restart complete: ${restarted} restarted, ${failed} failed`);
+
+      if (failed > 0 && restarted === 0) {
+        throw new Error('Failed to restart any services');
+      }
+    } catch (error) {
+      console.error('Error restarting preview:', error);
       throw error;
     }
   }

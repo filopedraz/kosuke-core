@@ -10,8 +10,8 @@ import type { DockerConfig, RouterMode } from '@/lib/types/docker';
  */
 export function getDockerConfig(): DockerConfig {
   // Preview image settings
-  const previewDefaultImage =
-    process.env.PREVIEW_DEFAULT_IMAGE || 'ghcr.io/kosuke-org/kosuke-template:v1.8.0';
+  const bunPreviewImage = process.env.PREVIEW_BUN_IMAGE || '';
+  const pythonPreviewImage = process.env.PREVIEW_PYTHON_IMAGE || '';
 
   // Port mode settings
   const previewPortRangeStart = parseInt(process.env.PREVIEW_PORT_RANGE_START || '3001', 10);
@@ -52,7 +52,8 @@ export function getDockerConfig(): DockerConfig {
   const postgresPassword = process.env.POSTGRES_PASSWORD || 'postgres';
 
   return {
-    previewDefaultImage,
+    bunPreviewImage,
+    pythonPreviewImage,
     previewPortRangeStart,
     previewPortRangeEnd,
     routerMode,

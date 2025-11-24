@@ -1,0 +1,44 @@
+{
+  "preview": {
+    "services": {
+      "nextjs": {
+        "type": "bun",
+        "directory": ".",
+        "is_entrypoint": true,
+        "external_connection_variable": "NEXT_PUBLIC_APP_URL"
+      },
+      "engine": {
+        "type": "python",
+        "directory": "./engine",
+        "connection_variable": "ENGINE_URL"
+      }
+    },
+    "storages": {
+      "postgres": {
+        "type": "postgres",
+        "connection_variable": "POSTGRES_URL"
+      },
+      "redis": {
+        "type": "redis",
+        "connection_variable": "REDIS_URL"
+      }
+    },
+    "environment": {
+      "POSTGRES_URL": "value",
+      "REDIS_URL": "value",
+      "BETTER_AUTH_SECRET": "value",
+      "NEXT_PUBLIC_APP_URL": "value",
+      "STRIPE_PUBLISHABLE_KEY": "value",
+      "STRIPE_SECRET_KEY": "value",
+      "STRIPE_PRO_PRICE_ID": "value",
+      "STRIPE_BUSINESS_PRICE_ID": "value",
+      "STRIPE_WEBHOOK_SECRET": "value",
+      "STRIPE_SUCCESS_URL": "value",
+      "STRIPE_CANCEL_URL": "value",
+      "RESEND_FROM_EMAIL": "value",
+      "RESEND_FROM_NAME": "value",
+      "SENTRY_DSN": "value",
+      "RESEND_API_KEY": "__KSK__PREVIEW_RESEND_API_KEY"
+    }
+  }
+}

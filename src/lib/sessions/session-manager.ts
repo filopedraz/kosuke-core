@@ -20,8 +20,6 @@ export class SessionManager {
 
   constructor() {
     this.projectsBasePath = resolve(PROJECTS_BASE_PATH);
-    console.log('🔧 SessionManager initialized');
-    console.log(`📁 Projects base path: ${this.projectsBasePath}`);
   }
 
   /**

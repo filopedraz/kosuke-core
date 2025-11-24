@@ -60,7 +60,7 @@ export async function GET(
     if (!status.running && status.url === null) {
       try {
         console.log('Container is not running, starting preview...');
-        // Fetch environment variables for the project
+        // Fetch user-defined environment variables for the project
         const envVars = await getProjectEnvironmentVariables(projectId);
 
         // Start preview

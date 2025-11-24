@@ -32,7 +32,8 @@ export interface DockerContainerStatus {
  */
 export interface DockerConfig {
   // Preview image settings
-  previewDefaultImage: string;
+  bunPreviewImage: string;
+  pythonPreviewImage: string;
 
   // Port mode settings
   previewPortRangeStart: number;
