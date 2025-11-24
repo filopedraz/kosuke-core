@@ -56,11 +56,11 @@ export async function POST(
     if (pullResult.changed && pullResult.commits_pulled > 0) {
       try {
         const dockerService = getDockerService();
-        const isRunning = await dockerService.isContainerRunning(projectId, sessionId);
+        const isRunning = await dockerService.isPreviewRunning(projectId, sessionId);
 
         if (isRunning) {
           console.log(`Restarting container to apply ${pullResult.commits_pulled} new commit(s)`);
-          await dockerService.restartPreviewContainer(projectId, sessionId);
+          await dockerService.restartPreview(projectId, sessionId);
           containerRestarted = true;
           console.log('✅ Container restarted successfully');
         }

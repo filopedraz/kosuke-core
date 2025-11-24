@@ -592,7 +592,7 @@ class DockerService {
   /**
    * Check if preview is running
    */
-  async isContainerRunning(projectId: string, sessionId: string): Promise<boolean> {
+  async isPreviewRunning(projectId: string, sessionId: string): Promise<boolean> {
     try {
       const containerSessionPath = this.getContainerSessionPath(projectId, sessionId);
 
@@ -752,7 +752,7 @@ class DockerService {
   /**
    * Restart all service containers for a preview
    */
-  async restartPreviewContainer(projectId: string, sessionId: string): Promise<void> {
+  async restartPreview(projectId: string, sessionId: string): Promise<void> {
     console.log(`Restarting preview for project ${projectId} session ${sessionId}`);
 
     try {
