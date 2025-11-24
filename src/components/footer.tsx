@@ -22,33 +22,25 @@ export default function Footer() {
         animate={{ opacity: 1 }}
         transition={{ duration: 0.5, delay: 0.3 }}
       >
-        <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 backdrop-blur-sm bg-background/30 px-6 py-5 sm:py-3 rounded-2xl sm:rounded-full border-0 sm:border sm:border-border/30">
-          {/* Legal Links */}
-          <div className="flex items-center gap-4 text-base sm:text-sm">
-            <Link
-              href="/terms"
-              className="text-muted-foreground hover:text-foreground transition-colors duration-300"
-            >
-              Terms
-            </Link>
-            <div className="hidden sm:block h-4 w-px bg-border/50"></div>
-            <Link
-              href="/privacy"
-              className="text-muted-foreground hover:text-foreground transition-colors duration-300"
-            >
-              Privacy
-            </Link>
-          </div>
-
-          {/* Separator - vertical on desktop only */}
-          <div className="hidden sm:block h-4 w-px bg-border/40"></div>
-
-          {/* Copyright and Social Icons Row */}
-          <div className="flex items-center gap-4 sm:gap-6">
-            {/* Copyright */}
-            <p className="text-base sm:text-sm text-muted-foreground font-light">
-              © {new Date().getFullYear()}
-            </p>
+        <div className="flex flex-col gap-6 w-full max-w-sm">
+          {/* Top Row: Legal Links and Social Icons */}
+          <div className="flex items-center justify-center gap-6 backdrop-blur-sm bg-background/30 px-6 py-5 sm:py-3 rounded-2xl sm:rounded-full border-0 sm:border sm:border-border/30">
+            {/* Legal Links */}
+            <div className="flex items-center gap-4 text-base sm:text-sm">
+              <Link
+                href="/terms"
+                className="text-muted-foreground hover:text-foreground transition-colors duration-300"
+              >
+                Terms
+              </Link>
+              <div className="hidden sm:block h-4 w-px bg-border/50"></div>
+              <Link
+                href="/privacy"
+                className="text-muted-foreground hover:text-foreground transition-colors duration-300"
+              >
+                Privacy
+              </Link>
+            </div>
 
             {/* Separator - vertical on desktop only */}
             <div className="hidden sm:block h-4 w-px bg-border/40"></div>
@@ -83,6 +75,13 @@ export default function Footer() {
                 <Linkedin className="h-5 w-5 text-muted-foreground group-hover:text-foreground group-hover:scale-110 transition-all" />
               </Link>
             </div>
+          </div>
+
+          {/* Bottom Row: Copyright */}
+          <div className="flex justify-center">
+            <p className="text-sm text-muted-foreground/70 font-light">
+              © {new Date().getFullYear()} Jo & Ko OÜ.
+            </p>
           </div>
         </div>
       </motion.div>

@@ -5,7 +5,6 @@ import { auth } from '@/lib/auth';
 import { getDockerService } from '@/lib/docker';
 import { getKosukeGitHubToken, getUserGitHubToken } from '@/lib/github/client';
 import { verifyProjectAccess } from '@/lib/projects';
-import { sessionManager } from '@/lib/sessions';
 
 /**
  * POST /api/projects/[id]/chat-sessions/[sessionId]/pull
@@ -45,6 +44,7 @@ export async function POST(
 
     // Pull session branch using SessionManager
     console.log(`Pulling session branch for project ${projectId} session ${sessionId}`);
+    const { sessionManager } = await import('@/lib/sessions');
     const pullResult = await sessionManager.pullSessionBranch(projectId, sessionId, githubToken);
 
     if (!pullResult.success) {

@@ -1,3 +1,4 @@
+import type { NewsletterSubscriptionResponse } from '@/lib/types/ghost';
 import GhostAdminAPI from '@tryghost/admin-api';
 
 // Type for Ghost member creation - based on @types/tryghost__admin-api
@@ -18,19 +19,19 @@ let ghostAdminClient: InstanceType<typeof GhostAdminAPI> | null = null;
  * Get or create the Ghost Admin API client
  * This is lazily initialized to avoid errors during build time
  */
-function getGhostAdminClient(): InstanceType<typeof GhostAdminAPI> {
+function getGhostAdminClient(): InstanceType<typeof GhostAdminAPI> | null {
+  const ghostUrl = process.env.NEXT_PUBLIC_GHOST_URL;
+  const adminKey = process.env.GHOST_ADMIN_API_KEY;
+
+  if (!ghostUrl || !adminKey) {
+    console.warn('Ghost Admin API not configured. Newsletter subscriptions are disabled.');
+    return null;
+  }
+
   if (!ghostAdminClient) {
-    if (!process.env.NEXT_PUBLIC_GHOST_URL) {
-      throw new Error('NEXT_PUBLIC_GHOST_URL environment variable is not set');
-    }
-
-    if (!process.env.GHOST_ADMIN_API_KEY) {
-      throw new Error('GHOST_ADMIN_API_KEY environment variable is not set');
-    }
-
     ghostAdminClient = new GhostAdminAPI({
-      url: process.env.NEXT_PUBLIC_GHOST_URL,
-      key: process.env.GHOST_ADMIN_API_KEY,
+      url: ghostUrl,
+      key: adminKey,
       version: 'v5.0',
     });
   }
@@ -47,9 +48,16 @@ function getGhostAdminClient(): InstanceType<typeof GhostAdminAPI> {
 export async function subscribeToNewsletter(
   email: string,
   name?: string
-): Promise<{ success: boolean; message: string; alreadySubscribed?: boolean }> {
+): Promise<NewsletterSubscriptionResponse> {
   try {
     const client = getGhostAdminClient();
+    if (!client) {
+      return {
+        success: false,
+        unavailable: true,
+        message: 'Newsletter subscriptions are not configured in this environment.',
+      };
+    }
 
     // Create member with immediate subscription (no email verification)
     const memberPayload: GhostMemberPayload = {

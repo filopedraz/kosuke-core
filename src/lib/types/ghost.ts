@@ -97,4 +97,5 @@ export interface NewsletterSubscriptionResponse {
   success: boolean;
   message: string;
   alreadySubscribed?: boolean;
+  unavailable?: boolean;
 }

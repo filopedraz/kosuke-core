@@ -109,19 +109,24 @@ export default function RootLayout({ children }: RootLayoutProps) {
     <ClerkThemeProvider>
       <html lang="en" className={`${inter.variable} dark antialiased`} suppressHydrationWarning>
         <body className="min-h-dvh bg-background text-foreground overflow-x-hidden font-sans">
-          <Script
-            id="Cookiebot"
-            src="https://consent.cookiebot.com/uc.js"
-            data-cbid="1d49650b-72ce-410d-b236-90f662688b3d"
-            data-blockingmode="auto"
-            strategy="beforeInteractive"
-          />
-          <Script
-            defer
-            data-domain="kosuke.ai"
-            src="https://plausible.io/js/script.js"
-            strategy="beforeInteractive"
-          />
+          {process.env.NEXT_PUBLIC_COOKIEBOT_ENABLED !== 'false' && (
+            <Script
+              id="Cookiebot"
+              src="https://consent.cookiebot.com/uc.js"
+              data-cbid="1d49650b-72ce-410d-b236-90f662688b3d"
+              data-blockingmode="auto"
+              strategy="beforeInteractive"
+            />
+          )}
+          {process.env.NEXT_PUBLIC_PLAUSIBLE_ENABLED !== 'false' && (
+            <Script
+              id="plausible"
+              data-domain="kosuke.ai"
+              data-cookiebot-accept="marketing"
+              src="https://plausible.io/js/script.js"
+              strategy="afterInteractive"
+            />
+          )}
           <div id="clerk-captcha" />
           <Providers>
             <div className="flex flex-col min-h-dvh">

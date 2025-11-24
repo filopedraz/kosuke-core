@@ -23,9 +23,12 @@ function PostHogPageView() {
     }
 
     // Track pageview only if consent given
-    posthog?.capture('$pageview', {
-      $current_url: url,
-    });
+    // Wait for posthog to be initialized before capturing
+    if (posthog?.__loaded) {
+      posthog.capture('$pageview', {
+        $current_url: url,
+      });
+    }
   }, [pathname, searchParams]);
 
   return null;

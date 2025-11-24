@@ -87,8 +87,8 @@ export async function POST(
         console.error('Failed to send Slack notification:', err)
       );
     }
-
-    return NextResponse.json(result, { status: result.success ? 200 : 500 });
+    const status = result.success ? 200 : result.unavailable ? 503 : 500;
+    return NextResponse.json(result, { status });
   } catch (error) {
     console.error('Newsletter subscription error:', error);
     return NextResponse.json(

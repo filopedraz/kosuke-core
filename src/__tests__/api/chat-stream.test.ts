@@ -69,16 +69,22 @@ jest.mock('@/lib/github/client', () => ({
   getUserGitHubInfo: jest.fn(),
 }));
 
-jest.mock('@/lib/agent', () => ({
-  Agent: jest.fn().mockImplementation(() => ({
+jest.mock('@/lib/agent', () => {
+  const mockAgentInstance = {
     run: jest.fn().mockImplementation(async function* () {
       yield { type: 'content_block_start' };
       yield { type: 'content_block_delta', delta_type: 'text_delta', text: 'Hello', index: 0 };
       yield { type: 'content_block_stop' };
       yield { type: 'message_complete' };
     }),
-  })),
-}));
+  };
+
+  return {
+    Agent: {
+      create: jest.fn().mockResolvedValue(mockAgentInstance),
+    },
+  };
+});
 
 jest.mock('@/lib/sessions', () => ({
   sessionManager: {
@@ -178,15 +184,12 @@ describe('Chat Stream API', () => {
     });
 
     it('should handle streaming errors gracefully', async () => {
-      (Agent as jest.MockedClass<typeof Agent>).mockImplementationOnce(
-        // @ts-expect-error - Partial mock for testing error handling
-        () => ({
-          run: jest.fn().mockImplementation(async function* () {
-            yield { type: 'content_block_start' };
-            throw new Error('Test streaming error');
-          }),
-        })
-      );
+      (Agent.create as jest.Mock).mockResolvedValueOnce({
+        run: jest.fn().mockImplementation(async function* () {
+          yield { type: 'content_block_start' };
+          throw new Error('Test streaming error');
+        }),
+      });
 
       const request = new NextRequest(
         'http://localhost/api/projects/1/chat-sessions/test-session',

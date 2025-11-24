@@ -4,7 +4,6 @@
  */
 
 import type { StorageConnectionInfo } from '@/lib/docker/database';
-import { sessionManager } from '@/lib/sessions';
 import type { DockerContainerStatus, RouteInfo } from '@/lib/types/docker';
 import type { KosukeConfig, ServiceConfig } from '@/lib/types/kosuke-config';
 import { getEntrypointService } from '@/lib/types/kosuke-config';
@@ -364,6 +363,7 @@ class DockerService {
     }
 
     // Ensure session directory exists (create and clone repo if needed)
+    const { sessionManager } = await import('@/lib/sessions');
     await sessionManager.ensureSessionEnvironment(projectId, sessionId, userId);
 
     // Get container path to session directory (for reading config files)

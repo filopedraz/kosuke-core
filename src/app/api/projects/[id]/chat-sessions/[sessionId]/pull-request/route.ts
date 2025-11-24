@@ -3,7 +3,6 @@ import { z } from 'zod';
 
 import { ApiErrorHandler } from '@/lib/api/errors';
 import { auth } from '@/lib/auth';
-import { SESSION_BRANCH_PREFIX } from '@/lib/constants';
 import { db } from '@/lib/db/drizzle';
 import { chatSessions } from '@/lib/db/schema';
 import { createKosukeOctokit, createUserOctokit } from '@/lib/github/client';
@@ -26,6 +25,11 @@ export async function POST(
   { params }: { params: Promise<{ id: string; sessionId: string }> }
 ) {
   try {
+    const sessionBranchPrefix = process.env.SESSION_BRANCH_PREFIX;
+    if (!sessionBranchPrefix) {
+      throw new Error('SESSION_BRANCH_PREFIX environment variable is required');
+    }
+
     const { userId } = await auth();
     if (!userId) {
       return ApiErrorHandler.unauthorized();
@@ -71,7 +75,7 @@ export async function POST(
     const { title, description, target_branch } = parseResult.data;
 
     // Set defaults
-    const sourceBranch = `${SESSION_BRANCH_PREFIX}${session.sessionId}`;
+    const sourceBranch = `${sessionBranchPrefix}${session.sessionId}`;
     const targetBranch = target_branch || project.defaultBranch || 'main';
     const prTitle = title || `Updates from chat session: ${session.title}`;
     const prDescription = description || `Automated changes from Kosuke chat session: ${session.title}\n\nSession ID: ${sessionId}`;
