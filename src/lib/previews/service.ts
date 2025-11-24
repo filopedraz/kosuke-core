@@ -216,10 +216,11 @@ class PreviewService {
 
     // Add port bindings for port mode (only for entrypoint service)
     if (this.config.routerMode === 'port' && routeInfo?.port) {
+      const containerPort = this.getServiceDefaultPort(serviceType);
       config.HostConfig = {
         ...baseHostConfig,
         PortBindings: {
-          '3000/tcp': [{ HostPort: String(routeInfo.port) }],
+          [`${containerPort}/tcp`]: [{ HostPort: String(routeInfo.port) }],
         },
       };
     }
