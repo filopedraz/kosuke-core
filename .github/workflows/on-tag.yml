@@ -60,6 +60,16 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Notify Slack - Build Success
+        if: success()
+        run: |
+          curl -X POST --data '{"text":"✅ Kosuke Production Docker Build Successful\nImage: ghcr.io/kosuke-org/kosuke-core:${{ steps.version.outputs.VERSION }}\nDetails: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"}' ${{ secrets.SLACK_DEV_CHANNEL_WEBHOOK_URL }}
+
+      - name: Notify Slack - Build Failure
+        if: failure()
+        run: |
+          curl -X POST --data "{\"text\":\"❌ Kosuke Production Docker Build Failed\nAction: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" ${{ secrets.SLACK_DEV_CHANNEL_WEBHOOK_URL }}
+
   deploy-production:
     name: Deploy to Production Server
     needs: build-and-push
