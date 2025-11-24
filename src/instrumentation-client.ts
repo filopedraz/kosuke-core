@@ -18,21 +18,28 @@ function hasSentryConsent(): boolean {
   return window.Cookiebot.consent?.statistics === true;
 }
 
+/**
+ * Get Sentry initialization configuration
+ */
+function getSentryConfig() {
+  return {
+    dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
+    environment: process.env.NEXT_PUBLIC_SENTRY_ENVIRONMENT || 'development',
+    integrations: [Sentry.replayIntegration()],
+    tracesSampleRate: 1,
+    replaysSessionSampleRate: 0.1,
+    replaysOnErrorSampleRate: 1.0,
+    debug: false,
+  };
+}
+
 // Only initialize Sentry in production and with consent
 if (process.env.NODE_ENV === 'production') {
   // Check if Cookiebot consent is available, otherwise initialize anyway (fallback to banner consent)
   const shouldInit = !window.Cookiebot || hasSentryConsent();
 
   if (shouldInit) {
-    Sentry.init({
-      dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
-      environment: process.env.NEXT_PUBLIC_SENTRY_ENVIRONMENT || 'development',
-      integrations: [Sentry.replayIntegration()],
-      tracesSampleRate: 1,
-      replaysSessionSampleRate: 0.1,
-      replaysOnErrorSampleRate: 1.0,
-      debug: false,
-    });
+    Sentry.init(getSentryConfig());
   }
 
   // Listen for Cookiebot consent changes
@@ -40,15 +47,7 @@ if (process.env.NODE_ENV === 'production') {
     window.addEventListener('CookiebotOnAccept', () => {
       if (hasSentryConsent() && !Sentry.getClient()) {
         // Re-initialize Sentry if consent was given after page load
-        Sentry.init({
-          dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
-          environment: process.env.NEXT_PUBLIC_SENTRY_ENVIRONMENT || 'development',
-          integrations: [Sentry.replayIntegration()],
-          tracesSampleRate: 1,
-          replaysSessionSampleRate: 0.1,
-          replaysOnErrorSampleRate: 1.0,
-          debug: false,
-        });
+        Sentry.init(getSentryConfig());
       }
     });
 
