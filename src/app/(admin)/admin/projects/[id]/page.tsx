@@ -2,7 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
-import { CheckCircle2, Copy, Rocket } from 'lucide-react';
+import { CheckCircle2, Copy, ExternalLink, Rocket } from 'lucide-react';
 import Link from 'next/link';
 import { use, useState } from 'react';
 
@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useMarkProjectReady } from '@/hooks/use-admin-projects';
 import { useToast } from '@/hooks/use-toast';
@@ -141,7 +141,7 @@ export default function AdminProjectDetailPage({
 
   return (
     <div className="space-y-6">
-      {/* Page Header - Title, Description, Status, and Deploy button */}
+      {/* Page Header - Title, Description, Status, and Action buttons */}
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-1 flex-1">
           <h1 className="text-3xl font-bold tracking-tight">{project.name}</h1>
@@ -151,6 +151,22 @@ export default function AdminProjectDetailPage({
         </div>
         <div className="flex items-center gap-3">
           {getStatusBadge(project.status)}
+          <Button variant="outline" asChild>
+            <Link href={`/projects/${project.id}`} target="_blank">
+              <ExternalLink className="h-4 w-4 mr-2" />
+              View Project Space
+            </Link>
+          </Button>
+          {project.status === 'in_development' && (
+            <Button
+              variant="outline"
+              onClick={() => setMarkReadyDialogOpen(true)}
+              disabled={markReadyMutation.isPending}
+            >
+              <CheckCircle2 className="h-4 w-4 mr-2" />
+              {markReadyMutation.isPending ? 'Processing...' : 'Mark as Active'}
+            </Button>
+          )}
           <Button
             onClick={handleClone}
             variant="outline"
@@ -236,33 +252,6 @@ export default function AdminProjectDetailPage({
         </CardContent>
       </Card>
 
-      {/* Additional Actions Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Actions</CardTitle>
-          <CardDescription>Manage this project</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          <Button variant="outline" className="w-full justify-start" asChild>
-            <Link href={`/projects/${project.id}`} target="_blank">
-              View Project Workspace
-            </Link>
-          </Button>
-
-          {project.status === 'in_development' && (
-            <Button
-              variant="default"
-              className="w-full justify-start"
-              onClick={() => setMarkReadyDialogOpen(true)}
-              disabled={markReadyMutation.isPending}
-            >
-              <CheckCircle2 className="h-4 w-4 mr-2" />
-              {markReadyMutation.isPending ? 'Processing...' : 'Mark as Active'}
-            </Button>
-          )}
-        </CardContent>
-      </Card>
-
       {/* Mark as Ready Confirmation Dialog */}
       <AlertDialog open={markReadyDialogOpen} onOpenChange={setMarkReadyDialogOpen}>
         <AlertDialogContent>
@@ -300,6 +289,9 @@ function PageSkeleton() {
         </div>
         <div className="flex items-center gap-3">
           <Skeleton className="h-6 w-24" />
+          <Skeleton className="h-9 w-32" />
+          <Skeleton className="h-9 w-32" />
+          <Skeleton className="h-9 w-24" />
           <Skeleton className="h-9 w-24" />
         </div>
       </div>
@@ -308,13 +300,6 @@ function PageSkeleton() {
       <Card>
         <CardContent>
           <Skeleton className="h-64 w-full" />
-        </CardContent>
-      </Card>
-
-      {/* Actions card skeleton */}
-      <Card>
-        <CardContent>
-          <Skeleton className="h-10 w-full" />
         </CardContent>
       </Card>
     </div>

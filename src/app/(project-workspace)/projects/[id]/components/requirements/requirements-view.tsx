@@ -55,6 +55,7 @@ export default function RequirementsView({
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingBlocks, setStreamingBlocks] = useState<ContentBlock[]>([]);
   const [_streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
+  const [currentStatus, setCurrentStatus] = useState<'requirements' | 'in_development'>(projectStatus);
   const { toast } = useToast();
   const router = useRouter();
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -78,6 +79,11 @@ export default function RequirementsView({
       });
     }
   }, [isLoaded, clerkUser]);
+
+  // Sync local status with prop changes
+  useEffect(() => {
+    setCurrentStatus(projectStatus);
+  }, [projectStatus]);
 
   // Fetch initial docs content and messages
   useEffect(() => {
@@ -139,7 +145,7 @@ export default function RequirementsView({
 
   const handleSendMessage = useCallback(
     async (content: string) => {
-      if (!content.trim() || isLoading || projectStatus === 'in_development') return;
+      if (!content.trim() || isLoading || currentStatus === 'in_development') return;
 
       // Optimistically add user message to UI immediately
       const optimisticUserMessage: RequirementsMessage = {
@@ -272,7 +278,7 @@ export default function RequirementsView({
         abortControllerRef.current = null;
       }
     },
-    [projectId, toast, isLoading, projectStatus]
+    [projectId, toast, isLoading, currentStatus]
   );
 
   const handleCancelStream = useCallback(() => {
@@ -300,12 +306,18 @@ export default function RequirementsView({
 
       const data = await response.json();
 
+      // Close modal immediately
+      setShowConfirmModal(false);
+
+      // Update status immediately (optimistic update)
+      setCurrentStatus('in_development');
+
       toast({
         title: 'Requirements Confirmed!',
         description: data.data.message,
       });
 
-      // Refresh the page to show the modal and new status
+      // Refresh the page to sync with server
       router.refresh();
     } catch (error) {
       console.error('Error confirming requirements:', error);
@@ -481,7 +493,7 @@ export default function RequirementsView({
               <h2 className="text-lg font-semibold">Requirements Document</h2>
               <p className="text-sm text-muted-foreground">Live preview of docs.md</p>
             </div>
-            {projectStatus === 'requirements' && (
+            {currentStatus === 'requirements' && (
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -503,7 +515,7 @@ export default function RequirementsView({
                 </Tooltip>
               </TooltipProvider>
             )}
-            {projectStatus === 'in_development' && (
+            {currentStatus === 'in_development' && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 In Development
