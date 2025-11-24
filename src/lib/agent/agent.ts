@@ -6,10 +6,10 @@
 
 import { db } from '@/lib/db/drizzle';
 import { chatMessages } from '@/lib/db/schema';
-import { GitOperations } from '@/lib/github/git-operations';
-import { sessionManager } from '@/lib/sessions';
+import type { GitOperations } from '@/lib/github/git-operations';
 import type { AgentConfig, StreamEvent } from '@/lib/types/agent';
 import { SDKResultMessage } from '@anthropic-ai/claude-agent-sdk';
+import type { MessageParam } from '@anthropic-ai/sdk/resources';
 import { eq } from 'drizzle-orm';
 import { ClaudeService } from './claude-service';
 import { EventProcessor } from './event-processor';
@@ -30,29 +30,43 @@ export class Agent {
   private eventProcessor: EventProcessor;
   private gitOperations: GitOperations | null;
 
-  constructor(config: AgentConfig) {
+  private constructor(
+    config: AgentConfig,
+    sessionPath: string,
+    gitOperations: GitOperations | null
+  ) {
     this.projectId = config.projectId;
     this.sessionId = config.sessionId;
     this.assistantMessageId = config.assistantMessageId;
     this.userId = config.userId;
     this.githubToken = config.githubToken;
 
-    // Get session-specific working directory
-    this.sessionPath = sessionManager.getSessionPath(this.projectId, this.sessionId);
-
-    // Initialize services
+    this.sessionPath = sessionPath;
     this.claudeService = new ClaudeService(this.sessionPath);
     this.eventProcessor = new EventProcessor();
-    this.gitOperations = this.githubToken ? new GitOperations() : null;
+    this.gitOperations = gitOperations;
 
     console.log(`🚀 Agent initialized for project ${this.projectId}, session ${this.sessionId}`);
     console.log(`📁 Working directory: ${this.sessionPath}`);
   }
 
   /**
+   * Factory method to create and initialize an Agent with lazy imports
+   */
+  static async create(config: AgentConfig): Promise<Agent> {
+    const { sessionManager } = await import('@/lib/sessions');
+    const { GitOperations } = await import('@/lib/github/git-operations');
+
+    const sessionPath = sessionManager.getSessionPath(config.projectId, config.sessionId);
+    const gitOperations = config.githubToken ? new GitOperations() : null;
+
+    return new Agent(config, sessionPath, gitOperations);
+  }
+
+  /**
    * Run the agent and stream responses
    */
-  async *run(prompt: string, remoteId?: string | null): AsyncGenerator<StreamEvent> {
+  async *run(message: MessageParam, remoteId?: string | null): AsyncGenerator<StreamEvent> {
     console.log(`🤖 Processing request for project ${this.projectId}, session ${this.sessionId}`);
 
     const startTime = Date.now();
@@ -60,7 +74,7 @@ export class Agent {
 
     try {
       // Stream events from Claude Agent SDK
-      const sdkMessages = this.claudeService.runAgenticQuery(prompt, remoteId);
+      const sdkMessages = this.claudeService.runAgenticQuery(message, remoteId);
 
       for await (const message of sdkMessages) {
         // Capture remoteId from result message (only if we don't already have one)

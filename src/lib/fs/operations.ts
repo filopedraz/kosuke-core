@@ -1,4 +1,3 @@
-import { PROJECTS_DIR } from '@/lib/constants';
 import { promises as fs } from 'fs';
 import path from 'path';
 
@@ -19,7 +18,11 @@ interface FileInfo {
  * Get the absolute path to a project directory
  */
 export function getProjectPath(projectId: string): string {
-  return path.join(process.cwd(), PROJECTS_DIR, projectId);
+  const projectsDir = process.env.PROJECTS_DIR;
+  if (!projectsDir) {
+    throw new Error('PROJECTS_DIR environment variable is required');
+  }
+  return path.join(process.cwd(), projectsDir, projectId);
 }
 
 /**

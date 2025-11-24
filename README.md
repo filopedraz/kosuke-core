@@ -10,7 +10,7 @@ Create environment file and update it with the required secret variables.
 
 ```bash
 # Setup environment files
-cp .env.example .env
+cp .env.local .env
 ```
 
 Ensure you have the following tools installed and configured:
@@ -108,12 +108,12 @@ just install
 just migrate
 ```
 
-## Adding envionrment variables
+## Adding environment variables
 
-- Add the variable in `.env.example`
-- If it is a `NEXT_PUBLIC` variable add it in `.env.prod.public`
-- If it is a server side variable with non-secret value add it in `.env.prod`
-- If it is a server side variable with secret value add it in `.env.prod` with the syntax `VARIABLE=${VARIABLE}` and add the `VARIABLE=value` directly in the `.secrets` file on the production server
+- If it is needed for local development, add it to `.env.local`
+- If it is a `NEXT_PUBLIC` variable, add it in `.env.prod.public`
+- If it is a server-side variable with a non-secret value, add it in `.env.prod`
+- If it is a server-side variable with a secret value, add it in `.env.prod` with the syntax `VARIABLE=${VARIABLE}`, then add the variable in the GitHub kosuke-core repo using the dedicated GitHub workflow: Actions > Add secret > Run workflow
 
 ## 🛡️ License
 

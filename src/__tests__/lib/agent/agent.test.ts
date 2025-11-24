@@ -5,6 +5,7 @@
 
 import { Agent } from '@/lib/agent';
 import { ClaudeService } from '@/lib/agent/claude-service';
+import { buildMessageParam } from '@/lib/agent/message-builder';
 import { sessionManager } from '@/lib/sessions';
 
 // Mock dependencies
@@ -68,10 +69,10 @@ describe('Agent Workflow Integration', () => {
 
   describe('Complete workflow', () => {
     it('should process a simple prompt and stream events', async () => {
-      const agent = new Agent(mockConfig);
+      const agent = await Agent.create(mockConfig);
       const events = [];
 
-      for await (const event of agent.run('Test prompt')) {
+      for await (const event of agent.run(buildMessageParam('Test prompt'))) {
         events.push(event);
       }
 
@@ -83,11 +84,11 @@ describe('Agent Workflow Integration', () => {
     });
 
     it('should validate session directory before running', async () => {
-      const agent = new Agent(mockConfig);
+      const agent = await Agent.create(mockConfig);
 
       // Run the agent
       const events = [];
-      for await (const event of agent.run('Test prompt')) {
+      for await (const event of agent.run(buildMessageParam('Test prompt'))) {
         events.push(event);
       }
 
@@ -105,10 +106,10 @@ describe('Agent Workflow Integration', () => {
         }),
       }));
 
-      const agent = new Agent(mockConfig);
+      const agent = await Agent.create(mockConfig);
       const events = [];
 
-      for await (const event of agent.run('Test prompt')) {
+      for await (const event of agent.run(buildMessageParam('Test prompt'))) {
         events.push(event);
       }
 
@@ -119,10 +120,10 @@ describe('Agent Workflow Integration', () => {
 
   describe('GitHub integration', () => {
     it('should commit changes when GitHub token is available', async () => {
-      const agent = new Agent(mockConfig);
+      const agent = await Agent.create(mockConfig);
 
       const events = [];
-      for await (const event of agent.run('Make changes')) {
+      for await (const event of agent.run(buildMessageParam('Make changes'))) {
         events.push(event);
       }
 
@@ -136,10 +137,10 @@ describe('Agent Workflow Integration', () => {
         githubToken: null,
       };
 
-      const agent = new Agent(configWithoutToken);
+      const agent = await Agent.create(configWithoutToken);
 
       const events = [];
-      for await (const event of agent.run('Test prompt')) {
+      for await (const event of agent.run(buildMessageParam('Test prompt'))) {
         events.push(event);
       }
 

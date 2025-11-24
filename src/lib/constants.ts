@@ -2,21 +2,6 @@
  * Application-wide constants
  */
 
-// File System
-export const PROJECTS_DIR = process.env.PROJECTS_DIR || 'projects';
-export const UPLOADS_DIR = process.env.UPLOADS_DIR || 'public/uploads';
-
-// Storage
-export const IS_PRODUCTION = process.env.NODE_ENV === 'production';
-export const STORAGE_BASE_URL = IS_PRODUCTION
-  ? process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
-    : 'https://your-app.vercel.app'
-  : 'http://localhost:3000';
-
-// Git Settings
-export const SESSION_BRANCH_PREFIX = process.env.SESSION_BRANCH_PREFIX || 'kosuke/chat-';
-
 // Context for file operations
 export const CONTEXT = {
   EXCLUDE_DIRS: [

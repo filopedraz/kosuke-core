@@ -3,9 +3,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ApiErrorHandler } from '@/lib/api/errors';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db/drizzle';
-import { chatMessages, chatSessions } from '@/lib/db/schema';
+import { attachments, chatMessages, chatSessions, messageAttachments } from '@/lib/db/schema';
 import { verifyProjectAccess } from '@/lib/projects';
-import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, eq, inArray } from 'drizzle-orm';
 /**
  * GET /api/projects/[id]/chat-sessions/[sessionId]/messages
  * Get messages for a specific chat session
@@ -51,8 +51,36 @@ export async function GET(
       .where(eq(chatMessages.chatSessionId, session.id))
       .orderBy(asc(chatMessages.timestamp));
 
+    // Fetch attachments for all messages in this session
+    const messageIds = messages.map(m => m.id);
+    const allMessageAttachments = messageIds.length > 0
+      ? await db
+          .select({
+            messageId: messageAttachments.messageId,
+            attachment: attachments,
+          })
+          .from(messageAttachments)
+          .innerJoin(attachments, eq(messageAttachments.attachmentId, attachments.id))
+          .where(inArray(messageAttachments.messageId, messageIds))
+      : [];
+
+    // Group attachments by message ID
+    const attachmentsByMessage = allMessageAttachments.reduce((acc, item) => {
+      if (!acc[item.messageId]) {
+        acc[item.messageId] = [];
+      }
+      acc[item.messageId].push(item.attachment);
+      return acc;
+    }, {} as Record<string, typeof attachments.$inferSelect[]>);
+
+    // Add attachments to messages
+    const messagesWithAttachments = messages.map(message => ({
+      ...message,
+      attachments: attachmentsByMessage[message.id] || [],
+    }));
+
     return NextResponse.json({
-      messages,
+      messages: messagesWithAttachments,
       sessionInfo: {
         id: session.id,
         sessionId: session.sessionId,

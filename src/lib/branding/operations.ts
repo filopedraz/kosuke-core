@@ -3,7 +3,6 @@
  * Handles CSS parsing and manipulation for color variables
  */
 
-import { sessionManager } from '@/lib/sessions';
 import type { CssVariable } from '@/lib/types/branding';
 import { existsSync } from 'fs';
 import { readFile, writeFile } from 'fs/promises';
@@ -14,6 +13,7 @@ import { join } from 'path';
  * Checks common locations: app/, src/, styles/, app/global.css
  */
 async function findGlobalsCss(projectId: string, sessionId: string): Promise<string | null> {
+  const { sessionManager } = await import('@/lib/sessions');
   const sessionPath = sessionManager.getSessionPath(projectId, sessionId);
 
   // Common locations for globals.css
@@ -411,6 +411,7 @@ export async function getSessionFonts(
   sessionId: string
 ): Promise<Array<{ name: string }>> {
   try {
+    const { sessionManager } = await import('@/lib/sessions');
     const sessionPath = sessionManager.getSessionPath(projectId, sessionId);
 
     // Look for layout.tsx file

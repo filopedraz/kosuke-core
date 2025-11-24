@@ -18,7 +18,7 @@ export const HomepageStructuredData = () => {
     '@type': 'WebSite',
     name: 'Kosuke',
     description:
-      'Build your next web project with AI. Describe what you want to build, and our AI will help you create it.',
+      'Your technical cofounder for the 0 to 1. We deliver high-quality, market-ready software so you can launch your startup with confidence.',
     url: baseUrl,
     sameAs: ['https://github.com/Kosuke-Org/kosuke-core'],
   };
@@ -30,7 +30,7 @@ export const HomepageStructuredData = () => {
     applicationCategory: 'DeveloperApplication',
     operatingSystem: 'Web Browser',
     description:
-      'Build your next web project with AI. Describe what you want to build, and our AI will help you create it.',
+      'Your technical cofounder for the 0 to 1. We deliver high-quality, market-ready software so you can launch your startup with confidence.',
     author: {
       '@type': 'Organization',
       name: 'Kosuke',

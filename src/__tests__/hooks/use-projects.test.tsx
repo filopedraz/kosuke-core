@@ -72,7 +72,6 @@ const mockProject: Project = {
   defaultBranch: 'main',
   requirementsCompletedAt: null,
   requirementsCompletedBy: null,
-  requirementsSessionId: null,
 };
 
 const mockProjects: Project[] = [mockProject];

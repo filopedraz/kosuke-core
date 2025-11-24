@@ -15,6 +15,7 @@ RUN --mount=type=cache,target=/root/.bun/install/cache \
 
 # Rebuild the source code only when needed
 FROM base AS builder
+ARG DOCKER_GID=988
 WORKDIR /app
 
 COPY --from=deps /app/node_modules ./node_modules
@@ -24,7 +25,6 @@ COPY --from=deps /app/bun.lock ./bun.lock
 # Copy only the necessary files for the build
 COPY next.config.* .
 COPY sentry*.config.* .
-COPY instrumentation*.ts .
 COPY tsconfig.json .
 COPY tailwind.config.* .
 COPY postcss.config.* .
@@ -48,6 +48,7 @@ RUN --mount=type=cache,target=/app/.next/cache \
 
 # Production image, copy all the files and run next
 FROM node:22.20.0-slim AS runner
+ARG DOCKER_GID=988
 WORKDIR /app
 
 # Install git and CA certificates for repository operations
@@ -62,7 +63,7 @@ RUN npm install -g @anthropic-ai/claude-code
 
 RUN \
     groupadd --system --gid 1001 nodejs && \
-    groupadd --gid 988 docker && \
+    groupadd --gid ${DOCKER_GID} docker && \
     useradd --system --uid 1001 --gid nodejs --create-home nextjs && \
     usermod -aG docker nextjs && \
     mkdir -p .next projects /home/nextjs/.claude && \
@@ -78,7 +79,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nextjs:nodejs /app/drizzle.config.* ./
 COPY --from=builder --chown=nextjs:nodejs /app/src/middleware.ts ./middleware.ts
 COPY --from=builder --chown=nextjs:nodejs /app/sentry*.config.* ./
-COPY --from=builder --chown=nextjs:nodejs /app/instrumentation*.ts ./
+COPY --from=builder --chown=nextjs:nodejs /app/src/instrumentation*.ts ./src/
 COPY --from=builder --chown=nextjs:nodejs /app/worker.ts ./worker.ts
 COPY --from=builder --chown=nextjs:nodejs /app/src/lib ./lib
 

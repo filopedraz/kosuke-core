@@ -3,13 +3,10 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
-import { Code2, Sparkles } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
+import Link from 'next/link';
 
-interface CTASectionProps {
-  onApplyClick: () => void;
-}
-
-export function CTASection({ onApplyClick }: CTASectionProps) {
+export function CTASection() {
   return (
     <section id="cta-section" className="py-16 sm:py-32 pb-12 sm:pb-24">
       <div className="container mx-auto px-8 sm:px-12 md:px-6">
@@ -38,27 +35,32 @@ export function CTASection({ onApplyClick }: CTASectionProps) {
                   }}
                 />
                 <Sparkles className="w-3 h-3 mr-1" />
-                Private Alpha
+                Ready to Launch
               </Badge>
             </div>
 
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-3 sm:mb-4">
-              Join the Private Alpha
+              Let&apos;s Build Your Product
             </h2>
 
-            <p className="text-base sm:text-lg text-muted-foreground mb-8 sm:mb-12 font-sans px-2">
-              Get early access to the private alpha and become a Kosuke early adopter.
+            <p className="text-base sm:text-lg text-muted-foreground mb-8 sm:mb-12 font-sans px-2 max-w-2xl mx-auto">
+              Stop wasting time with platforms that can&apos;t deliver. Get a real technical
+              cofounder who ships production-ready software.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
               <Button
+                asChild
                 size="lg"
-                variant="outline"
-                className="w-full sm:w-auto px-6 sm:px-8 py-3"
-                onClick={onApplyClick}
+                className="w-full sm:w-auto px-6 sm:px-8 py-3 bg-primary hover:bg-primary/90"
               >
-                <Code2 className="mr-2 h-4 w-4" />
-                Apply for Early Access
+                <Link
+                  href="https://links.kosuke.ai/contact"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Contact Us
+                </Link>
               </Button>
             </div>
           </motion.div>

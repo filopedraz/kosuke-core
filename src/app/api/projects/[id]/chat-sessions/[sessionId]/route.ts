@@ -2,15 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { Agent } from '@/lib/agent';
+import { buildMessageParam, type MessageAttachmentPayload } from '@/lib/agent/message-builder';
 import { ApiErrorHandler } from '@/lib/api/errors';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db/drizzle';
-import { chatMessages, chatSessions } from '@/lib/db/schema';
+import { attachments, chatMessages, chatSessions, messageAttachments } from '@/lib/db/schema';
 import { getDockerService } from '@/lib/docker';
 import { deleteDir } from '@/lib/fs/operations';
 import { getKosukeGitHubToken, getUserGitHubToken } from '@/lib/github/client';
 import { verifyProjectAccess } from '@/lib/projects';
-import { sessionManager } from '@/lib/sessions';
 import { uploadFile } from '@/lib/storage';
 import { and, eq } from 'drizzle-orm';
 
@@ -37,31 +37,34 @@ const sendMessageSchema = z.union([
 type ErrorType = 'timeout' | 'parsing' | 'processing' | 'unknown';
 
 /**
- * Save an uploaded image to storage and return the URL
+ * Save an uploaded file (image or document) to storage
+ * Uses public URLs instead of base64 encoding for Claude API
  */
-async function saveUploadedImage(file: File, projectId: string): Promise<string> {
-  // Create a prefix to organize images by project
-  const prefix = `chat-images/project-${projectId}`;
+async function saveUploadedFile(file: File, projectId: string): Promise<MessageAttachmentPayload> {
+  // Create a prefix to organize files by project
+  const prefix = `attachments/project-${projectId}`;
 
   try {
     // Upload the file using the generic uploadFile function
-    const imageUrl = await uploadFile(file, prefix);
-    console.log(`✅ Image uploaded to storage: ${imageUrl}`);
-    return imageUrl;
+    const uploadResult = await uploadFile(file, prefix);
+
+    return {
+      upload: uploadResult,
+    } satisfies MessageAttachmentPayload;
   } catch (error) {
-    console.error('Error uploading image to storage:', error);
-    throw new Error('Failed to upload image');
+    console.error('Error uploading file to storage:', error);
+    throw new Error('Failed to upload file');
   }
 }
 
 /**
- * Process a FormData request and extract the content and image
+ * Process a FormData request and extract the content and attachment
  */
 async function processFormDataRequest(req: NextRequest, projectId: string): Promise<{
   content: string;
   includeContext: boolean;
   contextFiles: Array<{ name: string; content: string; }>;
-  imageUrl?: string;
+  attachments: MessageAttachmentPayload[];
 }> {
   const formData = await req.formData();
   const content = formData.get('content') as string || '';
@@ -69,19 +72,23 @@ async function processFormDataRequest(req: NextRequest, projectId: string): Prom
   const contextFilesStr = formData.get('contextFiles') as string || '[]';
   const contextFiles = JSON.parse(contextFilesStr);
 
-  // Process image if present
-  const imageFile = formData.get('image') as File | null;
-  let imageUrl: string | undefined;
+  // Process all attachments (images and documents)
+  const attachments: MessageAttachmentPayload[] = [];
+  const attachmentCount = parseInt(formData.get('attachmentCount') as string || '0', 10);
 
-  if (imageFile) {
-    imageUrl = await saveUploadedImage(imageFile, projectId);
+  for (let i = 0; i < attachmentCount; i++) {
+    const attachmentFile = formData.get(`attachment_${i}`) as File | null;
+    if (attachmentFile) {
+      const attachment = await saveUploadedFile(attachmentFile, projectId);
+      attachments.push(attachment);
+    }
   }
 
   return {
     content,
     includeContext,
     contextFiles,
-    imageUrl
+    attachments,
   };
 }
 
@@ -209,6 +216,7 @@ export async function DELETE(
     }
 
     // Step 2: Delete session files after container is stopped
+    const { sessionManager } = await import('@/lib/sessions');
     const sessionPath = sessionManager.getSessionPath(projectId, sessionId);
     let filesWarning = null;
 
@@ -281,42 +289,25 @@ export async function POST(
     let messageContent: string;
     let includeContext = false;
     let contextFiles: string[] = [];
+    let attachmentPayloads: MessageAttachmentPayload[] = [];
 
     if (contentType.includes('multipart/form-data')) {
-      // Process FormData request (for image uploads) - return JSON response
+      // Process FormData request (for file uploads)
       console.log('Processing multipart/form-data request');
       const formData = await processFormDataRequest(req, projectId);
       messageContent = formData.content;
       includeContext = formData.includeContext;
       contextFiles = formData.contextFiles.map(f => f.content);
+      attachmentPayloads = formData.attachments;
 
-      if (formData.imageUrl) {
-        console.log(`Image URL received: ${formData.imageUrl}`);
-        // Add image URL to message content as markdown link
-        messageContent = `${messageContent}\n\n[Attached Image](${formData.imageUrl})`;
+      if (attachmentPayloads.length > 0) {
+        console.log(`⬆️ ${attachmentPayloads.length} file(s) uploaded`);
+        attachmentPayloads.forEach((attachment, index) => {
+          console.log(`⬆️ Attachment [${index + 1}] uploaded: ${attachment.upload.fileUrl}`);
+        });
       }
-
-      // Save the user message to the database
-      await db.insert(chatMessages).values({
-        projectId,
-        chatSessionId: chatSession.id,
-        userId: userId,
-        content: messageContent,
-        role: 'user',
-        modelType: 'premium',
-      });
-
-      return new Response(
-        JSON.stringify({
-          success: true,
-          message: "Image message saved. Processing will be handled via webhooks."
-        }),
-        {
-          headers: { 'Content-Type': 'application/json' }
-        }
-      );
     } else {
-      // Process JSON request for text messages - use streaming proxy
+      // Process JSON request for text messages
       console.log('Processing JSON request for streaming');
       const body = await req.json();
       console.log('Request body:', JSON.stringify(body));
@@ -346,7 +337,7 @@ export async function POST(
       }
     }
 
-    console.log(`Received message content: "${messageContent.substring(0, 50)}${messageContent.length > 50 ? '...' : ''}"`);
+    console.log(`📝 Received message content: "${messageContent.substring(0, 250)}${messageContent.length > 250 ? '...' : ''}"`);
 
     // Save user message immediately
     const [userMessage] = await db.insert(chatMessages).values({
@@ -362,6 +353,30 @@ export async function POST(
     }).returning();
 
     console.log(`✅ User message saved with ID: ${userMessage.id}`);
+
+    // Save all attachments if present
+    if (attachmentPayloads.length > 0) {
+      for (const attachmentPayload of attachmentPayloads) {
+        const { upload: uploadResult } = attachmentPayload;
+        const [attachment] = await db.insert(attachments).values({
+          projectId,
+          filename: uploadResult.filename,
+          storedFilename: uploadResult.storedFilename,
+          fileUrl: uploadResult.fileUrl,
+          fileType: uploadResult.fileType,
+          mediaType: uploadResult.mediaType,
+          fileSize: uploadResult.fileSize,
+        }).returning();
+
+        // Link attachment to message
+        await db.insert(messageAttachments).values({
+          messageId: userMessage.id,
+          attachmentId: attachment.id,
+        });
+
+        console.log(`✅ Attachment saved and linked to message: ${attachment.id}`);
+      }
+    }
 
     // Create assistant message placeholder for streaming
     const [assistantMessage] = await db.insert(chatMessages).values({
@@ -400,7 +415,8 @@ export async function POST(
     }
 
     // Validate session directory exists
-    const sessionValid = await sessionManager.validateSessionDirectory(projectId, chatSession.sessionId);
+    const { sessionManager: sm } = await import('@/lib/sessions');
+    const sessionValid = await sm.validateSessionDirectory(projectId, chatSession.sessionId);
 
     if (!sessionValid) {
       return new Response(
@@ -416,8 +432,8 @@ export async function POST(
 
     console.log(`✅ Session environment validated for session ${chatSession.sessionId}`);
 
-    // Initialize Agent with session configuration
-    const agent = new Agent({
+    // Initialize Agent with session configuration using factory method
+    const agent = await Agent.create({
       projectId,
       sessionId: chatSession.sessionId,
       githubToken,
@@ -427,12 +443,17 @@ export async function POST(
 
     console.log(`🚀 Starting agent stream for session ${chatSession.sessionId}`);
 
+    // Build proper content blocks for Claude (text + image/document if present)
+    const messageParam = buildMessageParam(messageContent, attachmentPayloads);
+
+    console.log('messageParam', JSON.stringify(messageParam, null, 2));
+
     // Create a ReadableStream from the agent's async generator
     const stream = new ReadableStream({
       async start(controller) {
         try {
-          // Stream events from agent, passing the remoteId for session resumption
-          for await (const event of agent.run(messageContent, chatSession.remoteId)) {
+          // Stream events from agent, passing the messageParam and remoteId for session resumption
+          for await (const event of agent.run(messageParam, chatSession.remoteId)) {
             // Check if this is the message_complete event with a captured remoteId
             if (event.type === 'message_complete' && event.remoteId && !chatSession.remoteId) {
               // Save the captured remoteId to the database

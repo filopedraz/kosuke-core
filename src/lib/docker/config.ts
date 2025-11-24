@@ -3,36 +3,50 @@
  * Loads Docker-related settings from environment variables
  */
 
-import type { DockerConfig, RouterMode } from '@/lib/types/docker';
+import type { DockerConfig } from '@/lib/types/docker';
+import type { RouterMode } from '@/lib/types/docker';
 
 /**
  * Get Docker configuration from environment variables
  */
 export function getDockerConfig(): DockerConfig {
   // Preview image settings
-  const previewDefaultImage =
-    process.env.PREVIEW_DEFAULT_IMAGE || 'ghcr.io/kosuke-org/kosuke-template:v1.8.0';
+  const previewDefaultImage = process.env.PREVIEW_DEFAULT_IMAGE;
+  if (!previewDefaultImage) {
+    throw new Error('PREVIEW_DEFAULT_IMAGE environment variable is required');
+  }
 
   // Port mode settings
-  const previewPortRangeStart = parseInt(process.env.PREVIEW_PORT_RANGE_START || '3001', 10);
-  const previewPortRangeEnd = parseInt(process.env.PREVIEW_PORT_RANGE_END || '3100', 10);
+  const previewPortRangeStart = parseInt(process.env.PREVIEW_PORT_RANGE_START ?? '', 10);
+  const previewPortRangeEnd = parseInt(process.env.PREVIEW_PORT_RANGE_END ?? '', 10);
+  if (isNaN(previewPortRangeStart) || isNaN(previewPortRangeEnd)) {
+    throw new Error('PREVIEW_PORT_RANGE_START and PREVIEW_PORT_RANGE_END must be valid numbers');
+  }
 
   // Router configuration
   const traefikEnabled = process.env.TRAEFIK_ENABLED?.toLowerCase() === 'true';
-  const routerMode: RouterMode =
-    (process.env.ROUTER_MODE as RouterMode) || (traefikEnabled ? 'traefik' : 'port');
+  const routerMode = traefikEnabled ? ('traefik' as RouterMode) : ('port' as RouterMode);
 
   // Health check settings
-  const previewHealthPath = process.env.PREVIEW_HEALTH_PATH || '/';
+  const previewHealthPath = process.env.PREVIEW_HEALTH_PATH;
+  if (!previewHealthPath) {
+    throw new Error('PREVIEW_HEALTH_PATH environment variable is required');
+  }
 
   // Network settings
-  const previewNetwork = process.env.PREVIEW_NETWORK || 'kosuke_network';
+  const previewNetwork = process.env.PREVIEW_NETWORK;
+  if (!previewNetwork) {
+    throw new Error('PREVIEW_NETWORK environment variable is required');
+  }
 
   // Container naming
-  const previewContainerNamePrefix = process.env.PREVIEW_CONTAINER_NAME_PREFIX || 'kosuke-preview-';
+  const previewContainerNamePrefix = process.env.PREVIEW_CONTAINER_NAME_PREFIX;
+  if (!previewContainerNamePrefix) {
+    throw new Error('PREVIEW_CONTAINER_NAME_PREFIX environment variable is required');
+  }
 
   // Docker-in-Docker
-  const hostWorkspaceDir = process.env.HOST_WORKSPACE_DIR || '';
+  const hostWorkspaceDir = process.env.HOST_WORKSPACE_DIR;
   if (!hostWorkspaceDir) {
     throw new Error(
       'HOST_WORKSPACE_DIR is required for Docker-in-Docker. ' +
@@ -41,15 +55,36 @@ export function getDockerConfig(): DockerConfig {
   }
 
   // Domain settings (for Traefik)
-  const mainDomain = process.env.MAIN_DOMAIN || 'kosuke.ai';
-  const previewBaseDomain = process.env.PREVIEW_BASE_DOMAIN || 'kosuke.app';
+  const mainDomain = process.env.MAIN_DOMAIN;
+  if (!mainDomain) {
+    throw new Error('MAIN_DOMAIN environment variable is required');
+  }
+  const previewBaseDomain = process.env.PREVIEW_BASE_DOMAIN;
+  if (!previewBaseDomain) {
+    throw new Error('PREVIEW_BASE_DOMAIN environment variable is required');
+  }
 
   // PostgreSQL settings
-  const postgresHost = process.env.POSTGRES_HOST || 'postgres';
-  const postgresPort = parseInt(process.env.POSTGRES_PORT || '5432', 10);
-  const postgresDb = process.env.POSTGRES_DB || 'postgres';
-  const postgresUser = process.env.POSTGRES_USER || 'postgres';
-  const postgresPassword = process.env.POSTGRES_PASSWORD || 'postgres';
+  const postgresHost = process.env.POSTGRES_HOST;
+  if (!postgresHost) {
+    throw new Error('POSTGRES_HOST environment variable is required');
+  }
+  const postgresPort = parseInt(process.env.POSTGRES_PORT ?? '', 10);
+  if (isNaN(postgresPort)) {
+    throw new Error('POSTGRES_PORT must be a valid number');
+  }
+  const postgresDb = process.env.POSTGRES_DB;
+  if (!postgresDb) {
+    throw new Error('POSTGRES_DB environment variable is required');
+  }
+  const postgresUser = process.env.POSTGRES_USER;
+  if (!postgresUser) {
+    throw new Error('POSTGRES_USER environment variable is required');
+  }
+  const postgresPassword = process.env.POSTGRES_PASSWORD;
+  if (!postgresPassword) {
+    throw new Error('POSTGRES_PASSWORD environment variable is required');
+  }
 
   return {
     previewDefaultImage,
@@ -81,9 +116,5 @@ export function validateDockerConfig(config: DockerConfig): void {
 
   if (config.previewPortRangeStart >= config.previewPortRangeEnd) {
     throw new Error('PREVIEW_PORT_RANGE_START must be less than PREVIEW_PORT_RANGE_END');
-  }
-
-  if (config.routerMode !== 'port' && config.routerMode !== 'traefik') {
-    throw new Error('ROUTER_MODE must be either "port" or "traefik"');
   }
 }

@@ -12,36 +12,8 @@
     {
       "idx": 1,
       "version": "7",
-      "when": 1763040636376,
-      "tag": "0001_hard_white_queen",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1763115348018,
-      "tag": "0002_organic_amphibian",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1763547863119,
-      "tag": "0003_goofy_katie_power",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1763709209867,
-      "tag": "0004_same_magus",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "7",
-      "when": 1763903272168,
-      "tag": "0005_shocking_red_hulk",
+      "when": 1763094804706,
+      "tag": "0001_medical_dragon_man",
       "breakpoints": true
     }
   ]

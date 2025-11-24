@@ -1,38 +1,38 @@
 export const faqItems = [
   {
     id: 'item-1',
-    question: 'Do I need to know how to code?',
+    question: 'How is Kosuke different from other AI coding platforms?',
     answer:
-      'No. Your best skill should be to describe your idea in natural language. Focus on ideas; we take care of the hard parts.',
+      'Unlike traditional vibe-coding platforms that leave you with broken demos, we combine AI efficiency with human expertise. When AI gets stuck, senior developers step in to ensure you get production-ready software, not just mockups.',
   },
   {
     id: 'item-2',
-    question: 'What if the AI cannot accomplish my task?',
+    question: 'Do I need to know how to code?',
     answer:
-      "Just hit a button and a real engineer will do it or tell you honestly what's possible.",
+      'No technical background required. Focus on describing your idea and business logic—we handle the implementation, architecture, and deployment.',
   },
   {
     id: 'item-3',
-    question: 'What kind of projects can I build?',
+    question: 'What types of projects can you build?',
     answer:
-      'Web applications, APIs, and more. Our platform handles the infrastructure so you can focus on creating amazing user experiences.',
+      'We specialize in full-stack web applications with authentication, billing, databases, and all the features you need to launch a real business. From MVPs to market-ready products.',
   },
   {
     id: 'item-4',
-    question: 'Is it mandatory to request help from an engineer?',
+    question: 'How quickly can you deliver a project?',
     answer:
-      "No, it's not mandatory. You can work independently on your projects. However, our engineers are available whenever you need expert assistance or guidance.",
+      'Timeline depends on complexity, but our hybrid AI + human approach allows us to move significantly faster than traditional agencies while maintaining quality. Most MVPs are delivered in weeks, not months.',
   },
   {
     id: 'item-5',
-    question: 'Will human help be included in the subscription or charged per use?',
+    question: 'What happens after my product is built?',
     answer:
-      'Human engineering support is charged per use and is not included in the base subscription. You only pay when you request help from our engineers.',
+      'You own 100% of the code with no vendor lock-in. We use standard tools and frameworks, so you can continue development independently or keep working with us for ongoing support and features.',
   },
   {
     id: 'item-6',
-    question: 'How quickly will the human engineer respond?',
+    question: 'How transparent is the pricing?',
     answer:
-      'Our engineers typically respond within 24 hours during business days. For urgent issues, we aim to provide initial responses much faster, often within a few hours.',
+      'Completely transparent. No hidden credits, no surprise charges. We provide clear project estimates upfront and work with you to stay within budget.',
   },
 ];

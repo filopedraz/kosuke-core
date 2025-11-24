@@ -1,7 +1,6 @@
 'use client';
 
-import { ArrowUp, Image as ImageIcon, Loader2, Paperclip, Square, X } from 'lucide-react';
-import Image from 'next/image';
+import { ArrowUp, Image as ImageIcon, Loader2, Paperclip, Square } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
@@ -9,8 +8,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 
 // Import types and hooks
-import { useFileUpload } from '@/hooks/use-file-upload';
+import { ACCEPTED_FILE_TYPES_ACCEPT, useFileUpload } from '@/hooks/use-file-upload';
 import type { ChatInputProps } from '@/lib/types';
+import ChatInputAttachments from './chat-input-attachments';
 
 export default function ChatInput({
   onSendMessage,
@@ -27,15 +27,15 @@ export default function ChatInput({
 
   // Use the file upload hook for all file-related logic
   const {
-    attachedImage,
+    attachments,
     isDraggingOver,
     fileInputRef,
     formRef,
     handleFileChange,
-    handleRemoveImage,
+    handleRemoveAttachment,
     triggerFileInput,
-    clearAttachment,
-    hasAttachment,
+    clearAttachments,
+    hasAttachments,
   } = useFileUpload();
 
   // Auto-resize textarea based on content
@@ -62,21 +62,21 @@ export default function ChatInput({
       return;
     }
 
-    if ((!message.trim() && !hasAttachment) || isLoading) return;
+    if ((!message.trim() && !hasAttachments) || isLoading) return;
 
     try {
-      // Send the message with the attached image if present
+      // Send the message with all attached files if present
       await onSendMessage(
         message.trim(),
         {
           includeContext,
-          imageFile: attachedImage?.file
+          attachments: attachments.map(a => a.file)
         }
       );
 
-      // Clear the input and attached image
+      // Clear the input and all attachments
       setMessage('');
-      clearAttachment();
+      clearAttachments();
     } catch (error) {
       console.error('Failed to send message:', error);
     }
@@ -105,38 +105,15 @@ export default function ChatInput({
           <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10 pointer-events-none rounded-lg">
             <div className="flex flex-col items-center text-primary">
               <ImageIcon className="h-10 w-10 mb-2" />
-              <p className="text-sm font-medium">Drop image to attach</p>
+              <p className="text-sm font-medium">Drop images or PDFs to attach</p>
             </div>
           </div>
         )}
 
-        {attachedImage && (
-          <div className="ml-3 mr-3 mt-2 p-1.5 flex items-center gap-2 bg-muted/50 rounded-md border border-border/30">
-            <div className="relative w-8 h-8 border border-border/50 rounded bg-background flex items-center justify-center overflow-hidden">
-              <Image
-                src={attachedImage.previewUrl}
-                alt="Attached"
-                className="object-cover"
-                fill
-                sizes="32px"
-              />
-            </div>
-            <div className="flex-1 text-xs text-muted-foreground truncate">
-              <p className="truncate font-medium text-xs">{attachedImage.file.name}</p>
-              <p className="text-[10px] text-muted-foreground/80">{(attachedImage.file.size / 1024).toFixed(1)}kB</p>
-            </div>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-5 w-5 ml-auto"
-              onClick={handleRemoveImage}
-            >
-              <X className="h-3 w-3" />
-              <span className="sr-only">Remove image</span>
-            </Button>
-          </div>
-        )}
+        <ChatInputAttachments
+          attachments={attachments}
+          onRemoveAttachment={handleRemoveAttachment}
+        />
 
         <Textarea
           ref={textareaRef}
@@ -158,9 +135,10 @@ export default function ChatInput({
             type="file"
             ref={fileInputRef}
             onChange={handleFileChange}
-            accept="image/*"
+            accept={ACCEPTED_FILE_TYPES_ACCEPT}
+            multiple
             className="hidden"
-            id="image-upload"
+            id="file-upload"
           />
 
           <div className="flex gap-1">
@@ -171,18 +149,18 @@ export default function ChatInput({
               className="h-8 w-8"
               disabled={isLoading}
               onClick={triggerFileInput}
-              title="Attach image (you can also paste or drag & drop)"
+              title="Attach images or PDFs (you can also paste or drag & drop)"
             >
               <Paperclip className="h-5 w-5" />
-              <span className="sr-only">Attach image</span>
+              <span className="sr-only">Attach images or PDFs</span>
             </Button>
 
             <Button
               type="submit"
               size="icon"
-              variant={isStreaming ? "outline" : (!message.trim() && !hasAttachment ? "outline" : "default")}
+              variant={isStreaming ? "outline" : (!message.trim() && !hasAttachments ? "outline" : "default")}
               className="h-8 w-8"
-              disabled={!isStreaming && ((!message.trim() && !hasAttachment) || isLoading)}
+              disabled={!isStreaming && ((!message.trim() && !hasAttachments) || isLoading)}
             >
               {isLoading && !isStreaming ? (
                 <Loader2 className="h-5 w-5 animate-spin" />

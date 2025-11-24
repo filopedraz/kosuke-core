@@ -1,4 +1,4 @@
-# Dynamic configuration for Traefik
+# Dynamic configuration for Traefik (Production)
 # This file is for any additional dynamic routing rules that need to be configured
 
 # TLS Configuration
@@ -17,6 +17,6 @@ tls:
       defaultGeneratedCert:
         resolver: letsencrypt
         domain:
-          main: 'kosuke.app'
+          main: kosuke.app
           sans:
             - '*.kosuke.app'

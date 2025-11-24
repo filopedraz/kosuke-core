@@ -3,9 +3,7 @@ import { auth } from '@/lib/auth';
 import { db } from '@/lib/db/drizzle';
 import { chatMessages, chatSessions } from '@/lib/db/schema';
 import { getKosukeGitHubToken, getUserGitHubToken } from '@/lib/github/client';
-import { GitOperations } from '@/lib/github/git-operations';
 import { verifyProjectAccess } from '@/lib/projects';
-import { sessionManager } from '@/lib/sessions';
 import type { RevertToMessageRequest } from '@/lib/types/chat';
 import { and, eq } from 'drizzle-orm';
 import { NextRequest, NextResponse } from 'next/server';
@@ -124,9 +122,11 @@ export async function POST(
     }
 
     // Get session path
+    const { sessionManager } = await import('@/lib/sessions');
     const sessionPath = sessionManager.getSessionPath(projectId, session.sessionId);
 
     // Perform git revert operation (reset + force push to remote)
+    const { GitOperations } = await import('@/lib/github/git-operations');
     const gitOps = new GitOperations();
     const success = await gitOps.revertToCommit(sessionPath, message.commitSha, githubToken);
 

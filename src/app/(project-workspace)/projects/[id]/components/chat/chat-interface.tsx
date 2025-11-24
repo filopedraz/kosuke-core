@@ -223,6 +223,7 @@ export default function ChatInterface({
                   chatSessionId={activeChatSessionId || undefined}
                   sessionId={sessionId}
                   metadata={message.metadata}
+                  attachments={message.attachments}
                 />
               ))}
 
