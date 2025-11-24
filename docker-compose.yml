@@ -53,7 +53,6 @@ services:
       - 'traefik.enable=true'
       - 'traefik.http.routers.main.rule=Host(`${MAIN_DOMAIN}`) || Host(`www.${MAIN_DOMAIN}`)'
       - 'traefik.http.routers.main.tls.certresolver=letsencrypt'
-      - 'traefik.http.routers.main.middlewares=main@file'
       - 'traefik.http.services.main.loadbalancer.server.port=3000'
       # Request wildcard certificate for preview domain
       - 'traefik.http.routers.wildcard-cert.rule=Host(`${PREVIEW_BASE_DOMAIN}`)'
