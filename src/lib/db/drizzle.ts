@@ -4,7 +4,7 @@ import postgres from 'postgres';
 
 import * as schema from './schema';
 
-dotenv.config();
+dotenv.config({ quiet: true });
 
 // POSTGRES_URL is validated at runtime startup via instrumentation.ts
 

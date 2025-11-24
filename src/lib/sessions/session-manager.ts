@@ -29,8 +29,6 @@ export class SessionManager {
 
     this.projectsBasePath = resolve(projectsBasePath);
     this.sessionBranchPrefix = sessionBranchPrefix;
-    console.log('🔧 SessionManager initialized');
-    console.log(`📁 Projects base path: ${this.projectsBasePath}`);
   }
 
   /**

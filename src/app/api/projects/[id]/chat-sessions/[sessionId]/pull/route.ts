@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { ApiErrorHandler } from '@/lib/api/errors';
 import { auth } from '@/lib/auth';
-import { getDockerService } from '@/lib/docker';
 import { getKosukeGitHubToken, getUserGitHubToken } from '@/lib/github/client';
+import { getPreviewService } from '@/lib/previews';
 import { verifyProjectAccess } from '@/lib/projects';
 
 /**
@@ -55,15 +55,11 @@ export async function POST(
     let containerRestarted = false;
     if (pullResult.changed && pullResult.commits_pulled > 0) {
       try {
-        const dockerService = getDockerService();
-        const isRunning = await dockerService.isContainerRunning(projectId, sessionId);
-
-        if (isRunning) {
-          console.log(`Restarting container to apply ${pullResult.commits_pulled} new commit(s)`);
-          await dockerService.restartPreviewContainer(projectId, sessionId);
-          containerRestarted = true;
-          console.log('✅ Container restarted successfully');
-        }
+        const previewService = getPreviewService();
+        console.log(`Restarting container to apply ${pullResult.commits_pulled} new commit(s)`);
+        await previewService.restartPreview(projectId, sessionId);
+        containerRestarted = true;
+        console.log('✅ Container restarted successfully');
       } catch (restartError) {
         // Log but don't fail - pull was successful
         console.error('Failed to restart container after pull:', restartError);

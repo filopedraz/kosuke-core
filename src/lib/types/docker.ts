@@ -30,9 +30,10 @@ export interface DockerContainerStatus {
 /**
  * Docker service configuration
  */
-export interface DockerConfig {
+export interface PreviewConfig {
   // Preview image settings
-  previewDefaultImage: string;
+  bunPreviewImage: string;
+  pythonPreviewImage: string;
 
   // Port mode settings
   previewPortRangeStart: number;
@@ -55,7 +56,6 @@ export interface DockerConfig {
   hostWorkspaceDir: string;
 
   // Domain settings (for Traefik)
-  mainDomain: string;
   previewBaseDomain: string;
 
   // PostgreSQL settings

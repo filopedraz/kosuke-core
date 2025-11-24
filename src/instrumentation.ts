@@ -31,10 +31,14 @@ function validateEnvironmentVariables() {
 
     // GitHub Configuration
     { key: 'TEMPLATE_REPOSITORY', description: 'GitHub template repository' },
-    { key: 'PREVIEW_DEFAULT_IMAGE', description: 'Default Docker image for previews' },
     { key: 'GITHUB_APP_ID', description: 'GitHub App ID for authentication' },
     { key: 'GITHUB_APP_PRIVATE_KEY', description: 'GitHub App private key' },
     { key: 'GITHUB_APP_INSTALLATION_ID', description: 'GitHub App installation ID' },
+
+    // Preview Configuration
+    { key: 'PREVIEW_BUN_IMAGE', description: 'Docker image for Bun preview containers' },
+    { key: 'PREVIEW_PYTHON_IMAGE', description: 'Docker image for Python preview containers' },
+    { key: 'PREVIEW_RESEND_API_KEY', description: 'Resend API key for preview environments' },
 
     // Projects & Sessions
     { key: 'PROJECTS_BASE_PATH', description: 'Base path for projects directory' },
@@ -49,7 +53,6 @@ function validateEnvironmentVariables() {
     { key: 'S3_SECRET_ACCESS_KEY', description: 'Digital Ocean Spaces secret key' },
 
     // Domain Configuration
-    { key: 'MAIN_DOMAIN', description: 'Main application domain' },
     { key: 'PREVIEW_BASE_DOMAIN', description: 'Base domain for preview deployments' },
     { key: 'TRAEFIK_ENABLED', description: 'Enable Traefik reverse proxy' },
     { key: 'PREVIEW_PORT_RANGE_START', description: 'Preview port range start' },

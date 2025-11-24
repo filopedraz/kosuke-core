@@ -122,9 +122,6 @@ export async function GET(
       .where(eq(chatSessions.projectId, projectId))
       .orderBy(desc(chatSessions.lastActivityAt));
 
-    // Return sessions (empty array if none exist)
-    // No automatic creation of default session
-
     // Check and update merge status for sessions with GitHub branches
     if (project.githubOwner && project.githubRepoName) {
       try {

@@ -1,6 +1,6 @@
 import { ApiErrorHandler } from '@/lib/api/errors';
 import { auth } from '@/lib/auth';
-import { getDockerService } from '@/lib/docker';
+import { getPreviewService } from '@/lib/previews';
 import { verifyProjectAccess } from '@/lib/projects';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -25,10 +25,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       return ApiErrorHandler.projectNotFound();
     }
 
-    // Get preview URLs from Docker service
+    // Get preview URLs from Preview service
     console.log(`Fetching preview URLs for project ${projectId}`);
-    const dockerService = getDockerService();
-    const result = await dockerService.getProjectPreviewUrls(projectId);
+    const previewService = getPreviewService();
+    const result = await previewService.getProjectPreviewUrls(projectId);
 
     return NextResponse.json({
       success: true,
