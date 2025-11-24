@@ -522,25 +522,52 @@ export default function RequirementsView({
             )}
             {currentStatus === 'in_development' && (
               <div className="flex items-center gap-2">
-                <Badge variant="secondary" className="text-xs flex items-center gap-1">
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                  In Development
-                </Badge>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Badge variant="secondary" className="text-xs flex items-center gap-1">
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        In Development
+                      </Badge>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Your project is being developed. You&apos;ll be notified by email when it&apos;s ready.</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
                 <div className="flex items-center space-x-1">
-                  <Button
-                    variant={viewMode === 'game' ? 'default' : 'ghost'}
-                    size="sm"
-                    onClick={() => setViewMode('game')}
-                  >
-                    <Gamepad2 className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant={viewMode === 'docs' ? 'default' : 'ghost'}
-                    size="sm"
-                    onClick={() => setViewMode('docs')}
-                  >
-                    <FileText className="h-4 w-4" />
-                  </Button>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant={viewMode === 'game' ? 'default' : 'ghost'}
+                          size="sm"
+                          onClick={() => setViewMode('game')}
+                        >
+                          <Gamepad2 className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Play Snake Game</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant={viewMode === 'docs' ? 'default' : 'ghost'}
+                          size="sm"
+                          onClick={() => setViewMode('docs')}
+                        >
+                          <FileText className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>View Requirements Document</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 </div>
               </div>
             )}
