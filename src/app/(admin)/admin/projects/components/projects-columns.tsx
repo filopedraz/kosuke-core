@@ -98,14 +98,7 @@ export function getProjectColumns(
         />
       ),
       cell: ({ row }) => (
-        <div>
-          <div className="font-medium">{row.original.name}</div>
-          {row.original.description && (
-            <div className="text-sm text-muted-foreground line-clamp-1">
-              {row.original.description}
-            </div>
-          )}
-        </div>
+        <div className="font-medium text-sm">{row.original.name}</div>
       ),
     },
     {
@@ -128,14 +121,14 @@ export function getProjectColumns(
       cell: ({ row }) => (
         <div className="text-sm">
           {row.original.githubRepoUrl ? (
-            <Button variant="ghost" size="sm" className="h-8 px-2" asChild>
+            <Button variant="ghost" size="sm" className="h-6 px-2 text-sm" asChild>
               <Link
                 href={row.original.githubRepoUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={e => e.stopPropagation()}
               >
-                <Github className="h-4 w-4 mr-1" />
+                <Github className="h-3 w-3 mr-1" />
                 View
               </Link>
             </Button>

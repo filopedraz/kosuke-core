@@ -1,6 +1,5 @@
 'use client';
 
-import { useCallback, useMemo } from 'react';
 import {
   RowSelectionState,
   Updater,
@@ -9,11 +8,19 @@ import {
   useReactTable,
 } from '@tanstack/react-table';
 import { Search, Trash2, X } from 'lucide-react';
+import { useCallback, useMemo } from 'react';
 
 import type { ProjectStatus } from '@/lib/types/project';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table,
@@ -23,13 +30,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 
 import { DataTablePagination } from '../../components/data-table-pagination';
 import { ActiveFilterBadges, ProjectFilters } from './project-filters';
@@ -274,7 +274,7 @@ export function ProjectsDataTable({
                       }}
                     >
                       {row.getVisibleCells().map(cell => (
-                        <TableCell key={cell.id}>
+                        <TableCell key={cell.id} className="py-1.5">
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </TableCell>
                       ))}
