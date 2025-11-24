@@ -1,17 +1,7 @@
 'use client';
 
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
-import { CheckCircle2, Loader2 } from 'lucide-react';
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { useToast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
 import {
   Dialog,
   DialogContent,
@@ -19,12 +9,24 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { useRouter } from 'next/navigation';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { useToast } from '@/hooks/use-toast';
+import type { AssistantBlock, ContentBlock } from '@/lib/types';
+import { cn } from '@/lib/utils';
 import { useUser } from '@clerk/nextjs';
+import { CheckCircle2, FileText, Gamepad2, Loader2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ChatInput from '../chat/chat-input';
 import ChatMessage from '../chat/chat-message';
 import MarkdownPreview from './markdown-preview';
-import type { ContentBlock, AssistantBlock } from '@/lib/types';
+import SnakeGame from './snake-game';
 
 interface RequirementsViewProps {
   projectId: string;
@@ -56,6 +58,7 @@ export default function RequirementsView({
   const [streamingBlocks, setStreamingBlocks] = useState<ContentBlock[]>([]);
   const [_streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
   const [currentStatus, setCurrentStatus] = useState<'requirements' | 'in_development'>(projectStatus);
+  const [viewMode, setViewMode] = useState<'game' | 'docs'>('game'); // Default to game view
   const { toast } = useToast();
   const router = useRouter();
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -480,25 +483,27 @@ export default function RequirementsView({
           </div>
         </div>
 
-        {/* Right side - Docs Preview */}
+        {/* Right side - Docs Preview / Game */}
         <div
           className={cn(
             'h-full flex flex-col border rounded-md border-border',
             isChatCollapsed ? 'w-full' : 'hidden md:flex sm:w-3/4 md:w-3/4 lg:w-3/4'
           )}
         >
-          {/* Header with Confirm Button */}
-          <div className="border-b p-4 flex items-center justify-between shrink-0">
-            <div>
-              <h2 className="text-lg font-semibold">Requirements Document</h2>
-              <p className="text-sm text-muted-foreground">Live preview of docs.md</p>
-            </div>
+          {/* Header with Confirm Button / Toggle */}
+          <div className="border-b px-4 py-2 flex items-center justify-between shrink-0">
+            <h3 className="text-sm font-medium">
+              {currentStatus === 'requirements' && 'Requirements Document'}
+              {currentStatus === 'in_development' &&
+                (viewMode === 'game' ? 'Snake Game' : 'Requirements Document')}
+            </h3>
             {currentStatus === 'requirements' && (
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <span tabIndex={0}>
                       <Button
+                        size="sm"
                         onClick={() => setShowConfirmModal(true)}
                         disabled={isConfirming || !docsContent}
                       >
@@ -516,15 +521,63 @@ export default function RequirementsView({
               </TooltipProvider>
             )}
             {currentStatus === 'in_development' && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                In Development
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary" className="text-xs flex items-center gap-1">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  In Development
+                </Badge>
+                <div className="flex items-center space-x-1">
+                  <Button
+                    variant={viewMode === 'game' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setViewMode('game')}
+                  >
+                    <Gamepad2 className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant={viewMode === 'docs' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setViewMode('docs')}
+                  >
+                    <FileText className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             )}
           </div>
 
-          {/* Preview Content */}
-          <MarkdownPreview content={docsContent} className="flex-1 overflow-hidden" />
+          {/* Preview Content - Conditional based on status and view mode */}
+          {currentStatus === 'requirements' && (
+            <MarkdownPreview content={docsContent} className="flex-1 overflow-hidden" />
+          )}
+          {currentStatus === 'in_development' && viewMode === 'docs' && (
+            <div className="flex-1 overflow-auto flex flex-col p-4 gap-4">
+              {/* Notification Card */}
+              <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/20 rounded-lg px-6 py-4 shadow-sm shrink-0">
+                <p className="text-sm font-medium text-primary flex items-center gap-2">
+                  <span>🚀</span>
+                  <span>You will get notified by email when the app is ready for testing</span>
+                </p>
+              </div>
+              <div className="flex-1 overflow-hidden">
+                <MarkdownPreview content={docsContent} className="h-full" />
+              </div>
+            </div>
+          )}
+          {currentStatus === 'in_development' && viewMode === 'game' && (
+            <div className="flex-1 overflow-auto flex flex-col p-4 gap-4">
+              {/* Notification Card */}
+              <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/20 rounded-lg px-6 py-4 shadow-sm shrink-0">
+                <p className="text-sm font-medium text-primary flex items-center gap-2">
+                  <span>🚀</span>
+                  <span>You will get notified by email when the app is ready for testing</span>
+                </p>
+              </div>
+              <div className="flex-1">
+                <SnakeGame />
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
