@@ -7,7 +7,7 @@ import { ApiErrorHandler } from '@/lib/api/errors';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db/drizzle';
 import { attachments, chatMessages, chatSessions, messageAttachments } from '@/lib/db/schema';
-import { getDockerService } from '@/lib/docker';
+import { getPreviewService } from '@/lib/docker';
 import { deleteDir } from '@/lib/fs/operations';
 import { getKosukeGitHubToken, getUserGitHubToken } from '@/lib/github/client';
 import { verifyProjectAccess } from '@/lib/projects';
@@ -206,8 +206,8 @@ export async function DELETE(
     // Step 1: Stop the preview container for this session
     try {
       console.log(`Stopping preview container for session ${sessionId} in project ${projectId}`);
-      const dockerService = getDockerService();
-      await dockerService.stopPreview(projectId, sessionId);
+      const previewService = getPreviewService();
+      await previewService.stopPreview(projectId, sessionId);
       console.log(`Preview container stopped successfully for session ${sessionId}`);
     } catch (containerError) {
       // Log but continue - we still want to delete the session even if container cleanup fails

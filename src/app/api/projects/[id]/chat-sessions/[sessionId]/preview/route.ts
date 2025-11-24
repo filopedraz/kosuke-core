@@ -5,7 +5,7 @@ import { auth } from '@/lib/auth';
 import { db } from '@/lib/db/drizzle';
 import { getProjectEnvironmentVariables } from '@/lib/db/queries';
 import { chatSessions } from '@/lib/db/schema';
-import { getDockerService } from '@/lib/docker';
+import { getPreviewService } from '@/lib/docker';
 import { verifyProjectAccess } from '@/lib/projects';
 import { and, eq } from 'drizzle-orm';
 /**
@@ -52,9 +52,9 @@ export async function GET(
       }
     }
 
-    // Use singleton DockerService instance
-    const dockerService = getDockerService();
-    const status = await dockerService.getPreviewStatus(projectId, sessionId);
+    // Use singleton PreviewService instance
+    const previewService = getPreviewService();
+    const status = await previewService.getPreviewStatus(projectId, sessionId);
 
     // If container is not running, automatically start it
     if (!status.running && status.url === null) {
@@ -64,7 +64,7 @@ export async function GET(
         const envVars = await getProjectEnvironmentVariables(projectId);
 
         // Start preview
-        const url = await dockerService.startPreview(
+        const url = await previewService.startPreview(
           projectId,
           sessionId,
           envVars,
@@ -72,7 +72,7 @@ export async function GET(
         );
 
         // Get updated status
-        const updatedStatus = await dockerService.getPreviewStatus(projectId, sessionId);
+        const updatedStatus = await previewService.getPreviewStatus(projectId, sessionId);
 
         // Return the started container info
         return NextResponse.json({
@@ -145,9 +145,9 @@ export async function POST(
     // Fetch environment variables for the project
     const envVars = await getProjectEnvironmentVariables(projectId);
 
-    // Start preview using singleton DockerService instance
-    const dockerService = getDockerService();
-    const url = await dockerService.startPreview(
+    // Start preview using singleton PreviewService instance
+    const previewService = getPreviewService();
+    const url = await previewService.startPreview(
       projectId,
       sessionId,
       envVars,
@@ -155,7 +155,7 @@ export async function POST(
     );
 
     // Get status to check if responding
-    const status = await dockerService.getPreviewStatus(projectId, sessionId);
+    const status = await previewService.getPreviewStatus(projectId, sessionId);
 
     // Transform result to match expected response format
     return NextResponse.json({

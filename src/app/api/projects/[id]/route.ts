@@ -6,7 +6,7 @@ import { ApiResponseHandler } from '@/lib/api/responses';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db/drizzle';
 import { projects } from '@/lib/db/schema';
-import { getDockerService } from '@/lib/docker';
+import { getPreviewService } from '@/lib/docker';
 import { deleteDir, getProjectPath } from '@/lib/fs/operations';
 import { createKosukeOctokit, createUserOctokit } from '@/lib/github/client';
 import { verifyProjectAccess } from '@/lib/projects';
@@ -137,8 +137,8 @@ export async function DELETE(
     // Step 1: Stop all preview containers for this project before file deletion
     try {
       console.log(`Stopping all preview containers for project ${projectId} before deletion`);
-      const dockerService = getDockerService();
-      const cleanupResult = await dockerService.stopAllProjectPreviews(projectId);
+      const previewService = getPreviewService();
+      const cleanupResult = await previewService.stopAllProjectPreviews(projectId);
 
       console.log(
         `Preview cleanup completed for project ${projectId}: ` +

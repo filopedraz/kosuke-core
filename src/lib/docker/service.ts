@@ -15,7 +15,7 @@ import { buildEnviornment, readKosukeConfig } from './config-reader';
 import { createPreviewStorages, dropPreviewStorages } from './database';
 import { PortRouterAdapter, TraefikRouterAdapter, type RouterAdapter } from './router-adapters';
 
-class DockerService {
+class PreviewService {
   private client: DockerClient | null = null;
   private config;
   private adapter: RouterAdapter;
@@ -792,19 +792,19 @@ class DockerService {
 }
 
 /**
- * Singleton instance of DockerService
+ * Singleton instance of PreviewService
  * Initialized once and reused across all requests
  */
-let dockerServiceInstance: DockerService | null = null;
+let previewServiceInstance: PreviewService | null = null;
 
 /**
- * Get the singleton DockerService instance
+ * Get the singleton PreviewService instance
  * Creates the instance on first call and reuses it for subsequent calls
  */
-export function getDockerService(): DockerService {
-  if (!dockerServiceInstance) {
-    console.log('🐳 Initializing Docker service singleton...');
-    dockerServiceInstance = new DockerService();
+export function getPreviewService(): PreviewService {
+  if (!previewServiceInstance) {
+    console.log('🐳 Initializing Preview service singleton...');
+    previewServiceInstance = new PreviewService();
   }
-  return dockerServiceInstance;
+  return previewServiceInstance;
 }

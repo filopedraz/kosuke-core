@@ -4,7 +4,7 @@ import { ApiErrorHandler } from '@/lib/api/errors';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db/drizzle';
 import { chatSessions } from '@/lib/db/schema';
-import { getDockerService } from '@/lib/docker';
+import { getPreviewService } from '@/lib/docker';
 import { verifyProjectAccess } from '@/lib/projects';
 import { and, eq } from 'drizzle-orm';
 
@@ -53,9 +53,9 @@ export async function GET(
       }
     }
 
-    // Get Docker service and check container status
-    const dockerService = getDockerService();
-    const status = await dockerService.getPreviewStatus(projectId, sessionId);
+    // Get Preview service and check preview status
+    const previewService = getPreviewService();
+    const status = await previewService.getPreviewStatus(projectId, sessionId);
 
     // Return health status
     // ok = container is running AND responding

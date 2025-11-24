@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { ApiErrorHandler } from '@/lib/api/errors';
 import { auth } from '@/lib/auth';
-import { getDockerService } from '@/lib/docker';
+import { getPreviewService } from '@/lib/docker';
 import { getKosukeGitHubToken, getUserGitHubToken } from '@/lib/github/client';
 import { verifyProjectAccess } from '@/lib/projects';
 
@@ -55,12 +55,12 @@ export async function POST(
     let containerRestarted = false;
     if (pullResult.changed && pullResult.commits_pulled > 0) {
       try {
-        const dockerService = getDockerService();
-        const isRunning = await dockerService.isPreviewRunning(projectId, sessionId);
+        const previewService = getPreviewService();
+        const isRunning = await previewService.isPreviewRunning(projectId, sessionId);
 
         if (isRunning) {
           console.log(`Restarting container to apply ${pullResult.commits_pulled} new commit(s)`);
-          await dockerService.restartPreview(projectId, sessionId);
+          await previewService.restartPreview(projectId, sessionId);
           containerRestarted = true;
           console.log('✅ Container restarted successfully');
         }
