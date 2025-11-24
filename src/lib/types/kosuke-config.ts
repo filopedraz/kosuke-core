@@ -5,25 +5,33 @@
 
 import { z } from 'zod';
 
+const ServiceTypeSchema = z.enum(['bun', 'python']);
+
 // Zod schemas
 const ServiceConfigSchema = z.object({
-  type: z.enum(['bun', 'python']),
+  type: ServiceTypeSchema,
   directory: z.string(),
   is_entrypoint: z.boolean().optional(),
   connection_variable: z.string().optional(),
   external_connection_variable: z.string().optional(),
 });
 
+const StorageTypeSchema = z.enum(['postgres', 'redis']);
+
 const StorageConfigSchema = z.object({
-  type: z.enum(['postgres', 'redis']),
+  type: StorageTypeSchema,
   connection_variable: z.string(),
 });
 
+const StaragesConfigSchema = z.record(z.string(), StorageConfigSchema);
+const EnvironmentConfigSchema = z.record(z.string(), z.string());
+const ServicesConfigSchema = z.record(z.string(), ServiceConfigSchema);
+
 const PreviewConfigSchema = z
   .object({
-    services: z.record(z.string(), ServiceConfigSchema),
-    storages: z.record(z.string(), StorageConfigSchema).optional(),
-    environment: z.record(z.string(), z.string()).optional(),
+    services: ServicesConfigSchema,
+    storages: StaragesConfigSchema.optional(),
+    environment: EnvironmentConfigSchema.optional(),
   })
   .refine(
     data => {
@@ -52,7 +60,12 @@ const KosukeConfigSchema = z.object({
 });
 
 // Infer TypeScript types from Zod schemas
+export type ServiceType = z.infer<typeof ServiceTypeSchema>;
 export type ServiceConfig = z.infer<typeof ServiceConfigSchema>;
+export type StorageType = z.infer<typeof StorageTypeSchema>;
+export type StoragesConfig = z.infer<typeof StaragesConfigSchema>;
+type ServicesConfig = z.infer<typeof ServicesConfigSchema>;
+export type EnvironmentConfig = z.infer<typeof EnvironmentConfigSchema>;
 export type KosukeConfig = z.infer<typeof KosukeConfigSchema>;
 
 /**
@@ -66,11 +79,11 @@ export function validateKosukeConfig(config: unknown): KosukeConfig {
 /**
  * Get entrypoint service from config
  */
-export function getEntrypointService(kosukeConfig: KosukeConfig): {
+export function getEntrypointService(services: ServicesConfig): {
   name: string;
   config: ServiceConfig;
 } {
-  const entrypointEntry = Object.entries(kosukeConfig.preview.services).find(
+  const entrypointEntry = Object.entries(services).find(
     ([, service]) => service.is_entrypoint === true
   );
 

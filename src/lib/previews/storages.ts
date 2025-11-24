@@ -3,12 +3,12 @@
  * Handles creation and cleanup of Postgres databases and Redis containers
  */
 
-import type { KosukeConfig } from '@/lib/types/kosuke-config';
+import type { KosukeConfig, StorageType } from '@/lib/types/kosuke-config';
 import { ContainerCreateRequest, DockerClient } from '@docker/node-sdk';
 import { Client } from 'pg';
 
 export interface StorageConnectionInfo {
-  type: 'postgres' | 'redis';
+  type: StorageType;
   url: string;
 }
 

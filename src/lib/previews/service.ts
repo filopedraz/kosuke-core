@@ -5,7 +5,7 @@
 
 import type { StorageConnectionInfo } from '@/lib/previews/storages';
 import type { DockerContainerStatus, RouteInfo } from '@/lib/types/docker';
-import type { KosukeConfig, ServiceConfig } from '@/lib/types/kosuke-config';
+import type { ServiceConfig, ServiceType, StoragesConfig } from '@/lib/types/kosuke-config';
 import { getEntrypointService } from '@/lib/types/kosuke-config';
 import type { PreviewUrl, PreviewUrlsResponse } from '@/lib/types/preview-urls';
 import { DockerClient, type ContainerCreateRequest } from '@docker/node-sdk';
@@ -117,7 +117,7 @@ class PreviewService {
   /**
    * Get preview image name for service type
    */
-  private getPreviewImage(serviceType: string): string {
+  private getPreviewImage(serviceType: ServiceType): string {
     switch (serviceType) {
       case 'bun':
         return this.config.bunPreviewImage;
@@ -131,7 +131,7 @@ class PreviewService {
   /**
    * Ensure preview image is available (pull if needed)
    */
-  private async ensurePreviewImage(serviceType: string): Promise<void> {
+  private async ensurePreviewImage(serviceType: ServiceType): Promise<void> {
     const imageName = this.getPreviewImage(serviceType);
     const client = await this.ensureClient();
 
@@ -190,7 +190,7 @@ class PreviewService {
    * Create container configuration
    */
   private createContainerConfig(
-    serviceType: string,
+    serviceType: ServiceType,
     environment: string[],
     hostServicePath: string,
     routeInfo?: RouteInfo
@@ -283,14 +283,14 @@ class PreviewService {
    */
   private extractStorageEnvVariables(
     storageConnections: Record<string, StorageConnectionInfo>,
-    storages: Record<string, { type: string; connection_variable: string }>
+    storages: StoragesConfig
   ): Record<string, string> {
     const storageUrls: Record<string, string> = {};
 
-    for (const [storageKey, storageConfig] of Object.entries(storages)) {
-      const connectionInfo = storageConnections[storageKey];
+    for (const [storageName, storageConfig] of Object.entries(storages)) {
+      const connectionInfo = storageConnections[storageName];
       if (!connectionInfo) {
-        console.warn(`Storage ${storageKey} was not created`);
+        console.warn(`Storage ${storageName} was not created`);
         continue;
       }
 
@@ -370,11 +370,10 @@ class PreviewService {
 
     // Read kosuke.config.json from cloned repo
     const kosukeConfig = await readKosukeConfig(containerSessionPath);
+    const { services, environment, storages } = kosukeConfig.preview;
 
     // Process special __KSK__ values in environment
-    const configEnv = kosukeConfig.preview.environment
-      ? buildEnviornment(kosukeConfig.preview.environment)
-      : {};
+    const configEnv = environment ? buildEnviornment(environment) : {};
 
     // Create storages
     console.log('Creating preview storages...');
@@ -388,19 +387,15 @@ class PreviewService {
     );
 
     // Extract storage URLs (all services get all storages)
-    const storageEnvVars = kosukeConfig.preview.storages
-      ? this.extractStorageEnvVariables(storageConnections, kosukeConfig.preview.storages)
+    const storageEnvVars = storages
+      ? this.extractStorageEnvVariables(storageConnections, storages)
       : {};
 
     // Extract service connection URLs (all services get URLs to all other services)
-    const serviceConnectionUrls = this.extractServiceConnectionUrls(
-      projectId,
-      sessionId,
-      kosukeConfig.preview.services
-    );
+    const serviceConnectionUrls = this.extractServiceConnectionUrls(projectId, sessionId, services);
 
     // Find entrypoint service (throws if not found)
-    const entrypointEntry = getEntrypointService(kosukeConfig);
+    const entrypointEntry = getEntrypointService(services);
 
     // Prepare route info ONCE for entrypoint service
     const entrypointContainerName = this.getContainerName(
@@ -427,7 +422,7 @@ class PreviewService {
     // Start all services simultaneously
     const servicePromises: Promise<{ serviceName: string; url: string | null }>[] = [];
 
-    for (const [serviceName, serviceConfig] of Object.entries(kosukeConfig.preview.services)) {
+    for (const [serviceName, serviceConfig] of Object.entries(services)) {
       const isEntrypoint = serviceConfig.is_entrypoint === true;
 
       // Prepare environment: configEnv < userEnvVars < serviceConnectionUrls < externalConnectionEnvVars < storageEnvVars
@@ -467,7 +462,7 @@ class PreviewService {
     } catch (error) {
       console.error('Failed to start some services, cleaning up...');
       // Cleanup on failure
-      await this.stopPreview(projectId, sessionId, kosukeConfig);
+      await this.stopPreview(projectId, sessionId);
       throw error;
     }
   }
@@ -481,7 +476,8 @@ class PreviewService {
       const containerSessionPath = this.getContainerSessionPath(projectId, sessionId);
 
       const kosukeConfig = await readKosukeConfig(containerSessionPath);
-      const entrypointEntry = getEntrypointService(kosukeConfig);
+      const { services } = kosukeConfig.preview;
+      const entrypointEntry = getEntrypointService(services);
 
       const containerName = this.getContainerName(projectId, sessionId, entrypointEntry.name);
       const container = await this.getContainerByName(containerName);
@@ -536,53 +532,40 @@ class PreviewService {
   /**
    * Stop and remove all service containers for a preview
    */
-  async stopPreview(
-    projectId: string,
-    sessionId: string,
-    kosukeConfig?: KosukeConfig
-  ): Promise<void> {
+  async stopPreview(projectId: string, sessionId: string): Promise<void> {
     console.log(`Stopping multi-service preview for project ${projectId} session ${sessionId}`);
 
-    // If config not provided, try to read it
-    if (!kosukeConfig) {
-      try {
-        const containerSessionPath = this.getContainerSessionPath(projectId, sessionId);
-        kosukeConfig = await readKosukeConfig(containerSessionPath);
-      } catch (error) {
-        console.error('Failed to read kosuke.config.json for cleanup:', error);
-        // Continue with best-effort cleanup
-      }
-    }
+    const containerSessionPath = this.getContainerSessionPath(projectId, sessionId);
+    const kosukeConfig = await readKosukeConfig(containerSessionPath);
+    const { services } = kosukeConfig.preview;
 
     const client = await this.ensureClient();
 
     // Stop all service containers
-    if (kosukeConfig) {
-      for (const serviceName of Object.keys(kosukeConfig.preview.services)) {
-        const containerName = this.getContainerName(projectId, sessionId, serviceName);
+    for (const serviceName of Object.keys(services)) {
+      const containerName = this.getContainerName(projectId, sessionId, serviceName);
 
-        try {
-          await client.containerStop(containerName, { timeout: 5 });
-          console.log(`Stopped service ${serviceName}`);
-        } catch (error) {
-          console.log(`Failed to stop service ${serviceName}:`, error);
-        }
-
-        try {
-          await client.containerDelete(containerName, { force: true });
-          console.log(`Removed service ${serviceName}`);
-        } catch (error) {
-          console.log(`Failed to remove service ${serviceName}:`, error);
-        }
-      }
-
-      // Drop storages (including Redis containers)
       try {
-        const client = await this.ensureClient();
-        await dropPreviewStorages(projectId, sessionId, kosukeConfig, client);
+        await client.containerStop(containerName, { timeout: 5 });
+        console.log(`Stopped service ${serviceName}`);
       } catch (error) {
-        console.error('Failed to drop preview storages:', error);
+        console.log(`Failed to stop service ${serviceName}:`, error);
       }
+
+      try {
+        await client.containerDelete(containerName, { force: true });
+        console.log(`Removed service ${serviceName}`);
+      } catch (error) {
+        console.log(`Failed to remove service ${serviceName}:`, error);
+      }
+    }
+
+    // Drop storages (including Redis containers)
+    try {
+      const client = await this.ensureClient();
+      await dropPreviewStorages(projectId, sessionId, kosukeConfig, client);
+    } catch (error) {
+      console.error('Failed to drop preview storages:', error);
     }
 
     console.log(`✅ Multi-service preview stopped`);
@@ -596,7 +579,8 @@ class PreviewService {
       const containerSessionPath = this.getContainerSessionPath(projectId, sessionId);
 
       const kosukeConfig = await readKosukeConfig(containerSessionPath);
-      const entrypointEntry = getEntrypointService(kosukeConfig);
+      const { services } = kosukeConfig.preview;
+      const entrypointEntry = getEntrypointService(services);
 
       const containerName = this.getContainerName(projectId, sessionId, entrypointEntry.name);
       const container = await this.getContainerByName(containerName);
@@ -758,13 +742,13 @@ class PreviewService {
       // Read kosuke.config.json to get all services
       const containerSessionPath = this.getContainerSessionPath(projectId, sessionId);
       const kosukeConfig = await readKosukeConfig(containerSessionPath);
-
+      const { services } = kosukeConfig.preview;
       const client = await this.ensureClient();
       let restarted = 0;
       let failed = 0;
 
       // Restart all service containers
-      for (const serviceName of Object.keys(kosukeConfig.preview.services)) {
+      for (const serviceName of Object.keys(services)) {
         const containerName = this.getContainerName(projectId, sessionId, serviceName);
 
         try {

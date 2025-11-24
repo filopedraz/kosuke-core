@@ -3,7 +3,7 @@
  * Reads kosuke.config.json from cloned repositories and processes special values
  */
 
-import type { KosukeConfig } from '@/lib/types/kosuke-config';
+import type { EnvironmentConfig, KosukeConfig } from '@/lib/types/kosuke-config';
 import { validateKosukeConfig } from '@/lib/types/kosuke-config';
 import { readFile } from 'fs/promises';
 import { join } from 'path';
@@ -36,8 +36,8 @@ export async function readKosukeConfig(sessionPath: string): Promise<KosukeConfi
  * Currently supports:
  * - __KSK__PREVIEW_RESEND_API_KEY: Loads PREVIEW_RESEND_API_KEY from process.env
  */
-export function buildEnviornment(environment: Record<string, string>): Record<string, string> {
-  const finalEnvironment: Record<string, string> = {};
+export function buildEnviornment(environment: EnvironmentConfig): EnvironmentConfig {
+  const finalEnvironment: EnvironmentConfig = {};
 
   for (const [key, value] of Object.entries(environment)) {
     if (value.startsWith('__KSK__')) {
