@@ -39,6 +39,16 @@ services:
     networks:
       - kosuke_network
 
+  redis:
+    image: redis:7.4-alpine
+    container_name: kosuke_redis
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    networks:
+      - kosuke_network
+    command: redis-server --appendonly yes
+
   nextjs:
     image: ghcr.io/kosuke-org/kosuke-core:latest
     container_name: kosuke_nextjs
@@ -62,6 +72,22 @@ services:
       - 'traefik.http.routers.wildcard-cert.tls.domains[0].sans=*.${PREVIEW_BASE_DOMAIN}'
     depends_on:
       - postgres
+      - redis
+
+  worker:
+    image: ghcr.io/kosuke-org/kosuke-core:latest
+    container_name: kosuke_worker
+    env_file:
+      - .env
+    volumes:
+      - ./projects:/app/projects:cached
+    networks:
+      - kosuke_network
+    restart: unless-stopped
+    depends_on:
+      - postgres
+      - redis
+    command: npx tsx -r dotenv/config worker.ts
 
   portainer:
     image: portainer/portainer-ce:latest
@@ -80,6 +106,7 @@ services:
 
 volumes:
   postgres_data:
+  redis_data:
   traefik_certs:
   portainer_data:
 

@@ -1,5 +1,6 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import { notFound, useRouter, useSearchParams } from 'next/navigation';
 import { use, useEffect, useRef, useState } from 'react';
 
@@ -20,6 +21,12 @@ import { DatabaseTab } from './components/database/database-tab';
 import CodeExplorer from './components/preview/code-explorer';
 import PreviewPanel from './components/preview/preview-panel';
 import { SettingsTab } from './components/settings/settings-tab';
+
+// Dynamic import for RequirementsView (outside component to prevent re-creation)
+const RequirementsView = dynamic(
+  () => import('./components/requirements/requirements-view'),
+  { ssr: false }
+);
 
 interface ProjectPageProps {
   params: Promise<{
@@ -147,6 +154,9 @@ export default function ProjectPage({ params }: ProjectPageProps) {
   const [activeChatSessionId, setActiveChatSessionId] = useState<string | null>(null);
   const [showSidebar, setShowSidebar] = useState(!sessionFromUrl); // Show sidebar unless we have a session in URL
 
+  // State for collapsing chat in requirements mode
+  const [isRequirementsChatCollapsed, setIsRequirementsChatCollapsed] = useState(false);
+
   // Auto-select session based on URL or default session when sessions are loaded
   useEffect(() => {
     if (sessions.length > 0 && activeChatSessionId === null) {
@@ -202,6 +212,39 @@ export default function ProjectPage({ params }: ProjectPageProps) {
   // Error handling
   if (projectError || !project) {
     notFound();
+  }
+
+  // Requirements gathering mode - show special view for requirements and in_development statuses
+  if (project.status === 'requirements' || project.status === 'in_development') {
+    return (
+      <div className="flex flex-col h-screen w-full">
+        <Navbar
+          variant="project"
+          projectProps={{
+            projectName: project.name,
+            currentView: 'preview',
+            onViewChange: () => {}, // Disabled in requirements mode
+            onRefresh: () => window.location.reload(),
+            isChatCollapsed: isRequirementsChatCollapsed,
+            onToggleChat: () => setIsRequirementsChatCollapsed(!isRequirementsChatCollapsed),
+            showSidebar: false,
+            onToggleSidebar: () => {}, // Disabled in requirements mode
+            activeChatSessionId: null,
+            onCreatePullRequest: undefined, // Disabled in requirements mode
+            disableTabs: true, // Disable tabs during requirements gathering
+            hideBackButton: true, // Hide back button in requirements mode
+          }}
+        />
+        <div className="h-[calc(100vh-3.5rem)] w-full">
+          <RequirementsView
+            projectId={projectId}
+            projectName={project.name}
+            projectStatus={project.status as 'requirements' | 'in_development'}
+            isChatCollapsed={isRequirementsChatCollapsed}
+          />
+        </div>
+      </div>
+    );
   }
 
   // Handlers

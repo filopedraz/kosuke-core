@@ -3,6 +3,7 @@ export * from './agent';
 export * from './branding';
 export * from './chat';
 export * from './chat-sessions';
+export * from './cli-logs';
 // Export Clerk types (app-specific + re-exported from @clerk/backend)
 export type {
   ClerkOrganization,
@@ -16,6 +17,7 @@ export * from './docker';
 export * from './ghost';
 export * from './github';
 export * from './infrastructure';
+export * from './organization';
 export * from './preview';
 export * from './preview-urls';
 export * from './project';

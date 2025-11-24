@@ -6,7 +6,7 @@ import { ApiErrorHandler } from '@/lib/api/errors';
 import { ApiResponseHandler } from '@/lib/api/responses';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db/drizzle';
-import { projects } from '@/lib/db/schema';
+import { projectAuditLogs, projects } from '@/lib/db/schema';
 import { createRepositoryFromTemplate } from '@/lib/github';
 import { getUserGitHubToken } from '@/lib/github/client';
 
@@ -87,6 +87,9 @@ async function createGitHubRepository(
     const gitOps = new GitOperations();
     await gitOps.cloneRepository(repoData.url, projectId, kosukeToken);
     console.log(`✅ Repository cloned successfully to project ${projectId}`);
+
+    // Note: docs.md will be created during requirements gathering conversation
+    // Not creating it here to keep the project in a clean state
   } catch (cloneError) {
     console.error('Repository created but failed to clone locally:', cloneError);
     // Don't throw - repository was created successfully
@@ -201,7 +204,7 @@ export async function POST(request: NextRequest) {
 
     // Use a transaction to ensure atomicity
     const result_1 = await db.transaction(async (tx) => {
-      // First create the project
+      // First create the project with requirements status
       const [project] = await tx
         .insert(projects)
         .values({
@@ -209,6 +212,7 @@ export async function POST(request: NextRequest) {
           description: github.description || null,
           orgId: orgId,
           createdBy: userId,
+          status: 'requirements', // Start in requirements gathering mode
           createdAt: new Date(),
           updatedAt: new Date(),
         })
@@ -257,6 +261,20 @@ export async function POST(request: NextRequest) {
 
         return updatedProject;
       }
+    });
+
+    // Create audit log for project creation
+    await db.insert(projectAuditLogs).values({
+      projectId: result_1.id,
+      userId,
+      action: 'project_created',
+      previousValue: null,
+      newValue: 'requirements',
+      metadata: {
+        createdAt: new Date().toISOString(),
+        githubType: github.type,
+        projectName: result_1.name,
+      },
     });
 
     return ApiResponseHandler.created({ project: result_1 });

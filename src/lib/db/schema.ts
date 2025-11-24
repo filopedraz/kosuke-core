@@ -1,4 +1,4 @@
-import { relations } from 'drizzle-orm';
+import { relations, sql } from 'drizzle-orm';
 import {
   boolean,
   integer,
@@ -11,6 +11,25 @@ import {
   uuid,
   varchar,
 } from 'drizzle-orm/pg-core';
+
+// Project status enum
+export const projectStatusEnum = pgEnum('project_status', [
+  'requirements',
+  'in_development',
+  'active',
+]);
+
+// CLI log status enum
+export const cliLogStatusEnum = pgEnum('cli_log_status', ['success', 'error', 'cancelled']);
+
+// CLI log command enum
+export const cliLogCommandEnum = pgEnum('cli_log_command', [
+  'ship',
+  'test',
+  'review',
+  'getcode',
+  'tickets',
+]);
 
 // File type enum for attachments
 export const fileTypeEnum = pgEnum('file_type', ['image', 'document']);
@@ -32,6 +51,10 @@ export const projects = pgTable('projects', {
   autoCommit: boolean('auto_commit').default(true),
   lastGithubSync: timestamp('last_github_sync'),
   defaultBranch: varchar('default_branch', { length: 100 }).default('main'),
+  // Requirements gathering workflow
+  status: projectStatusEnum('status').notNull().default('active'),
+  requirementsCompletedAt: timestamp('requirements_completed_at'),
+  requirementsCompletedBy: text('requirements_completed_by'),
 });
 
 export const chatSessions = pgTable('chat_sessions', {
@@ -101,6 +124,18 @@ export const messageAttachments = pgTable('message_attachments', {
     .references(() => attachments.id, { onDelete: 'cascade' })
     .notNull(),
   createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+
+export const requirementsMessages = pgTable('requirements_messages', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  projectId: uuid('project_id')
+    .references(() => projects.id, { onDelete: 'cascade' })
+    .notNull(),
+  userId: text('user_id'), // Clerk user ID
+  role: varchar('role', { length: 20 }).notNull(), // 'user' or 'assistant'
+  content: text('content'), // For user messages (nullable for assistant messages)
+  blocks: jsonb('blocks'), // For assistant message blocks (text, thinking, tools)
+  timestamp: timestamp('timestamp').notNull().defaultNow(),
 });
 
 export const diffs = pgTable('diffs', {
@@ -185,12 +220,28 @@ export const projectIntegrations = pgTable(
   })
 );
 
+export const projectAuditLogs = pgTable('project_audit_logs', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  projectId: uuid('project_id')
+    .notNull()
+    .references(() => projects.id, { onDelete: 'cascade' }),
+  userId: text('user_id').notNull(), // Clerk user ID
+  action: text('action').notNull(), // 'status_changed', 'requirements_confirmed', 'marked_ready', etc.
+  previousValue: text('previous_value'), // JSON string for old state
+  newValue: text('new_value'), // JSON string for new state
+  metadata: jsonb('metadata'), // Additional context
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+
 export const projectsRelations = relations(projects, ({ many }) => ({
   chatMessages: many(chatMessages),
   chatSessions: many(chatSessions),
   diffs: many(diffs),
   commits: many(projectCommits),
   githubSyncSessions: many(githubSyncSessions),
+  auditLogs: many(projectAuditLogs),
+  requirementsMessages: many(requirementsMessages),
+  cliLogs: many(cliLogs),
 }));
 
 export const chatSessionsRelations = relations(chatSessions, ({ one, many }) => ({
@@ -275,8 +326,91 @@ export const projectIntegrationsRelations = relations(projectIntegrations, ({ on
   }),
 }));
 
+export const projectAuditLogsRelations = relations(projectAuditLogs, ({ one }) => ({
+  project: one(projects, {
+    fields: [projectAuditLogs.projectId],
+    references: [projects.id],
+  }),
+}));
+
+export const requirementsMessagesRelations = relations(requirementsMessages, ({ one }) => ({
+  project: one(projects, {
+    fields: [requirementsMessages.projectId],
+    references: [projects.id],
+  }),
+}));
+
+export const cliLogs = pgTable(
+  'cli_logs',
+  {
+    // Identifiers
+    id: uuid('id').defaultRandom().primaryKey(),
+    projectId: uuid('project_id')
+      .references(() => projects.id, { onDelete: 'cascade' })
+      .notNull(),
+    orgId: text('org_id'), // Clerk org ID
+    userId: text('user_id'), // Clerk user ID
+
+    // Command Info
+    command: cliLogCommandEnum('command').notNull(),
+    commandArgs: jsonb('command_args'),
+
+    // Execution Status
+    status: cliLogStatusEnum('status').notNull(),
+    errorMessage: text('error_message'),
+
+    // Token Usage & Cost
+    tokensInput: integer('tokens_input').notNull(),
+    tokensOutput: integer('tokens_output').notNull(),
+    tokensCacheCreation: integer('tokens_cache_creation').default(0),
+    tokensCacheRead: integer('tokens_cache_read').default(0),
+    cost: varchar('cost', { length: 20 }).notNull(), // Stored as string to avoid decimal precision issues
+
+    // Performance
+    executionTimeMs: integer('execution_time_ms').notNull(),
+    inferenceTimeMs: integer('inference_time_ms'),
+
+    // Command-Specific Results
+    fixesApplied: integer('fixes_applied'),
+    testsRun: integer('tests_run'),
+    testsPassed: integer('tests_passed'),
+    testsFailed: integer('tests_failed'),
+    iterations: integer('iterations'),
+    filesModified: jsonb('files_modified'), // Array of file paths
+
+    // Metadata
+    cliVersion: varchar('cli_version', { length: 50 }),
+    metadata: jsonb('metadata'),
+
+    // Conversation Data (full capture for tickets/requirements commands)
+    conversationMessages: jsonb('conversation_messages'), // Array of { role, content, timestamp, toolCalls }
+
+    // Timestamps
+    startedAt: timestamp('started_at').notNull(),
+    completedAt: timestamp('completed_at').notNull(),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+  },
+  table => ({
+    // Indexes for performance
+    projectIdIdx: sql`CREATE INDEX IF NOT EXISTS idx_cli_logs_project_id ON ${table} (${table.projectId})`,
+    orgIdIdx: sql`CREATE INDEX IF NOT EXISTS idx_cli_logs_org_id ON ${table} (${table.orgId})`,
+    userIdIdx: sql`CREATE INDEX IF NOT EXISTS idx_cli_logs_user_id ON ${table} (${table.userId})`,
+    commandIdx: sql`CREATE INDEX IF NOT EXISTS idx_cli_logs_command ON ${table} (${table.command})`,
+    statusIdx: sql`CREATE INDEX IF NOT EXISTS idx_cli_logs_status ON ${table} (${table.status})`,
+    startedAtIdx: sql`CREATE INDEX IF NOT EXISTS idx_cli_logs_started_at ON ${table} (${table.startedAt} DESC)`,
+  })
+);
+
+export const cliLogsRelations = relations(cliLogs, ({ one }) => ({
+  project: one(projects, {
+    fields: [cliLogs.projectId],
+    references: [projects.id],
+  }),
+}));
+
 export type Project = typeof projects.$inferSelect;
 export type NewProject = typeof projects.$inferInsert;
+export type ProjectStatus = (typeof projectStatusEnum.enumValues)[number];
 export type ChatSession = typeof chatSessions.$inferSelect;
 export type NewChatSession = typeof chatSessions.$inferInsert;
 export type ChatMessage = typeof chatMessages.$inferSelect;
@@ -295,3 +429,11 @@ export type ProjectEnvironmentVariable = typeof projectEnvironmentVariables.$inf
 export type NewProjectEnvironmentVariable = typeof projectEnvironmentVariables.$inferInsert;
 export type ProjectIntegration = typeof projectIntegrations.$inferSelect;
 export type NewProjectIntegration = typeof projectIntegrations.$inferInsert;
+export type ProjectAuditLog = typeof projectAuditLogs.$inferSelect;
+export type NewProjectAuditLog = typeof projectAuditLogs.$inferInsert;
+export type RequirementsMessage = typeof requirementsMessages.$inferSelect;
+export type NewRequirementsMessage = typeof requirementsMessages.$inferInsert;
+export type CliLog = typeof cliLogs.$inferSelect;
+export type NewCliLog = typeof cliLogs.$inferInsert;
+export type CliLogStatus = (typeof cliLogStatusEnum.enumValues)[number];
+export type CliLogCommand = (typeof cliLogCommandEnum.enumValues)[number];

@@ -1,5 +1,5 @@
 {
-  "id": "9dad41a6-0a7a-4a28-adf2-813abe0da8da",
+  "id": "b305d29a-ed23-4e21-9322-8ba8cbd1883e",
   "prevId": "b98ae173-2046-4984-8353-879681b0545c",
   "version": "7",
   "dialect": "postgresql",
@@ -560,6 +560,79 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.project_audit_logs": {
+      "name": "project_audit_logs",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "project_id": {
+          "name": "project_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "action": {
+          "name": "action",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "previous_value": {
+          "name": "previous_value",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "new_value": {
+          "name": "new_value",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "project_audit_logs_project_id_projects_id_fk": {
+          "name": "project_audit_logs_project_id_projects_id_fk",
+          "tableFrom": "project_audit_logs",
+          "tableTo": "projects",
+          "columnsFrom": ["project_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.project_commits": {
       "name": "project_commits",
       "schema": "",
@@ -891,6 +964,26 @@
           "primaryKey": false,
           "notNull": false,
           "default": "'main'"
+        },
+        "status": {
+          "name": "status",
+          "type": "project_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'active'"
+        },
+        "requirements_completed_at": {
+          "name": "requirements_completed_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "requirements_completed_by": {
+          "name": "requirements_completed_by",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {},
@@ -903,10 +996,10 @@
     }
   },
   "enums": {
-    "public.file_type": {
-      "name": "file_type",
+    "public.project_status": {
+      "name": "project_status",
       "schema": "public",
-      "values": ["image", "document"]
+      "values": ["requirements", "in_development", "active"]
     }
   },
   "schemas": {},

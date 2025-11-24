@@ -32,6 +32,7 @@ COPY drizzle.config.* .
 COPY eslint.config.* .
 COPY jest.config.* .
 COPY components.json .
+COPY worker.ts .
 COPY public ./public
 COPY src ./src
 COPY .env.build .env
@@ -78,6 +79,8 @@ COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nextjs:nodejs /app/drizzle.config.* ./
 COPY --from=builder --chown=nextjs:nodejs /app/src/middleware.ts ./middleware.ts
 COPY --from=builder --chown=nextjs:nodejs /app/sentry*.config.* ./
+COPY --from=builder --chown=nextjs:nodejs /app/src/instrumentation*.ts ./src/
+COPY --from=builder --chown=nextjs:nodejs /app/worker.ts ./worker.ts
 COPY --from=builder --chown=nextjs:nodejs /app/src/lib ./lib
 
 USER nextjs

@@ -11,6 +11,16 @@ services:
     networks:
       - kosuke_network
 
+  redis:
+    image: redis:7.4-alpine
+    container_name: kosuke_redis
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    networks:
+      - kosuke_network
+    command: redis-server --appendonly yes
+
   nextjs:
     build:
       context: .
@@ -24,10 +34,15 @@ services:
       - /app/.next
       - ./projects:/app/projects:cached
       - /var/run/docker.sock:/var/run/docker.sock
+      # Mount local kosuke-cli for development
+      - ./kosuke-cli:/app/node_modules/@kosuke-ai/cli:cached
+      # Volume for kosuke-cli dependencies (installed via entrypoint)
+      - kosuke_cli:/app/node_modules/@kosuke-ai/cli/node_modules
     env_file:
       - .env
     depends_on:
       - postgres
+      - redis
     networks:
       - kosuke_network
     restart: unless-stopped
@@ -42,8 +57,34 @@ services:
       retries: 3
       start_period: 60s
 
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.local
+    container_name: kosuke_worker
+    volumes:
+      - .:/app:cached
+      - /app/node_modules
+      - /app/.next
+      - ./projects:/app/projects:cached
+      # Mount local kosuke-cli for development
+      - ./kosuke-cli:/app/node_modules/@kosuke-ai/cli:cached
+      # Volume for kosuke-cli dependencies (installed via entrypoint)
+      - kosuke_cli:/app/node_modules/@kosuke-ai/cli/node_modules
+    env_file:
+      - .env
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - kosuke_network
+    restart: unless-stopped
+    command: npx tsx --watch -r dotenv/config worker.ts
+
 volumes:
   postgres_data:
+  redis_data:
+  kosuke_cli:
 
 networks:
   kosuke_network:
