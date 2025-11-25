@@ -2,7 +2,7 @@ FROM oven/bun:1.3.1-alpine
 
 WORKDIR /app
 
-ENV NODE_ENV=development
+ENV NODE_ENV=test
 ENV NEXT_TELEMETRY_DISABLED=1
 
 COPY docker-entrypoint.sh /docker-entrypoint.sh
