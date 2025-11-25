@@ -25,9 +25,6 @@ migrate:
     @echo "Migrating database..."
     @docker exec kosuke_nextjs npm run db:migrate
 
-remove-previews:
-    @docker rm -f $(docker ps -aq --filter "name=kosuke-preview")
-
 db-reset:
     @echo "Dropping and recreating database..."
     @docker compose -f docker-compose.local.yml down -v
