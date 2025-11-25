@@ -228,10 +228,8 @@ export async function POST(
 
     const { title, description } = parseResult.data;
 
-    // Generate canonical sessionId (prefixed) for branch parity
-    const randomPart = Math.random().toString(36).slice(2, 8);
-    // Use URL-safe session id (no slashes). Git branch will map this to 'kosuke/chat-*'.
-    const sessionId = `kosuke-chat-${randomPart}`;
+    // Use random session id of 5 letters
+    const sessionId = Math.random().toString(36).slice(2, 8);
 
     // Create chat session
     const [newSession] = await db
