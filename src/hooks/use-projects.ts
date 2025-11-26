@@ -7,10 +7,9 @@ import { useRouter } from 'next/navigation';
 
 interface UseProjectsOptions {
   userId: string;
-  initialData?: Project[];
 }
 
-export function useProjects({ userId, initialData }: UseProjectsOptions) {
+export function useProjects({ userId }: UseProjectsOptions) {
   const { organization } = useOrganization();
   const orgId = organization?.id;
 
@@ -29,12 +28,10 @@ export function useProjects({ userId, initialData }: UseProjectsOptions) {
         return projects;
       } catch (error) {
         console.error('Failed to fetch projects', error);
-        // If API fails, fall back to initial data
-        return initialData || [];
+        return [];
       }
     },
-    placeholderData: initialData,
-    staleTime: 1000 * 60 * 2, // Consider data stale after 2 minutes
+    staleTime: 1000 * 60 * 5, // Consider data stale after 5 minutes
     refetchOnWindowFocus: false, // Don't refetch on window focus to reduce glitches
     refetchOnMount: false, // Don't always refetch on mount - let staleTime control this
     enabled: !!userId && !!orgId,

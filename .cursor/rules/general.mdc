@@ -445,6 +445,49 @@ return <PageContent data={data} />;
 - **Client-side only operations** - navigation, local calculations
 - **Third-party SDK calls** - Clerk auth actions (unless they involve your API)
 
+#### **💾 Global Query Caching & Persistence**
+
+**All queries automatically persist to localStorage.** Page refreshes load cached data instantly (5-min staleTime, 24-hour cache). No manual setup needed.
+
+**How to persist (default):**
+
+```typescript
+// Just use useQuery - persistence is automatic
+const { data } = useQuery({
+  queryKey: ['projects', userId],
+  queryFn: async () => {
+    const response = await fetch('/api/projects');
+    return response.json();
+  },
+  staleTime: 1000 * 60 * 5, // Refetch after 5 min
+  // gcTime defaults to 24 hours → persisted
+});
+```
+
+**How to skip persistence (sensitive data):**
+
+```typescript
+// Set gcTime: 0 to prevent localStorage
+const { data } = useQuery({
+  queryKey: ['sensitive-data'],
+  queryFn: fetchSensitiveData,
+  gcTime: 0, // NOT persisted
+});
+```
+
+**When to skip (`gcTime: 0`):**
+
+- Sensitive data (passwords, tokens, API keys)
+- Real-time data (notifications, live counts)
+- Temporary search/filter results
+
+**staleTime vs gcTime:**
+
+- `staleTime` = Data freshness (refetch after this time if stale)
+- `gcTime` = Cache duration (garbage collect after this time)
+
+Example: `staleTime: 5 min, gcTime: 24h` → refetch every 5 min, keep in localStorage 24 hours
+
 #### **🔧 Implementation Patterns**
 
 **✅ CORRECT - Data Fetching with useQuery:**

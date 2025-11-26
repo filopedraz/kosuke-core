@@ -1,19 +1,16 @@
 'use client';
 
 import { useProjects } from '@/hooks/use-projects';
-import type { Project } from '@/lib/db/schema';
 import ProjectCard from './project-card';
 import { ProjectCardSkeleton } from './skeletons';
 
 interface ProjectGridProps {
   userId: string;
-  initialProjects: Project[];
 }
 
-export default function ProjectGrid({ userId, initialProjects }: ProjectGridProps) {
+export default function ProjectGrid({ userId }: ProjectGridProps) {
   const { data: projects, isLoading, isFetching } = useProjects({
     userId,
-    initialData: initialProjects,
   });
 
   // Always show skeletons whenever loading or fetching
