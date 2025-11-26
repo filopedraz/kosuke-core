@@ -14,8 +14,7 @@ export function useDatabaseSchema(projectId: string, sessionId: string) {
       const data = await response.json();
       return data;
     },
-    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
-    gcTime: 1000 * 60 * 10, // Keep in cache for 10 minutes
+    staleTime: 1000 * 60 * 5, // 5 minutes
     retry: 1,
     enabled: Boolean(sessionId), // Only fetch when sessionId is provided
   });
