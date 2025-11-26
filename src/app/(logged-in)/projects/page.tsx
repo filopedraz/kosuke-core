@@ -65,7 +65,6 @@ function ProjectsContent() {
   const { clerkUser, user, isLoading } = useUser();
   const { data: projects, isLoading: isProjectsLoading } = useProjects({
     userId: user?.id ?? '',
-    initialData: []
   });
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [initialTab, setInitialTab] = useState<'create' | 'import'>('create');
@@ -129,7 +128,7 @@ function ProjectsContent() {
           {!projects?.length ? (
             <EmptyState onCreateClick={handleOpenModal} />
           ) : (
-            <ProjectGrid userId={user.id} initialProjects={projects} />
+            <ProjectGrid userId={user.id} />
           )}
         </Suspense>
       </div>
