@@ -6,14 +6,16 @@ import { useMemo } from 'react';
 export function useGitHubRepositories(
   userId: string,
   enabled: boolean = true,
+  context: string = 'personal',
   search: string = ''
 ) {
   const query = useInfiniteQuery({
-    queryKey: ['github-repositories', userId, search],
+    queryKey: ['github-repositories', userId, context, search],
     queryFn: async ({
       pageParam,
     }): Promise<{ repositories: GitHubRepository[]; hasMore: boolean }> => {
       const params = new URLSearchParams({
+        context,
         page: pageParam.toString(),
         per_page: '10',
       });
@@ -32,12 +34,11 @@ export function useGitHubRepositories(
     getNextPageParam: (lastPage, _allPages, lastPageParam) => {
       return lastPage.hasMore ? lastPageParam + 1 : undefined;
     },
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    staleTime: 1000 * 60 * 5,
     retry: 2,
-    enabled: !!userId && enabled, // Only fetch when explicitly enabled
+    enabled: !!userId && !!context && enabled,
   });
 
-  // Flatten all pages into single array
   const repositories = useMemo(
     () => query.data?.pages.flatMap(page => page.repositories) ?? [],
     [query.data?.pages]
