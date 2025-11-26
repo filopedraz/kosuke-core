@@ -20,14 +20,12 @@ import type { Project } from '@/lib/db/schema';
 
 interface DeleteProjectDialogProps {
   project: Project;
-  isImported: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
 export default function DeleteProjectDialog({
   project,
-  isImported,
   open,
   onOpenChange,
 }: DeleteProjectDialogProps) {
@@ -154,7 +152,7 @@ export default function DeleteProjectDialog({
 
           {!isPending && !isSuccess && (
             <>
-              {!isImported && (
+              {!project.isImported && (
                   <div className="space-y-3">
                     <div className="flex items-start gap-3">
                       <Checkbox

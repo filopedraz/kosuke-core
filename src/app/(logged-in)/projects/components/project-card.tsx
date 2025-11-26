@@ -106,7 +106,6 @@ export default function ProjectCard({ project }: ProjectCardProps) {
 
       <DeleteProjectDialog
         project={project}
-        isImported={isImportedProject}
         open={showDeleteDialog}
         onOpenChange={setShowDeleteDialog}
       />
