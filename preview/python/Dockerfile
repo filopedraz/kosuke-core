@@ -2,7 +2,7 @@ FROM python:3.12-slim
 
 # Create non-root user with same UID as nextjs image
 RUN groupadd -g 1001 python && \
-    useradd -u 1001 -g python -s /bin/bash python
+    useradd -m -u 1001 -g python -s /bin/bash python
 
 WORKDIR /app
 
