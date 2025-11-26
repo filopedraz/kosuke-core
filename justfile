@@ -4,6 +4,7 @@ default:
 run:
     @echo "Running all services with build..."
     @docker compose -f docker-compose.local.yml up --build -d
+    @just migrate
 
 build:
     @echo "Building all containers..."

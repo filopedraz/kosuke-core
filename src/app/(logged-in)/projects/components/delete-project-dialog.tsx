@@ -1,6 +1,6 @@
 'use client';
 
-import { Loader2, Trash } from 'lucide-react';
+import { AlertCircle, Loader2, Trash } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
@@ -13,18 +13,21 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useDeleteProject } from '@/hooks/use-projects';
 import type { Project } from '@/lib/db/schema';
 
 interface DeleteProjectDialogProps {
   project: Project;
+  isImported: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
 export default function DeleteProjectDialog({
   project,
+  isImported,
   open,
   onOpenChange,
 }: DeleteProjectDialogProps) {
@@ -33,6 +36,7 @@ export default function DeleteProjectDialog({
   const [deleteProgress, setDeleteProgress] = useState(0);
   const [isCompleting, setIsCompleting] = useState(false);
   const [deleteRepo, setDeleteRepo] = useState(false);
+  const [repoConfirmationText, setRepoConfirmationText] = useState('');
   const timersRef = useRef<NodeJS.Timeout[]>([]);
   const operationStartedRef = useRef<boolean>(false);
 
@@ -93,6 +97,7 @@ export default function DeleteProjectDialog({
           setDeleteProgress(0);
           setIsCompleting(false);
           operationStartedRef.current = false;
+          setRepoConfirmationText('');
         }, 300);
       }, 1000);
 
@@ -121,6 +126,9 @@ export default function DeleteProjectDialog({
     }
   };
 
+  const isRepoConfirmationValid =
+    !deleteRepo || repoConfirmationText === project.name;
+
   return (
     <Dialog open={open} onOpenChange={(value) => {
       // Prevent closing while operation is in progress
@@ -133,51 +141,91 @@ export default function DeleteProjectDialog({
             <Trash className="h-5 w-5 text-destructive" />
             <DialogTitle>Delete Project</DialogTitle>
           </div>
-
         </DialogHeader>
 
-        <DialogDescription>
+        <div className="space-y-4">
+          <DialogDescription>
             {!isPending && !isSuccess ? (
-              <>Are you sure you want to delete &quot;{project.name}&quot;? This action cannot be undone
-              and all project files will be permanently removed.</>
+              <>Are you sure you want to delete &quot;{project.name}&quot;? This action cannot be undone and all project files will be permanently removed.</>
             ) : (
               <>Deleting project files. This may take a moment, please don&apos;t close this window.</>
             )}
+          </DialogDescription>
 
-{(isPending || isSuccess) && (
-          <div className="gap-2 mt-2">
-            <div className="flex items-center mb-2">
-              {isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : (
-                <div className="h-4 w-4 rounded-full bg-green-500 mr-2" />
-              )}
-              <span className="text-sm text-muted-foreground">{deleteStage}</span>
+          {!isPending && !isSuccess && (
+            <>
+              {!isImported && (
+                  <div className="space-y-3">
+                    <div className="flex items-start gap-3">
+                      <Checkbox
+                        id="delete-repo"
+                        checked={deleteRepo}
+                        onCheckedChange={v => {
+                          setDeleteRepo(Boolean(v));
+                          if (!v) setRepoConfirmationText('');
+                        }}
+                        className="mt-1"
+                      />
+                      <Label
+                        htmlFor="delete-repo"
+                        className="text-sm font-medium cursor-pointer"
+                      >
+                        Also delete GitHub repository
+                      </Label>
+                    </div>
+
+                    {deleteRepo && (
+                      <div className="ml-6 space-y-3">
+                        <div className="bg-destructive/5 rounded p-3 border border-destructive/20">
+                          <p className="text-xs text-destructive flex items-start gap-1.5">
+                            <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                            <span>The GitHub repository will also be permanently deleted and cannot be undone.</span>
+                          </p>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="repo-confirm" className="text-xs font-medium">
+                            Type project name to confirm
+                          </Label>
+                          <Input
+                            id="repo-confirm"
+                            placeholder={project.name}
+                            value={repoConfirmationText}
+                            onChange={(e) => setRepoConfirmationText(e.target.value)}
+                            className="text-sm"
+                            autoFocus
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+            </>
+          )}
+
+          {(isPending || isSuccess) && (
+            <div className="space-y-2">
+              <div className="flex items-center mb-2">
+                {isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <div className="h-4 w-4 rounded-full bg-green-500 mr-2" />
+                )}
+                <span className="text-sm text-muted-foreground">{deleteStage}</span>
+              </div>
+              <div className="w-full bg-secondary h-2 rounded-full overflow-hidden">
+                <div
+                  className={`h-full transition-all duration-500 ease-in-out ${
+                    isSuccess ? 'bg-green-500' : 'bg-primary'
+                  }`}
+                  style={{ width: `${deleteProgress}%` }}
+                />
+              </div>
             </div>
-            <div className="w-full bg-secondary h-2 rounded-full overflow-hidden">
-              <div
-                className={`h-full transition-all duration-500 ease-in-out ${
-                  isSuccess ? 'bg-green-500' : 'bg-primary'
-                }`}
-                style={{ width: `${deleteProgress}%` }}
-              />
-            </div>
-          </div>
-        )}
+          )}
+        </div>
 
-        {Boolean(project.githubOwner && project.githubRepoName) && !isPending && !isSuccess && (
-          <div className="flex items-center gap-2 mt-2">
-            <Checkbox id="delete-repo" checked={deleteRepo} onCheckedChange={v => setDeleteRepo(Boolean(v))} />
-            <Label htmlFor="delete-repo" className="text-sm text-muted-foreground">
-              Also delete the associated GitHub repository
-            </Label>
-          </div>
-        )}
-        </DialogDescription>
-
-
-
-        <DialogFooter className="mt-4">
+        <DialogFooter className="mt-6">
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
@@ -188,7 +236,7 @@ export default function DeleteProjectDialog({
           <Button
             variant="destructive"
             onClick={handleDelete}
-            disabled={isPending || isCompleting}
+            disabled={isPending || isCompleting || !isRepoConfirmationValid}
           >
             {isPending ? (
               <>
