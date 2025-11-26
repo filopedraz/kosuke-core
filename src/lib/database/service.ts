@@ -3,6 +3,7 @@
  * Manages session-specific PostgreSQL databases
  */
 
+import { generatePreviewResourceName } from '@/lib/previews/naming';
 import type {
   Column,
   DatabaseInfo,
@@ -32,9 +33,7 @@ export class DatabaseService {
       throw new Error('session_id is required for DatabaseService');
     }
 
-    // Use the same naming scheme as storages.ts to find the correct database
-    // Format: kosuke_preview_<projectId>_<sessionId> (lowercase, no hyphens)
-    this.dbName = `kosuke_preview_${projectId}_${sessionId}`.toLowerCase().replace(/-/g, '');
+    this.dbName = generatePreviewResourceName(projectId, sessionId);
     this.validateDatabaseName(this.dbName);
 
     // Parse connection config from POSTGRES_URL

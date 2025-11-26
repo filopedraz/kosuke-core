@@ -6,6 +6,7 @@
 import type { KosukeConfig, StorageType } from '@/lib/types/kosuke-config';
 import { ContainerCreateRequest, DockerClient } from '@docker/node-sdk';
 import { Client } from 'pg';
+import { generatePreviewResourceName } from './naming';
 
 export interface StorageConnectionInfo {
   type: StorageType;
@@ -37,7 +38,7 @@ function getPostgresConfig() {
  */
 async function createPostgresDatabase(projectId: string, sessionId: string): Promise<string> {
   const config = getPostgresConfig();
-  const dbName = `kosuke_preview_${projectId}_${sessionId}`.toLowerCase().replace(/-/g, '');
+  const dbName = generatePreviewResourceName(projectId, sessionId);
 
   const client = new Client({
     host: config.host,
@@ -76,7 +77,7 @@ async function createPostgresDatabase(projectId: string, sessionId: string): Pro
  */
 async function dropPostgresDatabase(projectId: string, sessionId: string): Promise<void> {
   const config = getPostgresConfig();
-  const dbName = `kosuke_preview_${projectId}_${sessionId}`.toLowerCase().replace(/-/g, '_');
+  const dbName = generatePreviewResourceName(projectId, sessionId);
 
   const client = new Client({
     host: config.host,
@@ -111,13 +112,6 @@ async function dropPostgresDatabase(projectId: string, sessionId: string): Promi
 }
 
 /**
- * Get Redis container name for a preview
- */
-function getRedisContainerName(projectId: string, sessionId: string): string {
-  return `kosuke-preview-${projectId}-${sessionId}-redis`;
-}
-
-/**
  * Create Redis container for preview environment
  */
 async function createRedisContainer(
@@ -126,7 +120,7 @@ async function createRedisContainer(
   dockerClient: DockerClient,
   network: string
 ): Promise<string> {
-  const containerName = getRedisContainerName(projectId, sessionId);
+  const containerName = generatePreviewResourceName(projectId, sessionId, 'redis');
   const imageName = 'redis:alpine';
 
   try {
@@ -197,7 +191,7 @@ async function removeRedisContainer(
   sessionId: string,
   dockerClient: DockerClient
 ): Promise<void> {
-  const containerName = getRedisContainerName(projectId, sessionId);
+  const containerName = generatePreviewResourceName(projectId, sessionId, 'redis');
 
   try {
     // Stop container

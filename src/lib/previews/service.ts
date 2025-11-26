@@ -12,6 +12,7 @@ import { DockerClient, type ContainerCreateRequest } from '@docker/node-sdk';
 import { join } from 'path';
 import { getPreviewConfig } from './config';
 import { buildEnviornment, readKosukeConfig } from './config-reader';
+import { generatePreviewResourceName } from './naming';
 import { PortRouterAdapter, TraefikRouterAdapter, type RouterAdapter } from './router-adapters';
 import { createPreviewStorages, dropPreviewStorages } from './storages';
 
@@ -62,7 +63,7 @@ class PreviewService {
    * Get container name for a service
    */
   private getContainerName(projectId: string, sessionId: string, serviceName: string): string {
-    return `${this.config.previewContainerNamePrefix}${projectId}-${sessionId}-${serviceName}`;
+    return generatePreviewResourceName(projectId, sessionId, serviceName);
   }
 
   /**
