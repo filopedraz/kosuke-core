@@ -13,11 +13,17 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 COPY docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
-# Change ownership of /app to python user
-RUN chown -R python:python /app
+# 1. Create the directories explicitly
+# 2. THEN Change ownership
+# This ensures the "mount points" are owned by python (1001), not root.
+RUN mkdir -p /app/.venv /app/__pycache__ && \
+    chown -R python:python /app
 
 # Switch to non-root user
 USER python
+
+
+ENV PATH="/app/.venv/bin:$PATH"
 
 # Set entrypoint to install dependencies on container start
 ENTRYPOINT ["docker-entrypoint.sh"]

@@ -7,14 +7,16 @@ RUN addgroup -g 1001 -S bunapp && \
 
 WORKDIR /app
 
-ENV NODE_ENV=test
 ENV NEXT_TELEMETRY_DISABLED=1
 
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
 
-# Change ownership of /app to bunapp user
-RUN chown -R bunapp:bunapp /app
+# 1. Create the directories explicitly
+# 2. THEN Change ownership
+# This ensures the "mount points" are owned by bunapp (1001), not root.
+RUN mkdir -p /app/node_modules /app/.next && \
+    chown -R bunapp:bunapp /app
 
 # Switch to non-root user
 USER bunapp

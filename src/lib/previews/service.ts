@@ -197,7 +197,7 @@ class PreviewService {
         volumePaths = ['node_modules', '.next'];
         break;
       case 'python':
-        volumePaths = ['__pycache__'];
+        volumePaths = ['.venv', '__pycache__'];
         break;
       default:
         return {};
