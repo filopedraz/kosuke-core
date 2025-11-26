@@ -1,7 +1,7 @@
 'use client';
 
 import { formatDistanceToNow } from 'date-fns';
-import { AlertCircle, MoreHorizontal, Trash } from 'lucide-react';
+import { AlertCircle, CloudDownload, MoreHorizontal, Trash } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 
@@ -55,10 +55,26 @@ export default function ProjectCard({ project }: ProjectCardProps) {
         }`}>
           <CardHeader className="pb-2">
             <div className="flex justify-between items-start">
-              <div className="flex-1">
-                <CardTitle className="text-lg font-semibold group-hover:text-primary transition-colors line-clamp-2">
-                  {project.name}
-                </CardTitle>
+              <div className="flex-1 gap-2 flex flex-col">
+                <div className="flex items-center gap-2">
+                  <CardTitle className="text-lg font-semibold group-hover:text-primary transition-colors line-clamp-2">
+                    {project.name}
+                  </CardTitle>
+                  {isImportedProject && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="shrink-0">
+                            <CloudDownload className="h-4 w-4 text-primary cursor-help" />
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Imported from your Organisation</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+                </div>
               </div>
               <div className="flex items-center gap-1 shrink-0">
                 {needsReconnection && (
