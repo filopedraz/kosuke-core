@@ -8,7 +8,6 @@ import { useDatabaseInfo } from '@/hooks/use-database-info';
 import { useDefaultBranchSettings } from '@/hooks/use-project-settings';
 import type { DatabaseTabProps } from '@/lib/types';
 import { Database, Play, Search, Table } from 'lucide-react';
-import { ConnectionStatus } from './connection-status';
 import { QueryRunner } from './query-runner';
 import { SchemaViewer } from './schema-viewer';
 import { TableBrowser } from './table-browser';
@@ -26,17 +25,16 @@ export function DatabaseTab({ projectId, sessionId }: DatabaseTabProps) {
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <div className="flex-shrink-0 p-6 pb-4">
+      <div className="shrink-0 p-6 pb-4">
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-2">
             <Database className="h-5 w-5 text-primary" />
             <h1 className="text-2xl font-semibold">Database Management</h1>
           </div>
-          <ConnectionStatus connected={dbInfo?.connected || false} />
         </div>
       </div>
 
-      <div className="flex-shrink-0 px-6 pb-4">
+      <div className="shrink-0 px-6 pb-4">
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -90,7 +88,7 @@ export function DatabaseTab({ projectId, sessionId }: DatabaseTabProps) {
           </div>
         ) : (
           <Tabs defaultValue="schema" className="w-full h-full flex flex-col">
-            <TabsList className="flex-shrink-0">
+            <TabsList className="shrink-0">
               <TabsTrigger value="schema" className="flex items-center gap-2">
                 <Table className="w-4 h-4" />
                 Schema
@@ -324,3 +322,4 @@ const DatabaseTabSkeleton = () => {
     </div>
   );
 }
+

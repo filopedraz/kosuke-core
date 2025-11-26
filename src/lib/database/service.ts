@@ -32,8 +32,9 @@ export class DatabaseService {
       throw new Error('session_id is required for DatabaseService');
     }
 
-    // Generate and validate database name
-    this.dbName = `kosuke_project_${projectId}_session_${sessionId}`;
+    // Use the same naming scheme as storages.ts to find the correct database
+    // Format: kosuke_preview_<projectId>_<sessionId> (lowercase, no hyphens)
+    this.dbName = `kosuke_preview_${projectId}_${sessionId}`.toLowerCase().replace(/-/g, '');
     this.validateDatabaseName(this.dbName);
 
     // Parse connection config from POSTGRES_URL
