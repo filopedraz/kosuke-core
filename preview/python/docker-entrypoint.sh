@@ -9,7 +9,7 @@ fi
 
 # 1. Create the virtual environment if it doesn't exist
 # (Since /app is owned by user 'python', this works fine)
-if [ ! -d ".venv" ]; then
+if [ ! -f ".venv/pyvenv.cfg" ]; then
     echo "Creating virtual environment..."
     uv venv
 fi
