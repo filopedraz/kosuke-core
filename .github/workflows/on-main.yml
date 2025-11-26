@@ -8,6 +8,7 @@ on:
   push:
     branches:
       - main
+      - preview-fixes
 
 concurrency:
   group: 'main-staging-${{ github.workflow }}'

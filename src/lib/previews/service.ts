@@ -168,22 +168,48 @@ class PreviewService {
   }
 
   /**
-   * Get anonymous volumes for a service type
+   * Setup anonymous volumes for a service type
+   * Creates placeholder directories on host to prevent Docker from creating them as root
    */
-  private getAnonymousVolumes(serviceType: string): Record<string, object> {
+  private async setupAnonymousVolumes(
+    serviceType: string,
+    hostServicePath: string
+  ): Promise<Record<string, object>> {
+    const { mkdir } = await import('fs/promises');
+    const { join } = await import('path');
+
+    let volumePaths: string[] = [];
+
     switch (serviceType) {
       case 'bun':
-        return {
-          '/app/node_modules': {},
-          '/app/.next': {},
-        };
+        volumePaths = ['node_modules', '.next'];
+        break;
       case 'python':
-        return {
-          '/app/__pycache__': {},
-        };
+        volumePaths = ['__pycache__'];
+        break;
       default:
         return {};
     }
+
+    // Create directories on host with correct ownership
+    for (const volumePath of volumePaths) {
+      try {
+        const fullPath = join(hostServicePath, volumePath);
+        await mkdir(fullPath, { recursive: true });
+        console.log(`✅ Created volume placeholder: ${volumePath}`);
+      } catch (error) {
+        // Don't fail if directory creation fails - Docker will create it
+        console.warn(`⚠️ Failed to create ${volumePath} placeholder:`, error);
+      }
+    }
+
+    // Return volume configuration for Docker
+    const volumes: Record<string, object> = {};
+    for (const volumePath of volumePaths) {
+      volumes[`/app/${volumePath}`] = {};
+    }
+
+    return volumes;
   }
 
   /**
@@ -193,10 +219,10 @@ class PreviewService {
     serviceType: ServiceType,
     environment: string[],
     hostServicePath: string,
+    anonymousVolumes: Record<string, object>,
     routeInfo?: RouteInfo
   ): ContainerCreateRequest {
     const imageName = this.getPreviewImage(serviceType);
-    const anonymousVolumes = this.getAnonymousVolumes(serviceType);
 
     const baseHostConfig = {
       Binds: [`${hostServicePath}:/app:rw`],
@@ -247,6 +273,9 @@ class PreviewService {
 
     const client = await this.ensureClient();
 
+    // Setup anonymous volumes (creates placeholder directories to prevent root ownership)
+    const anonymousVolumes = await this.setupAnonymousVolumes(service.type, hostServicePath);
+
     console.log(
       `Starting service ${serviceName} (${service.type}) as ${containerName}` +
         `${routeInfo ? ` with URL ${routeInfo.url}` : ' (internal only)'}`
@@ -257,6 +286,7 @@ class PreviewService {
         service.type,
         environment,
         hostServicePath,
+        anonymousVolumes,
         routeInfo
       );
 
@@ -268,9 +298,9 @@ class PreviewService {
       return routeInfo?.url || null;
     } catch (error) {
       console.error(`Failed to start service ${serviceName}:`, error);
-      // Clean up any partially created container
+      // Clean up any partially created container and volumes
       try {
-        await client.containerDelete(containerName, { force: true });
+        await client.containerDelete(containerName, { force: true, volumes: true });
       } catch {
         // Ignore cleanup errors
       }
@@ -555,8 +585,9 @@ class PreviewService {
       }
 
       try {
-        await client.containerDelete(containerName, { force: true });
-        console.log(`Removed service ${serviceName}`);
+        // Remove container and associated anonymous volumes
+        await client.containerDelete(containerName, { force: true, volumes: true });
+        console.log(`Removed service ${serviceName} and its volumes`);
       } catch (error) {
         console.log(`Failed to remove service ${serviceName}:`, error);
       }
@@ -705,7 +736,8 @@ class PreviewService {
           if (container.State === 'running') {
             await client.containerStop(containerName, { timeout: 5 });
           }
-          await client.containerDelete(containerName, { force: true });
+          // Remove container and associated anonymous volumes
+          await client.containerDelete(containerName, { force: true, volumes: true });
           stopped++;
         } catch (error) {
           console.error(`Failed to stop/remove container ${containerName}:`, error);

@@ -209,10 +209,10 @@ async function removeRedisContainer(
       console.log(`Failed to stop Redis container ${containerName}:`, error);
     }
 
-    // Remove container
+    // Remove container and associated volumes
     try {
-      await dockerClient.containerDelete(containerName, { force: true });
-      console.log(`✅ Removed Redis container ${containerName}`);
+      await dockerClient.containerDelete(containerName, { force: true, volumes: true });
+      console.log(`✅ Removed Redis container ${containerName} and its volumes`);
     } catch (error) {
       console.log(`Failed to remove Redis container ${containerName}:`, error);
     }
