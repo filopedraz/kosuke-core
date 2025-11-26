@@ -1,8 +1,9 @@
 FROM oven/bun:1.3.1-alpine
 
+# The base image already has a 'bun' user, so we create a different user
 # Create non-root user with same UID as nextjs image
-RUN addgroup -g 1001 -S bun && \
-    adduser -S -u 1001 -G bun bun
+RUN addgroup -g 1001 -S bunapp && \
+    adduser -S -u 1001 -G bunapp bunapp
 
 WORKDIR /app
 
@@ -12,11 +13,11 @@ ENV NEXT_TELEMETRY_DISABLED=1
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
 
-# Change ownership of /app to bun user
-RUN chown -R bun:bun /app
+# Change ownership of /app to bunapp user
+RUN chown -R bunapp:bunapp /app
 
 # Switch to non-root user
-USER bun
+USER bunapp
 
 EXPOSE 3000
 
