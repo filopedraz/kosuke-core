@@ -25,6 +25,7 @@ export const projects = pgTable('projects', {
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
   isArchived: boolean('is_archived').default(false),
+  isImported: boolean('is_imported').default(false).notNull(),
   githubRepoUrl: text('github_repo_url'),
   githubOwner: text('github_owner'),
   githubRepoName: text('github_repo_name'),

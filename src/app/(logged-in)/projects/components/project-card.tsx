@@ -39,8 +39,7 @@ export default function ProjectCard({ project }: ProjectCardProps) {
   const githubAccount = user?.externalAccounts?.find(
     account => account.verification?.strategy === 'oauth_github'
   );
-  const workspace = process.env.NEXT_PUBLIC_GITHUB_WORKSPACE;
-  const isImportedProject = !!project.githubOwner && project.githubOwner !== workspace;
+  const isImportedProject = project.isImported;
   const needsReconnection = isImportedProject && !githubAccount;
 
   return (

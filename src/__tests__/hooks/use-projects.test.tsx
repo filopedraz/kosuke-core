@@ -62,6 +62,7 @@ const mockProject: Project = {
   createdAt: new Date('2024-01-01'),
   updatedAt: new Date('2024-01-01'),
   isArchived: false,
+  isImported: false,
   githubRepoUrl: null,
   githubOwner: null,
   githubRepoName: null,
