@@ -78,10 +78,6 @@ const solutions = [
     title: 'Kosuke for Teams',
     href: '/solutions/enabling-collaboration',
   },
-  {
-    title: 'Kosuke On-Premise',
-    href: '/solutions/on-premise',
-  },
 ];
 
 export default function Navbar({

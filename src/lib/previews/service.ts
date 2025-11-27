@@ -12,6 +12,7 @@ import { DockerClient, type ContainerCreateRequest } from '@docker/node-sdk';
 import { join } from 'path';
 import { getPreviewConfig } from './config';
 import { buildEnviornment, readKosukeConfig } from './config-reader';
+import { generatePreviewResourceName } from './naming';
 import { PortRouterAdapter, TraefikRouterAdapter, type RouterAdapter } from './router-adapters';
 import { createPreviewStorages, dropPreviewStorages } from './storages';
 
@@ -62,7 +63,7 @@ class PreviewService {
    * Get container name for a service
    */
   private getContainerName(projectId: string, sessionId: string, serviceName: string): string {
-    return `${this.config.previewContainerNamePrefix}${projectId}-${sessionId}-${serviceName}`;
+    return generatePreviewResourceName(projectId, sessionId, serviceName);
   }
 
   /**
@@ -88,6 +89,18 @@ class PreviewService {
     serviceDirectory: string
   ): string {
     const sessionPath = this.getHostSessionPath(projectId, sessionId);
+    return join(sessionPath, serviceDirectory);
+  }
+
+  /**
+   * Get service-specific container path (path inside this Next.js container)
+   */
+  private getContainerServicePath(
+    projectId: string,
+    sessionId: string,
+    serviceDirectory: string
+  ): string {
+    const sessionPath = this.getContainerSessionPath(projectId, sessionId);
     return join(sessionPath, serviceDirectory);
   }
 
@@ -129,25 +142,25 @@ class PreviewService {
   }
 
   /**
-   * Ensure preview image is available (pull if needed)
+   * Ensure preview image is available (always pulls to get latest version)
    */
   private async ensurePreviewImage(serviceType: ServiceType): Promise<void> {
     const imageName = this.getPreviewImage(serviceType);
     const client = await this.ensureClient();
 
+    console.log(`Pulling preview image ${imageName}...`);
     try {
-      console.log(`Checking preview image ${imageName}`);
-      await client.imageInspect(imageName);
-      console.log(`Preview image ${imageName} is available locally`);
-    } catch {
-      // Image not found, need to pull
-      console.log(`Pulling preview image ${imageName}...`);
+      await client.imageCreate({ fromImage: imageName }).wait();
+      console.log(`Successfully pulled preview image ${imageName}`);
+    } catch (pullError) {
+      // Try to use local version if pull fails
+      console.warn(`Failed to pull ${imageName}, checking for local version...`);
       try {
-        await client.imageCreate({ fromImage: imageName });
-        console.log(`Successfully pulled preview image ${imageName}`);
-      } catch (pullError) {
+        await client.imageInspect(imageName);
+        console.log(`Using local preview image ${imageName}`);
+      } catch {
         throw new Error(
-          `Failed to pull preview image ${imageName}: ${pullError instanceof Error ? pullError.message : 'Unknown error'}`
+          `Failed to pull preview image ${imageName} and no local version available: ${pullError instanceof Error ? pullError.message : 'Unknown error'}`
         );
       }
     }
@@ -168,22 +181,48 @@ class PreviewService {
   }
 
   /**
-   * Get anonymous volumes for a service type
+   * Setup anonymous volumes for a service type
+   * Creates placeholder directories to prevent Docker from creating them as root
    */
-  private getAnonymousVolumes(serviceType: string): Record<string, object> {
+  private async setupAnonymousVolumes(
+    serviceType: string,
+    containerServicePath: string
+  ): Promise<Record<string, object>> {
+    const { mkdir } = await import('fs/promises');
+    const { join } = await import('path');
+
+    let volumePaths: string[] = [];
+
     switch (serviceType) {
       case 'bun':
-        return {
-          '/app/node_modules': {},
-          '/app/.next': {},
-        };
+        volumePaths = ['node_modules', '.next'];
+        break;
       case 'python':
-        return {
-          '/app/__pycache__': {},
-        };
+        volumePaths = ['.venv', '__pycache__'];
+        break;
       default:
         return {};
     }
+
+    // Create directories using container path (where Next.js has write access)
+    for (const volumePath of volumePaths) {
+      try {
+        const fullPath = join(containerServicePath, volumePath);
+        await mkdir(fullPath, { recursive: true });
+        console.log(`✅ Created volume placeholder: ${fullPath}`);
+      } catch (error) {
+        // Don't fail if directory creation fails - Docker will create it
+        console.warn(`⚠️ Failed to create ${volumePath} placeholder:`, error);
+      }
+    }
+
+    // Return volume configuration for Docker
+    const volumes: Record<string, object> = {};
+    for (const volumePath of volumePaths) {
+      volumes[`/app/${volumePath}`] = {};
+    }
+
+    return volumes;
   }
 
   /**
@@ -193,10 +232,10 @@ class PreviewService {
     serviceType: ServiceType,
     environment: string[],
     hostServicePath: string,
+    anonymousVolumes: Record<string, object>,
     routeInfo?: RouteInfo
   ): ContainerCreateRequest {
     const imageName = this.getPreviewImage(serviceType);
-    const anonymousVolumes = this.getAnonymousVolumes(serviceType);
 
     const baseHostConfig = {
       Binds: [`${hostServicePath}:/app:rw`],
@@ -241,11 +280,19 @@ class PreviewService {
   ): Promise<string | null> {
     const containerName = this.getContainerName(projectId, sessionId, serviceName);
     const hostServicePath = this.getHostServicePath(projectId, sessionId, service.directory);
+    const containerServicePath = this.getContainerServicePath(
+      projectId,
+      sessionId,
+      service.directory
+    );
 
     // Ensure image is available
     await this.ensurePreviewImage(service.type);
 
     const client = await this.ensureClient();
+
+    // Setup anonymous volumes (creates placeholder directories to prevent root ownership)
+    const anonymousVolumes = await this.setupAnonymousVolumes(service.type, containerServicePath);
 
     console.log(
       `Starting service ${serviceName} (${service.type}) as ${containerName}` +
@@ -257,6 +304,7 @@ class PreviewService {
         service.type,
         environment,
         hostServicePath,
+        anonymousVolumes,
         routeInfo
       );
 
@@ -268,9 +316,9 @@ class PreviewService {
       return routeInfo?.url || null;
     } catch (error) {
       console.error(`Failed to start service ${serviceName}:`, error);
-      // Clean up any partially created container
+      // Clean up any partially created container and volumes
       try {
-        await client.containerDelete(containerName, { force: true });
+        await client.containerDelete(containerName, { force: true, volumes: true });
       } catch {
         // Ignore cleanup errors
       }
@@ -554,8 +602,9 @@ class PreviewService {
       }
 
       try {
-        await client.containerDelete(containerName, { force: true });
-        console.log(`Removed service ${serviceName}`);
+        // Remove container and associated anonymous volumes
+        await client.containerDelete(containerName, { force: true, volumes: true });
+        console.log(`Removed service ${serviceName} and its volumes`);
       } catch (error) {
         console.log(`Failed to remove service ${serviceName}:`, error);
       }
@@ -698,7 +747,8 @@ class PreviewService {
           if (container.State === 'running') {
             await client.containerStop(containerName, { timeout: 5 });
           }
-          await client.containerDelete(containerName, { force: true });
+          // Remove container and associated anonymous volumes
+          await client.containerDelete(containerName, { force: true, volumes: true });
           stopped++;
         } catch (error) {
           console.error(`Failed to stop/remove container ${containerName}:`, error);

@@ -2,13 +2,26 @@
 
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useDatabaseSchema } from '@/hooks/use-database-schema';
 import type { SchemaViewerProps } from '@/lib/types';
-import { Hash, Key, Table, Type } from 'lucide-react';
+import { ChevronRight, Hash, Key, Table, Type } from 'lucide-react';
+import { useState } from 'react';
 
 export function SchemaViewer({ projectId, sessionId }: SchemaViewerProps) {
   const { data: schema, isLoading, error } = useDatabaseSchema(projectId, sessionId);
+  const [expandedTables, setExpandedTables] = useState<Set<string>>(new Set());
+
+  const toggleTable = (tableName: string) => {
+    const newExpanded = new Set(expandedTables);
+    if (newExpanded.has(tableName)) {
+      newExpanded.delete(tableName);
+    } else {
+      newExpanded.add(tableName);
+    }
+    setExpandedTables(newExpanded);
+  };
 
   if (isLoading) {
     return <SchemaViewerSkeleton />;
@@ -40,55 +53,64 @@ export function SchemaViewer({ projectId, sessionId }: SchemaViewerProps) {
   return (
     <div className="space-y-4">
       {schema.tables.map(table => (
-        <Card key={table.name}>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <Table className="w-4 h-4" />
-                {table.name}
-              </CardTitle>
-              <Badge variant="secondary" className="text-xs">
-                {table.row_count} rows
-              </Badge>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {table.columns.map(column => (
-                <div
-                  key={column.name}
-                  className="flex items-center justify-between p-2 rounded border"
-                >
+        <Collapsible key={table.name} open={expandedTables.has(table.name)} onOpenChange={() => toggleTable(table.name)}>
+          <Card className="overflow-hidden p-0">
+            <CollapsibleTrigger asChild>
+              <CardHeader className="cursor-pointer p-0 flex items-center">
+                <div className="flex items-center justify-between px-4 w-full h-12">
+                  <CardTitle className="flex items-center gap-2 text-sm m-0 leading-tight">
+                    <Table className="w-4 h-4" />
+                    {table.name}
+                  </CardTitle>
                   <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-1">
-                      {column.primary_key && <Key className="w-3 h-3 text-yellow-500" />}
-                      {column.foreign_key && <Hash className="w-3 h-3 text-blue-500" />}
-                      <Type className="w-3 h-3 text-muted-foreground" />
-                    </div>
-                    <div>
-                      <div className="font-mono text-sm">{column.name}</div>
-                      {column.foreign_key && (
-                        <div className="text-xs text-muted-foreground">
-                          → {column.foreign_key}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="text-xs font-mono">
-                      {column.type}
+                    <Badge variant="secondary" className="text-xs">
+                      {table.row_count} rows
                     </Badge>
-                    {!column.nullable && (
-                      <Badge variant="destructive" className="text-xs">
-                        NOT NULL
-                      </Badge>
-                    )}
+                    <ChevronRight className={`w-4 h-4 transition-transform shrink-0 ${expandedTables.has(table.name) ? 'rotate-90' : ''}`} />
                   </div>
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+              </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardContent className="p-2 border-t">
+                <div className="space-y-0">
+                  {table.columns.map(column => (
+                    <div
+                      key={column.name}
+                      className="flex items-center justify-between px-2 py-0.5 rounded border text-xs"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-1">
+                          {column.primary_key && <Key className="w-3 h-3 text-yellow-500" />}
+                          {column.foreign_key && <Hash className="w-3 h-3 text-blue-500" />}
+                          <Type className="w-3 h-3 text-muted-foreground" />
+                        </div>
+                        <div>
+                          <div className="font-mono text-sm">{column.name}</div>
+                          {column.foreign_key && (
+                            <div className="text-xs text-muted-foreground">
+                              → {column.foreign_key}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-xs font-mono">
+                          {column.type}
+                        </Badge>
+                        {!column.nullable && (
+                          <Badge variant="destructive" className="text-xs">
+                            NOT NULL
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
       ))}
     </div>
   );

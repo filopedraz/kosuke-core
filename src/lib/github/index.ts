@@ -6,67 +6,94 @@ import type {
 import crypto from 'crypto';
 import { createKosukeOctokit, createUserOctokit } from './client';
 
+export async function listUserOrganizations(
+  userId: string,
+  page: number = 1,
+  perPage: number = 10
+): Promise<{
+  organizations: Array<{ login: string; id: number }>;
+  hasMore: boolean;
+}> {
+  const octokit = await createUserOctokit(userId);
+
+  const response = await octokit.rest.orgs.listForAuthenticatedUser({
+    per_page: perPage,
+    page,
+  });
+
+  const organizations = response.data.map(org => ({
+    login: org.login,
+    id: org.id,
+  }));
+
+  return { organizations, hasMore: response.data.length === perPage };
+}
+
 export async function listUserRepositories(
   userId: string,
+  organization: string = 'personal',
   page: number = 1,
   perPage: number = 10,
   search: string = ''
 ): Promise<{ repositories: GitHubRepository[]; hasMore: boolean }> {
   const octokit = await createUserOctokit(userId);
 
-  let repositories: GitHubRepository[];
-  let hasMore: boolean;
-
-  if (search) {
-    // Use search API when search term is provided
-    const searchResponse = await octokit.rest.search.repos({
-      q: `${search} in:name user:@me`,
-      per_page: perPage,
-      page,
+  if (organization === 'personal') {
+    // For personal repos, always use listForAuthenticatedUser with type: 'owner'
+    // This is more reliable than search API for personal repos
+    const { data } = await octokit.rest.repos.listForAuthenticatedUser({
+      per_page: 100,
+      page: 1,
       sort: 'updated',
+      affiliation: 'owner',
     });
 
-    repositories = searchResponse.data.items.map(repo => ({
-      id: repo.id,
-      name: repo.name,
-      full_name: repo.full_name,
-      description: repo.description,
-      private: repo.private ?? false,
-      html_url: repo.html_url,
-      clone_url: repo.clone_url ?? '',
-      default_branch: repo.default_branch ?? 'main',
-      language: repo.language as string | null,
-      created_at: repo.created_at as unknown as string,
-      updated_at: repo.updated_at as unknown as string,
-    }));
+    let repos = data as GitHubRepository[];
 
-    hasMore = searchResponse.data.items.length === perPage;
-  } else {
-    // Use regular list when no search
-    const response = await octokit.rest.repos.listForAuthenticatedUser({
-      per_page: perPage,
-      page,
-      sort: 'updated',
-    });
+    // Filter by search term if provided
+    if (search) {
+      const searchLower = search.toLowerCase();
+      repos = repos.filter(
+        repo =>
+          repo.name.toLowerCase().includes(searchLower) ||
+          repo.full_name.toLowerCase().includes(searchLower)
+      );
+    }
 
-    repositories = response.data.map(repo => ({
-      id: repo.id,
-      name: repo.name,
-      full_name: repo.full_name,
-      description: repo.description,
-      private: repo.private ?? false,
-      html_url: repo.html_url,
-      clone_url: repo.clone_url,
-      default_branch: repo.default_branch ?? 'main',
-      language: repo.language as string | null,
-      created_at: repo.created_at as unknown as string,
-      updated_at: repo.updated_at as unknown as string,
-    }));
+    // Apply pagination
+    const start = (page - 1) * perPage;
+    const paginatedRepos = repos.slice(start, start + perPage);
 
-    hasMore = response.data.length === perPage;
+    return {
+      repositories: paginatedRepos,
+      hasMore: start + perPage < repos.length,
+    };
   }
 
-  return { repositories, hasMore };
+  // Organization context
+  if (search) {
+    const { data } = await octokit.rest.search.repos({
+      q: `${search} org:${organization}`,
+      per_page: perPage,
+      page,
+      sort: 'updated',
+    });
+    return {
+      repositories: data.items as GitHubRepository[],
+      hasMore: data.items.length === perPage,
+    };
+  }
+
+  const { data } = await octokit.rest.repos.listForOrg({
+    org: organization,
+    per_page: perPage,
+    page,
+    sort: 'updated',
+  });
+  return {
+    repositories: data as GitHubRepository[],
+    hasMore: data.length === perPage,
+  };
 }
 
 /**
