@@ -229,6 +229,7 @@ export async function POST(request: NextRequest) {
             githubRepoUrl: repoData.url,
             githubOwner: repoData.owner, // 'Kosuke-Org'
             githubRepoName: repoData.name,
+            isImported: false,
             lastGithubSync: new Date(),
           })
           .where(eq(projects.id, project.id))
@@ -250,6 +251,7 @@ export async function POST(request: NextRequest) {
             githubRepoUrl: github.repositoryUrl,
             githubOwner: repoInfo.owner, // User's GitHub username
             githubRepoName: repoInfo.name,
+            isImported: true,
             lastGithubSync: new Date(),
           })
           .where(eq(projects.id, project.id))

@@ -7,8 +7,15 @@ if [ ! -f "pyproject.toml" ]; then
   exit 1
 fi
 
-echo "Installing dependencies from pyproject.toml..."
-uv pip install --system --no-cache -r pyproject.toml
+# 1. Create the virtual environment if it doesn't exist
+if [ ! -f ".venv/pyvenv.cfg" ]; then
+    echo "Creating virtual environment..."
+    uv venv
+fi
+
+# 2. Install dependencies into the .venv
+echo "Installing dependencies..."
+uv pip install --no-cache -r pyproject.toml
 
 # Execute the main command
 exec "$@"

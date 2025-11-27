@@ -1,12 +1,12 @@
 'use client';
 
 import { formatDistanceToNow } from 'date-fns';
-import { AlertCircle, MoreHorizontal, Trash } from 'lucide-react';
+import { AlertCircle, CloudDownload, MoreHorizontal, Trash } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,8 +39,7 @@ export default function ProjectCard({ project }: ProjectCardProps) {
   const githubAccount = user?.externalAccounts?.find(
     account => account.verification?.strategy === 'oauth_github'
   );
-  const workspace = process.env.NEXT_PUBLIC_GITHUB_WORKSPACE;
-  const isImportedProject = !!project.githubOwner && project.githubOwner !== workspace;
+  const isImportedProject = project.isImported;
   const needsReconnection = isImportedProject && !githubAccount;
 
   return (
@@ -49,63 +48,75 @@ export default function ProjectCard({ project }: ProjectCardProps) {
         href={needsReconnection ? '#' : `/projects/${project.id}`}
         className={`block group ${needsReconnection ? 'pointer-events-none' : ''}`}
       >
-        <Card className={`overflow-hidden h-full transition-all duration-300 border border-border relative bg-card pb-0 ${
+        <Card className={`overflow-hidden h-full transition-all duration-300 border border-border relative bg-card pb-0 min-h-[140px] ${
           needsReconnection
             ? ''
             : 'hover:border-muted group-hover:translate-y-[-2px]'
         }`}>
           <CardHeader className="pb-2">
             <div className="flex justify-between items-start">
-              <div className="flex flex-col gap-1">
+              <div className="flex-1 gap-2 flex flex-col">
                 <div className="flex items-center gap-2">
-                  <CardTitle className="text-xl font-medium group-hover:text-primary transition-colors">
+                  <CardTitle className="text-lg font-semibold group-hover:text-primary transition-colors line-clamp-2">
                     {project.name}
                   </CardTitle>
-                  {needsReconnection && (
+                  {isImportedProject && (
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <div className="flex items-center pointer-events-auto">
-                            <AlertCircle className="h-4 w-4 text-destructive" />
+                          <div className="shrink-0">
+                            <CloudDownload className="h-4 w-4 text-primary cursor-help" />
                           </div>
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p>Reconnect Github</p>
+                          <p>Imported from your Organisation</p>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
                   )}
                 </div>
-                <CardDescription className="text-sm text-muted-foreground">
-                  {formatDistanceToNow(new Date(project.createdAt), { addSuffix: true })}
-                </CardDescription>
               </div>
-
-              <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
-                <DropdownMenuTrigger asChild onClick={(e) => e.preventDefault()}>
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => e.preventDefault()}>
-                    <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
-                    <span className="sr-only">Open menu</span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="bg-card border-border">
-                  <DropdownMenuItem
-                    onClick={handleOpenDeleteDialog}
-                    className="focus:bg-muted"
-                  >
-                    <Trash className="mr-2 h-4 w-4" />
-                    <span>Delete Project</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <div className="flex items-center gap-1 shrink-0">
+                {needsReconnection && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="flex items-center pointer-events-auto">
+                          <AlertCircle className="h-4 w-4 text-destructive" />
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Reconnect Github</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+                <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
+                  <DropdownMenuTrigger asChild onClick={(e) => e.preventDefault()}>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => e.preventDefault()}>
+                      <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
+                      <span className="sr-only">Open menu</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="bg-card border-border">
+                    <DropdownMenuItem
+                      onClick={handleOpenDeleteDialog}
+                      className="focus:bg-muted"
+                    >
+                      <Trash className="mr-2 h-4 w-4" />
+                      <span>Delete Project</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </div>
           </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground line-clamp-2 min-h-[40px]">
-              {project.description || 'No description provided'}
-            </p>
+          <CardContent className="pt-0">
+            <span className="text-xs text-muted-foreground">
+              {formatDistanceToNow(new Date(project.createdAt), { addSuffix: true })}
+            </span>
           </CardContent>
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent to-muted/10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
+          <div className="absolute inset-0 bg-linear-to-b from-transparent to-muted/10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
         </Card>
       </Link>
 

@@ -62,6 +62,7 @@ const mockProject: Project = {
   createdAt: new Date('2024-01-01'),
   updatedAt: new Date('2024-01-01'),
   isArchived: false,
+  isImported: false,
   githubRepoUrl: null,
   githubOwner: null,
   githubRepoName: null,
@@ -83,7 +84,6 @@ describe('useProjects', () => {
   function UseProjectsTestComponent() {
     const { data, isLoading, error } = useProjects({
       userId: 'user_123',
-      initialData: [],
     });
 
     return (
@@ -140,16 +140,15 @@ describe('useProjects', () => {
     expect(screen.getByTestId('error')).toHaveTextContent('no error');
   });
 
-  it('should use initial data when API fails', async () => {
+  it('should handle API failure gracefully', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: false,
       status: 500,
     });
 
-    function UseProjectsWithInitialDataTestComponent() {
+    function UseProjectsErrorTestComponent() {
       const { data } = useProjects({
         userId: 'user_123',
-        initialData: mockProjects,
       });
 
       return (
@@ -161,12 +160,12 @@ describe('useProjects', () => {
 
     render(
       <TestComponent>
-        <UseProjectsWithInitialDataTestComponent />
+        <UseProjectsErrorTestComponent />
       </TestComponent>
     );
 
     await waitFor(() => {
-      expect(screen.getByTestId('projects-count')).toHaveTextContent('1');
+      expect(screen.getByTestId('projects-count')).toHaveTextContent('0');
     });
   });
 });
