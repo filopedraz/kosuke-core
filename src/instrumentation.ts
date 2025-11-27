@@ -61,6 +61,12 @@ function validateEnvironmentVariables() {
     { key: 'PREVIEW_NETWORK', description: 'Docker network for previews' },
     { key: 'PREVIEW_CONTAINER_NAME_PREFIX', description: 'Docker container name prefix' },
 
+    // Redis Configuration
+    { key: 'REDIS_URL', description: 'Redis connection URL for job queue' },
+
+    // Preview Cleanup Configuration
+    { key: 'CLEANUP_THRESHOLD_MINUTES', description: 'Minutes of inactivity before cleanup' },
+
     // Conditionally required based on feature flags
     ...(sentryEnabled
       ? [{ key: 'SENTRY_AUTH_TOKEN', description: 'Sentry authentication token' }]

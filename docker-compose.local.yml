@@ -17,7 +17,23 @@ services:
       retries: 3
       start_period: 5s
 
-  nextjs:
+  redis:
+    image: redis:7-alpine
+    container_name: kosuke_redis
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    networks:
+      - kosuke_network
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    command: redis-server --appendonly yes
+
+  nextjs: &app
     build:
       context: .
       dockerfile: Dockerfile.local
@@ -35,6 +51,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - kosuke_network
     restart: unless-stopped
@@ -49,8 +67,25 @@ services:
       retries: 3
       start_period: 60s
 
+  worker:
+    <<: *app
+    container_name: kosuke_worker
+    ports: []
+    command: npx tsx watch src/worker.ts
+    volumes:
+      - .:/app:cached
+      - /app/node_modules
+      - /app/.next
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
 volumes:
   postgres_data:
+  redis_data:
 
 networks:
   kosuke_network:

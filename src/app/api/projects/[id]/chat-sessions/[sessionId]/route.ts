@@ -354,6 +354,12 @@ export async function POST(
 
     console.log(`✅ User message saved with ID: ${userMessage.id}`);
 
+    // Update session's lastActivityAt to track activity for cleanup
+    await db
+      .update(chatSessions)
+      .set({ lastActivityAt: new Date() })
+      .where(eq(chatSessions.id, chatSession.id));
+
     // Save all attachments if present
     if (attachmentPayloads.length > 0) {
       for (const attachmentPayload of attachmentPayloads) {

@@ -39,6 +39,18 @@ services:
     networks:
       - kosuke_network
 
+  redis:
+    image: redis:7-alpine
+    container_name: kosuke_redis
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    networks:
+      - kosuke_network
+    command: redis-server --appendonly yes
+
   nextjs:
     image: ghcr.io/kosuke-org/kosuke-core:latest
     container_name: kosuke_nextjs
@@ -62,6 +74,21 @@ services:
     depends_on:
       - postgres
 
+  worker:
+    image: ghcr.io/kosuke-org/kosuke-core:latest
+    container_name: kosuke_worker
+    env_file:
+      - .env
+    command: npx tsx src/worker.ts
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - kosuke_network
+    depends_on:
+      - redis
+      - postgres
+    restart: unless-stopped
+
   portainer:
     image: portainer/portainer-ce:latest
     container_name: kosuke_portainer
@@ -81,6 +108,7 @@ volumes:
   postgres_data:
   traefik_certs:
   portainer_data:
+  redis_data:
 
 networks:
   kosuke_network:

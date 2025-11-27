@@ -1,0 +1,1 @@
+CREATE INDEX "idx_chat_sessions_last_activity_at" ON "chat_sessions" USING btree ("last_activity_at");

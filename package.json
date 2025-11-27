@@ -24,7 +24,9 @@
     "test:coverage": "jest --coverage",
     "shadcn:update": "npx shadcn@canary add -a -y -o",
     "shadcn:check": "npx shadcn@canary diff",
-    "knip": "knip"
+    "knip": "knip",
+    "workers:start": "npx tsx src/worker.ts",
+    "workers:dev": "npx tsx watch src/worker.ts"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.1.42",
@@ -76,6 +78,7 @@
     "@types/react": "19.2.5",
     "@types/react-dom": "19.2.3",
     "autoprefixer": "^10.4.21",
+    "bullmq": "^5.65.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
@@ -86,6 +89,7 @@
     "embla-carousel-react": "^8.6.0",
     "framer-motion": "^12.23.24",
     "input-otp": "^1.4.2",
+    "ioredis": "^5.8.2",
     "knip": "^5.69.1",
     "lucide-react": "^0.553.0",
     "marked": "^17.0.0",
