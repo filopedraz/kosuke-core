@@ -134,26 +134,26 @@ export async function DELETE(
       // No body provided; keep defaults
     }
 
-    // Step 1: Stop all preview containers for this project before file deletion
+    // Step 1: Destroy all preview containers for this project before file deletion
     try {
-      console.log(`Stopping all preview containers for project ${projectId} before deletion`);
+      console.log(`Destroying all previews for project ${projectId} before deletion`);
       const previewService = getPreviewService();
-      const cleanupResult = await previewService.stopAllProjectPreviews(projectId);
+      const cleanupResult = await previewService.destroyAllProjectPreviews(projectId);
 
       console.log(
         `Preview cleanup completed for project ${projectId}: ` +
-        `${cleanupResult.stopped} stopped, ${cleanupResult.failed} failed`
+        `${cleanupResult.stopped} destroyed, ${cleanupResult.failed} failed`
       );
 
       if (cleanupResult.failed > 0) {
         console.warn(
-          `Some containers failed to stop for project ${projectId}. ` +
+          `Some containers failed to destroy for project ${projectId}. ` +
           `Manual cleanup may be required.`
         );
       }
     } catch (previewError) {
-      // Log but continue - we still want to proceed even if stopping previews fails
-      console.error(`Error stopping preview containers for project ${projectId}:`, previewError);
+      // Log but continue - we still want to proceed even if destroying previews fails
+      console.error(`Error destroying previews for project ${projectId}:`, previewError);
       console.log(`Continuing with project deletion despite preview cleanup failure`);
     }
 

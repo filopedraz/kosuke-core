@@ -13,6 +13,13 @@ export interface StorageConnectionInfo {
   url: string;
 }
 
+interface DropStoragesOptions {
+  /** Drop the Postgres database (default: true) */
+  dropPostgres?: boolean;
+  /** Remove Redis container after stopping (default: true). If false, only stops it. */
+  removeRedis?: boolean;
+}
+
 /**
  * Get database connection info from environment
  */
@@ -131,6 +138,11 @@ async function createRedisContainer(
         console.log(`Redis container ${containerName} already running`);
         return containerName;
       }
+      // Container exists but is stopped - start it
+      console.log(`Redis container ${containerName} exists but is stopped, starting it...`);
+      await dockerClient.containerStart(existing.Id!);
+      console.log(`✅ Started existing Redis container ${containerName}`);
+      return containerName;
     } catch {
       // Container doesn't exist, will create
       console.log(`Redis container ${containerName} does not exist, will create`);
@@ -184,12 +196,13 @@ async function createRedisContainer(
 }
 
 /**
- * Stop and remove Redis container for preview environment
+ * Stop Redis container (optionally remove it)
  */
-async function removeRedisContainer(
+async function stopRedisContainer(
   projectId: string,
   sessionId: string,
-  dockerClient: DockerClient
+  dockerClient: DockerClient,
+  remove: boolean = false
 ): Promise<void> {
   const containerName = generatePreviewResourceName(projectId, sessionId, 'redis');
 
@@ -202,15 +215,17 @@ async function removeRedisContainer(
       console.log(`Failed to stop Redis container ${containerName}:`, error);
     }
 
-    // Remove container and associated volumes
-    try {
-      await dockerClient.containerDelete(containerName, { force: true, volumes: true });
-      console.log(`✅ Removed Redis container ${containerName} and its volumes`);
-    } catch (error) {
-      console.log(`Failed to remove Redis container ${containerName}:`, error);
+    // Remove container and associated volumes (only if requested)
+    if (remove) {
+      try {
+        await dockerClient.containerDelete(containerName, { force: true, volumes: true });
+        console.log(`✅ Removed Redis container ${containerName} and its volumes`);
+      } catch (error) {
+        console.log(`Failed to remove Redis container ${containerName}:`, error);
+      }
     }
   } catch (error) {
-    console.error(`Error removing Redis container ${containerName}:`, error);
+    console.error(`Error with Redis container ${containerName}:`, error);
     throw error;
   }
 }
@@ -258,14 +273,19 @@ export async function createPreviewStorages(
 }
 
 /**
- * Drop all storages for a preview environment
+ * Stop/drop storages for a preview environment
+ * @param options.dropPostgres - If true, drops the Postgres database. Default: true
+ * @param options.removeRedis - If true, removes Redis container. If false, only stops it. Default: true
  */
 export async function dropPreviewStorages(
   projectId: string,
   sessionId: string,
   config: KosukeConfig,
-  dockerClient: DockerClient
+  dockerClient: DockerClient,
+  options: DropStoragesOptions = {}
 ): Promise<void> {
+  const { dropPostgres = true, removeRedis = true } = options;
+
   if (!config.preview.storages) {
     return;
   }
@@ -274,20 +294,21 @@ export async function dropPreviewStorages(
 
   for (const [storageKey, storageConfig] of Object.entries(config.preview.storages)) {
     try {
-      if (storageConfig.type === 'postgres') {
+      if (storageConfig.type === 'postgres' && dropPostgres) {
         await dropPostgresDatabase(projectId, sessionId);
       } else if (storageConfig.type === 'redis') {
-        await removeRedisContainer(projectId, sessionId, dockerClient);
+        // Always stop Redis, optionally remove it
+        await stopRedisContainer(projectId, sessionId, dockerClient, removeRedis);
       }
     } catch (error) {
-      console.error(`Failed to drop storage ${storageKey}:`, error);
+      console.error(`Failed to handle storage ${storageKey}:`, error);
       errors.push(
-        error instanceof Error ? error : new Error(`Failed to drop storage ${storageKey}`)
+        error instanceof Error ? error : new Error(`Failed to handle storage ${storageKey}`)
       );
     }
   }
 
   if (errors.length > 0) {
-    throw new Error(`Failed to drop some storages: ${errors.map(e => e.message).join(', ')}`);
+    throw new Error(`Failed to handle some storages: ${errors.map(e => e.message).join(', ')}`);
   }
 }

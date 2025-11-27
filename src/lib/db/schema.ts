@@ -46,7 +46,7 @@ export const chatSessions = pgTable(
     userId: text('user_id'), // No FK
     title: varchar('title', { length: 100 }).notNull(),
     description: text('description'),
-    sessionId: varchar('session_id', { length: 50 }).unique().notNull(),
+    sessionId: varchar('session_id', { length: 50 }).notNull(), // Unique per project, not globally
     remoteId: varchar('remote_id', { length: 255 }).unique(), // Claude Agent SDK session ID for resuming conversations
     status: varchar('status', { length: 20 }).default('active'), // active, archived, completed
     createdAt: timestamp('created_at').notNull().defaultNow(),
@@ -62,6 +62,11 @@ export const chatSessions = pgTable(
   },
   table => ({
     lastActivityAtIdx: index('idx_chat_sessions_last_activity_at').on(table.lastActivityAt),
+    // Session ID is unique within a project (allows "main" for each project)
+    projectSessionUnique: unique('chat_sessions_project_session_unique').on(
+      table.projectId,
+      table.sessionId
+    ),
   })
 );
 

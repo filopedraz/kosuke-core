@@ -300,6 +300,26 @@ class PreviewService {
     );
 
     try {
+      // Check if container already exists (might be stopped)
+      let containerId: string | undefined;
+      try {
+        const existing = await client.containerInspect(containerName);
+        containerId = existing.Id;
+
+        if (existing.State?.Running) {
+          console.log(`Container ${containerName} is already running`);
+          return routeInfo?.url || null;
+        }
+
+        // Container exists but is stopped - start it
+        console.log(`Container ${containerName} exists but is stopped, starting it...`);
+        await client.containerStart(containerId!);
+        console.log(`✅ Successfully started existing container ${serviceName}`);
+        return routeInfo?.url || null;
+      } catch {
+        // Container doesn't exist, create it
+      }
+
       const config = this.createContainerConfig(
         service.type,
         environment,
@@ -511,7 +531,7 @@ class PreviewService {
     } catch (error) {
       console.error('Failed to start some services, cleaning up...');
       // Cleanup on failure
-      await this.stopPreview(projectId, sessionId);
+      await this.destroyPreview(projectId, sessionId);
       throw error;
     }
   }
@@ -579,10 +599,11 @@ class PreviewService {
   }
 
   /**
-   * Stop and remove all service containers for a preview
+   * Stop all service containers for a preview (containers can be restarted)
+   * Stops service containers + Redis, but preserves Postgres DB
    */
   async stopPreview(projectId: string, sessionId: string): Promise<void> {
-    console.log(`Stopping multi-service preview for project ${projectId} session ${sessionId}`);
+    console.log(`Stopping preview containers for project ${projectId} session ${sessionId}`);
 
     const containerSessionPath = this.getContainerSessionPath(projectId, sessionId);
     const kosukeConfig = await readKosukeConfig(containerSessionPath);
@@ -590,7 +611,44 @@ class PreviewService {
 
     const client = await this.ensureClient();
 
-    // Stop all service containers
+    // Stop all service containers (but don't remove them)
+    for (const serviceName of Object.keys(services)) {
+      const containerName = this.getContainerName(projectId, sessionId, serviceName);
+
+      try {
+        await client.containerStop(containerName, { timeout: 5 });
+        console.log(`Stopped service ${serviceName}`);
+      } catch (error) {
+        console.log(`Failed to stop service ${serviceName}:`, error);
+      }
+    }
+
+    // Stop Redis container (but don't remove it or drop Postgres)
+    try {
+      await dropPreviewStorages(projectId, sessionId, kosukeConfig, client, {
+        dropPostgres: false,
+        removeRedis: false,
+      });
+    } catch (error) {
+      console.error('Failed to stop storages:', error);
+    }
+
+    console.log(`✅ Preview containers stopped`);
+  }
+
+  /**
+   * Destroy all service containers, volumes, and storages for a preview (full removal)
+   */
+  async destroyPreview(projectId: string, sessionId: string): Promise<void> {
+    console.log(`Destroying preview for project ${projectId} session ${sessionId}`);
+
+    const containerSessionPath = this.getContainerSessionPath(projectId, sessionId);
+    const kosukeConfig = await readKosukeConfig(containerSessionPath);
+    const { services } = kosukeConfig.preview;
+
+    const client = await this.ensureClient();
+
+    // Stop and remove all service containers
     for (const serviceName of Object.keys(services)) {
       const containerName = this.getContainerName(projectId, sessionId, serviceName);
 
@@ -618,7 +676,7 @@ class PreviewService {
       console.error('Failed to drop preview storages:', error);
     }
 
-    console.log(`✅ Multi-service preview stopped`);
+    console.log(`✅ Preview destroyed`);
   }
 
   /**
@@ -721,10 +779,10 @@ class PreviewService {
   }
 
   /**
-   * Stop all previews for a project
+   * Destroy all previews for a project (full removal of containers, volumes, and storages)
    */
-  async stopAllProjectPreviews(projectId: string): Promise<{ stopped: number; failed: number }> {
-    console.log(`Stopping all previews for project ${projectId}`);
+  async destroyAllProjectPreviews(projectId: string): Promise<{ stopped: number; failed: number }> {
+    console.log(`Destroying all previews for project ${projectId}`);
 
     try {
       const client = await this.ensureClient();
@@ -756,7 +814,7 @@ class PreviewService {
         }
       }
 
-      console.log(`Project ${projectId} cleanup: ${stopped} stopped, ${failed} failed`);
+      console.log(`Project ${projectId} cleanup: ${stopped} destroyed, ${failed} failed`);
       return { stopped, failed };
     } catch (error) {
       console.error(`Error stopping project previews for project ${projectId}:`, error);

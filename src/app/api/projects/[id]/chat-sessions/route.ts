@@ -8,7 +8,7 @@ import { chatSessions } from '@/lib/db/schema';
 import { createKosukeOctokit, createUserOctokit } from '@/lib/github/client';
 import { verifyProjectAccess } from '@/lib/projects';
 import type { Octokit } from '@octokit/rest';
-import { desc, eq } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 
 // Schema for creating a chat session
 const createChatSessionSchema = z.object({
@@ -115,11 +115,16 @@ export async function GET(
       return ApiErrorHandler.projectNotFound();
     }
 
-    // Get all chat sessions for the project
+    // Get all chat sessions for the project (excluding the default "main" session used for tracking)
     let sessions = await db
       .select()
       .from(chatSessions)
-      .where(eq(chatSessions.projectId, projectId))
+      .where(
+        and(
+          eq(chatSessions.projectId, projectId),
+          eq(chatSessions.isDefault, false)
+        )
+      )
       .orderBy(desc(chatSessions.lastActivityAt));
 
     // Check and update merge status for sessions with GitHub branches

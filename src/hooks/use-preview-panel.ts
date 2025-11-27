@@ -241,6 +241,29 @@ export function usePreviewPanel({
     };
   }, [projectId, sessionId]); // Depend on both projectId and sessionId
 
+  // Heartbeat: periodically ping health endpoint to keep session alive (for cleanup job)
+  // This runs every 60s when preview is ready to update lastActivityAt
+  useEffect(() => {
+    if (!enabled || !sessionId || status !== 'ready') return;
+
+    const HEARTBEAT_INTERVAL = 60 * 1000; // 60 seconds
+
+    const heartbeat = async () => {
+      try {
+        const healthUrl = `/api/projects/${projectId}/chat-sessions/${sessionId}/preview/health`;
+        await fetch(healthUrl, { method: 'GET' });
+      } catch {}
+    };
+
+    console.log(`[Preview Panel] Starting heartbeat for session ${sessionId}`);
+    const intervalId = setInterval(heartbeat, HEARTBEAT_INTERVAL);
+
+    return () => {
+      console.log(`[Preview Panel] Stopping heartbeat for session ${sessionId}`);
+      clearInterval(intervalId);
+    };
+  }, [enabled, sessionId, projectId, status]);
+
   // Function to open the preview in a new tab
   const openInNewTab = useCallback(() => {
     if (previewUrl) {

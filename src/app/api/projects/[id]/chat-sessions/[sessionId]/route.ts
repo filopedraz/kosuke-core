@@ -203,12 +203,12 @@ export async function DELETE(
       return ApiErrorHandler.badRequest('Cannot delete default chat session');
     }
 
-    // Step 1: Stop the preview container for this session
+    // Step 1: Destroy the preview container for this session (full removal since session is being deleted)
     try {
-      console.log(`Stopping preview container for session ${sessionId} in project ${projectId}`);
+      console.log(`Destroying preview for session ${sessionId} in project ${projectId}`);
       const previewService = getPreviewService();
-      await previewService.stopPreview(projectId, sessionId);
-      console.log(`Preview container stopped successfully for session ${sessionId}`);
+      await previewService.destroyPreview(projectId, sessionId);
+      console.log(`Preview destroyed successfully for session ${sessionId}`);
     } catch (containerError) {
       // Log but continue - we still want to delete the session even if container cleanup fails
       console.error(`Error stopping preview container for session ${sessionId}:`, containerError);
