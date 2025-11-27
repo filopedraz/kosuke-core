@@ -35,8 +35,8 @@ function basicAuth(req: express.Request, res: express.Response, next: express.Ne
     const credentials = Buffer.from(auth.slice(6), 'base64').toString('utf-8');
     const [username, password] = credentials.split(':');
 
-    const expectedUsername = process.env.BULLMQ_ADMIN_USERNAME || 'admin';
-    const expectedPassword = process.env.BULLMQ_ADMIN_PASSWORD || 'admin';
+    const expectedUsername = process.env.BULLMQ_ADMIN_USERNAME;
+    const expectedPassword = process.env.BULLMQ_ADMIN_PASSWORD;
 
     if (username !== expectedUsername || password !== expectedPassword) {
       res.setHeader('WWW-Authenticate', 'Basic realm="BullMQ Dashboard"');

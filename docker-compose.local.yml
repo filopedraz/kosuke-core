@@ -83,9 +83,9 @@ services:
       postgres:
         condition: service_healthy
 
-  dashboard:
+  bullmq-dashboard:
     <<: *app
-    container_name: kosuke_dashboard
+    container_name: kosuke_bullmq_dashboard
     ports:
       - '3001:3001'
     command: npx tsx watch src/dashboard.ts
