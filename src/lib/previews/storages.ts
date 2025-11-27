@@ -44,6 +44,7 @@ async function createPostgresDatabase(projectId: string, sessionId: string): Pro
     port: config.port,
     user: config.user,
     password: config.password,
+    database: 'postgres',
   });
 
   try {

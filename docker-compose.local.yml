@@ -83,6 +83,20 @@ services:
       postgres:
         condition: service_healthy
 
+  dashboard:
+    <<: *app
+    container_name: kosuke_dashboard
+    ports:
+      - '3001:3001'
+    command: npx tsx watch src/dashboard.ts
+    volumes:
+      - .:/app:cached
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      redis:
+        condition: service_healthy
+
 volumes:
   postgres_data:
   redis_data:

@@ -89,6 +89,23 @@ services:
       - postgres
     restart: unless-stopped
 
+  dashboard:
+    image: ghcr.io/kosuke-org/kosuke-core:latest
+    container_name: kosuke_dashboard
+    env_file:
+      - .env
+    command: npx tsx src/dashboard.ts
+    networks:
+      - kosuke_network
+    depends_on:
+      - redis
+    restart: unless-stopped
+    labels:
+      - 'traefik.enable=true'
+      - 'traefik.http.routers.dashboard.rule=Host(`dashboard.${MAIN_DOMAIN}`)'
+      - 'traefik.http.routers.dashboard.tls.certresolver=letsencrypt'
+      - 'traefik.http.services.dashboard.loadbalancer.server.port=3001'
+
   portainer:
     image: portainer/portainer-ce:latest
     container_name: kosuke_portainer
