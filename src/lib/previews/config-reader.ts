@@ -13,7 +13,6 @@ import { join } from 'path';
  */
 export async function readKosukeConfig(sessionPath: string): Promise<KosukeConfig> {
   const configPath = join(sessionPath, 'kosuke.config.json');
-  console.log(`Reading kosuke.config.json from ${configPath}`);
 
   try {
     const content = await readFile(configPath, 'utf-8');
