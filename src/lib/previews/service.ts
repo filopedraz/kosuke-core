@@ -141,25 +141,25 @@ class PreviewService {
   }
 
   /**
-   * Ensure preview image is available (pull if needed)
+   * Ensure preview image is available (always pulls to get latest version)
    */
   private async ensurePreviewImage(serviceType: ServiceType): Promise<void> {
     const imageName = this.getPreviewImage(serviceType);
     const client = await this.ensureClient();
 
+    console.log(`Pulling preview image ${imageName}...`);
     try {
-      console.log(`Checking preview image ${imageName}`);
-      await client.imageInspect(imageName);
-      console.log(`Preview image ${imageName} is available locally`);
-    } catch {
-      // Image not found, need to pull
-      console.log(`Pulling preview image ${imageName}...`);
+      await client.imageCreate({ fromImage: imageName }).wait();
+      console.log(`Successfully pulled preview image ${imageName}`);
+    } catch (pullError) {
+      // Try to use local version if pull fails
+      console.warn(`Failed to pull ${imageName}, checking for local version...`);
       try {
-        await client.imageCreate({ fromImage: imageName });
-        console.log(`Successfully pulled preview image ${imageName}`);
-      } catch (pullError) {
+        await client.imageInspect(imageName);
+        console.log(`Using local preview image ${imageName}`);
+      } catch {
         throw new Error(
-          `Failed to pull preview image ${imageName}: ${pullError instanceof Error ? pullError.message : 'Unknown error'}`
+          `Failed to pull preview image ${imageName} and no local version available: ${pullError instanceof Error ? pullError.message : 'Unknown error'}`
         );
       }
     }
