@@ -1,8 +1,8 @@
-FROM oven/bun:1.3.1-alpine
+FROM oven/bun:1.3.1-slim
 
 # Create non-root user with same UID as kosuke-core image
-RUN addgroup -g 1001 -S bunapp && \
-    adduser -S -u 1001 -G bunapp bunapp
+RUN groupadd -g 1001 bunapp && \
+    useradd -u 1001 -g bunapp -m -s /bin/bash bunapp
 
 WORKDIR /app
 
