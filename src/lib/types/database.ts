@@ -58,7 +58,3 @@ export interface QueryRunnerProps {
   projectId: string;
   sessionId: string;
 }
-
-export interface ConnectionStatusProps {
-  connected: boolean;
-}

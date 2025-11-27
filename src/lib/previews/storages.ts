@@ -6,6 +6,7 @@
 import type { KosukeConfig, StorageType } from '@/lib/types/kosuke-config';
 import { ContainerCreateRequest, DockerClient } from '@docker/node-sdk';
 import { Client } from 'pg';
+import { generatePreviewResourceName } from './naming';
 
 export interface StorageConnectionInfo {
   type: StorageType;
@@ -37,13 +38,14 @@ function getPostgresConfig() {
  */
 async function createPostgresDatabase(projectId: string, sessionId: string): Promise<string> {
   const config = getPostgresConfig();
-  const dbName = `kosuke_preview_${projectId}_${sessionId}`.toLowerCase().replace(/-/g, '');
+  const dbName = generatePreviewResourceName(projectId, sessionId);
 
   const client = new Client({
     host: config.host,
     port: config.port,
     user: config.user,
     password: config.password,
+    database: 'postgres',
   });
 
   try {
@@ -75,7 +77,7 @@ async function createPostgresDatabase(projectId: string, sessionId: string): Pro
  */
 async function dropPostgresDatabase(projectId: string, sessionId: string): Promise<void> {
   const config = getPostgresConfig();
-  const dbName = `kosuke_preview_${projectId}_${sessionId}`.toLowerCase().replace(/-/g, '_');
+  const dbName = generatePreviewResourceName(projectId, sessionId);
 
   const client = new Client({
     host: config.host,
@@ -110,23 +112,15 @@ async function dropPostgresDatabase(projectId: string, sessionId: string): Promi
 }
 
 /**
- * Get Redis container name for a preview
- */
-function getRedisContainerName(prefix: string, projectId: string, sessionId: string): string {
-  return `${prefix}${projectId}-${sessionId}-redis`;
-}
-
-/**
  * Create Redis container for preview environment
  */
 async function createRedisContainer(
-  prefix: string,
   projectId: string,
   sessionId: string,
   dockerClient: DockerClient,
   network: string
 ): Promise<string> {
-  const containerName = getRedisContainerName(prefix, projectId, sessionId);
+  const containerName = generatePreviewResourceName(projectId, sessionId, 'redis');
   const imageName = 'redis:alpine';
 
   try {
@@ -193,12 +187,11 @@ async function createRedisContainer(
  * Stop and remove Redis container for preview environment
  */
 async function removeRedisContainer(
-  prefix: string,
   projectId: string,
   sessionId: string,
   dockerClient: DockerClient
 ): Promise<void> {
-  const containerName = getRedisContainerName(prefix, projectId, sessionId);
+  const containerName = generatePreviewResourceName(projectId, sessionId, 'redis');
 
   try {
     // Stop container
@@ -227,7 +220,6 @@ async function removeRedisContainer(
  * Returns a map of storage key to connection URL
  */
 export async function createPreviewStorages(
-  prefix: string,
   projectId: string,
   sessionId: string,
   config: KosukeConfig,
@@ -247,7 +239,6 @@ export async function createPreviewStorages(
         connectionInfo[storageName] = { type: 'postgres', url };
       } else if (storageConfig.type === 'redis') {
         const containerName = await createRedisContainer(
-          prefix,
           projectId,
           sessionId,
           dockerClient,
@@ -270,7 +261,6 @@ export async function createPreviewStorages(
  * Drop all storages for a preview environment
  */
 export async function dropPreviewStorages(
-  prefix: string,
   projectId: string,
   sessionId: string,
   config: KosukeConfig,
@@ -287,7 +277,7 @@ export async function dropPreviewStorages(
       if (storageConfig.type === 'postgres') {
         await dropPostgresDatabase(projectId, sessionId);
       } else if (storageConfig.type === 'redis') {
-        await removeRedisContainer(prefix, projectId, sessionId, dockerClient);
+        await removeRedisContainer(projectId, sessionId, dockerClient);
       }
     } catch (error) {
       console.error(`Failed to drop storage ${storageKey}:`, error);

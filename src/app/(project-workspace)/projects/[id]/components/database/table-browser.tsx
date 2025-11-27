@@ -16,7 +16,7 @@ import { useState } from 'react';
 export function TableBrowser({ projectId, sessionId }: TableBrowserProps) {
   const [selectedTable, setSelectedTable] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
-  const pageSize = 100;
+  const pageSize = 10;
 
   const { data: schema, isLoading: schemaLoading } = useDatabaseSchema(projectId, sessionId);
   const { data: tableData, isLoading: dataLoading, error } = useTableData(
@@ -34,10 +34,10 @@ export function TableBrowser({ projectId, sessionId }: TableBrowserProps) {
   const tables = schema?.tables || [];
 
   return (
-    <div className="flex h-full max-h-[700px] gap-6">
+    <div className="flex h-full gap-6">
       {/* Left Sidebar - Tables List */}
-      <Card className="w-72 flex flex-col">
-        <CardHeader className="pb-0">
+      <Card className="w-96 flex flex-col overflow-hidden">
+        <CardHeader className="pb-0 shrink-0">
           <CardTitle className="flex items-center gap-2 text-base">
             <Database className="w-5 h-5" />
             Database Tables
@@ -46,8 +46,8 @@ export function TableBrowser({ projectId, sessionId }: TableBrowserProps) {
             {tables.length} {tables.length === 1 ? 'table' : 'tables'} available
           </CardDescription>
         </CardHeader>
-        <CardContent className="flex-1 p-0">
-          <ScrollArea className="h-[520px]">
+        <CardContent className="flex-1 p-0 min-h-0">
+          <ScrollArea className="h-full w-full">
             {tables.length === 0 ? (
               <div className="p-6 text-center text-muted-foreground text-sm">
                 No tables found

@@ -11,7 +11,7 @@ import { useState } from 'react';
 import type { QueryResult, QueryRunnerProps } from '@/lib/types';
 
 export function QueryRunner({ projectId, sessionId }: QueryRunnerProps) {
-  const [query, setQuery] = useState('SELECT * FROM sqlite_master WHERE type=\'table\';');
+  const [query, setQuery] = useState('SELECT * FROM information_schema.tables WHERE table_schema = \'public\' LIMIT 5;');
   const [result, setResult] = useState<QueryResult | null>(null);
 
   const { mutate: executeQuery, isPending } = useDatabaseQuery(projectId, sessionId);
