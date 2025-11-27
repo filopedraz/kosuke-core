@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - preview-fixes
     paths:
       - 'preview/bun/**'
       - 'preview/python/**'
