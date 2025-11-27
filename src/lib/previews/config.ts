@@ -46,9 +46,9 @@ export function getPreviewConfig(): PreviewConfig {
   }
 
   // Container naming
-  const previewContainerNamePrefix = process.env.PREVIEW_CONTAINER_NAME_PREFIX;
+  const previewContainerNamePrefix = process.env.PREVIEW_RESOURCE_PREFIX;
   if (!previewContainerNamePrefix) {
-    throw new Error('PREVIEW_CONTAINER_NAME_PREFIX environment variable is required');
+    throw new Error('PREVIEW_RESOURCE_PREFIX environment variable is required');
   }
 
   // Docker-in-Docker

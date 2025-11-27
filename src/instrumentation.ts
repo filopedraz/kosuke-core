@@ -59,7 +59,10 @@ function validateEnvironmentVariables() {
     { key: 'PREVIEW_PORT_RANGE_END', description: 'Preview port range end' },
     { key: 'PREVIEW_HEALTH_PATH', description: 'Preview health check path' },
     { key: 'PREVIEW_NETWORK', description: 'Docker network for previews' },
-    { key: 'PREVIEW_CONTAINER_NAME_PREFIX', description: 'Docker container name prefix' },
+    {
+      key: 'PREVIEW_RESOURCE_PREFIX',
+      description: 'Preview resource naming prefix (databases, containers)',
+    },
 
     // Conditionally required based on feature flags
     ...(sentryEnabled

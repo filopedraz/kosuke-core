@@ -428,7 +428,6 @@ class PreviewService {
     console.log('Creating preview storages...');
     const client = await this.ensureClient();
     const storageConnections = await createPreviewStorages(
-      this.config.previewContainerNamePrefix,
       projectId,
       sessionId,
       kosukeConfig,
@@ -614,13 +613,7 @@ class PreviewService {
     // Drop storages (including Redis containers)
     try {
       const client = await this.ensureClient();
-      await dropPreviewStorages(
-        this.config.previewContainerNamePrefix,
-        projectId,
-        sessionId,
-        kosukeConfig,
-        client
-      );
+      await dropPreviewStorages(projectId, sessionId, kosukeConfig, client);
     } catch (error) {
       console.error('Failed to drop preview storages:', error);
     }
