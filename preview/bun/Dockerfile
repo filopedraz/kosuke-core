@@ -1,7 +1,6 @@
 FROM oven/bun:1.3.1-alpine
 
-# The base image already has a 'bun' user, so we create a different user
-# Create non-root user with same UID as nextjs image
+# Create non-root user with same UID as kosuke-core image
 RUN addgroup -g 1001 -S bunapp && \
     adduser -S -u 1001 -G bunapp bunapp
 
@@ -13,7 +12,7 @@ COPY docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
 
 # 1. Create the directories explicitly
-# 2. THEN Change ownership
+# 2. Change ownership
 # This ensures the "mount points" are owned by bunapp (1001), not root.
 RUN mkdir -p /app/node_modules /app/.next && \
     chown -R bunapp:bunapp /app
