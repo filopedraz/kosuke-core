@@ -6,16 +6,16 @@ import { useMemo } from 'react';
 export function useGitHubRepositories(
   userId: string,
   enabled: boolean = true,
-  context: string = 'personal',
+  organization: string = 'personal',
   search: string = ''
 ) {
   const query = useInfiniteQuery({
-    queryKey: ['github-repositories', userId, context, search],
+    queryKey: ['github-repositories', userId, organization, search],
     queryFn: async ({
       pageParam,
     }): Promise<{ repositories: GitHubRepository[]; hasMore: boolean }> => {
       const params = new URLSearchParams({
-        context,
+        organization,
         page: pageParam.toString(),
         per_page: '10',
       });
@@ -36,7 +36,7 @@ export function useGitHubRepositories(
     },
     staleTime: 1000 * 60 * 5,
     retry: 2,
-    enabled: !!userId && !!context && enabled,
+    enabled: !!userId && !!organization && enabled,
   });
 
   const repositories = useMemo(

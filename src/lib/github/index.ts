@@ -31,14 +31,14 @@ export async function listUserOrganizations(
 
 export async function listUserRepositories(
   userId: string,
-  context: 'personal' | string = 'personal',
+  organization: string = 'personal',
   page: number = 1,
   perPage: number = 10,
   search: string = ''
 ): Promise<{ repositories: GitHubRepository[]; hasMore: boolean }> {
   const octokit = await createUserOctokit(userId);
 
-  if (context === 'personal') {
+  if (organization === 'personal') {
     // For personal repos, always use listForAuthenticatedUser with type: 'owner'
     // This is more reliable than search API for personal repos
     const { data } = await octokit.rest.repos.listForAuthenticatedUser({
@@ -72,7 +72,7 @@ export async function listUserRepositories(
     // Organization context
     if (search) {
       const { data } = await octokit.rest.search.repos({
-        q: `${search} org:${context}`,
+        q: `${search} org:${organization}`,
         per_page: perPage,
         page,
         sort: 'updated',
@@ -83,7 +83,7 @@ export async function listUserRepositories(
       };
     } else {
       const { data } = await octokit.rest.repos.listForOrg({
-        org: context,
+        org: organization,
         per_page: perPage,
         page,
         sort: 'updated',

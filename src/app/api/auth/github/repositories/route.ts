@@ -12,14 +12,14 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const context = searchParams.get('context') || 'personal';
+    const organization = searchParams.get('organization') || 'personal';
     const page = parseInt(searchParams.get('page') || '1', 10);
     const perPage = parseInt(searchParams.get('per_page') || '10', 10);
     const search = searchParams.get('search') || '';
 
     const { repositories, hasMore } = await listUserRepositories(
       userId,
-      context,
+      organization,
       page,
       perPage,
       search
