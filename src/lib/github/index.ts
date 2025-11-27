@@ -68,32 +68,32 @@ export async function listUserRepositories(
       repositories: paginatedRepos,
       hasMore: start + perPage < repos.length,
     };
-  } else {
-    // Organization context
-    if (search) {
-      const { data } = await octokit.rest.search.repos({
-        q: `${search} org:${organization}`,
-        per_page: perPage,
-        page,
-        sort: 'updated',
-      });
-      return {
-        repositories: data.items as GitHubRepository[],
-        hasMore: data.items.length === perPage,
-      };
-    } else {
-      const { data } = await octokit.rest.repos.listForOrg({
-        org: organization,
-        per_page: perPage,
-        page,
-        sort: 'updated',
-      });
-      return {
-        repositories: data as GitHubRepository[],
-        hasMore: data.length === perPage,
-      };
-    }
   }
+
+  // Organization context
+  if (search) {
+    const { data } = await octokit.rest.search.repos({
+      q: `${search} org:${organization}`,
+      per_page: perPage,
+      page,
+      sort: 'updated',
+    });
+    return {
+      repositories: data.items as GitHubRepository[],
+      hasMore: data.items.length === perPage,
+    };
+  }
+
+  const { data } = await octokit.rest.repos.listForOrg({
+    org: organization,
+    per_page: perPage,
+    page,
+    sort: 'updated',
+  });
+  return {
+    repositories: data as GitHubRepository[],
+    hasMore: data.length === perPage,
+  };
 }
 
 /**
