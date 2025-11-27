@@ -143,7 +143,7 @@ async function createRedisContainer(
     } catch {
       console.log(`Pulling Redis image ${imageName}...`);
       try {
-        await dockerClient.imageCreate({ fromImage: imageName });
+        await dockerClient.imageCreate({ fromImage: imageName }).wait();
         console.log(`Successfully pulled Redis image ${imageName}`);
       } catch (pullError) {
         throw new Error(

@@ -40,7 +40,7 @@ services:
       - kosuke_network
 
   nextjs:
-    image: ghcr.io/kosuke-org/kosuke-core:latest
+    image: ghcr.io/kosuke-org/kosuke-core:${IMAGE_TAG:-latest}
     container_name: kosuke_nextjs
     env_file:
       - .env
