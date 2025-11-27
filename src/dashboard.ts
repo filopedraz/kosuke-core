@@ -2,7 +2,7 @@
  * BullMQ Dashboard Server
  * Standalone Express server for monitoring job queues with basic auth
  * Run: npx tsx src/dashboard.ts
- * Access: http://localhost:3001 (default admin/admin)
+ * Access: http://localhost:3001 (with basic auth)
  *
  * Features:
  * - Real-time job queue monitoring
@@ -24,31 +24,40 @@ const port = parseInt(process.env.BULLMQ_DASHBOARD_PORT || '3001', 10);
  * Basic auth middleware
  */
 function basicAuth(req: express.Request, res: express.Response, next: express.NextFunction) {
-  const auth = req.headers.authorization;
+  const authHeader = req.headers.authorization;
 
-  if (!auth || !auth.startsWith('Basic ')) {
+  if (!authHeader?.startsWith('Basic ')) {
     res.setHeader('WWW-Authenticate', 'Basic realm="BullMQ Dashboard"');
-    return res.status(401).send('Authentication required');
+    return res.status(401).send('Unauthorized');
   }
 
   try {
-    const credentials = Buffer.from(auth.slice(6), 'base64').toString('utf-8');
-    const [username, password] = credentials.split(':');
+    const decoded = Buffer.from(authHeader.slice(6), 'base64').toString('utf8');
+    const [rawUsername, ...passwordParts] = decoded.split(':');
+    const username = rawUsername;
+    const password = passwordParts.join(':');
 
-    const expectedUsername = process.env.BULLMQ_ADMIN_USERNAME;
-    const expectedPassword = process.env.BULLMQ_ADMIN_PASSWORD;
-
-    if (username !== expectedUsername || password !== expectedPassword) {
-      res.setHeader('WWW-Authenticate', 'Basic realm="BullMQ Dashboard"');
-      return res.status(401).send('Invalid credentials');
+    if (
+      username === process.env.BULLMQ_ADMIN_USERNAME &&
+      password === process.env.BULLMQ_ADMIN_PASSWORD
+    ) {
+      return next();
     }
 
-    next();
-  } catch (_error) {
     res.setHeader('WWW-Authenticate', 'Basic realm="BullMQ Dashboard"');
-    return res.status(401).send('Authentication failed');
+    return res.status(401).send('Unauthorized');
+  } catch {
+    res.setHeader('WWW-Authenticate', 'Basic realm="BullMQ Dashboard"');
+    return res.status(401).send('Unauthorized');
   }
 }
+
+/**
+ * Health endpoint, no auth
+ */
+app.get('/health', (_req, res) => {
+  res.json({ status: 'ok' });
+});
 
 /**
  * Setup BullMQ dashboard
@@ -62,12 +71,8 @@ createBullBoard({
 });
 
 /**
- * Health check endpoint (no auth required)
+ * Mount with auth
  */
-app.get('/health', (req: express.Request, res: express.Response) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
-
 app.use(basicAuth);
 app.use(serverAdapter.getRouter());
 

@@ -1,9 +1,9 @@
 default:
     @just --list
 
-run:
+run *args:
     @echo "Running all services with build..."
-    @docker compose -f docker-compose.local.yml up --build -d
+    @docker compose -f docker-compose.local.yml up --build -d {{args}}
     @just migrate
 
 build:

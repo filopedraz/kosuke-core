@@ -61,6 +61,11 @@ function validateEnvironmentVariables() {
     { key: 'PREVIEW_NETWORK', description: 'Docker network for previews' },
     { key: 'PREVIEW_CONTAINER_NAME_PREFIX', description: 'Docker container name prefix' },
 
+    // BullMQ Dashboard Configuration
+    { key: 'BULLMQ_DASHBOARD_PORT', description: 'BullMQ dashboard port' },
+    { key: 'BULLMQ_ADMIN_USERNAME', description: 'BullMQ dashboard admin username' },
+    { key: 'BULLMQ_ADMIN_PASSWORD', description: 'BullMQ dashboard admin password' },
+
     // Redis Configuration
     { key: 'REDIS_URL', description: 'Redis connection URL for job queue' },
 

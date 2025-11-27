@@ -1,3 +1,13 @@
+x-app: &app
+  build:
+    context: .
+    dockerfile: Dockerfile.local
+  env_file:
+    - .env
+  networks:
+    - kosuke_network
+  restart: unless-stopped
+
 services:
   postgres:
     image: postgres:16.4-alpine
@@ -33,10 +43,8 @@ services:
       retries: 5
     command: redis-server --appendonly yes
 
-  nextjs: &app
-    build:
-      context: .
-      dockerfile: Dockerfile.local
+  nextjs:
+    <<: *app
     container_name: kosuke_nextjs
     ports:
       - '3000:3000'
@@ -46,16 +54,11 @@ services:
       - /app/.next
       - ./projects:/app/projects:cached
       - /var/run/docker.sock:/var/run/docker.sock
-    env_file:
-      - .env
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
-    networks:
-      - kosuke_network
-    restart: unless-stopped
     healthcheck:
       test:
         [
@@ -96,6 +99,16 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'node -e "require(\"http\").get(\"http://localhost:3001/health\", (r) => process.exit(r.statusCode === 200 ? 0 : 1))"',
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
 volumes:
   postgres_data:
