@@ -70,6 +70,15 @@ function validateEnvironmentVariables() {
     // Preview Cleanup Configuration
     { key: 'CLEANUP_THRESHOLD_MINUTES', description: 'Minutes of inactivity before cleanup' },
 
+    // Queue Configuration
+    { key: 'QUEUE_MAX_ATTEMPTS', description: 'Maximum retry attempts for failed jobs' },
+    { key: 'QUEUE_BACKOFF_DELAY', description: 'Initial backoff delay in milliseconds' },
+    { key: 'QUEUE_REMOVE_ON_COMPLETE_AGE', description: 'Seconds to keep completed jobs' },
+    { key: 'QUEUE_REMOVE_ON_COMPLETE_COUNT', description: 'Max completed jobs to keep' },
+    { key: 'QUEUE_REMOVE_ON_FAIL_AGE', description: 'Seconds to keep failed jobs' },
+    { key: 'QUEUE_REMOVE_ON_FAIL_COUNT', description: 'Max failed jobs to keep' },
+    { key: 'QUEUE_WORKER_CONCURRENCY', description: 'Number of concurrent worker jobs' },
+
     // Conditionally required based on feature flags
     ...(sentryEnabled
       ? [{ key: 'SENTRY_AUTH_TOKEN', description: 'Sentry authentication token' }]

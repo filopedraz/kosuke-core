@@ -11,18 +11,18 @@ function getDefaultQueueOptions() {
   return {
     connection: getRedis(),
     defaultJobOptions: {
-      attempts: parseInt(process.env.QUEUE_MAX_ATTEMPTS || '3', 10),
+      attempts: parseInt(process.env.QUEUE_MAX_ATTEMPTS!, 10),
       backoff: {
         type: 'exponential' as const,
-        delay: parseInt(process.env.QUEUE_BACKOFF_DELAY || '1000', 10),
+        delay: parseInt(process.env.QUEUE_BACKOFF_DELAY!, 10),
       },
       removeOnComplete: {
-        age: parseInt(process.env.QUEUE_REMOVE_ON_COMPLETE_AGE || String(7 * 24 * 60 * 60), 10),
-        count: parseInt(process.env.QUEUE_REMOVE_ON_COMPLETE_COUNT || '1000', 10),
+        age: parseInt(process.env.QUEUE_REMOVE_ON_COMPLETE_AGE!, 10),
+        count: parseInt(process.env.QUEUE_REMOVE_ON_COMPLETE_COUNT!, 10),
       },
       removeOnFail: {
-        age: parseInt(process.env.QUEUE_REMOVE_ON_FAIL_AGE || String(14 * 24 * 60 * 60), 10),
-        count: parseInt(process.env.QUEUE_REMOVE_ON_FAIL_COUNT || '5000', 10),
+        age: parseInt(process.env.QUEUE_REMOVE_ON_FAIL_AGE!, 10),
+        count: parseInt(process.env.QUEUE_REMOVE_ON_FAIL_COUNT!, 10),
       },
     },
   };
@@ -35,9 +35,9 @@ function getDefaultQueueOptions() {
 function getDefaultWorkerOptions() {
   return {
     connection: getRedis(),
-    concurrency: parseInt(process.env.QUEUE_WORKER_CONCURRENCY || '5', 10),
-    removeOnComplete: { count: parseInt(process.env.QUEUE_REMOVE_ON_COMPLETE_COUNT || '1000', 10) },
-    removeOnFail: { count: parseInt(process.env.QUEUE_REMOVE_ON_FAIL_COUNT || '5000', 10) },
+    concurrency: parseInt(process.env.QUEUE_WORKER_CONCURRENCY!, 10),
+    removeOnComplete: { count: parseInt(process.env.QUEUE_REMOVE_ON_COMPLETE_COUNT!, 10) },
+    removeOnFail: { count: parseInt(process.env.QUEUE_REMOVE_ON_FAIL_COUNT!, 10) },
   };
 }
 
