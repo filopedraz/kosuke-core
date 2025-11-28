@@ -73,10 +73,10 @@ function validateEnvironmentVariables() {
 
     // Queue Configuration
     { key: 'QUEUE_MAX_ATTEMPTS', description: 'Maximum retry attempts for failed jobs' },
-    { key: 'QUEUE_BACKOFF_DELAY', description: 'Initial backoff delay in milliseconds' },
-    { key: 'QUEUE_REMOVE_ON_COMPLETE_AGE', description: 'Seconds to keep completed jobs' },
+    { key: 'QUEUE_BACKOFF_DELAY_SEC', description: 'Initial backoff delay in seconds' },
+    { key: 'QUEUE_REMOVE_ON_COMPLETE_DAYS', description: 'Days to keep completed jobs' },
     { key: 'QUEUE_REMOVE_ON_COMPLETE_COUNT', description: 'Max completed jobs to keep' },
-    { key: 'QUEUE_REMOVE_ON_FAIL_AGE', description: 'Seconds to keep failed jobs' },
+    { key: 'QUEUE_REMOVE_ON_FAIL_DAYS', description: 'Days to keep failed jobs' },
     { key: 'QUEUE_REMOVE_ON_FAIL_COUNT', description: 'Max failed jobs to keep' },
     { key: 'QUEUE_WORKER_CONCURRENCY', description: 'Number of concurrent worker jobs' },
 

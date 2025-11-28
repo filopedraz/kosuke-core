@@ -7,6 +7,8 @@ import { Queue, QueueEvents, Worker } from 'bullmq';
  * Get default queue options with lazy-initialized Redis connection
  * @internal - Used internally by createQueue factory
  */
+const SECONDS_PER_DAY = 86400;
+
 function getDefaultQueueOptions() {
   return {
     connection: getRedis(),
@@ -14,14 +16,14 @@ function getDefaultQueueOptions() {
       attempts: parseInt(process.env.QUEUE_MAX_ATTEMPTS!, 10),
       backoff: {
         type: 'exponential' as const,
-        delay: parseInt(process.env.QUEUE_BACKOFF_DELAY!, 10),
+        delay: parseInt(process.env.QUEUE_BACKOFF_DELAY_SEC!, 10) * 1000, // convert to ms
       },
       removeOnComplete: {
-        age: parseInt(process.env.QUEUE_REMOVE_ON_COMPLETE_AGE!, 10),
+        age: parseInt(process.env.QUEUE_REMOVE_ON_COMPLETE_DAYS!, 10) * SECONDS_PER_DAY,
         count: parseInt(process.env.QUEUE_REMOVE_ON_COMPLETE_COUNT!, 10),
       },
       removeOnFail: {
-        age: parseInt(process.env.QUEUE_REMOVE_ON_FAIL_AGE!, 10),
+        age: parseInt(process.env.QUEUE_REMOVE_ON_FAIL_DAYS!, 10) * SECONDS_PER_DAY,
         count: parseInt(process.env.QUEUE_REMOVE_ON_FAIL_COUNT!, 10),
       },
     },
