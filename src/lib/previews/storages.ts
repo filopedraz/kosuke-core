@@ -13,13 +13,6 @@ export interface StorageConnectionInfo {
   url: string;
 }
 
-interface DropStoragesOptions {
-  /** Drop the Postgres database (default: true) */
-  dropPostgres?: boolean;
-  /** Remove Redis container after stopping (default: true). If false, only stops it. */
-  removeRedis?: boolean;
-}
-
 /**
  * Get database connection info from environment
  */
@@ -274,18 +267,15 @@ export async function createPreviewStorages(
 
 /**
  * Stop/drop storages for a preview environment
- * @param options.dropPostgres - If true, drops the Postgres database. Default: true
- * @param options.removeRedis - If true, removes Redis container. If false, only stops it. Default: true
+ * @param remove - If true, permanently removes all storages. If false, only stops them.
  */
 export async function dropPreviewStorages(
   projectId: string,
   sessionId: string,
   config: KosukeConfig,
   dockerClient: DockerClient,
-  options: DropStoragesOptions = {}
+  remove: boolean
 ): Promise<void> {
-  const { dropPostgres = true, removeRedis = true } = options;
-
   if (!config.preview.storages) {
     return;
   }
@@ -294,11 +284,10 @@ export async function dropPreviewStorages(
 
   for (const [storageKey, storageConfig] of Object.entries(config.preview.storages)) {
     try {
-      if (storageConfig.type === 'postgres' && dropPostgres) {
+      if (storageConfig.type === 'postgres' && remove) {
         await dropPostgresDatabase(projectId, sessionId);
       } else if (storageConfig.type === 'redis') {
-        // Always stop Redis, optionally remove it
-        await stopRedisContainer(projectId, sessionId, dockerClient, removeRedis);
+        await stopRedisContainer(projectId, sessionId, dockerClient, remove);
       }
     } catch (error) {
       console.error(`Failed to handle storage ${storageKey}:`, error);

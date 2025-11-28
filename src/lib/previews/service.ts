@@ -623,12 +623,9 @@ class PreviewService {
       }
     }
 
-    // Stop Redis container (but don't remove it or drop Postgres)
+    // Stop storages (but don't remove them)
     try {
-      await dropPreviewStorages(projectId, sessionId, kosukeConfig, client, {
-        dropPostgres: false,
-        removeRedis: false,
-      });
+      await dropPreviewStorages(projectId, sessionId, kosukeConfig, client, false);
     } catch (error) {
       console.error('Failed to stop storages:', error);
     }
@@ -671,7 +668,7 @@ class PreviewService {
     // Drop storages (including Redis containers)
     try {
       const client = await this.ensureClient();
-      await dropPreviewStorages(projectId, sessionId, kosukeConfig, client);
+      await dropPreviewStorages(projectId, sessionId, kosukeConfig, client, true);
     } catch (error) {
       console.error('Failed to drop preview storages:', error);
     }
