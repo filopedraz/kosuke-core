@@ -16,7 +16,7 @@ export function getRedis(): Redis {
     return redisInstance;
   }
 
-  redisInstance = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
+  redisInstance = new Redis(process.env.REDIS_URL!, {
     maxRetriesPerRequest: null, // Required for BullMQ
     enableReadyCheck: false, // Required for some operations
     retryStrategy: times => {

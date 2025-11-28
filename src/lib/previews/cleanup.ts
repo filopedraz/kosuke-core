@@ -1,6 +1,6 @@
 import { db } from '@/lib/db/drizzle';
 import { chatSessions } from '@/lib/db/schema';
-import { lt } from 'drizzle-orm';
+import { eq, lt } from 'drizzle-orm';
 import { getPreviewService } from '.';
 
 /**
@@ -23,9 +23,23 @@ export async function cleanupInactiveSessions(thresholdMinutes: number) {
   console.log(`[CLEANUP] Found ${inactiveSessions.length} inactive sessions`);
 
   let cleanedCount = 0;
+  let skippedCount = 0;
 
   for (const session of inactiveSessions) {
     try {
+      // Re-check activity before stopping (防止 race condition)
+      const current = await db
+        .select()
+        .from(chatSessions)
+        .where(eq(chatSessions.id, session.id))
+        .limit(1);
+
+      if (current[0] && current[0].lastActivityAt >= cutoffTime) {
+        console.log(`[CLEANUP] ⏭️ Skipping ${session.sessionId} (recently active)`);
+        skippedCount++;
+        continue;
+      }
+
       await previewService.stopPreview(session.projectId, session.sessionId);
       cleanedCount++;
     } catch (error) {
@@ -36,6 +50,9 @@ export async function cleanupInactiveSessions(thresholdMinutes: number) {
     }
   }
 
-  console.log(`[CLEANUP] ✅ Cleaned up ${cleanedCount}/${inactiveSessions.length} sessions`);
+  console.log(
+    `[CLEANUP] ✅ Cleaned up ${cleanedCount}/${inactiveSessions.length} sessions` +
+      (skippedCount > 0 ? ` (${skippedCount} skipped due to recent activity)` : '')
+  );
   return cleanedCount;
 }

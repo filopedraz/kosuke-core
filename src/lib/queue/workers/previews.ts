@@ -15,7 +15,7 @@ export const previewWorker = createWorker<PreviewCleanupJobData>(
     return await cleanupInactiveSessions(thresholdMinutes);
   },
   {
-    concurrency: 1, // Only one cleanup job at a time
+    concurrency: parseInt(process.env.CLEANUP_WORKER_CONCURRENCY || '1', 10),
   }
 );
 
