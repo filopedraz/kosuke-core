@@ -207,7 +207,7 @@ export async function DELETE(
     try {
       console.log(`Destroying preview for session ${sessionId} in project ${projectId}`);
       const previewService = getPreviewService();
-      await previewService.destroyPreview(projectId, sessionId);
+      await previewService.stopPreview(projectId, sessionId, true);
       console.log(`Preview destroyed successfully for session ${sessionId}`);
     } catch (containerError) {
       // Log but continue - we still want to delete the session even if container cleanup fails

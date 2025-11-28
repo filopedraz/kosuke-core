@@ -531,7 +531,7 @@ class PreviewService {
     } catch (error) {
       console.error('Failed to start some services, cleaning up...');
       // Cleanup on failure
-      await this.destroyPreview(projectId, sessionId);
+      await this.stopPreview(projectId, sessionId, true);
       throw error;
     }
   }
@@ -599,11 +599,12 @@ class PreviewService {
   }
 
   /**
-   * Stop all service containers for a preview (containers can be restarted)
-   * Stops service containers + Redis, but preserves Postgres DB
+   * Stop or destroy all service containers for a preview
+   * @param remove - if true, removes containers and volumes; if false, only stops them (can be restarted)
    */
-  async stopPreview(projectId: string, sessionId: string): Promise<void> {
-    console.log(`Stopping preview containers for project ${projectId} session ${sessionId}`);
+  async stopPreview(projectId: string, sessionId: string, remove: boolean = false): Promise<void> {
+    const action = remove ? 'Destroying' : 'Stopping';
+    console.log(`${action} preview for project ${projectId} session ${sessionId}`);
 
     const containerSessionPath = this.getContainerSessionPath(projectId, sessionId);
     const kosukeConfig = await readKosukeConfig(containerSessionPath);
@@ -611,41 +612,7 @@ class PreviewService {
 
     const client = await this.ensureClient();
 
-    // Stop all service containers (but don't remove them)
-    for (const serviceName of Object.keys(services)) {
-      const containerName = this.getContainerName(projectId, sessionId, serviceName);
-
-      try {
-        await client.containerStop(containerName, { timeout: 5 });
-        console.log(`Stopped service ${serviceName}`);
-      } catch (error) {
-        console.log(`Failed to stop service ${serviceName}:`, error);
-      }
-    }
-
-    // Stop storages (but don't remove them)
-    try {
-      await dropPreviewStorages(projectId, sessionId, kosukeConfig, client, false);
-    } catch (error) {
-      console.error('Failed to stop storages:', error);
-    }
-
-    console.log(`✅ Preview containers stopped`);
-  }
-
-  /**
-   * Destroy all service containers, volumes, and storages for a preview (full removal)
-   */
-  async destroyPreview(projectId: string, sessionId: string): Promise<void> {
-    console.log(`Destroying preview for project ${projectId} session ${sessionId}`);
-
-    const containerSessionPath = this.getContainerSessionPath(projectId, sessionId);
-    const kosukeConfig = await readKosukeConfig(containerSessionPath);
-    const { services } = kosukeConfig.preview;
-
-    const client = await this.ensureClient();
-
-    // Stop and remove all service containers
+    // Stop (and optionally remove) all service containers
     for (const serviceName of Object.keys(services)) {
       const containerName = this.getContainerName(projectId, sessionId, serviceName);
 
@@ -656,24 +623,24 @@ class PreviewService {
         console.log(`Failed to stop service ${serviceName}:`, error);
       }
 
-      try {
-        // Remove container and associated anonymous volumes
-        await client.containerDelete(containerName, { force: true, volumes: true });
-        console.log(`Removed service ${serviceName} and its volumes`);
-      } catch (error) {
-        console.log(`Failed to remove service ${serviceName}:`, error);
+      if (remove) {
+        try {
+          await client.containerDelete(containerName, { force: true, volumes: true });
+          console.log(`Removed service ${serviceName} and its volumes`);
+        } catch (error) {
+          console.log(`Failed to remove service ${serviceName}:`, error);
+        }
       }
     }
 
-    // Drop storages (including Redis containers)
+    // Handle storages (stop or drop based on remove flag)
     try {
-      const client = await this.ensureClient();
-      await dropPreviewStorages(projectId, sessionId, kosukeConfig, client, true);
+      await dropPreviewStorages(projectId, sessionId, kosukeConfig, client, remove);
     } catch (error) {
-      console.error('Failed to drop preview storages:', error);
+      console.error('Failed to handle storages:', error);
     }
 
-    console.log(`✅ Preview destroyed`);
+    console.log(`✅ Preview ${remove ? 'destroyed' : 'stopped'}`);
   }
 
   /**
