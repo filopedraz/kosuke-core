@@ -12,7 +12,7 @@ import { DockerClient, type ContainerCreateRequest } from '@docker/node-sdk';
 import { join } from 'path';
 import { getPreviewConfig } from './config';
 import { buildEnviornment, readKosukeConfig } from './config-reader';
-import { generatePreviewResourceName } from './naming';
+import { generatePreviewResourceName, sanitizeUUID } from './naming';
 import { PortRouterAdapter, TraefikRouterAdapter, type RouterAdapter } from './router-adapters';
 import { createPreviewStorages, dropPreviewStorages } from './storages';
 
@@ -651,7 +651,8 @@ class PreviewService {
 
     try {
       const client = await this.ensureClient();
-      const namePrefix = `${this.config.previewContainerNamePrefix}${projectId}-`;
+      // Use sanitized projectId (underscores) to match actual container naming convention
+      const namePrefix = `${this.config.previewContainerNamePrefix}${sanitizeUUID(projectId)}_`;
 
       const allContainers = await client.containerList({ all: true });
       const projectContainers = allContainers.filter(container => {
@@ -664,8 +665,8 @@ class PreviewService {
 
       for (const container of projectContainers) {
         const containerName = container.Names?.[0]?.replace(/^\//, '') || '';
-        // Extract session ID: prefix-projectId-sessionId-serviceName
-        const parts = containerName.replace(namePrefix, '').split('-');
+        // Extract session ID: prefix_projectId_sessionId_serviceName (underscores)
+        const parts = containerName.replace(namePrefix, '').split('_');
         const sessionId = parts[0]; // First part after projectId
 
         if (!sessionContainers.has(sessionId)) {
@@ -746,17 +747,27 @@ class PreviewService {
    * Destroy all previews for a project (full removal of containers, volumes, and storages)
    */
   async destroyAllProjectPreviews(projectId: string): Promise<{ stopped: number; failed: number }> {
-    console.log(`Destroying all previews for project ${projectId}`);
+    console.log(`[CLEANUP] 🗑️ Destroying all previews for project ${projectId}`);
 
     try {
       const client = await this.ensureClient();
-      const namePrefix = `${this.config.previewContainerNamePrefix}${projectId}-`;
+      // Use sanitized projectId (underscores) to match actual container naming convention
+      const namePrefix = `${this.config.previewContainerNamePrefix}${sanitizeUUID(projectId)}_`;
+
+      console.log(`[CLEANUP] Looking for containers with prefix: ${namePrefix}`);
 
       const allContainers = await client.containerList({ all: true });
+      console.log(`[CLEANUP] Found ${allContainers.length} total containers`);
+
       const projectContainers = allContainers.filter(container => {
         const name = container.Names?.[0]?.replace(/^\//, '') || '';
         return name.startsWith(namePrefix);
       });
+
+      console.log(
+        `[CLEANUP] Found ${projectContainers.length} containers for project: ` +
+          projectContainers.map(c => c.Names?.[0]?.replace(/^\//, '')).join(', ')
+      );
 
       let stopped = 0;
       let failed = 0;
@@ -766,22 +777,28 @@ class PreviewService {
           container.Names?.[0]?.replace(/^\//, '') || container.Id?.substring(0, 12) || 'unknown';
 
         try {
+          console.log(`[CLEANUP] Removing container ${containerName} (state: ${container.State})`);
+
           if (container.State === 'running') {
             await client.containerStop(containerName, { timeout: 5 });
+            console.log(`[CLEANUP] Stopped container ${containerName}`);
           }
           // Remove container and associated anonymous volumes
           await client.containerDelete(containerName, { force: true, volumes: true });
+          console.log(`[CLEANUP] ✅ Deleted container ${containerName} and its volumes`);
           stopped++;
         } catch (error) {
-          console.error(`Failed to stop/remove container ${containerName}:`, error);
+          console.error(`[CLEANUP] ❌ Failed to stop/remove container ${containerName}:`, error);
           failed++;
         }
       }
 
-      console.log(`Project ${projectId} cleanup: ${stopped} destroyed, ${failed} failed`);
+      console.log(
+        `[CLEANUP] Project ${projectId} cleanup complete: ${stopped} destroyed, ${failed} failed`
+      );
       return { stopped, failed };
     } catch (error) {
-      console.error(`Error stopping project previews for project ${projectId}:`, error);
+      console.error(`[CLEANUP] Error stopping project previews for project ${projectId}:`, error);
       throw error;
     }
   }
