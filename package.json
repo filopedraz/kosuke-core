@@ -25,7 +25,8 @@
     "shadcn:check": "npx shadcn@canary diff",
     "knip": "knip",
     "workers:start": "npx tsx src/worker.ts",
-    "workers:dev": "npx tsx watch src/worker.ts"
+    "workers:dev": "npx tsx watch src/worker.ts",
+    "workers:trigger-job": "npx tsx src/lib/queue/trigger.ts"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.1.42",
