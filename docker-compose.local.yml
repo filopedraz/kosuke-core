@@ -87,30 +87,6 @@ services:
       postgres:
         condition: service_healthy
 
-  bullmq-dashboard:
-    <<: *app
-    container_name: kosuke_bullmq_dashboard
-    ports:
-      - '3001:3001'
-    command: npx tsx watch src/dashboard.ts
-    volumes:
-      - .:/app:cached
-      - /app/node_modules
-      - /app/.next
-    depends_on:
-      redis:
-        condition: service_healthy
-    healthcheck:
-      test:
-        [
-          'CMD-SHELL',
-          'node -e "require(\"http\").get(\"http://localhost:3001/health\", (r) => process.exit(r.statusCode === 200 ? 0 : 1))"',
-        ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
-
 volumes:
   postgres_data:
   redis_data:

@@ -64,11 +64,6 @@ function validateEnvironmentVariables() {
       description: 'Preview resource naming prefix (databases, containers)',
     },
 
-    // BullMQ Dashboard Configuration
-    { key: 'BULLMQ_DASHBOARD_PORT', description: 'BullMQ dashboard port' },
-    { key: 'BULLMQ_ADMIN_USERNAME', description: 'BullMQ dashboard admin username' },
-    { key: 'BULLMQ_ADMIN_PASSWORD', description: 'BullMQ dashboard admin password' },
-
     // Redis Configuration
     { key: 'REDIS_URL', description: 'Redis connection URL for job queue' },
 

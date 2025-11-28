@@ -87,25 +87,6 @@ services:
       - postgres
     restart: unless-stopped
 
-  bullmq-dashboard:
-    image: ghcr.io/kosuke-org/kosuke-core:latest
-    container_name: kosuke_bullmq_dashboard
-    env_file:
-      - .env
-    command: npx tsx src/dashboard.ts
-    ports:
-      - '3001:3001'
-    networks:
-      - kosuke_network
-    depends_on:
-      - redis
-    restart: unless-stopped
-    labels:
-      - 'traefik.enable=true'
-      - 'traefik.http.routers.bullmq-dashboard.rule=Host(`bullmq-dashboard.${MAIN_DOMAIN}`)'
-      - 'traefik.http.routers.bullmq-dashboard.tls.certresolver=letsencrypt'
-      - 'traefik.http.services.bullmq-dashboard.loadbalancer.server.port=3001'
-
   portainer:
     image: portainer/portainer-ce:latest
     container_name: kosuke_portainer
