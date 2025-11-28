@@ -1,6 +1,8 @@
 name: Claude Code
 
 on:
+  issue_comment:
+    types: [created, edited]
   pull_request_review_comment:
     types: [created, edited]
   pull_request_review:
@@ -11,6 +13,7 @@ on:
 jobs:
   claude:
     if: |
+      (github.event_name == 'issue_comment' && github.event.issue.pull_request && contains(github.event.comment.body, '@claude')) ||
       (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
       (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
       (github.event_name == 'pull_request' && (contains(github.event.pull_request.body, '@claude') || contains(github.event.pull_request.title, '@claude')))
