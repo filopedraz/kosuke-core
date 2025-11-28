@@ -5,7 +5,7 @@ import { ApiErrorHandler } from '@/lib/api/errors';
 import { ApiResponseHandler } from '@/lib/api/responses';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db/drizzle';
-import { projects } from '@/lib/db/schema';
+import { chatSessions, projects } from '@/lib/db/schema';
 import { deleteDir, getProjectPath } from '@/lib/fs/operations';
 import { createKosukeOctokit, createUserOctokit } from '@/lib/github/client';
 import { getPreviewService } from '@/lib/previews';
@@ -137,18 +137,26 @@ export async function DELETE(
     // Step 1: Destroy all preview containers for this project before file deletion
     try {
       console.log(`Destroying all previews for project ${projectId} before deletion`);
+
+      // Get all session IDs for this project
+      const sessions = await db
+        .select({ sessionId: chatSessions.sessionId })
+        .from(chatSessions)
+        .where(eq(chatSessions.projectId, projectId));
+      const sessionIds = sessions.map(s => s.sessionId);
+
       const previewService = getPreviewService();
-      const cleanupResult = await previewService.destroyAllProjectPreviews(projectId);
+      const cleanupResult = await previewService.destroyAllProjectPreviews(projectId, sessionIds);
 
       console.log(
         `Preview cleanup completed for project ${projectId}: ` +
-        `${cleanupResult.stopped} destroyed, ${cleanupResult.failed} failed`
+          `${cleanupResult.stopped} destroyed, ${cleanupResult.failed} failed`
       );
 
       if (cleanupResult.failed > 0) {
         console.warn(
           `Some containers failed to destroy for project ${projectId}. ` +
-          `Manual cleanup may be required.`
+            `Manual cleanup may be required.`
         );
       }
     } catch (previewError) {

@@ -301,10 +301,9 @@ class PreviewService {
 
     try {
       // Check if container already exists (might be stopped)
-      let containerId: string | undefined;
       try {
         const existing = await client.containerInspect(containerName);
-        containerId = existing.Id;
+        const containerId = existing.Id!;
 
         if (existing.State?.Running) {
           console.log(`Container ${containerName} is already running`);
@@ -313,7 +312,7 @@ class PreviewService {
 
         // Container exists but is stopped - start it
         console.log(`Container ${containerName} exists but is stopped, starting it...`);
-        await client.containerStart(containerId!);
+        await client.containerStart(containerId);
         console.log(`✅ Successfully started existing container ${serviceName}`);
         return routeInfo?.url || null;
       } catch {
@@ -754,61 +753,30 @@ class PreviewService {
   /**
    * Destroy all previews for a project (full removal of containers, volumes, and storages)
    */
-  async destroyAllProjectPreviews(projectId: string): Promise<{ stopped: number; failed: number }> {
+  async destroyAllProjectPreviews(
+    projectId: string,
+    sessionIds: string[]
+  ): Promise<{ stopped: number; failed: number }> {
     console.log(`[CLEANUP] 🗑️ Destroying all previews for project ${projectId}`);
+    console.log(`[CLEANUP] Sessions to destroy: ${sessionIds.join(', ')}`);
 
-    try {
-      const client = await this.ensureClient();
-      // Use sanitized projectId (underscores) to match actual container naming convention
-      const namePrefix = `${this.config.previewContainerNamePrefix}${sanitizeUUID(projectId)}_`;
+    let stopped = 0;
+    let failed = 0;
 
-      console.log(`[CLEANUP] Looking for containers with prefix: ${namePrefix}`);
-
-      const allContainers = await client.containerList({ all: true });
-      console.log(`[CLEANUP] Found ${allContainers.length} total containers`);
-
-      const projectContainers = allContainers.filter(container => {
-        const name = container.Names?.[0]?.replace(/^\//, '') || '';
-        return name.startsWith(namePrefix);
-      });
-
-      console.log(
-        `[CLEANUP] Found ${projectContainers.length} containers for project: ` +
-          projectContainers.map(c => c.Names?.[0]?.replace(/^\//, '')).join(', ')
-      );
-
-      let stopped = 0;
-      let failed = 0;
-
-      for (const container of projectContainers) {
-        const containerName =
-          container.Names?.[0]?.replace(/^\//, '') || container.Id?.substring(0, 12) || 'unknown';
-
-        try {
-          console.log(`[CLEANUP] Removing container ${containerName} (state: ${container.State})`);
-
-          if (container.State === 'running') {
-            await client.containerStop(containerName, { timeout: 5 });
-            console.log(`[CLEANUP] Stopped container ${containerName}`);
-          }
-          // Remove container and associated anonymous volumes
-          await client.containerDelete(containerName, { force: true, volumes: true });
-          console.log(`[CLEANUP] ✅ Deleted container ${containerName} and its volumes`);
-          stopped++;
-        } catch (error) {
-          console.error(`[CLEANUP] ❌ Failed to stop/remove container ${containerName}:`, error);
-          failed++;
-        }
+    for (const sessionId of sessionIds) {
+      try {
+        await this.stopPreview(projectId, sessionId, true);
+        stopped++;
+      } catch (error) {
+        console.error(`[CLEANUP] ❌ Failed to destroy session ${sessionId}:`, error);
+        failed++;
       }
-
-      console.log(
-        `[CLEANUP] Project ${projectId} cleanup complete: ${stopped} destroyed, ${failed} failed`
-      );
-      return { stopped, failed };
-    } catch (error) {
-      console.error(`[CLEANUP] Error stopping project previews for project ${projectId}:`, error);
-      throw error;
     }
+
+    console.log(
+      `[CLEANUP] Project ${projectId} cleanup complete: ${stopped} sessions destroyed, ${failed} failed`
+    );
+    return { stopped, failed };
   }
 
   /**
