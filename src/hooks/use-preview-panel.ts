@@ -26,7 +26,21 @@ export function usePreviewPanel({
   const [iframeKey, setIframeKey] = useState(0);
   const [isDownloading, setIsDownloading] = useState(false);
   const requestInFlightRef = useRef(false);
+  const pollingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isMountedRef = useRef(true);
   // Removed gitStatus from status flow; pull flow handles its own toasts
+
+  // Cleanup polling timeout on unmount
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      if (pollingTimeoutRef.current) {
+        clearTimeout(pollingTimeoutRef.current);
+        pollingTimeoutRef.current = null;
+      }
+    };
+  }, []);
 
   // Check if the preview server is ready using session-scoped health check
   // This checks the container health within the Docker network
@@ -57,7 +71,19 @@ export function usePreviewPanel({
       );
       let attempts = 0;
 
+      // Clear any existing polling timeout
+      if (pollingTimeoutRef.current) {
+        clearTimeout(pollingTimeoutRef.current);
+        pollingTimeoutRef.current = null;
+      }
+
       const poll = async () => {
+        // Stop polling if component unmounted
+        if (!isMountedRef.current) {
+          console.log('[Preview Panel] Component unmounted, stopping poll');
+          return;
+        }
+
         if (attempts >= maxAttempts) {
           setError('Server failed to start after multiple attempts');
           setStatus('error');
@@ -69,6 +95,12 @@ export function usePreviewPanel({
 
         const isHealthy = await checkServerHealth();
 
+        // Check again after async operation
+        if (!isMountedRef.current) {
+          console.log('[Preview Panel] Component unmounted after health check, stopping poll');
+          return;
+        }
+
         if (isHealthy) {
           console.log('[Preview Panel] Server is healthy');
           setStatus('ready');
@@ -79,12 +111,12 @@ export function usePreviewPanel({
           );
           // Use longer delays for more patient polling
           const delay = attempts <= 3 ? 5000 : 3000; // 5s for first 3 attempts, then 3s
-          setTimeout(poll, delay);
+          pollingTimeoutRef.current = setTimeout(poll, delay);
         }
       };
 
       // Wait 5 seconds before starting health checks to give container time to start
-      setTimeout(poll, 5000);
+      pollingTimeoutRef.current = setTimeout(poll, 5000);
     },
     [checkServerHealth]
   );

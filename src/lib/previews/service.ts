@@ -564,7 +564,15 @@ class PreviewService {
 
       return { running: true, url, is_responding: isResponding };
     } catch (error) {
-      console.error('Error getting preview status:', error);
+      // Only log errors that aren't expected "not found" scenarios
+      // (e.g., deleted project, missing config file)
+      const errorMessage = error instanceof Error ? error.message : '';
+      const isExpectedNotFound =
+        errorMessage.includes('kosuke.config.json not found') || errorMessage.includes('ENOENT');
+
+      if (!isExpectedNotFound) {
+        console.error('Error getting preview status:', error);
+      }
       return { running: false, url: null, is_responding: false };
     }
   }
