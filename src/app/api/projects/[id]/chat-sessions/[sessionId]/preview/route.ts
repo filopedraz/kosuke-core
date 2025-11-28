@@ -33,10 +33,7 @@ export async function GET(
       return ApiErrorHandler.projectNotFound();
     }
 
-    // If this is the default branch, allow preview without a chat session record
-    const isDefaultBranchSession = sessionId === (project.defaultBranch || 'main');
-    if (!isDefaultBranchSession) {
-      // Verify chat session exists and belongs to project
+    // Look up the session (including "main" which is now stored in DB)
       const [session] = await db
         .select()
         .from(chatSessions)
@@ -50,7 +47,12 @@ export async function GET(
       if (!session) {
         return ApiErrorHandler.chatSessionNotFound();
       }
-    }
+
+    // Update lastActivityAt to track preview usage for cleanup job
+    await db
+      .update(chatSessions)
+      .set({ lastActivityAt: new Date() })
+      .where(eq(chatSessions.id, session.id));
 
     // Use singleton PreviewService instance
     const previewService = getPreviewService();
@@ -124,9 +126,7 @@ export async function POST(
       return ApiErrorHandler.projectNotFound();
     }
 
-    // If this is the default branch, allow starting preview without a chat session record
-    const isDefaultBranchSession = sessionId === project.defaultBranch;
-    if (!isDefaultBranchSession) {
+    // Look up the session (including "main" which is now stored in DB)
       const [session] = await db
         .select()
         .from(chatSessions)
@@ -140,7 +140,12 @@ export async function POST(
       if (!session) {
         return ApiErrorHandler.chatSessionNotFound();
       }
-    }
+
+    // Update lastActivityAt to track preview usage for cleanup job
+    await db
+      .update(chatSessions)
+      .set({ lastActivityAt: new Date() })
+      .where(eq(chatSessions.id, session.id));
 
     // Fetch environment variables for the project
     const envVars = await getProjectEnvironmentVariables(projectId);

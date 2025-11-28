@@ -6,7 +6,7 @@ import { ApiErrorHandler } from '@/lib/api/errors';
 import { ApiResponseHandler } from '@/lib/api/responses';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db/drizzle';
-import { projects } from '@/lib/db/schema';
+import { chatSessions, projects } from '@/lib/db/schema';
 import { createRepositoryFromTemplate } from '@/lib/github';
 import { getUserGitHubToken } from '@/lib/github/client';
 
@@ -213,6 +213,17 @@ export async function POST(request: NextRequest) {
           updatedAt: new Date(),
         })
         .returning();
+
+      // Create the default "main" session for this project
+      // This allows cleanup job to track activity for the main branch preview
+      await tx.insert(chatSessions).values({
+        projectId: project.id,
+        userId: userId,
+        title: 'Main',
+        sessionId: 'main',
+        isDefault: true,
+        status: 'active',
+      });
 
       // Handle GitHub operations based on type
       if (github.type === 'create') {

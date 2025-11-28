@@ -1,6 +1,7 @@
 import { relations } from 'drizzle-orm';
 import {
   boolean,
+  index,
   integer,
   jsonb,
   pgEnum,
@@ -35,28 +36,39 @@ export const projects = pgTable('projects', {
   defaultBranch: varchar('default_branch', { length: 100 }).default('main'),
 });
 
-export const chatSessions = pgTable('chat_sessions', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  projectId: uuid('project_id')
-    .references(() => projects.id, { onDelete: 'cascade' })
-    .notNull(),
-  userId: text('user_id'), // No FK
-  title: varchar('title', { length: 100 }).notNull(),
-  description: text('description'),
-  sessionId: varchar('session_id', { length: 50 }).unique().notNull(),
-  remoteId: varchar('remote_id', { length: 255 }).unique(), // Claude Agent SDK session ID for resuming conversations
-  status: varchar('status', { length: 20 }).default('active'), // active, archived, completed
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-  updatedAt: timestamp('updated_at').notNull().defaultNow(),
-  lastActivityAt: timestamp('last_activity_at').notNull().defaultNow(),
-  messageCount: integer('message_count').default(0),
-  isDefault: boolean('is_default').default(false),
-  // GitHub merge status
-  branchMergedAt: timestamp('branch_merged_at'),
-  branchMergedBy: varchar('branch_merged_by', { length: 100 }),
-  mergeCommitSha: varchar('merge_commit_sha', { length: 40 }),
-  pullRequestNumber: integer('pull_request_number'),
-});
+export const chatSessions = pgTable(
+  'chat_sessions',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    projectId: uuid('project_id')
+      .references(() => projects.id, { onDelete: 'cascade' })
+      .notNull(),
+    userId: text('user_id'), // No FK
+    title: varchar('title', { length: 100 }).notNull(),
+    description: text('description'),
+    sessionId: varchar('session_id', { length: 50 }).notNull(), // Unique per project, not globally
+    remoteId: varchar('remote_id', { length: 255 }).unique(), // Claude Agent SDK session ID for resuming conversations
+    status: varchar('status', { length: 20 }).default('active'), // active, archived, completed
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+    lastActivityAt: timestamp('last_activity_at').notNull().defaultNow(),
+    messageCount: integer('message_count').default(0),
+    isDefault: boolean('is_default').default(false),
+    // GitHub merge status
+    branchMergedAt: timestamp('branch_merged_at'),
+    branchMergedBy: varchar('branch_merged_by', { length: 100 }),
+    mergeCommitSha: varchar('merge_commit_sha', { length: 40 }),
+    pullRequestNumber: integer('pull_request_number'),
+  },
+  table => ({
+    lastActivityAtIdx: index('idx_chat_sessions_last_activity_at').on(table.lastActivityAt),
+    // Session ID is unique within a project (allows "main" for each project)
+    projectSessionUnique: unique('chat_sessions_project_session_unique').on(
+      table.projectId,
+      table.sessionId
+    ),
+  })
+);
 
 export const chatMessages = pgTable('chat_messages', {
   id: uuid('id').defaultRandom().primaryKey(),

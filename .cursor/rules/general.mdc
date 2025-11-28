@@ -43,7 +43,6 @@ bun run db:migrate      # Apply pending migrations to database
 bun run db:migrate:prod # Apply migrations in production (verbose)
 bun run db:push         # Push schema changes directly (dev only)
 bun run db:studio       # Open Drizzle Studio for database inspection
-bun run db:seed         # Seed database with initial data
 
 # Development
 bun run dev             # Start development server with hot reload

@@ -12,7 +12,7 @@ import { DockerClient, type ContainerCreateRequest } from '@docker/node-sdk';
 import { join } from 'path';
 import { getPreviewConfig } from './config';
 import { buildEnviornment, readKosukeConfig } from './config-reader';
-import { generatePreviewResourceName } from './naming';
+import { generatePreviewResourceName, sanitizeUUID } from './naming';
 import { PortRouterAdapter, TraefikRouterAdapter, type RouterAdapter } from './router-adapters';
 import { createPreviewStorages, dropPreviewStorages } from './storages';
 
@@ -300,6 +300,25 @@ class PreviewService {
     );
 
     try {
+      // Check if container already exists (might be stopped)
+      try {
+        const existing = await client.containerInspect(containerName);
+        const containerId = existing.Id!;
+
+        if (existing.State?.Running) {
+          console.log(`Container ${containerName} is already running`);
+          return routeInfo?.url || null;
+        }
+
+        // Container exists but is stopped - start it
+        console.log(`Container ${containerName} exists but is stopped, starting it...`);
+        await client.containerStart(containerId);
+        console.log(`✅ Successfully started existing container ${serviceName}`);
+        return routeInfo?.url || null;
+      } catch {
+        // Container doesn't exist, create it
+      }
+
       const config = this.createContainerConfig(
         service.type,
         environment,
@@ -511,7 +530,7 @@ class PreviewService {
     } catch (error) {
       console.error('Failed to start some services, cleaning up...');
       // Cleanup on failure
-      await this.stopPreview(projectId, sessionId);
+      await this.stopPreview(projectId, sessionId, true);
       throw error;
     }
   }
@@ -544,7 +563,15 @@ class PreviewService {
 
       return { running: true, url, is_responding: isResponding };
     } catch (error) {
-      console.error('Error getting preview status:', error);
+      // Only log errors that aren't expected "not found" scenarios
+      // (e.g., deleted project, missing config file)
+      const errorMessage = error instanceof Error ? error.message : '';
+      const isExpectedNotFound =
+        errorMessage.includes('kosuke.config.json not found') || errorMessage.includes('ENOENT');
+
+      if (!isExpectedNotFound) {
+        console.error('Error getting preview status:', error);
+      }
       return { running: false, url: null, is_responding: false };
     }
   }
@@ -579,10 +606,12 @@ class PreviewService {
   }
 
   /**
-   * Stop and remove all service containers for a preview
+   * Stop or destroy all service containers for a preview
+   * @param remove - if true, removes containers and volumes; if false, only stops them (can be restarted)
    */
-  async stopPreview(projectId: string, sessionId: string): Promise<void> {
-    console.log(`Stopping multi-service preview for project ${projectId} session ${sessionId}`);
+  async stopPreview(projectId: string, sessionId: string, remove: boolean = false): Promise<void> {
+    const action = remove ? 'Destroying' : 'Stopping';
+    console.log(`${action} preview for project ${projectId} session ${sessionId}`);
 
     const containerSessionPath = this.getContainerSessionPath(projectId, sessionId);
     const kosukeConfig = await readKosukeConfig(containerSessionPath);
@@ -590,7 +619,7 @@ class PreviewService {
 
     const client = await this.ensureClient();
 
-    // Stop all service containers
+    // Stop (and optionally remove) all service containers
     for (const serviceName of Object.keys(services)) {
       const containerName = this.getContainerName(projectId, sessionId, serviceName);
 
@@ -601,24 +630,24 @@ class PreviewService {
         console.log(`Failed to stop service ${serviceName}:`, error);
       }
 
-      try {
-        // Remove container and associated anonymous volumes
-        await client.containerDelete(containerName, { force: true, volumes: true });
-        console.log(`Removed service ${serviceName} and its volumes`);
-      } catch (error) {
-        console.log(`Failed to remove service ${serviceName}:`, error);
+      if (remove) {
+        try {
+          await client.containerDelete(containerName, { force: true, volumes: true });
+          console.log(`Removed service ${serviceName} and its volumes`);
+        } catch (error) {
+          console.log(`Failed to remove service ${serviceName}:`, error);
+        }
       }
     }
 
-    // Drop storages (including Redis containers)
+    // Handle storages (stop or drop based on remove flag)
     try {
-      const client = await this.ensureClient();
-      await dropPreviewStorages(projectId, sessionId, kosukeConfig, client);
+      await dropPreviewStorages(projectId, sessionId, kosukeConfig, client, remove);
     } catch (error) {
-      console.error('Failed to drop preview storages:', error);
+      console.error('Failed to handle storages:', error);
     }
 
-    console.log(`✅ Multi-service preview stopped`);
+    console.log(`✅ Preview ${remove ? 'destroyed' : 'stopped'}`);
   }
 
   /**
@@ -629,7 +658,8 @@ class PreviewService {
 
     try {
       const client = await this.ensureClient();
-      const namePrefix = `${this.config.previewContainerNamePrefix}${projectId}-`;
+      // Use sanitized projectId (underscores) to match actual container naming convention
+      const namePrefix = `${this.config.previewContainerNamePrefix}${sanitizeUUID(projectId)}_`;
 
       const allContainers = await client.containerList({ all: true });
       const projectContainers = allContainers.filter(container => {
@@ -642,8 +672,8 @@ class PreviewService {
 
       for (const container of projectContainers) {
         const containerName = container.Names?.[0]?.replace(/^\//, '') || '';
-        // Extract session ID: prefix-projectId-sessionId-serviceName
-        const parts = containerName.replace(namePrefix, '').split('-');
+        // Extract session ID: prefix_projectId_sessionId_serviceName (underscores)
+        const parts = containerName.replace(namePrefix, '').split('_');
         const sessionId = parts[0]; // First part after projectId
 
         if (!sessionContainers.has(sessionId)) {
@@ -721,47 +751,32 @@ class PreviewService {
   }
 
   /**
-   * Stop all previews for a project
+   * Destroy all previews for a project (full removal of containers, volumes, and storages)
    */
-  async stopAllProjectPreviews(projectId: string): Promise<{ stopped: number; failed: number }> {
-    console.log(`Stopping all previews for project ${projectId}`);
+  async destroyAllProjectPreviews(
+    projectId: string,
+    sessionIds: string[]
+  ): Promise<{ stopped: number; failed: number }> {
+    console.log(`[CLEANUP] 🗑️ Destroying all previews for project ${projectId}`);
+    console.log(`[CLEANUP] Sessions to destroy: ${sessionIds.join(', ')}`);
 
-    try {
-      const client = await this.ensureClient();
-      const namePrefix = `${this.config.previewContainerNamePrefix}${projectId}-`;
+    let stopped = 0;
+    let failed = 0;
 
-      const allContainers = await client.containerList({ all: true });
-      const projectContainers = allContainers.filter(container => {
-        const name = container.Names?.[0]?.replace(/^\//, '') || '';
-        return name.startsWith(namePrefix);
-      });
-
-      let stopped = 0;
-      let failed = 0;
-
-      for (const container of projectContainers) {
-        const containerName =
-          container.Names?.[0]?.replace(/^\//, '') || container.Id?.substring(0, 12) || 'unknown';
-
-        try {
-          if (container.State === 'running') {
-            await client.containerStop(containerName, { timeout: 5 });
-          }
-          // Remove container and associated anonymous volumes
-          await client.containerDelete(containerName, { force: true, volumes: true });
-          stopped++;
-        } catch (error) {
-          console.error(`Failed to stop/remove container ${containerName}:`, error);
-          failed++;
-        }
+    for (const sessionId of sessionIds) {
+      try {
+        await this.stopPreview(projectId, sessionId, true);
+        stopped++;
+      } catch (error) {
+        console.error(`[CLEANUP] ❌ Failed to destroy session ${sessionId}:`, error);
+        failed++;
       }
-
-      console.log(`Project ${projectId} cleanup: ${stopped} stopped, ${failed} failed`);
-      return { stopped, failed };
-    } catch (error) {
-      console.error(`Error stopping project previews for project ${projectId}:`, error);
-      throw error;
     }
+
+    console.log(
+      `[CLEANUP] Project ${projectId} cleanup complete: ${stopped} sessions destroyed, ${failed} failed`
+    );
+    return { stopped, failed };
   }
 
   /**

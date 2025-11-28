@@ -7,7 +7,7 @@
  * Sanitize UUID parts for preview resource names
  * Replace hyphens with underscores for consistency across databases and containers
  */
-function sanitizeUUID(part: string): string {
+export function sanitizeUUID(part: string): string {
   return part.toLowerCase().replace(/-/g, '_');
 }
 

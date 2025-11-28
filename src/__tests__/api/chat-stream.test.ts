@@ -52,6 +52,11 @@ jest.mock('@/lib/db/drizzle', () => ({
         ]),
       })),
     })),
+    update: jest.fn(() => ({
+      set: jest.fn(() => ({
+        where: jest.fn().mockResolvedValue([]),
+      })),
+    })),
   },
 }));
 

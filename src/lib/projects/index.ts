@@ -7,7 +7,7 @@
 import { clerkService } from '@/lib/clerk';
 import { db } from '@/lib/db/drizzle';
 import { projects } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 
 export interface ProjectAccessResult {
   hasAccess: boolean;
@@ -26,9 +26,9 @@ export async function verifyProjectAccess(
   userId: string,
   projectId: string
 ): Promise<ProjectAccessResult> {
-  // Get the project
+  // Get the project (exclude archived projects)
   const project = await db.query.projects.findFirst({
-    where: eq(projects.id, projectId),
+    where: and(eq(projects.id, projectId), eq(projects.isArchived, false)),
   });
 
   if (!project || !project.orgId) {

@@ -22,6 +22,13 @@
       "when": 1764154788962,
       "tag": "0002_dashing_captain_midlands",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1764338296760,
+      "tag": "0003_secret_veda",
+      "breakpoints": true
     }
   ]
 }
