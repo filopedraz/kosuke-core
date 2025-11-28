@@ -246,7 +246,8 @@ export function usePreviewPanel({
   useEffect(() => {
     if (!enabled || !sessionId || status !== 'ready') return;
 
-    const HEARTBEAT_INTERVAL = 60 * 1000; // 60 seconds
+    const HEARTBEAT_INTERVAL =
+      parseInt(process.env.NEXT_PUBLIC_PREVIEW_HEARTBEAT_INTERVAL_SEC!, 10) * 1000;
 
     const heartbeat = async () => {
       try {
