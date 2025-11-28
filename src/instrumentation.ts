@@ -69,6 +69,7 @@ function validateEnvironmentVariables() {
 
     // Preview Cleanup Configuration
     { key: 'CLEANUP_THRESHOLD_MINUTES', description: 'Minutes of inactivity before cleanup' },
+    { key: 'CLEANUP_INTERVAL_MINUTES', description: 'Minutes between cleanup job runs' },
 
     // Queue Configuration
     { key: 'QUEUE_MAX_ATTEMPTS', description: 'Maximum retry attempts for failed jobs' },
